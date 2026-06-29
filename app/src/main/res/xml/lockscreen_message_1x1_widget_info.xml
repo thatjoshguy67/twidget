@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:initialLayout="@layout/lockscreen_message_1x1"
+    android:minWidth="56dp"
+    android:minHeight="56dp"
+    android:minResizeWidth="56dp"
+    android:minResizeHeight="56dp"
+    android:previewLayout="@layout/lockscreen_message_1x1"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="0x2000"
+    app:initialLayoutTiny="@layout/lockscreen_message_1x1"
+    app:previewLayoutTiny="@layout/lockscreen_message_1x1"
+    app:targetHost="lock_and_aod|cover"
+    app:widgetSize="tiny"
+    app:widgetStyle="monotone"
+    tools:targetApi="s" />

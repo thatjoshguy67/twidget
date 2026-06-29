@@ -3,6 +3,9 @@
     <string name="app_name">Blur Widget</string>
     <string name="widget_description">Blank blur widget with adjustable tint and opacity</string>
     <string name="widget_label">Blur Widget</string>
+    <string name="lockscreen_message_1x1_label">Blur Message 1x1</string>
+    <string name="lockscreen_message_2x1_label">Blur Message 2x1</string>
+    <string name="lockscreen_message_preview">Glass</string>
     <string name="onboarding_title">A tiny lab for One UI blur</string>
     <string name="onboarding_summary">This demo app lets you experiment with Samsung Home’s widget blur. Add the widget, change the tint and opacity, then use the same pattern in your own apps.</string>
     <string name="onboarding_tint_title">Adjust the tint</string>

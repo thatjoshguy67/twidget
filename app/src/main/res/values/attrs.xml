@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <attr name="allowMultipleSizes" format="boolean" />
+
     <!-- Samsung OneUI widget style flags — required for launcher blur -->
     <attr name="widgetStyle" format="integer">
         <flag name="colorful" value="0x1" />
@@ -8,15 +10,26 @@
 
     <!-- Samsung OneUI widget size flags — optional but improves widget picker integration -->
     <attr name="widgetSize" format="integer">
-        <flag name="small" value="0x1" />
-        <flag name="wideSmall" value="0x2" />
-        <flag name="medium" value="0x4" />
-        <flag name="large" value="0x8" />
-        <flag name="extraLarge" value="0x10" />
-        <flag name="extraLargeLong" value="0x20" />
+        <flag name="tiny" value="0x1" />
+        <flag name="small" value="0x2" />
+        <flag name="wideSmall" value="0x4" />
+        <flag name="medium" value="0x8" />
+        <flag name="large" value="0x10" />
+        <flag name="extraLarge" value="0x20" />
+        <flag name="extraLargeLong" value="0x40" />
     </attr>
 
     <!-- Per-size layouts read by Samsung's One UI widget picker. -->
+    <attr name="initialLayoutTiny" format="reference" />
+    <attr name="initialLayoutSmall" format="reference" />
+    <attr name="initialLayoutMedium" format="reference" />
+    <attr name="monotoneInitialLayoutTiny" format="reference" />
+    <attr name="monotoneInitialLayoutSmall" format="reference" />
+    <attr name="monotoneInitialLayoutMedium" format="reference" />
+    <attr name="monotonePreviewLayoutTiny" format="reference" />
+    <attr name="monotonePreviewLayoutSmall" format="reference" />
+    <attr name="monotonePreviewLayoutMedium" format="reference" />
+    <attr name="previewLayoutTiny" format="reference" />
     <attr name="previewLayoutSmall" format="reference" />
     <attr name="previewLayoutWideSmall" format="reference" />
     <attr name="previewLayoutMedium" format="reference" />
@@ -27,9 +40,11 @@
     <!-- Samsung OneUI target host flags -->
     <attr name="targetHost" format="integer">
         <flag name="home" value="0x1" />
-        <flag name="cover" value="0x2" />
-        <flag name="lock" value="0x4" />
-        <flag name="dex_home" value="0x8" />
+        <flag name="lock_and_aod" value="0x2" />
+        <flag name="cover" value="0x4" />
+        <flag name="edge" value="0x8" />
+        <flag name="dex_home" value="0x10" />
+        <flag name="smart_page" value="0x20" />
     </attr>
 
     <!-- Samsung OneUI featured widget flags — enables widget label on home screen -->

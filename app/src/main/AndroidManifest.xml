@@ -47,5 +47,43 @@
                 android:resource="@xml/widget_supported_cell_size_info" />
         </receiver>
 
+        <receiver
+            android:name=".LockScreenMessageServiceBoxReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.samsung.android.intent.action.REQUEST_SERVICEBOX_REMOTEVIEWS" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".LockScreenMessageSmallWidget"
+            android:exported="true"
+            android:label="@string/lockscreen_message_1x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/lockscreen_message_1x1_widget_info" />
+            <meta-data
+                android:name="samsung.appwidget.monotone.info"
+                android:resource="@xml/lockscreen_message_1x1_widget_info_oneui" />
+        </receiver>
+
+        <receiver
+            android:name=".LockScreenMessageWideWidget"
+            android:exported="true"
+            android:label="@string/lockscreen_message_2x1_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/lockscreen_message_2x1_widget_info" />
+            <meta-data
+                android:name="samsung.appwidget.monotone.info"
+                android:resource="@xml/lockscreen_message_2x1_widget_info_oneui" />
+        </receiver>
+
     </application>
 </manifest>

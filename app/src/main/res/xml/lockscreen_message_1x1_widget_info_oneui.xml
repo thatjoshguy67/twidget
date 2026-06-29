@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<samsung-appwidget-info
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:allowMultipleSizes="true"
+    app:initialLayoutTiny="@layout/lockscreen_message_1x1"
+    app:previewLayoutTiny="@layout/lockscreen_message_1x1"
+    app:targetHost="lock_and_aod|cover"
+    app:widgetSize="tiny" />

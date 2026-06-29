@@ -1,7 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Release signing config. Locally: read from keystore.properties (gitignored).
+// On CI: fall back to RELEASE_* environment variables. Absent either, release
+// builds stay unsigned so debug builds and contributors are unaffected.
+val keystoreProperties = Properties().apply {
+    rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+fun signingValue(propKey: String, envKey: String): String? =
+    keystoreProperties.getProperty(propKey) ?: System.getenv(envKey)
+val releaseStoreFile: String? = signingValue("storeFile", "RELEASE_STORE_FILE")
 
 android {
     namespace = "com.example.blurwidgetdemo"
@@ -15,9 +27,21 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "RELEASE_STORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "RELEASE_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

@@ -1,6 +1,7 @@
 # Blur Widget Demo
 
 [![Android CI](https://github.com/SadLinusGuy0/blur-widget-demo/actions/workflows/android.yml/badge.svg)](https://github.com/SadLinusGuy0/blur-widget-demo/actions/workflows/android.yml)
+[![Latest release](https://img.shields.io/github/v/release/SadLinusGuy0/blur-widget-demo)](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A working proof-of-concept showing that **third-party Android widgets can use
@@ -14,6 +15,12 @@ responds before porting the pattern into your own app.
 
 > **Just want the technique?** See the [Integration Guide](docs/INTEGRATION.md)
 > for a step-by-step walkthrough of adding One UI blur to your own widgets.
+
+## Download
+
+Grab a signed APK from the [latest release](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
+and sideload it on a Samsung One UI 5+ device. Releases are cut automatically
+when a `v*` tag is pushed (see [Releases](#releases) below).
 
 ## How the blur works (in one paragraph)
 
@@ -74,6 +81,30 @@ to resolve the GitHub Packages dependency, add two repository secrets
 
 `settings.gradle.kts` reads credentials from `github.properties` locally and falls
 back to these environment variables on CI.
+
+## Releases
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds a **signed
+release APK** and attaches it to a GitHub Release whenever a `v*` tag is pushed:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+You can also trigger it manually from the **Actions → Release** tab (provide the
+tag to publish). Signing uses a dedicated keystore stored in repository secrets:
+
+| Secret                    | Value                                              |
+|---------------------------|----------------------------------------------------|
+| `RELEASE_KEYSTORE_BASE64` | The release keystore, base64-encoded               |
+| `RELEASE_STORE_PASSWORD`  | Keystore password                                  |
+| `RELEASE_KEY_PASSWORD`    | Key password (same as store password for PKCS12)   |
+| `RELEASE_KEY_ALIAS`       | Key alias                                           |
+
+To build a signed release locally, copy your keystore details into a gitignored
+`keystore.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`)
+and run `./gradlew assembleRelease`. Without it, release builds are left unsigned.
 
 ## Project structure
 

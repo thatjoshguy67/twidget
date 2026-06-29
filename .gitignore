@@ -1,6 +1,9 @@
 # Secrets / local config
 github.properties
 local.properties
+keystore.properties
+*.keystore
+*.jks
 
 # Build output
 .gradle/

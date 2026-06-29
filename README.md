@@ -4,13 +4,12 @@
 [![Latest release](https://img.shields.io/github/v/release/SadLinusGuy0/blur-widget-demo)](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A working proof-of-concept showing that **third-party Android widgets can use
-Samsung One UI Home's native wallpaper blur** — the frosted-glass effect behind
+A working proof-of-concept showing that **third-party Android widgets can use One UI Home's native wallpaper blur** — the frosted-glass effect behind
 Samsung's own Weather, Clock, and Calendar widgets. Samsung doesn't document
-this, but it works on any One UI 5+ device.
+this, but it works on any One UI 7.0+ device.
 
 The app ships a single resizable widget whose **tint and opacity you can tune
-live** through a One UI configuration screen, so you can see exactly how the blur
+live** through a configuration screen, so you can see exactly how the blur
 responds before porting the pattern into your own app.
 
 > **Just want the technique?** See the [Integration Guide](docs/INTEGRATION.md)
@@ -19,7 +18,7 @@ responds before porting the pattern into your own app.
 ## Download
 
 Grab a signed APK from the [latest release](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
-and sideload it on a Samsung One UI 5+ device. Releases are cut automatically
+and sideload it on a Samsung One UI 7.0+ device. Releases are cut automatically
 when a `v*` tag is pushed (see [Releases](#releases) below).
 
 ## How the blur works (in one paragraph)

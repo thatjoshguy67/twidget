@@ -12,8 +12,9 @@ The app ships a single resizable widget whose **tint and opacity you can tune
 live** through a configuration screen, so you can see exactly how the blur
 responds before porting the pattern into your own app.
 
-> **Just want the technique?** See the [Integration Guide](docs/INTEGRATION.md)
-> for a step-by-step walkthrough of adding One UI blur to your own widgets.
+> **Just want the technique?** See the wiki guides for
+> [One UI blur integration](https://github.com/thatjoshguy67/blur-widget-demo/wiki/One-UI-Blur-Integration)
+> and [lock-screen widgets](https://github.com/thatjoshguy67/blur-widget-demo/wiki/Lock-Screen-Widgets).
 
 ## Download
 
@@ -29,7 +30,8 @@ attributes and paints a **semi-transparent background** on a view tagged
 the widget, blurs it, and draws it underneath — your background colour tints the
 result. Three things must be true (root `@android:id/background` view, an alpha
 between 1–254, and `app:widgetStyle="colorful"` + a real `app:widgetSize`). The
-[Integration Guide](docs/INTEGRATION.md) covers each one.
+[One UI blur integration wiki guide](https://github.com/thatjoshguy67/blur-widget-demo/wiki/One-UI-Blur-Integration)
+covers each one.
 
 ## Building
 
@@ -121,7 +123,6 @@ app/src/main/
 │   ├── xml/widget_provider_blur.xml  # Provider: widgetStyle + widgetSize + previews
 │   └── values/attrs.xml           # Samsung custom widget attribute definitions
 └── AndroidManifest.xml
-docs/INTEGRATION.md                # How to add One UI blur to your own widgets
 ```
 
 ## Credits

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="18dp" />
+            <solid android:color="@color/oneui_accent_translucent" />
+        </shape>
+    </item>
+    <item>
+        <ripple xmlns:android="http://schemas.android.com/apk/res/android"
+            android:color="?android:colorControlHighlight">
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="18dp" />
+                    <solid android:color="@android:color/transparent" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+</selector>

@@ -24,7 +24,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://jitpack.io")
-        maven("https://maven.pkg.github.com/tribalfs/oneui-design") {
+        // Wildcard serves every tribalfs package (oneui-design plus the
+        // sesl.androidx.* / sesl.com.google.* forks it depends on).
+        maven("https://maven.pkg.github.com/tribalfs/*") {
             credentials {
                 username = ghPackagesUser
                 password = ghPackagesToken
@@ -33,5 +35,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BlurWidgetDemo"
+rootProject.name = "Twidget"
 include(":app")

@@ -1,0 +1,100 @@
+name: Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Pre-release version without the leading v, e.g. 1.1.0-beta.1"
+        required: true
+
+permissions:
+  contents: write # create the tag and the GitHub Release
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the changelog diff has a baseline
+
+      - name: Validate version against gradle versionName
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          BASE="${VERSION%%-*}"
+          GRADLE_VERSION=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          if [ "$BASE" != "$GRADLE_VERSION" ]; then
+            echo "::error::Input version $VERSION does not match versionName $GRADLE_VERSION in app/build.gradle.kts"
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode release keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build signed release APK
+        env:
+          GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          RELEASE_STORE_FILE: ${{ runner.temp }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Create tag if missing
+        run: |
+          TAG="v${{ github.event.inputs.version }}"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Stage APK with version in filename
+        run: cp app/build/outputs/apk/release/app-release.apk "twidget-v${{ github.event.inputs.version }}.apk"
+
+      - name: Generate changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ github.event.inputs.version }}"
+          VERSION="${{ github.event.inputs.version }}"
+          # Hand-written notes from CHANGELOG.md, if a matching section exists.
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" { capture = 1; next }
+            capture && /^## \[/ { capture = 0 }
+            capture { print }
+          ' CHANGELOG.md > release-notes.md
+          # Auto-generated commit/PR changelog since the previous release.
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="$TAG" --jq .body >> release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "See CHANGELOG.md for details." > release-notes.md
+          fi
+
+      - name: Publish GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ github.event.inputs.version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --prerelease --notes-file release-notes.md
+            gh release upload "$TAG" "twidget-${TAG}.apk" --clobber
+          else
+            gh release create "$TAG" "twidget-${TAG}.apk" \
+              --prerelease \
+              --title "$TAG" \
+              --notes-file release-notes.md
+          fi

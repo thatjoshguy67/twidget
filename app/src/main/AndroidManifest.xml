@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BlurWidgetDemo">
+        android:theme="@style/Theme.Twidget">
 
         <activity
             android:name=".MainActivity"
@@ -17,6 +19,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".WidgetConfigActivity"
@@ -30,10 +37,16 @@
             android:name=".AboutActivity"
             android:exported="false" />
 
-        <activity android:name="androidx.picker.eyeDropper.SeslEyeDropperActivity" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".SettingsAdvancedActivity"
+            android:exported="false" />
 
         <receiver
-            android:name=".BlurWidget"
+            android:name=".TwidgetWidget"
             android:exported="true"
             android:label="@string/widget_label">
             <intent-filter>
@@ -45,10 +58,13 @@
             <meta-data
                 android:name="com.sec.android.appwidget.widgetinfo"
                 android:resource="@xml/widget_supported_cell_size_info" />
+            <meta-data
+                android:name="android.appwidget.provider.semConfigureActivity"
+                android:value="com.tjg.twidget.WidgetConfigActivity" />
         </receiver>
 
         <receiver
-            android:name=".LockScreenMessageServiceBoxReceiver"
+            android:name=".LockScreenFollowerServiceBoxReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.samsung.android.intent.action.REQUEST_SERVICEBOX_REMOTEVIEWS" />
@@ -56,9 +72,9 @@
         </receiver>
 
         <receiver
-            android:name=".LockScreenMessageSmallWidget"
+            android:name=".LockScreenFollowerSmallWidget"
             android:exported="true"
-            android:label="@string/lockscreen_message_1x1_label">
+            android:label="@string/lockscreen_follower_1x1_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -68,12 +84,15 @@
             <meta-data
                 android:name="samsung.appwidget.monotone.info"
                 android:resource="@xml/lockscreen_message_1x1_widget_info_oneui" />
+            <meta-data
+                android:name="android.appwidget.provider.semConfigureActivity"
+                android:value="com.tjg.twidget.WidgetConfigActivity" />
         </receiver>
 
         <receiver
-            android:name=".LockScreenMessageWideWidget"
+            android:name=".LockScreenFollowerWideWidget"
             android:exported="true"
-            android:label="@string/lockscreen_message_2x1_label">
+            android:label="@string/lockscreen_follower_2x1_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -83,6 +102,9 @@
             <meta-data
                 android:name="samsung.appwidget.monotone.info"
                 android:resource="@xml/lockscreen_message_2x1_widget_info_oneui" />
+            <meta-data
+                android:name="android.appwidget.provider.semConfigureActivity"
+                android:value="com.tjg.twidget.WidgetConfigActivity" />
         </receiver>
 
     </application>

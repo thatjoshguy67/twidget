@@ -2,6 +2,8 @@
 github.properties
 local.properties
 keystore.properties
+.env
+.env.*
 *.keystore
 *.jks
 
@@ -9,6 +11,7 @@ keystore.properties
 .gradle/
 .kotlin/
 build/
+node_modules/
 
 # IDE
 *.iml
@@ -16,3 +19,6 @@ build/
 
 # OS
 .DS_Store
+
+# Decompiled reference APKs (never commit)
+references/

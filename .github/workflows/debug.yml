@@ -1,10 +1,11 @@
-name: Android CI
+name: Debug Build
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,8 +29,8 @@ jobs:
 
       - name: Build debug APK and run lint
         env:
-          # The oneui-design dependency lives on GitHub Packages, which requires
-          # auth. Add these as repository secrets (Settings → Secrets → Actions).
+          # oneui-design + SESL libs live on GitHub Packages, which requires
+          # auth even for public packages (token needs read:packages).
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: ./gradlew assembleDebug lintDebug --no-daemon --stacktrace
@@ -37,6 +38,14 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: twidget-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
+          if-no-files-found: error
+
+      - name: Upload lint report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore

@@ -1,22 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.BlurWidgetDemo" parent="OneUITheme">
+    <style name="Theme.Twidget" parent="OneUITheme">
         <item name="colorPrimary">@color/oneui_accent</item>
-    </style>
-
-    <style name="ButtonStyle" parent="">
-        <item name="android:clickable">true</item>
-        <item name="android:ellipsize">end</item>
-        <item name="android:focusable">true</item>
-        <item name="android:gravity">center</item>
-        <item name="android:layout_gravity">center</item>
-        <item name="android:maxLines">2</item>
-        <item name="android:minHeight">52dp</item>
-        <item name="android:minWidth">140dp</item>
-    </style>
-
-    <style name="ButtonStyle.Colored" parent="ButtonStyle">
-        <item name="android:theme">@style/OneUI.ContainedPrimaryColorButtonTheme</item>
+        <item name="drawerBackgroundColor">@color/oneui_drawer_bg</item>
+        <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
     </style>
 
     <style name="AboutLinkRow">
@@ -49,5 +36,17 @@
         <item name="android:textColor">?android:textColorPrimary</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="SettingsRadioRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">20dp</item>
     </style>
 </resources>

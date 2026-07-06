@@ -1,16 +1,14 @@
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Tag to publish (created at the current commit if it doesn't exist), e.g. v1.1.0"
+      version:
+        description: "Release version without the leading v, e.g. 1.1.0"
         required: true
 
 permissions:
-  contents: write # required to create the GitHub Release
+  contents: write # create the tag and the GitHub Release
 
 jobs:
   release:
@@ -18,6 +16,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the changelog diff has a baseline
+
+      - name: Validate version against gradle versionName
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Release versions must be plain semver (e.g. 1.1.0); use the Pre-release workflow for suffixed versions."
+            exit 1
+          fi
+          GRADLE_VERSION=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          if [ "$VERSION" != "$GRADLE_VERSION" ]; then
+            echo "::error::Input version $VERSION does not match versionName $GRADLE_VERSION in app/build.gradle.kts"
+            exit 1
+          fi
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -44,38 +57,47 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      - name: Stage APK with version in filename
+      - name: Create tag if missing
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          cp app/build/outputs/apk/release/app-release.apk "blur-widget-${TAG}.apk"
+          TAG="v${{ github.event.inputs.version }}"
+          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
 
-      - name: Extract release notes
+      - name: Stage APK with version in filename
+        run: cp app/build/outputs/apk/release/app-release.apk "twidget-v${{ github.event.inputs.version }}.apk"
+
+      - name: Generate changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#v}"
+          TAG="v${{ github.event.inputs.version }}"
+          VERSION="${{ github.event.inputs.version }}"
+          # Hand-written notes from CHANGELOG.md, if a matching section exists.
           awk -v version="$VERSION" '
             $0 ~ "^## \\[" version "\\]" { capture = 1; next }
             capture && /^## \[/ { capture = 0 }
             capture { print }
           ' CHANGELOG.md > release-notes.md
+          # Auto-generated commit/PR changelog since the previous release.
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="$TAG" --jq .body >> release-notes.md
           if [ ! -s release-notes.md ]; then
-            {
-              echo "Release notes for ${TAG} were not found in CHANGELOG.md."
-              echo
-              echo "See CHANGELOG.md for details."
-            } > release-notes.md
+            echo "See CHANGELOG.md for details." > release-notes.md
           fi
 
-      - name: Publish to GitHub Releases
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG="v${{ github.event.inputs.version }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --notes-file release-notes.md
-            gh release upload "$TAG" "blur-widget-${TAG}.apk" --clobber
+            gh release edit "$TAG" --prerelease=false --latest --notes-file release-notes.md
+            gh release upload "$TAG" "twidget-${TAG}.apk" --clobber
           else
-            gh release create "$TAG" "blur-widget-${TAG}.apk" \
+            gh release create "$TAG" "twidget-${TAG}.apk" \
+              --latest \
               --title "$TAG" \
               --notes-file release-notes.md
           fi

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Converted from OneUI-Icons/src/icons/AddFilled.tsx. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.75,12.625H12.625V15.75C12.625,16.164 12.289,16.5 11.875,16.5C11.461,16.5 11.125,16.164 11.125,15.75V12.625H8C7.586,12.625 7.25,12.289 7.25,11.875C7.25,11.461 7.586,11.125 8,11.125H11.125V8C11.125,7.586 11.461,7.25 11.875,7.25C12.289,7.25 12.625,7.586 12.625,8V11.125H15.75C16.164,11.125 16.5,11.461 16.5,11.875C16.5,12.289 16.164,12.625 15.75,12.625ZM11.875,3.5C7.257,3.5 3.5,7.256 3.5,11.875C3.5,16.492 7.257,20.25 11.875,20.25C16.494,20.25 20.25,16.492 20.25,11.875C20.25,7.256 16.494,3.5 11.875,3.5Z" />
+</vector>

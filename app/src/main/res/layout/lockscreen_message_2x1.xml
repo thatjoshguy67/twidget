@@ -1,27 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/lockscreen_message_root"
+    android:id="@+id/lockscreen_follower_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingStart="12dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="10dp"
     android:paddingTop="6dp"
-    android:paddingEnd="12dp"
+    android:paddingEnd="10dp"
     android:paddingBottom="6dp"
     tools:targetApi="p">
 
-    <TextView
-        android:id="@+id/lockscreen_message"
+    <ImageView
+        android:id="@+id/lockscreen_art"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:ellipsize="end"
-        android:fontFamily="sec"
-        android:gravity="center"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:text="@string/lockscreen_message_preview"
-        android:textColor="@android:color/white"
-        android:textFontWeight="700"
-        android:textSize="15sp" />
-</FrameLayout>
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/lockscreen_logo_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_logo_x"
+        app:tint="#FFFFFF" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="22dp"
+        android:layout_weight="1"
+        android:gravity="end"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/lockscreen_follower_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sec"
+            android:gravity="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="7,671"
+            android:textColor="#FFFFFF"
+            android:textFontWeight="800"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/lockscreen_follower_delta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="sec"
+            android:gravity="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="+21"
+            android:textColor="#69DC76"
+            android:textFontWeight="700"
+            android:textSize="15sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -5,10 +5,23 @@
     tools:ignore="AppCompatResource">
 
     <item
-        android:id="@+id/menu_about"
-        android:icon="@drawable/ic_info_24"
-        android:title="@string/about"
+        android:id="@+id/menu_add_widget"
+        android:icon="@drawable/ic_oui_add"
+        android:title="@string/add_widget_to_home"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_add_card"
+        android:icon="@drawable/ic_oui_add"
+        android:title="@string/add_card"
         app:iconTint="?actionMenuTextColor"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/menu_done_editing"
+        android:icon="@drawable/ic_oui_close"
+        android:title="@string/done"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="always" />
 </menu>

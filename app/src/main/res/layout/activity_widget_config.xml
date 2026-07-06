@@ -2,173 +2,315 @@
 <dev.oneuiproject.oneui.layout.ToolbarLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/toolbar_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:expandable="false"
     app:expanded="false"
     app:showNavButtonAsBack="true"
-    app:title="Widget settings">
+    app:title="@string/widget_settings">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:paddingHorizontal="10dp">
+        app:layout_location="main_content">
 
-        <dev.oneuiproject.oneui.widget.Separator
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/widget_settings_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="96dp">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/widget_preview_section" />
-
-        <FrameLayout
-            android:id="@+id/preview_container"
-            android:layout_width="match_parent"
-            android:layout_height="242dp"
-            android:background="@drawable/config_preview_bg"
-            android:clipToOutline="true">
-
-            <ImageView
-                android:id="@+id/preview_wallpaper"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop" />
-
-            <FrameLayout
-                android:id="@+id/preview_widget"
-                android:layout_width="200dp"
-                android:layout_height="126dp"
-                android:layout_gravity="center" />
-
-        </FrameLayout>
-
-        <dev.oneuiproject.oneui.widget.Separator
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/tint_section" />
-
-        <dev.oneuiproject.oneui.widget.RoundedLinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?android:colorBackground"
             android:orientation="vertical">
 
-            <dev.oneuiproject.oneui.widget.CardItemView
-                android:id="@+id/color_picker_row"
+            <dev.oneuiproject.oneui.widget.RoundedFrameLayout
+                android:id="@+id/preview_container"
+                android:layout_width="match_parent"
+                android:layout_height="236dp"
+                android:layout_marginTop="6dp">
+
+                <ImageView
+                    android:id="@+id/preview_wallpaper"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/config_preview_wallpaper" />
+
+                <FrameLayout
+                    android:id="@+id/preview_widget"
+                    android:layout_width="162dp"
+                    android:layout_height="176dp"
+                    android:layout_gravity="center"
+                    android:padding="10dp" />
+            </dev.oneuiproject.oneui.widget.RoundedFrameLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:drawableEnd="@drawable/accent_dot"
-                app:showTopDivider="false"
-                app:summary="@string/tint_summary_placeholder"
-                app:title="@string/tint_colour"
-                app:userUpdatableSummary="true" />
+                android:text="@string/account" />
 
-            <dev.oneuiproject.oneui.widget.SwitchItemView
-                android:id="@+id/dark_tint_switch"
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/account_group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:showTopDivider="true"
-                app:summaryOff="@string/light_tint_summary"
-                app:summaryOn="@string/dark_tint_summary"
-                app:title="@string/dark_tint" />
+                android:background="?android:colorBackground"
+                android:orientation="vertical" />
 
-        </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
-
-        <dev.oneuiproject.oneui.widget.Separator
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/opacity_section" />
-
-        <dev.oneuiproject.oneui.widget.RoundedLinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?android:colorBackground"
-            android:orientation="vertical">
-
-            <LinearLayout
+            <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="18dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="16dp"
-                android:paddingBottom="18dp">
+                android:text="@string/widget_appearance_section" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif"
-                    android:text="@string/opacity_presets"
-                    android:textColor="?android:textColorPrimary"
-                    android:textFontWeight="400"
-                    android:textSize="17sp" />
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:colorBackground"
+                android:orientation="vertical">
 
                 <LinearLayout
+                    android:id="@+id/opacity_block"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:orientation="horizontal">
+                    android:orientation="vertical"
+                    android:paddingStart="18dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="10dp">
 
                     <TextView
-                        android:id="@+id/preset_default"
-                        style="@style/WidgetPresetButton"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="4dp"
-                        android:text="@string/default_preset" />
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif"
+                        android:text="@string/widget_opacity"
+                        android:textColor="?android:textColorPrimary"
+                        android:textFontWeight="400"
+                        android:textSize="17sp" />
 
-                    <TextView
-                        android:id="@+id/preset_glass"
-                        style="@style/WidgetPresetButton"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="4dp"
-                        android:text="@string/glass_preset" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:id="@+id/preset_light"
-                        style="@style/WidgetPresetButton"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="4dp"
-                        android:text="@string/light_preset" />
+                        <ImageView
+                            android:id="@+id/opacity_transparency_icon"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/opacity_icon"
+                            android:contentDescription="@null"
+                            android:src="@android:color/transparent" />
 
-                    <TextView
-                        android:id="@+id/preset_medium"
-                        style="@style/WidgetPresetButton"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="4dp"
-                        android:text="@string/medium_preset" />
+                        <FrameLayout
+                            android:layout_width="0dp"
+                            android:layout_height="32dp"
+                            android:layout_weight="1">
 
-                    <TextView
-                        android:id="@+id/preset_solid"
-                        style="@style/WidgetPresetButton"
-                        android:layout_width="0dp"
-                        android:layout_marginEnd="0dp"
-                        android:layout_weight="1"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="4dp"
-                        android:text="@string/solid_preset" />
+                            <View
+                                android:layout_width="match_parent"
+                                android:layout_height="@dimen/widget_setting_seekbar_track_material_height"
+                                android:layout_gravity="center_vertical"
+                                android:layout_marginStart="20dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/widget_setting_seek_bar_segment_track" />
 
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:clickable="false"
+                                android:focusable="false"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingStart="24dp"
+                                android:paddingEnd="22dp">
+
+                                <View
+                                    android:id="@+id/opacity_tick_0"
+                                    android:layout_width="@dimen/widget_setting_seek_bar_tickmark_drawable_width"
+                                    android:layout_height="@dimen/widget_setting_seek_bar_tickmark_drawable_height"
+                                    android:background="@drawable/widget_setting_seek_bar_tick_mark" />
+
+                                <Space
+                                    android:layout_width="0dp"
+                                    android:layout_height="1dp"
+                                    android:layout_weight="1" />
+
+                                <View
+                                    android:id="@+id/opacity_tick_1"
+                                    android:layout_width="@dimen/widget_setting_seek_bar_tickmark_drawable_width"
+                                    android:layout_height="@dimen/widget_setting_seek_bar_tickmark_drawable_height"
+                                    android:background="@drawable/widget_setting_seek_bar_tick_mark" />
+
+                                <Space
+                                    android:layout_width="0dp"
+                                    android:layout_height="1dp"
+                                    android:layout_weight="1" />
+
+                                <View
+                                    android:id="@+id/opacity_tick_2"
+                                    android:layout_width="@dimen/widget_setting_seek_bar_tickmark_drawable_width"
+                                    android:layout_height="@dimen/widget_setting_seek_bar_tickmark_drawable_height"
+                                    android:background="@drawable/widget_setting_seek_bar_tick_mark" />
+
+                                <Space
+                                    android:layout_width="0dp"
+                                    android:layout_height="1dp"
+                                    android:layout_weight="1" />
+
+                                <View
+                                    android:id="@+id/opacity_tick_3"
+                                    android:layout_width="@dimen/widget_setting_seek_bar_tickmark_drawable_width"
+                                    android:layout_height="@dimen/widget_setting_seek_bar_tickmark_drawable_height"
+                                    android:background="@drawable/widget_setting_seek_bar_tick_mark" />
+                            </LinearLayout>
+
+                            <View
+                                android:id="@+id/opacity_thumb_visual"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="center_vertical"
+                                android:background="@drawable/widget_setting_seek_bar_thumb" />
+
+                            <androidx.appcompat.widget.SeslSeekBar
+                                android:id="@+id/opacity_slider"
+                                android:layout_width="match_parent"
+                                android:layout_height="32dp"
+                                android:max="3"
+                                android:paddingStart="24dp"
+                                android:paddingEnd="22dp"
+                                android:progress="2"
+                                android:progressDrawable="@drawable/widget_setting_seek_bar_progress_transparent"
+                                android:splitTrack="false"
+                                android:thumb="@drawable/widget_setting_seek_bar_thumb"
+                                android:tickMark="@null" />
+                        </FrameLayout>
+                    </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
 
-        </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/tint_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_tint_system"
+                    app:title="@string/widget_tint" />
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/font_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_font_one_ui"
+                    app:title="@string/widget_font" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/logo_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:drawableEnd="@drawable/ic_logo_x"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_logo_x"
+                    app:title="@string/widget_logo_style" />
+
+                <LinearLayout
+                    android:id="@+id/delta_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="18dp"
+                        android:layout_marginEnd="18dp"
+                        android:background="@color/oneui_divider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="64dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="18dp"
+                        android:paddingEnd="18dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif"
+                            android:text="@string/widget_show_delta"
+                            android:textColor="?android:textColorPrimary"
+                            android:textFontWeight="400"
+                            android:textSize="17sp" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/delta_switch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:focusable="false" />
+                    </LinearLayout>
+                </LinearLayout>
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
+                android:id="@+id/tap_separator"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/widget_tap_action" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/tap_action_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:colorBackground"
+                android:orientation="vertical">
+
+                <dev.oneuiproject.oneui.widget.RadioItemViewGroup
+                    android:id="@+id/tap_action_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <dev.oneuiproject.oneui.widget.RadioItemView
+                        android:id="@+id/tap_refresh_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/tap_refresh" />
+
+                    <dev.oneuiproject.oneui.widget.RadioItemView
+                        android:id="@+id/tap_profile_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:showTopDivider="true"
+                        app:title="@string/tap_profile" />
+
+                    <dev.oneuiproject.oneui.widget.RadioItemView
+                        android:id="@+id/tap_app_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:showTopDivider="true"
+                        app:title="@string/tap_twidget" />
+                </dev.oneuiproject.oneui.widget.RadioItemViewGroup>
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+        </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
+            android:layout_gravity="bottom|center_horizontal"
             android:layout_marginBottom="16dp"
             android:background="@drawable/config_button_bar_bg"
             android:elevation="6dp"
@@ -182,13 +324,13 @@
                 android:background="?android:attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
-                android:fontFamily="sans-serif"
+                android:fontFamily="sec"
                 android:paddingHorizontal="36dp"
                 android:paddingVertical="16dp"
-                android:text="Cancel"
+                android:text="@string/cancel"
                 android:textColor="?android:textColorPrimary"
-                android:textFontWeight="600"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
             <View
                 android:layout_width="1dp"
@@ -202,15 +344,13 @@
                 android:background="?android:attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
-                android:fontFamily="sans-serif"
+                android:fontFamily="sec"
                 android:paddingHorizontal="36dp"
                 android:paddingVertical="16dp"
-                android:text="Save"
+                android:text="@string/save"
                 android:textColor="?android:textColorPrimary"
-                android:textFontWeight="600"
-                android:textSize="16sp" />
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
-
-    </LinearLayout>
-
+    </FrameLayout>
 </dev.oneuiproject.oneui.layout.ToolbarLayout>

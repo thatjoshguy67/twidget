@@ -1,136 +1,39 @@
-# Blur Widget Demo
+# Twidget
 
-[![Android CI](https://github.com/SadLinusGuy0/blur-widget-demo/actions/workflows/android.yml/badge.svg)](https://github.com/SadLinusGuy0/blur-widget-demo/actions/workflows/android.yml)
-[![Latest release](https://img.shields.io/github/v/release/SadLinusGuy0/blur-widget-demo)](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Twidget is an Android follower-count dashboard and widget app for X/Twitter profiles. It is forked from the One UI blur widget demo, keeps the Samsung One UI widget metadata, and turns the base into a follower tracker with home-screen blur widgets and lock-screen widgets.
 
-A working proof-of-concept showing that **third-party Android widgets can use One UI Home's native wallpaper blur** — the frosted-glass effect behind
-Samsung's own Weather, Clock, and Calendar widgets. Samsung doesn't document
-this, but it works on any One UI 7.0+ device.
+## What is included
 
-The app ships a single resizable widget whose **tint and opacity you can tune
-live** through a configuration screen, so you can see exactly how the blur
-responds before porting the pattern into your own app.
+- Dashboard for followers, following, posts, likes, and estimated impressions.
+- Seven-sample local history with One UI-style metric charts.
+- Three-step One UI onboarding, plus multiple tracked accounts with a default-account selector.
+- Three data sources with automatic fallback (see below), including the official X API called directly from the device with your own credentials.
+- Background refresh on a configurable interval (WorkManager) plus refresh-on-launch.
+- Phone layout plus `sw600dp` tablet/foldable two-column layout.
+- Home-screen widgets (compact strip, 2x1, square, large) with tint, opacity, colour mode, logo, and font options.
+- Samsung lock-screen/AOD widget receivers (1x1 and 2x1) with monotone rendering.
 
-> **Just want the technique?** See the wiki guides for
-> [One UI blur integration](https://github.com/thatjoshguy67/blur-widget-demo/wiki/One-UI-Blur-Integration)
-> and [lock-screen widgets](https://github.com/thatjoshguy67/blur-widget-demo/wiki/Lock-Screen-Widgets).
+## Data sources
 
-## Download
+Twidget can fetch stats three ways. None of them are required to be the shared server — pick whichever fits:
 
-Grab a signed APK from the [latest release](https://github.com/SadLinusGuy0/blur-widget-demo/releases/latest)
-and sideload it on a Samsung One UI 7.0+ device. Releases are cut automatically
-when a `v*` tag is pushed (see [Releases](#releases) below).
+1. **Default Rettiwt bridge** — a small community-hosted instance of [`bridge/`](bridge/) on Railway (`https://twidget-bridge-production.up.railway.app`). Zero setup, uses Rettiwt guest auth for public profiles. Best-effort only: it is a low-power shared box and scraping can break whenever X changes things.
+2. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself (any Node 22 host; on Railway it is `railway up` from the `bridge/` directory). Point Twidget at it under Settings → Advanced → Self hosted. Bridge routes: `GET /user/:username` (also `/users/`, `/details/`, `/?username=`).
+3. **Official X API (bring your own credentials)** — for the most accurate stats. Enter your X developer API key and secret (or an app-only bearer token) under Advanced options. The app exchanges and calls `api.x.com` **directly from your device**; your credentials never touch any Twidget server. Mind your tier's rate limits when choosing a refresh interval.
 
-## How the blur works (in one paragraph)
+If the selected source fails, Twidget falls back to the other configured source, then to cached stats. Keep any Rettiwt `API_KEY` on the bridge server only — the app's bridge token setting is for protected self-hosted bridges, not Rettiwt cookie credentials.
 
-The widget never renders a blur itself. It declares a couple of Samsung-specific
-attributes and paints a **semi-transparent background** on a view tagged
-`@android:id/background`. The launcher detects that, captures the wallpaper behind
-the widget, blurs it, and draws it underneath — your background colour tints the
-result. Three things must be true (root `@android:id/background` view, an alpha
-between 1–254, and `app:widgetStyle="colorful"` + a real `app:widgetSize`). The
-[One UI blur integration wiki guide](https://github.com/thatjoshguy67/blur-widget-demo/wiki/One-UI-Blur-Integration)
-covers each one.
-
-## Building
-
-This is a standard Gradle/Android Studio project (AGP 8.9, Kotlin 2.2, JDK 17,
-`minSdk` 26).
-
-### One-time setup: GitHub Packages auth
-
-The UI is built with [`tribalfs/oneui-design`](https://github.com/tribalfs/oneui-design),
-which is published to **GitHub Packages**. GitHub Packages requires
-authentication even for public packages, so you need a token before the build can
-resolve dependencies:
-
-1. Create a [Personal Access Token](https://github.com/settings/tokens) with the
-   single scope **`read:packages`**.
-2. Copy the template and fill in your details:
-   ```bash
-   cp github.properties.example github.properties
-   ```
-   ```properties
-   ghUsername=your-github-username
-   ghAccessToken=ghp_your_read_packages_token
-   ```
-
-`github.properties` is gitignored — your token never gets committed.
-
-### Build and install
+## Build
 
 ```bash
-./gradlew assembleDebug                 # build the debug APK
-./gradlew installDebug                  # build + install on a connected device
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:assembleDebug
 ```
 
-Then open the app, tap **Add widget**, place it on a Samsung home screen, and use
-the configuration screen to adjust tint and opacity.
+The app id is `com.tjg.twidget`.
 
-## Continuous integration
+## Notes
 
-[`.github/workflows/android.yml`](.github/workflows/android.yml) builds the debug
-APK and runs lint on every push and pull request to `main`. Because CI also needs
-to resolve the GitHub Packages dependency, add two repository secrets
-(**Settings → Secrets and variables → Actions**):
-
-| Secret              | Value                                            |
-|---------------------|--------------------------------------------------|
-| `GH_PACKAGES_USER`  | A GitHub username                                |
-| `GH_PACKAGES_TOKEN` | A token with `read:packages` scope               |
-
-`settings.gradle.kts` reads credentials from `github.properties` locally and falls
-back to these environment variables on CI.
-
-## Releases
-
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds a **signed
-release APK** and attaches it to a GitHub Release whenever a `v*` tag is pushed:
-
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-Release notes are pulled from the matching section in [`CHANGELOG.md`](CHANGELOG.md).
-
-You can also trigger it manually from the **Actions → Release** tab (provide the
-tag to publish). Signing uses a dedicated keystore stored in repository secrets:
-
-| Secret                    | Value                                              |
-|---------------------------|----------------------------------------------------|
-| `RELEASE_KEYSTORE_BASE64` | The release keystore, base64-encoded               |
-| `RELEASE_STORE_PASSWORD`  | Keystore password                                  |
-| `RELEASE_KEY_PASSWORD`    | Key password (same as store password for PKCS12)   |
-| `RELEASE_KEY_ALIAS`       | Key alias                                           |
-
-To build a signed release locally, copy your keystore details into a gitignored
-`keystore.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`)
-and run `./gradlew assembleRelease`. Without it, release builds are left unsigned.
-
-## Project structure
-
-```
-app/src/main/
-├── java/com/example/blurwidgetdemo/
-│   ├── BlurWidget.kt              # AppWidgetProvider — picks layout, applies tint
-│   ├── WidgetConfigActivity.kt    # One UI tint/opacity config + live preview
-│   ├── MainActivity.kt            # Onboarding + "Add widget" entry point
-│   └── AboutActivity.kt           # About / credits screen
-├── res/
-│   ├── layout/widget_blur.xml     # Widget layout with @android:id/background
-│   ├── xml/widget_provider_blur.xml  # Provider: widgetStyle + widgetSize + previews
-│   └── values/attrs.xml           # Samsung custom widget attribute definitions
-└── AndroidManifest.xml
-```
-
-## Credits
-
-- [oneui-design / oneui-core](https://github.com/tribalfs/oneui-design) and the
-  [One UI Project](https://github.com/OneUIProject) — One UI components, icons,
-  and the colour picker. (MIT)
-
-## License
-
-[MIT](LICENSE) © Josh Skinner ([thatjoshguy](https://tjg.gg))
+- **Estimated impressions** are derived from follower count, not measured — they are labelled "Est." in the app.
+- **Self-hosted bridges must be HTTPS.** Android blocks cleartext `http://` traffic by default, so a plain-HTTP LAN bridge will silently fail to load.
+- When a profile image is unavailable, Twidget falls back to `unavatar.io` to resolve an avatar by handle.
+- The official X API's free tier has tight read quotas; pick a longer refresh interval if you bring free-tier credentials.

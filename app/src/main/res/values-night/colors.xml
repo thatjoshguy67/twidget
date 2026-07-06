@@ -2,9 +2,16 @@
 <resources>
     <color name="oneui_bg">#010102</color>
     <color name="oneui_card_bg">#17171a</color>
+    <color name="oneui_drawer_bg">#17171a</color>
+    <color name="oneui_drawer_selected_bg">#14ffffff</color>
     <color name="oneui_divider">#3a3a3d</color>
     <color name="oneui_text_primary">#ffffff</color>
     <color name="oneui_text_secondary">#a3a3a7</color>
     <color name="oneui_accent">#4da2ff</color>
+    <color name="oneui_accent_translucent">#334da2ff</color>
     <color name="oneui_preview_bg">#333333</color>
+    <color name="widget_setting_progress_color_control_normal">#6669696C</color>
+    <color name="widget_setting_seek_bar_thumb_background_tint">#1F1F22</color>
+    <color name="widget_setting_seek_bar_thumb_tint">@color/oneui_accent</color>
+    <color name="widget_setting_seek_bar_tick_mark_solid_color">#77777A</color>
 </resources>

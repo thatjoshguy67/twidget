@@ -16,15 +16,15 @@ fun signingValue(propKey: String, envKey: String): String? =
 val releaseStoreFile: String? = signingValue("storeFile", "RELEASE_STORE_FILE")
 
 android {
-    namespace = "com.example.blurwidgetdemo"
+    namespace = "com.tjg.twidget"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.blurwidgetdemo"
+        applicationId = "com.tjg.twidget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     signingConfigs {
@@ -64,15 +64,13 @@ configurations.configureEach {
     exclude(group = "androidx.viewpager2", module = "viewpager2")
     exclude(group = "androidx.viewpager", module = "viewpager")
     exclude(group = "androidx.appcompat", module = "appcompat")
-    exclude(group = "androidx.fragment", module = "fragment")
-    exclude(group = "androidx.preference", module = "preference")
-    exclude(group = "androidx.recyclerview", module = "recyclerview")
     exclude(group = "androidx.slidingpanelayout", module = "slidingpanelayout")
-    exclude(group = "androidx.swiperefreshlayout", module = "swiperefreshlayout")
     exclude(group = "com.google.android.material", module = "material")
 }
 
 dependencies {
     implementation("io.github.tribalfs:oneui-design:0.9.13+oneui8")
+    implementation("androidx.work:work-runtime:2.10.1")
     implementation("io.github.oneuiproject:icons:1.1.0")
+    implementation("sesl.androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01+1.0.0-sesl8+rev0")
 }

@@ -1,4 +1,4 @@
-package com.example.blurwidgetdemo
+package com.tjg.twidget
 
 import android.content.Intent
 import android.net.Uri

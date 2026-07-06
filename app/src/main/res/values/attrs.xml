@@ -2,6 +2,11 @@
 <resources>
     <attr name="allowMultipleSizes" format="boolean" />
 
+    <!-- Settings activity shown by Samsung's widget hosts (incl. lock screen
+         editor) — mirrors Samsung Weather's samsung-appwidget-info usage. -->
+    <attr name="configure" format="string" />
+    <attr name="configureLockScreen" format="string" />
+
     <!-- Samsung OneUI widget style flags — required for launcher blur -->
     <attr name="widgetStyle" format="integer">
         <flag name="colorful" value="0x1" />

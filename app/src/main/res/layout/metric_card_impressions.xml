@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dev.oneuiproject.oneui.widget.RoundedLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/metric_card_bg"
+    android:orientation="vertical">
+
+    <include layout="@layout/metric_header_impressions" />
+
+    <com.tjg.twidget.MetricChartView
+        android:id="@+id/impressions_chart"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</dev.oneuiproject.oneui.widget.RoundedLinearLayout>

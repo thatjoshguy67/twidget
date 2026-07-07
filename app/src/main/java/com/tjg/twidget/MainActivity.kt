@@ -13,6 +13,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.DragEvent
@@ -46,7 +47,11 @@ import dev.oneuiproject.oneui.R as OneUiIconR
 
 class MainActivity : AppCompatActivity() {
     private val heavyTypeface: Typeface by lazy {
-        Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
+        } else {
+            Typeface.create("sec", Typeface.BOLD)
+        }
     }
     private var isSyncing = false
     private var accounts = emptyList<String>()

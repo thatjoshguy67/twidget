@@ -2,6 +2,7 @@ package com.tjg.twidget
 
 import android.appwidget.AppWidgetManager
 import android.animation.LayoutTransition
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ComponentName
 import android.content.Intent
@@ -11,7 +12,9 @@ import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.DragEvent
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -30,6 +33,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.widget.TextViewCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
@@ -41,6 +45,9 @@ import dev.oneuiproject.oneui.design.R as OneUiDesignR
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 class MainActivity : AppCompatActivity() {
+    private val heavyTypeface: Typeface by lazy {
+        Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
+    }
     private var isSyncing = false
     private var accounts = emptyList<String>()
     private var selectedAccount: String = ""
@@ -63,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
         RefreshWorker.schedule(this)
+        TwidgetStore.migrateStoredHistories(this)
         setupRefresh()
         setupDrawerChrome()
         render()
@@ -83,25 +91,36 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         menu.findItem(R.id.menu_add_widget)?.isVisible = !editMode
+        menu.findItem(R.id.menu_open_profile)?.isVisible = !editMode
+        menu.findItem(R.id.menu_edit_layout)?.isVisible = !editMode
+        menu.findItem(R.id.menu_reset_layout)?.isVisible = !editMode
         menu.findItem(R.id.menu_add_card)?.isVisible = editMode
         menu.findItem(R.id.menu_done_editing)?.isVisible = editMode
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.menu_add_widget) {
-            requestWidgetPin()
-            return true
+        when (item.itemId) {
+            R.id.menu_add_widget -> requestWidgetPin()
+            R.id.menu_open_profile -> openActiveProfile()
+            R.id.menu_edit_layout -> setEditMode(true)
+            R.id.menu_reset_layout -> confirmResetLayout()
+            R.id.menu_add_card -> showAddCardDialog()
+            R.id.menu_done_editing -> setEditMode(false)
+            else -> return super.onOptionsItemSelected(item)
         }
-        if (item.itemId == R.id.menu_add_card) {
-            showAddCardDialog()
-            return true
-        }
-        if (item.itemId == R.id.menu_done_editing) {
-            setEditMode(false)
-            return true
-        }
-        return super.onOptionsItemSelected(item)
+        return true
+    }
+
+    private fun confirmResetLayout() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.reset_layout_confirm)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.reset_layout) { _, _ ->
+                TwidgetStore.resetDashboardCards(this)
+                render()
+            }
+            .show()
     }
 
     override fun onBackPressed() {
@@ -136,16 +155,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildRangeSelector(page: View) {
         val row = page.findViewById<LinearLayout>(R.id.range_selector) ?: return
+        val ranges = unlockedRanges(selectedAccount)
+        if (selectedRange !in ranges) selectedRange = HistoryRange.WEEK
         row.removeAllViews()
-        HistoryRange.entries.forEach { range ->
+        row.visibility = if (ranges.size < 2) View.GONE else View.VISIBLE
+        if (ranges.size < 2) return
+        ranges.forEach { range ->
             val selected = range == selectedRange
             val tab = TextView(this).apply {
                 text = getString(range.labelRes)
                 gravity = android.view.Gravity.CENTER
-                textSize = 14f
+                maxLines = 1
                 minHeight = dp(38)
-                minWidth = dp(58)
-                setPadding(dp(18), 0, dp(18), 0)
+                setPadding(dp(6), 0, dp(6), 0)
+                // Chips share the row width equally; on narrow screens the
+                // label shrinks instead of overflowing its pill.
+                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    this, 9, 14, 1, TypedValue.COMPLEX_UNIT_SP,
+                )
                 typeface = android.graphics.Typeface.create("sec", android.graphics.Typeface.BOLD)
                 setTextColor(if (selected) Color.WHITE else getColor(R.color.oneui_text_primary))
                 background = rangeChipBackground(selected)
@@ -165,6 +192,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // A range's chip appears once the recorded history outgrows the previous
+    // range's window — until then the longer range would draw the same bars.
+    // With only a week of data there is nothing to switch between, so the
+    // whole bar stays hidden.
+    private fun unlockedRanges(account: String): List<HistoryRange> {
+        val firstSample = TwidgetStore.fullHistory(this, account).first().timestamp
+        val spanDays = ((System.currentTimeMillis() - firstSample) / DAY_MILLIS).toInt() + 1
+        return HistoryRange.entries.filter { range ->
+            when (range) {
+                HistoryRange.WEEK -> true
+                HistoryRange.MONTH -> spanDays > 7
+                HistoryRange.THREE_MONTHS -> spanDays > 30
+                HistoryRange.YTD, HistoryRange.YEAR -> spanDays > 90
+            }
+        }
+    }
+
     private fun rangeChipBackground(selected: Boolean): GradientDrawable =
         GradientDrawable().apply {
             cornerRadius = dp(20).toFloat()
@@ -178,7 +222,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindPage(page: View, account: String) {
         val stats = TwidgetStore.currentStats(this, account)
+        // Daily samples drive the numbers; the chart list is the same range
+        // bucketed down to a readable bar count.
         val history = TwidgetStore.rangedHistory(this, account, selectedRange)
+        val chartHistory = TwidgetStore.chartHistory(this, account, selectedRange)
+        bindHistoryNotice(page, history, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
         container.layoutTransition = LayoutTransition().apply {
@@ -205,13 +253,50 @@ class MainActivity : AppCompatActivity() {
             .mapNotNull(DashboardCardType::fromId)
             .forEach { card ->
                 val content = if (card.size == DashboardCardSize.CHART) {
-                    createChartCard(card, stats, history)
+                    createChartCard(card, stats, chartHistory, history)
                 } else {
                     createInsightCard(card, stats, history)
                 }
                 val wrapper = createDashboardCardWrapper(card, content)
                 container.addView(wrapper, dashboardCardLayoutParams(card))
             }
+    }
+
+    private fun bindHistoryNotice(page: View, history: List<HistorySample>, chartHistory: List<HistorySample>) {
+        val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
+        when {
+            chartHistory.any { it.estimated } -> {
+                notice.setText(R.string.estimated_notice)
+                notice.visibility = View.VISIBLE
+            }
+            history.size < requiredHistoryDays(selectedRange) -> {
+                notice.setText(R.string.history_notice)
+                notice.visibility = View.VISIBLE
+            }
+            else -> notice.visibility = View.GONE
+        }
+    }
+
+    private fun requiredHistoryDays(range: HistoryRange): Int =
+        when (range) {
+            HistoryRange.WEEK -> 7
+            HistoryRange.MONTH -> 30
+            HistoryRange.THREE_MONTHS -> 90
+            HistoryRange.YEAR -> 365
+            HistoryRange.YTD -> daysSinceYearStart()
+        }
+
+    private fun daysSinceYearStart(): Int {
+        val now = java.util.Calendar.getInstance()
+        val start = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
+            set(java.util.Calendar.DAY_OF_MONTH, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return (((now.timeInMillis - start.timeInMillis) / DAY_MILLIS).toInt() + 1).coerceAtLeast(1)
     }
 
     // Net change across the whole visible range (last bucket minus first).
@@ -222,13 +307,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun createInsightCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
         val spec = insightSpec(card, stats, history)
-        val valueTextSize = when (card.size) {
-            DashboardCardSize.LARGE -> 34f
-            DashboardCardSize.MEDIUM -> 28f
-            else -> 20f
-        }
-        val labelTextSize = if (card.size == DashboardCardSize.SMALL) 11f else 13f
-        val detailTextSize = if (card.size == DashboardCardSize.SMALL) 11f else 14f
+        val valueTextSize = if (card.size == DashboardCardSize.FULL) 38f else 32f
+        val labelTextSize = 13f
+        val detailTextSize = 14f
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
@@ -260,19 +341,26 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
 
+            // Auto-size needs a bounded height to reach the max size — with
+            // wrap_content it locks to the first measured bounds. Fix the row
+            // height to the max text size's line and let width do the shrinking.
+            val valueHeight = (valueTextSize * 1.3f * resources.displayMetrics.scaledDensity).toInt()
             addView(TextView(this@MainActivity).apply {
                 text = spec.value
                 includeFontPadding = false
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 setTextColor(getColor(R.color.oneui_text_primary))
-                textSize = valueTextSize
-                typeface = Typeface.create("sec", Typeface.BOLD)
-                setPadding(0, dp(10), 0, 0)
+                typeface = heavyTypeface
+                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    this, 16, valueTextSize.toInt(), 1, TypedValue.COMPLEX_UNIT_SP,
+                )
             }, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
+                valueHeight,
+            ).apply {
+                topMargin = dp(4)
+            })
 
             if (spec.progress != null) {
                 addView(ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -303,7 +391,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createChartCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
+    private fun createChartCard(card: DashboardCardType, stats: ProfileStats, chartHistory: List<HistorySample>, history: List<HistorySample>): View {
         val (layoutRes, valueId, deltaId, chartId, value, selector) = when (card) {
             DashboardCardType.FOLLOWERS -> ChartBinding(
                 R.layout.metric_card_followers,
@@ -336,7 +424,7 @@ class MainActivity : AppCompatActivity() {
             else -> error("Compact cards do not have chart layouts.")
         }
         return LayoutInflater.from(this).inflate(layoutRes, null, false).also {
-            bindMetric(it, valueId, deltaId, chartId, value, rangeDelta(history, selector), history, selector)
+            bindMetric(it, valueId, deltaId, chartId, value, TwidgetStore.todayDelta(this, stats.userName, selector), chartHistory, selector)
         }
     }
 
@@ -456,7 +544,12 @@ class MainActivity : AppCompatActivity() {
         history: List<HistorySample>,
         selector: (HistorySample) -> Long,
     ) {
-        root.findViewById<TextView>(valueId)?.text = value
+        root.findViewById<TextView>(valueId)?.apply {
+            text = value
+            // textStyle="bold" renders Samsung's lighter bold cut; force the
+            // same true 700 weight the insight cards use.
+            typeface = heavyTypeface
+        }
         root.findViewById<TextView>(deltaId)?.apply {
             text = if (delta == 0L) "" else TwidgetStore.signedNumber(delta)
             setTextColor(if (delta < 0) getColor(R.color.metric_red) else getColor(R.color.metric_green))
@@ -468,12 +561,19 @@ class MainActivity : AppCompatActivity() {
     private fun insightSpec(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): InsightSpec {
         val followersDelta = rangeDelta(history) { it.followers }
         return when (card) {
-            DashboardCardType.FOLLOWER_RATIO -> InsightSpec(
-                label = getString(R.string.follower_ratio),
-                value = decimal(stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1), "x"),
-                detail = getString(R.string.more_followers_than_following, TwidgetStore.compactNumber((stats.followersCount - stats.followingsCount).coerceAtLeast(0))),
-                accent = getColor(R.color.oneui_accent),
-            )
+            DashboardCardType.FOLLOWER_RATIO -> {
+                val diff = stats.followersCount - stats.followingsCount
+                InsightSpec(
+                    label = getString(R.string.follower_ratio),
+                    value = decimal(stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1), "x"),
+                    detail = if (diff >= 0) {
+                        getString(R.string.more_followers_than_following, TwidgetStore.compactNumber(diff))
+                    } else {
+                        getString(R.string.fewer_followers_than_following, TwidgetStore.compactNumber(-diff))
+                    },
+                    accent = getColor(R.color.oneui_accent),
+                )
+            }
             DashboardCardType.POST_RATE -> InsightSpec(
                 label = getString(R.string.post_rate),
                 value = decimal(dailyAverage(history) { it.posts }.coerceAtLeast(0.0), ""),
@@ -526,32 +626,54 @@ class MainActivity : AppCompatActivity() {
                     accent = momentum.second,
                 )
             }
-            DashboardCardType.AUDIENCE_BALANCE -> InsightSpec(
-                label = "Balance",
-                value = "${stats.followersCount.coerceAtLeast(1) / stats.followingsCount.coerceAtLeast(1)}:1",
-                detail = "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}",
-                accent = getColor(R.color.oneui_accent),
-            )
+            DashboardCardType.AUDIENCE_BALANCE -> {
+                val ratio = stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1)
+                InsightSpec(
+                    label = "Balance",
+                    value = if (ratio >= 1.0) {
+                        String.format(Locale.US, "%.1f:1", ratio)
+                    } else {
+                        String.format(Locale.US, "1:%.1f", 1.0 / ratio.coerceAtLeast(0.01))
+                    },
+                    detail = "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}",
+                    accent = getColor(R.color.oneui_accent),
+                )
+            }
             DashboardCardType.ACCOUNT_HEALTH -> {
-                val title = when {
-                    stats.isVerified == true -> getString(R.string.verified)
-                    stats.isPrivate == true -> getString(R.string.private_profile)
-                    else -> getString(R.string.public_profile)
-                }
+                // Never claim Public unless the API explicitly said so.
                 InsightSpec(
                     label = "Health",
-                    value = title,
-                    detail = if (stats.isVerified == true) getString(R.string.verified) else getString(R.string.not_verified),
-                    accent = if (stats.isPrivate == true) getColor(R.color.metric_red) else getColor(R.color.metric_green),
+                    value = when {
+                        stats.isVerified == true -> getString(R.string.verified)
+                        stats.isPrivate == true -> getString(R.string.private_profile)
+                        stats.isPrivate == false -> getString(R.string.public_profile)
+                        else -> "--"
+                    },
+                    detail = when {
+                        stats.isVerified == true && stats.isPrivate == true -> getString(R.string.verified_private)
+                        stats.isVerified == true && stats.isPrivate == false -> getString(R.string.verified_public)
+                        stats.isVerified == true -> getString(R.string.verified)
+                        stats.isPrivate == true -> getString(R.string.private_unverified)
+                        stats.isPrivate == false -> getString(R.string.public_unverified)
+                        else -> getString(R.string.unknown_profile_status)
+                    },
+                    accent = when {
+                        stats.isPrivate == true -> getColor(R.color.metric_red)
+                        stats.isVerified == true || stats.isPrivate == false -> getColor(R.color.metric_green)
+                        else -> getColor(R.color.oneui_text_secondary)
+                    },
                 )
             }
             else -> error("Chart cards do not have insight specs.")
         }
     }
 
+    // Average per real elapsed day — samples can have gaps, so count days
+    // between the first and last sample rather than counting samples.
     private fun dailyAverage(history: List<HistorySample>, selector: (HistorySample) -> Long): Double {
         if (history.size < 2) return 0.0
-        return rangeDelta(history, selector).toDouble() / (history.size - 1).coerceAtLeast(1)
+        val days = ((history.last().timestamp - history.first().timestamp) / DAY_MILLIS).coerceAtLeast(1)
+        return rangeDelta(history, selector).toDouble() / days
     }
 
     private fun bestRecentDay(history: List<HistorySample>): Pair<String, Long>? =
@@ -714,23 +836,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun bindChip(chip: TextView?, label: String, color: Int) {
-        chip ?: return
-        chip.text = label
-        val textColor = getColor(R.color.oneui_text_primary)
-        chip.setTextColor(textColor)
-        chip.background = GradientDrawable().apply {
-            cornerRadius = dp(16).toFloat()
-            setColor(Color.argb(34, Color.red(color), Color.green(color), Color.blue(color)))
-            setStroke(dp(1), Color.argb(95, Color.red(color), Color.green(color), Color.blue(color)))
-        }
-    }
-
-    private fun deltaFor(history: List<HistorySample>, selector: (HistorySample) -> Long): Long {
-        if (history.size < 2) return 0
-        return selector(history.last()) - selector(history[history.lastIndex - 1])
-    }
-
     private fun decimal(value: Double, suffix: String): String =
         String.format(Locale.US, "%.1f%s", value, suffix)
 
@@ -751,7 +856,7 @@ class MainActivity : AppCompatActivity() {
                 DRAWER_GROUP_ACCOUNTS,
                 itemId,
                 index,
-                stats.fullName.ifBlank { account },
+                VerifiedBadge.decorate(this, stats.fullName.ifBlank { account }, stats.isVerified, stats.isPrivate, dp(17)),
             ).apply {
                 val (icon, isAvatar) = drawerAccountIcon(stats)
                 setIcon(icon)
@@ -882,7 +987,8 @@ class MainActivity : AppCompatActivity() {
                 setTitle(getString(R.string.edit_home))
                 setSubtitle("")
             } else {
-                setTitle(stats.fullName.ifBlank { "@${stats.userName}" })
+                val name = stats.fullName.ifBlank { "@${stats.userName}" }
+                setTitle(VerifiedBadge.decorate(this@MainActivity, name, stats.isVerified, stats.isPrivate, dp(26)))
                 setSubtitle("@${stats.userName} · ${TwidgetStore.lastSyncedText(this@MainActivity, stats)}")
             }
         }
@@ -890,10 +996,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRefresh() {
         findViewById<SwipeRefreshLayout>(R.id.main_refresh).apply {
-            val accent = getColor(R.color.oneui_accent)
-            setColorSchemeColors(accent, accent, accent, accent)
-            setOnRefreshListener { sync() }
+            OneUiSpinner.attachToSwipeRefresh(this)
+            setOnRefreshListener { handlePullRefresh() }
         }
+    }
+
+    private fun handlePullRefresh() {
+        val toolbarLayout = findViewById<NavDrawerLayout>(R.id.main_toolbar_layout)
+        if (!toolbarLayout.isExpanded) {
+            toolbarLayout.setExpanded(true, animate = true)
+            findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+            return
+        }
+        sync()
     }
 
     private fun sync() {
@@ -903,6 +1018,8 @@ class MainActivity : AppCompatActivity() {
         }
         val account = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
         isSyncing = true
+        // Launch-time syncs show the same spinner as a pull refresh.
+        findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = true
         Thread {
             val result = runCatching {
                 val stats = RettiwtClient.refresh(this, account)
@@ -927,6 +1044,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun addAccount() {
         startAddAccountActivity()
+    }
+
+    private fun openActiveProfile() {
+        val username = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
+            .trim()
+            .trimStart('@')
+        if (username.isBlank()) return
+
+        val encoded = Uri.encode(username)
+        val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("twitter://user?screen_name=$encoded"))
+        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://x.com/$encoded"))
+        try {
+            startActivity(appIntent)
+        } catch (_: ActivityNotFoundException) {
+            startActivity(webIntent)
+        }
     }
 
     private fun requestWidgetPin() {
@@ -962,23 +1095,24 @@ class MainActivity : AppCompatActivity() {
         val selector: (HistorySample) -> Long,
     )
 
+    // Two grid footprints only: half-width and full-width. Charts are
+    // full-width cards with extra height.
     private enum class DashboardCardSize(val span: Int, val heightDp: Int) {
-        SMALL(2, 118),
-        MEDIUM(3, 140),
-        LARGE(6, 156),
-        CHART(6, 260),
+        HALF(1, 140),
+        FULL(2, 156),
+        CHART(2, 260),
     }
 
     private enum class DashboardCardType(val id: String, val labelRes: Int, val size: DashboardCardSize) {
-        FOLLOWER_RATIO("follower_ratio", R.string.follower_ratio, DashboardCardSize.SMALL),
-        POST_RATE("post_rate", R.string.post_rate, DashboardCardSize.SMALL),
-        LIKES_PER_POST("likes_per_post", R.string.likes_per_post, DashboardCardSize.SMALL),
-        MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.LARGE),
-        GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.MEDIUM),
-        BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.MEDIUM),
-        MOMENTUM("momentum", R.string.momentum, DashboardCardSize.MEDIUM),
-        AUDIENCE_BALANCE("audience_balance", R.string.audience_balance, DashboardCardSize.MEDIUM),
-        ACCOUNT_HEALTH("account_health", R.string.account_health, DashboardCardSize.MEDIUM),
+        FOLLOWER_RATIO("follower_ratio", R.string.follower_ratio, DashboardCardSize.HALF),
+        POST_RATE("post_rate", R.string.post_rate, DashboardCardSize.HALF),
+        LIKES_PER_POST("likes_per_post", R.string.likes_per_post, DashboardCardSize.HALF),
+        MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.FULL),
+        GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.HALF),
+        BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.HALF),
+        MOMENTUM("momentum", R.string.momentum, DashboardCardSize.HALF),
+        AUDIENCE_BALANCE("audience_balance", R.string.audience_balance, DashboardCardSize.HALF),
+        ACCOUNT_HEALTH("account_health", R.string.account_health, DashboardCardSize.HALF),
         FOLLOWERS("followers", R.string.followers, DashboardCardSize.CHART),
         FOLLOWING("following", R.string.following, DashboardCardSize.CHART),
         POSTS("posts", R.string.posts, DashboardCardSize.CHART),
@@ -994,7 +1128,8 @@ class MainActivity : AppCompatActivity() {
         private const val DRAWER_GROUP_ACTIONS = 2
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
-        private const val DASHBOARD_GRID_COLUMNS = 6
+        private const val DASHBOARD_GRID_COLUMNS = 2
+        private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
     }
 }

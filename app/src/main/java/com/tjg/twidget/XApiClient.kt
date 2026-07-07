@@ -46,6 +46,9 @@ object XApiClient {
         return fetchUser(username, fresh)
     }
 
+    fun fetchProfileWithBearer(username: String, bearer: String): ProfileStats =
+        fetchUser(username, bearer)
+
     /** Exchanges an API key/secret for an app-only bearer token. Throws on bad credentials. */
     fun exchangeBearer(apiKey: String, apiSecret: String): String {
         val encode = { value: String -> URLEncoder.encode(value, StandardCharsets.UTF_8.name()) }
@@ -87,9 +90,14 @@ object XApiClient {
             statusesCount = metrics.optLong("tweet_count"),
             likeCount = metrics.optLong("like_count"),
             profileImage = highResolutionProfileImageUrl(user.optString("profile_image_url")),
-            isVerified = user.optBoolean("verified", false) ||
-                user.optString("verified_type").let { it.isNotBlank() && it != "none" },
-            isPrivate = user.optBoolean("protected", false),
+            // Absent fields stay unknown (null) instead of claiming false.
+            isVerified = if (user.has("verified") || user.has("verified_type")) {
+                user.optBoolean("verified", false) ||
+                    user.optString("verified_type").let { it.isNotBlank() && it != "none" }
+            } else {
+                null
+            },
+            isPrivate = if (user.has("protected")) user.optBoolean("protected") else null,
             syncedAt = System.currentTimeMillis(),
         )
     }

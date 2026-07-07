@@ -15,6 +15,7 @@ import android.widget.ArrayAdapter
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.view.ViewGroup
 import android.widget.ListPopupWindow
 import android.widget.RadioButton
 import android.widget.TextView
@@ -32,7 +33,7 @@ class WidgetConfigActivity : AppCompatActivity() {
     private var logo = TwidgetStore.LOGO_X
     private var tapAction = TwidgetStore.TAP_REFRESH
     private var accountUsername = ""
-    private var colorMode = TwidgetStore.COLOR_MODE_LIGHT
+    private var colorMode = TwidgetStore.COLOR_MODE_SYSTEM
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
     private var currentLevel = 2
@@ -188,7 +189,7 @@ class WidgetConfigActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
-                    text = stats.fullName.ifBlank { username }
+                    text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(17))
                     setTextColor(context.getColor(R.color.oneui_text_primary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                     typeface = Typeface.create("sec", Typeface.NORMAL)
@@ -310,8 +311,25 @@ class WidgetConfigActivity : AppCompatActivity() {
     }
 
     private fun showDropDown(anchor: View, labels: List<String>, selectedIndex: Int, onSelected: (Int) -> Unit) {
+        val accent = getColor(R.color.oneui_accent)
+        val normal = getColor(R.color.oneui_text_primary)
+        val adapter = object : ArrayAdapter<String>(this, R.layout.dropdown_item_checked, R.id.dropdown_label, labels) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent)
+                val selected = position == selectedIndex
+                view.findViewById<TextView>(R.id.dropdown_label).apply {
+                    setTextColor(if (selected) accent else normal)
+                    typeface = Typeface.create("sec", if (selected) Typeface.BOLD else Typeface.NORMAL)
+                }
+                view.findViewById<ImageView>(R.id.dropdown_check).apply {
+                    imageTintList = android.content.res.ColorStateList.valueOf(accent)
+                    visibility = if (selected) View.VISIBLE else View.INVISIBLE
+                }
+                return view
+            }
+        }
         val popup = ListPopupWindow(this).apply {
-            setAdapter(ArrayAdapter(this@WidgetConfigActivity, android.R.layout.simple_list_item_1, labels))
+            setAdapter(adapter)
             this.anchorView = anchor
             width = dp(220)
             height = ListPopupWindow.WRAP_CONTENT

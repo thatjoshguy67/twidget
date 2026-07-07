@@ -18,15 +18,26 @@ class TwidgetWidget : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_REFRESH) {
+            val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                // Partial update just flips the loading spinner on in the
+                // widget's existing layout; the full re-render below (which
+                // defaults it to gone) turns it back off.
+                AppWidgetManager.getInstance(context).partiallyUpdateAppWidget(
+                    appWidgetId,
+                    RemoteViews(context.packageName, R.layout.widget_blur).apply {
+                        setViewVisibility(R.id.widget_loading, View.VISIBLE)
+                    },
+                )
+            }
             val pending = goAsync()
             Thread {
                 runCatching {
-                    val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
                     val account = TwidgetStore.widgetSettings(context, appWidgetId).accountUsername
                         .ifBlank { TwidgetStore.settings(context).username }
                     TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
-                    updateAll(context)
                 }
+                updateAll(context)
                 pending.finish()
             }.start()
         }

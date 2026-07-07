@@ -220,8 +220,15 @@ class OnboardingActivity : AppCompatActivity() {
                 connectButton.text = getString(R.string.connecting)
                 // Verified on-device against api.x.com; the credentials never
                 // touch the Twidget bridge.
+                val testUsername = cleanUsername()
+                    .ifBlank { settings.username }
+                    .ifBlank { "XDevelopers" }
                 Thread {
-                    val result = runCatching { XApiClient.exchangeBearer(key, secret) }
+                    val result = runCatching {
+                        val bearer = XApiClient.exchangeBearer(key, secret)
+                        XApiClient.fetchProfileWithBearer(testUsername, bearer)
+                        bearer
+                    }
                     runOnUiThread {
                         if (isDestroyed) return@runOnUiThread
                         result.onSuccess { bearer ->
@@ -239,7 +246,9 @@ class OnboardingActivity : AppCompatActivity() {
                         }.onFailure {
                             connectButton.isEnabled = true
                             connectButton.text = getString(R.string.connect_x_api)
-                            keyInput.error = getString(R.string.x_api_connect_failed)
+                            val message = xApiConnectError(it)
+                            keyInput.error = message
+                            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
                             keyInput.requestFocus()
                         }
                     }
@@ -247,6 +256,18 @@ class OnboardingActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+
+    private fun xApiConnectError(error: Throwable): String {
+        val message = error.message.orEmpty()
+        return if (
+            message.contains("client-not-enrolled", ignoreCase = true) ||
+            message.contains("client forbidden", ignoreCase = true)
+        ) {
+            getString(R.string.status_x_client_forbidden)
+        } else {
+            getString(R.string.x_api_connect_failed)
+        }
     }
 
     // --- Step 1: live 4x2 widget with a ticking follower count ---

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One UI 8 loading spinner. One cycle = 2000 ms; restart it from an
+     Animatable2 callback to loop (see README). -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/oneui_spinner_vector">
+    <target android:name="rotor" android:animation="@anim/oneui_spinner_rotation" />
+    <target android:name="cluster" android:animation="@anim/oneui_spinner_cluster_scale" />
+    <target android:name="dot0" android:animation="@anim/oneui_spinner_dot0_move" />
+    <target android:name="dot0_fill" android:animation="@anim/oneui_spinner_dot0_alpha" />
+    <target android:name="dot1" android:animation="@anim/oneui_spinner_dot1_move" />
+    <target android:name="dot1_fill" android:animation="@anim/oneui_spinner_dot1_alpha" />
+    <target android:name="dot2" android:animation="@anim/oneui_spinner_dot2_move" />
+    <target android:name="dot2_fill" android:animation="@anim/oneui_spinner_dot2_alpha" />
+    <target android:name="dot3" android:animation="@anim/oneui_spinner_dot3_move" />
+    <target android:name="dot3_fill" android:animation="@anim/oneui_spinner_dot3_alpha" />
+</animated-vector>

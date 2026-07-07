@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="sequentially">
+    <objectAnimator android:duration="633" android:interpolator="@anim/oneui_ease_move_in"
+        android:pathData="M 91.75,175.75 C91.75,168.417 91.75,144.917 91.75,131.75"
+        android:propertyXName="translateX" android:propertyYName="translateY" />
+    <objectAnimator android:duration="466" android:interpolator="@anim/oneui_ease_move_merge"
+        android:pathData="M 91.75,131.75 C91.75,118.583 91.75,89.417 91.75,96.75"
+        android:propertyXName="translateX" android:propertyYName="translateY" />
+    <objectAnimator android:duration="700" android:interpolator="@anim/oneui_ease_move_out"
+        android:pathData="M 91.75,96.75 C91.75,104.083 91.75,162.583 91.75,175.75"
+        android:propertyXName="translateX" android:propertyYName="translateY" />
+</set>

@@ -10,7 +10,7 @@
     android:paddingStart="6dp"
     android:paddingTop="6dp"
     android:paddingEnd="6dp"
-    android:paddingBottom="6dp"
+    android:paddingBottom="0dp"
     tools:targetApi="p">
 
     <ImageView

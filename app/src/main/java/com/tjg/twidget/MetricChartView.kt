@@ -91,6 +91,10 @@ class MetricChartView @JvmOverloads constructor(
         val barWidth = (barSlot * 0.56f).coerceIn(18f * density, 32f * density)
         barHitBounds.clear()
 
+        // Draw only as many x-labels as actually fit, keeping the newest one.
+        val maxLabelWidth = samples.maxOf { labelPaint.measureText(it.dayLabel) } + 6f * density
+        val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
+
         labels.forEachIndexed { index, label ->
             val y = top + chartHeight * index / (labels.size - 1).coerceAtLeast(1)
             canvas.drawLine(left, y, width - right, y, gridPaint)
@@ -118,16 +122,22 @@ class MetricChartView @JvmOverloads constructor(
             val x = left + index * barSlot + (barSlot - barWidth) / 2f
             barRect.set(x, chartBottom - barHeight, x + barWidth, chartBottom)
             barHitBounds += RectF(left + index * barSlot, top, left + (index + 1) * barSlot, chartBottom)
+            // Estimated (interpolated) bars render translucent so real data
+            // reads solid at a glance.
+            barPaint.alpha = if (sample.estimated) 80 else 255
             canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
-            val labelWidth = labelPaint.measureText(sample.dayLabel)
-            val labelX = (x + barWidth / 2f - labelWidth / 2f)
-                .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-            canvas.drawText(sample.dayLabel, labelX, height - 7f * density, labelPaint)
+            barPaint.alpha = 255
+            if ((samples.lastIndex - index) % labelStep == 0) {
+                val labelWidth = labelPaint.measureText(sample.dayLabel)
+                val labelX = (x + barWidth / 2f - labelWidth / 2f)
+                    .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
+                canvas.drawText(sample.dayLabel, labelX, height - 7f * density, labelPaint)
+            }
 
             if (index == activeIndex) {
                 drawTooltip(
                     canvas = canvas,
-                    label = "${sample.dayLabel}  ${numberFormat.format(value)}",
+                    label = "${sample.dayLabel}  ${if (sample.estimated) "~" else ""}${numberFormat.format(value)}",
                     anchorX = x + barWidth / 2f,
                     anchorY = chartBottom - barHeight,
                     chartLeft = left,

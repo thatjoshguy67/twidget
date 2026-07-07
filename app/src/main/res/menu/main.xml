@@ -12,6 +12,27 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_open_profile"
+        android:icon="@drawable/ic_logo_x"
+        android:title="@string/tap_profile"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_edit_layout"
+        android:icon="@drawable/ic_oui_edit_outline"
+        android:title="@string/edit_home"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_reset_layout"
+        android:icon="@drawable/ic_oui_undo"
+        android:title="@string/reset_layout"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_add_card"
         android:icon="@drawable/ic_oui_add"
         android:title="@string/add_card"

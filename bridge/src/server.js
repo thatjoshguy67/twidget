@@ -1,5 +1,7 @@
 import express from "express";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { Rettiwt } from "rettiwt-api";
 
 const app = express();
@@ -7,11 +9,18 @@ const port = Number(process.env.PORT || 8787);
 const cacheTtlMs = Number(process.env.CACHE_TTL_SECONDS || 900) * 1000;
 const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_SECONDS || 60) * 1000;
 const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 60);
+const maxHistoryDays = Number(process.env.HISTORY_MAX_DAYS || 400);
+const historyRefreshMs = Number(process.env.HISTORY_REFRESH_MINUTES || 60) * 60 * 1000;
+const waybackEnabled = process.env.WAYBACK_BACKFILL !== "0";
+const waybackMaxSnapshots = Number(process.env.WAYBACK_MAX_SNAPSHOTS || 12);
+const historyStorePath = process.env.HISTORY_STORE_PATH ||
+  (fs.existsSync("/data") ? "/data/twidget-history.json" : path.resolve(process.cwd(), "data", "twidget-history.json"));
 
 const cache = new Map();
 const hits = new Map();
 const oauthStates = new Map();
 const oauthSessions = new Map();
+const historyStore = loadHistoryStore();
 
 app.disable("x-powered-by");
 // Railway (and most PaaS) put exactly one proxy in front of the app. Trusting a
@@ -64,6 +73,12 @@ app.get("/health", (_req, res) => {
     service: "twidget-bridge",
     authMode: process.env.RETTIWT_API_KEY ? "user" : "guest",
     xOAuthConfigured: Boolean(process.env.X_CLIENT_ID),
+    history: {
+      enabled: true,
+      maxDays: maxHistoryDays,
+      accounts: Object.keys(historyStore.accounts).length,
+      waybackBackfilled: Object.values(historyStore.meta).filter((meta) => meta?.waybackAt).length,
+    },
   });
 });
 
@@ -199,9 +214,58 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ error: "internal_error" });
 });
 
-app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", () => {
   console.log(`Twidget bridge listening on ${port}`);
 });
+
+// Exit 0 on deploy teardown so npm doesn't report the SIGTERM as a crash.
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.on(signal, () => {
+    console.log(`${signal} received, shutting down`);
+    saveHistoryStore();
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 4000).unref();
+  });
+}
+
+// Record a daily sample for every account the store has ever seen, whether or
+// not any client asks for it today — history accumulates while phones are off.
+const refreshTimer = setInterval(refreshKnownAccounts, historyRefreshMs);
+refreshTimer.unref?.();
+const bootRefreshTimer = setTimeout(refreshKnownAccounts, 15_000);
+bootRefreshTimer.unref?.();
+
+let refreshing = false;
+async function refreshKnownAccounts() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const today = startOfDay(Date.now());
+    for (const key of Object.keys(historyStore.accounts)) {
+      const samples = historyStore.accounts[key] || [];
+      const latest = samples[samples.length - 1];
+      if (latest && latest.ts >= today) continue;
+      try {
+        const profile = await fetchProfile(key);
+        recordHistorySample(profile);
+        cache.set(key, { fetchedAt: Date.now(), data: profile });
+        console.log(`Daily refresh recorded ${key}`);
+      } catch (error) {
+        console.warn(`Daily refresh failed for ${key}:`, error);
+      }
+      await sleep(3000);
+    }
+    for (const key of Object.keys(historyStore.accounts)) {
+      if (!historyStore.meta[key]?.waybackAt) await backfillFromWayback(key);
+    }
+  } finally {
+    refreshing = false;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function handleUser(input, res) {
   const username = cleanUsername(input);
@@ -213,15 +277,17 @@ async function handleUser(input, res) {
   const cached = cache.get(username.toLowerCase());
   if (cached && Date.now() - cached.fetchedAt < cacheTtlMs) {
     res.setHeader("X-Twidget-Cache", "hit");
-    res.json(cached.data);
+    res.json(withHistory(cached.data));
     return;
   }
 
   try {
-    const data = await fetchProfile(username);
-    cache.set(username.toLowerCase(), { fetchedAt: Date.now(), data });
+    const profile = await fetchProfile(username);
+    recordHistorySample(profile);
+    cache.set(username.toLowerCase(), { fetchedAt: Date.now(), data: profile });
     res.setHeader("X-Twidget-Cache", "miss");
-    res.json(data);
+    res.json(withHistory(profile));
+    void backfillFromWayback(username);
   } catch (error) {
     console.error(`Failed to fetch ${username}:`, error);
     res.status(502).json({
@@ -239,8 +305,29 @@ async function fetchProfile(username) {
   });
   const details = await rettiwt.user.details(username);
   const user = typeof details?.toJSON === "function" ? details.toJSON() : details;
+  const normalized = normalizeUser(user, username);
 
-  return normalizeUser(user, username);
+  if (process.env.X_BEARER_TOKEN && (normalized.isPrivate === undefined || normalized.isVerified === undefined)) {
+    try {
+      const official = await fetchOfficialXProfile(username);
+      return {
+        ...normalized,
+        isVerified: normalized.isVerified ?? official.isVerified,
+        isPrivate: normalized.isPrivate ?? official.isPrivate,
+      };
+    } catch (error) {
+      console.warn(`Official X enrichment failed for ${username}:`, error);
+    }
+  }
+
+  if (normalized.isPrivate === undefined) {
+    const webPrivacy = await fetchWebProfilePrivacy(username);
+    if (webPrivacy !== undefined) {
+      return { ...normalized, isPrivate: webPrivacy };
+    }
+  }
+
+  return normalized;
 }
 
 async function fetchOfficialXProfile(username) {
@@ -260,16 +347,20 @@ async function fetchOfficialXProfile(username) {
 }
 
 function normalizeUser(user, fallbackUsername) {
+  const verified = firstDefined(
+    findDeep(user, ["isVerified", "verified", "blueVerified", "blue_verified", "is_blue_verified"]),
+    findDeep(user, ["verifiedType", "verified_type"]),
+  );
   return {
-    fullName: stringValue(user.fullName || user.name || fallbackUsername),
-    userName: stringValue(user.userName || user.username || user.screenName || fallbackUsername).replace(/^@+/, ""),
-    followersCount: numberValue(user.followersCount ?? user.followers_count ?? user.followerCount),
-    followingsCount: numberValue(user.followingsCount ?? user.followingCount ?? user.friends_count),
-    statusesCount: numberValue(user.statusesCount ?? user.statuses_count ?? user.tweetCount),
-    likeCount: numberValue(user.likeCount ?? user.favouritesCount ?? user.favourites_count),
-    profileImage: highResolutionProfileImageUrl(user.profileImage || user.profile_image_url_https || user.profile_image_url),
-    isVerified: booleanValue(user.isVerified ?? user.verified ?? user.blueVerified ?? user.isBlueVerified),
-    isPrivate: booleanValue(user.isPrivate ?? user.private ?? user.protected ?? user.isProtected),
+    fullName: stringValue(firstDefined(findDeep(user, ["fullName", "name", "displayName", "display_name"]), fallbackUsername)),
+    userName: stringValue(firstDefined(findDeep(user, ["userName", "username", "screenName", "screen_name", "handle"]), fallbackUsername)).replace(/^@+/, ""),
+    followersCount: numberValue(findDeep(user, ["followersCount", "followers_count", "followerCount", "follower_count"])),
+    followingsCount: numberValue(findDeep(user, ["followingsCount", "followingCount", "friends_count", "following_count"])),
+    statusesCount: numberValue(findDeep(user, ["statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count", "listed_count"])),
+    likeCount: numberValue(findDeep(user, ["likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count"])),
+    profileImage: highResolutionProfileImageUrl(findDeep(user, ["profileImage", "profile_image_url_https", "profile_image_url", "avatar", "avatarUrl", "avatar_url", "imageUrl", "image_url"])),
+    isVerified: booleanValue(verified),
+    isPrivate: booleanValue(findDeep(user, ["isPrivate", "private", "protected", "isProtected", "is_protected", "protectedProfile"])),
   };
 }
 
@@ -316,7 +407,7 @@ async function fetchXMe(accessToken) {
 
 function normalizeXUser(user) {
   const metrics = user.public_metrics || {};
-  return {
+  const normalized = {
     fullName: stringValue(user.name || user.username),
     userName: stringValue(user.username).replace(/^@+/, ""),
     followersCount: numberValue(metrics.followers_count),
@@ -324,9 +415,271 @@ function normalizeXUser(user) {
     statusesCount: numberValue(metrics.tweet_count),
     likeCount: 0,
     profileImage: highResolutionProfileImageUrl(user.profile_image_url),
-    isVerified: booleanValue(user.verified) || stringValue(user.verified_type) === "blue",
-    isPrivate: booleanValue(user.protected),
+    isVerified: user.verified !== undefined || user.verified_type !== undefined
+      ? Boolean(booleanValue(user.verified) || verifiedTypeValue(user.verified_type))
+      : undefined,
+    isPrivate: user.protected !== undefined ? booleanValue(user.protected) : undefined,
   };
+  return Object.fromEntries(Object.entries(normalized).filter(([, value]) => value !== undefined));
+}
+
+function withHistory(profile) {
+  const username = cleanUsername(profile.userName);
+  return {
+    ...profile,
+    syncedAt: Date.now(),
+    history: historyFor(username),
+  };
+}
+
+function recordHistorySample(profile) {
+  const username = cleanUsername(profile.userName);
+  if (!username) return [];
+  return storeSamples(username.toLowerCase(), [historySampleFor(profile, Date.now())]);
+}
+
+// Merge new samples into an account's history, one per calendar day. New
+// samples win by default; preferExisting keeps recorded daily closes intact
+// when merging coarser data such as Wayback anchors.
+function storeSamples(key, samples, { preferExisting = false } = {}) {
+  const existing = Array.isArray(historyStore.accounts[key]) ? historyStore.accounts[key] : [];
+  const ordered = preferExisting ? [...samples, ...existing] : [...existing, ...samples];
+  const byDay = new Map();
+  for (const item of ordered) {
+    const normalized = normalizeHistorySample(item);
+    if (normalized) byDay.set(normalized.ts, normalized);
+  }
+  historyStore.accounts[key] = capSamples(
+    Array.from(byDay.values()).sort((left, right) => left.ts - right.ts),
+  );
+  saveHistoryStore();
+  return historyStore.accounts[key];
+}
+
+// Daily resolution for the recent window; older samples (Wayback anchors)
+// thin to one per month instead of being evicted by a hard cap.
+function capSamples(samples) {
+  const cutoff = startOfDay(Date.now()) - maxHistoryDays * 24 * 60 * 60 * 1000;
+  const recent = samples.filter((sample) => sample.ts >= cutoff);
+  const older = samples.filter((sample) => sample.ts < cutoff);
+  if (!older.length) return recent;
+  const monthly = new Map();
+  for (const sample of older) {
+    const date = new Date(sample.ts);
+    monthly.set(date.getFullYear() * 12 + date.getMonth(), sample);
+  }
+  return [...monthly.values(), ...recent];
+}
+
+function historyFor(username) {
+  const key = cleanUsername(username).toLowerCase();
+  return (historyStore.accounts[key] || [])
+    .map(normalizeHistorySample)
+    .filter(Boolean)
+    .sort((left, right) => left.ts - right.ts);
+}
+
+function historySampleFor(profile, now) {
+  const ts = startOfDay(now);
+  return {
+    dayLabel: dayLabel(ts),
+    followers: numberValue(profile.followersCount),
+    following: numberValue(profile.followingsCount),
+    posts: numberValue(profile.statusesCount),
+    likes: numberValue(profile.likeCount),
+    ts,
+  };
+}
+
+function normalizeHistorySample(sample) {
+  if (!sample || typeof sample !== "object") return null;
+  const ts = startOfDay(numberValue(firstDefined(sample.ts, sample.timestamp, sample.syncedAt)));
+  if (!ts) return null;
+  return {
+    dayLabel: stringValue(sample.dayLabel) || dayLabel(ts),
+    followers: numberValue(sample.followers),
+    following: numberValue(firstDefined(sample.following, sample.followings)),
+    posts: numberValue(sample.posts),
+    likes: numberValue(sample.likes),
+    ts,
+    ...(sample.src ? { src: stringValue(sample.src) } : {}),
+  };
+}
+
+function startOfDay(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+function dayLabel(ts) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(ts));
+}
+
+function loadHistoryStore() {
+  try {
+    const raw = fs.readFileSync(historyStorePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return {
+      version: 1,
+      accounts: parsed && typeof parsed.accounts === "object" && parsed.accounts ? parsed.accounts : {},
+      meta: parsed && typeof parsed.meta === "object" && parsed.meta ? parsed.meta : {},
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`Unable to read history store at ${historyStorePath}:`, error);
+    }
+    return { version: 1, accounts: {}, meta: {} };
+  }
+}
+
+function saveHistoryStore() {
+  try {
+    fs.mkdirSync(path.dirname(historyStorePath), { recursive: true });
+    const tempPath = `${historyStorePath}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(historyStore, null, 2));
+    fs.renameSync(tempPath, historyStorePath);
+  } catch (error) {
+    console.warn(`Unable to write history store at ${historyStorePath}:`, error);
+  }
+}
+
+// ---- Wayback Machine backfill -------------------------------------------
+// archive.org snapshots of profile pages are real, dated follower counts.
+// Fetched once per account (marker in historyStore.meta), fire-and-forget.
+
+const waybackInFlight = new Set();
+
+async function backfillFromWayback(username) {
+  const key = cleanUsername(username).toLowerCase();
+  if (!waybackEnabled || !key || waybackInFlight.has(key)) return;
+  if (historyStore.meta[key]?.waybackAt) return;
+  waybackInFlight.add(key);
+  try {
+    const snapshots = await waybackSnapshots(key);
+    const samples = [];
+    for (const [timestamp, original] of snapshots) {
+      const sample = await waybackSample(timestamp, original);
+      if (sample) samples.push(sample);
+      await sleep(500);
+    }
+    if (samples.length) storeSamples(key, samples, { preferExisting: true });
+    historyStore.meta[key] = { ...historyStore.meta[key], waybackAt: Date.now(), waybackSamples: samples.length };
+    saveHistoryStore();
+    console.log(`Wayback backfill for ${key}: ${samples.length} of ${snapshots.length} snapshots usable`);
+  } catch (error) {
+    console.warn(`Wayback backfill failed for ${key}:`, error);
+    historyStore.meta[key] = { ...historyStore.meta[key], waybackAt: Date.now(), waybackSamples: 0 };
+    saveHistoryStore();
+  } finally {
+    waybackInFlight.delete(key);
+  }
+}
+
+async function waybackSnapshots(username) {
+  const rows = [];
+  for (const domain of ["twitter.com", "x.com"]) {
+    const url = new URL("https://web.archive.org/cdx/search/cdx");
+    url.searchParams.set("url", `${domain}/${username}`);
+    url.searchParams.set("output", "json");
+    url.searchParams.set("fl", "timestamp,original");
+    url.searchParams.set("filter", "statuscode:200");
+    url.searchParams.set("collapse", "timestamp:6");
+    // x.com only exists since mid-2023; bounding the scan keeps CDX fast.
+    if (domain === "x.com") url.searchParams.set("from", "20230601");
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "TwidgetBridge/0.1" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) continue;
+      const json = await response.json();
+      if (Array.isArray(json)) rows.push(...json.slice(1));
+    } catch (error) {
+      console.warn(`Wayback CDX lookup failed for ${domain}/${username}:`, error);
+    }
+  }
+  rows.sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+  return spreadEvenly(rows, waybackMaxSnapshots);
+}
+
+function spreadEvenly(rows, max) {
+  if (rows.length <= max) return rows;
+  const picked = [];
+  for (let index = 0; index < max; index += 1) {
+    picked.push(rows[Math.round((index * (rows.length - 1)) / (max - 1))]);
+  }
+  return [...new Set(picked)];
+}
+
+async function waybackSample(timestamp, original) {
+  const ts = waybackDayTs(timestamp);
+  if (!ts || ts >= startOfDay(Date.now())) return null;
+  try {
+    // id_ serves the original captured bytes without the Wayback toolbar.
+    const response = await fetch(`https://web.archive.org/web/${timestamp}id_/${original}`, {
+      headers: { "User-Agent": "TwidgetBridge/0.1" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const followers = matchCount(html, [
+      /"followers_count"\s*:\s*(\d+)/,
+      /followers_count&quot;\s*:\s*(\d+)/,
+      /ProfileNav-item--followers[\s\S]{0,600}?data-count="(\d+)"/,
+      /data-nav="followers"[\s\S]{0,300}?title="([\d.,  ]+)\s+Follower/i,
+      /title="([\d.,  ]+)\s+Followers?"/i,
+    ]);
+    if (!followers) return null;
+    return {
+      dayLabel: dayLabel(ts),
+      followers,
+      following: matchCount(html, [/"friends_count"\s*:\s*(\d+)/, /friends_count&quot;\s*:\s*(\d+)/]),
+      posts: matchCount(html, [/"statuses_count"\s*:\s*(\d+)/, /statuses_count&quot;\s*:\s*(\d+)/]),
+      likes: matchCount(html, [/"favourites_count"\s*:\s*(\d+)/, /favourites_count&quot;\s*:\s*(\d+)/]),
+      ts,
+      src: "wayback",
+    };
+  } catch (error) {
+    console.warn(`Wayback snapshot fetch failed (${timestamp}):`, error);
+    return null;
+  }
+}
+
+function waybackDayTs(timestamp) {
+  const match = /^(\d{4})(\d{2})(\d{2})/.exec(String(timestamp));
+  if (!match) return 0;
+  const time = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function matchCount(html, patterns) {
+  for (const pattern of patterns) {
+    const match = pattern.exec(html);
+    if (!match) continue;
+    const value = Number(String(match[1]).replace(/\D/g, ""));
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+async function fetchWebProfilePrivacy(username) {
+  try {
+    const response = await fetch(`https://x.com/${encodeURIComponent(username)}`, {
+      headers: {
+        Accept: "text/html",
+        "User-Agent": "Mozilla/5.0 TwidgetBridge/0.1",
+      },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!response.ok) return undefined;
+    const body = (await response.text()).toLowerCase();
+    return body.includes("these posts are protected") ||
+      body.includes("only approved followers can see");
+  } catch (error) {
+    console.warn(`X web privacy check failed for ${username}:`, error);
+    return undefined;
+  }
 }
 
 function xRedirectUri(req) {
@@ -380,6 +733,29 @@ function stringValue(value) {
   return typeof value === "string" ? value : "";
 }
 
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null);
+}
+
+function findDeep(value, keys, depth = 0) {
+  if (!value || typeof value !== "object" || depth > 4) return undefined;
+  for (const key of keys) {
+    if (value[key] !== undefined && value[key] !== null && value[key] !== "") return value[key];
+  }
+  for (const child of Object.values(value)) {
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const found = findDeep(item, keys, depth + 1);
+        if (found !== undefined) return found;
+      }
+    } else if (child && typeof child === "object") {
+      const found = findDeep(child, keys, depth + 1);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
 function highResolutionProfileImageUrl(value) {
   return stringValue(value)
     .trim()
@@ -404,5 +780,11 @@ function booleanValue(value) {
     if (["true", "1", "yes", "blue", "business", "government"].includes(normalized)) return true;
     if (["false", "0", "no", "none"].includes(normalized)) return false;
   }
-  return false;
+  return undefined;
+}
+
+function verifiedTypeValue(value) {
+  const normalized = stringValue(value).toLowerCase();
+  if (!normalized) return undefined;
+  return ["blue", "business", "government"].includes(normalized);
 }

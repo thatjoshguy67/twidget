@@ -152,8 +152,10 @@ object LockScreenFollowerViews {
 
     private fun renderArt(context: Context, wide: Boolean, monotone: Boolean, widgetSettings: TwidgetWidgetSettings): Bitmap {
         val density = context.resources.displayMetrics.density
+        // The 1x1 art is a tight square so fitCenter scales it (and the count)
+        // as large as the widget cell allows.
         val width = ((if (wide) 118 else 52) * density).toInt()
-        val height = ((if (wide) 44 else 56) * density).toInt()
+        val height = ((if (wide) 44 else 52) * density).toInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
@@ -207,16 +209,24 @@ object LockScreenFollowerViews {
             logo?.setBounds((width - iconSize) / 2, 0, (width + iconSize) / 2, iconSize)
             logo?.draw(canvas)
 
-            countPaint.textSize = fitTextSize(count, countPaint, width.toFloat(), 15f * density)
+            countPaint.textSize = fitTextSize(count, countPaint, width.toFloat(), 18f * density)
             deltaPaint.textSize = fitTextSize(deltaText, deltaPaint, width.toFloat(), 12f * density)
+            // Lay the icon/count/delta column out from the font metrics so the
+            // delta's descender never falls past the bitmap edge.
+            val countMetrics = countPaint.fontMetrics
+            val deltaMetrics = deltaPaint.fontMetrics
+            val countHeight = countMetrics.descent - countMetrics.ascent
+            val deltaHeight = if (deltaText.isEmpty()) 0f else deltaMetrics.descent - deltaMetrics.ascent
+            val gap = ((height - iconSize - countHeight - deltaHeight) / 2f).coerceAtLeast(0f)
             val countY = if (deltaText.isEmpty()) {
-                iconSize + (height - iconSize) / 2f - (countPaint.fontMetrics.ascent + countPaint.fontMetrics.descent) / 2f
+                iconSize + (height - iconSize) / 2f - (countMetrics.ascent + countMetrics.descent) / 2f
             } else {
-                iconSize + 17f * density
+                iconSize + gap - countMetrics.ascent
             }
             canvas.drawText(count, (width - countPaint.measureText(count)) / 2f, countY, countPaint)
             if (deltaText.isNotEmpty()) {
-                canvas.drawText(deltaText, (width - deltaPaint.measureText(deltaText)) / 2f, countY + 14f * density, deltaPaint)
+                val deltaY = countY + countMetrics.descent + gap - deltaMetrics.ascent
+                canvas.drawText(deltaText, (width - deltaPaint.measureText(deltaText)) / 2f, deltaY, deltaPaint)
             }
         }
         return bitmap

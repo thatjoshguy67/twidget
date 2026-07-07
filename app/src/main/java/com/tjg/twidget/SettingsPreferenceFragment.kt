@@ -210,7 +210,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
-                    text = stats.fullName.ifBlank { username }
+                    text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(18))
                     setTextColor(context.getColor(R.color.oneui_text_primary))
                     textSize = 19f
                     typeface = Typeface.create("sec", Typeface.NORMAL)

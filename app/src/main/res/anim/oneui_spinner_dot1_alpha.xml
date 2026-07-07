@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="sequentially">
+    <objectAnimator android:duration="633" android:propertyName="fillAlpha"
+        android:valueFrom="1" android:valueTo="1" />
+    <objectAnimator android:duration="466" android:propertyName="fillAlpha"
+        android:valueFrom="1" android:valueTo="0.7" android:interpolator="@anim/oneui_ease_alpha_b" />
+    <objectAnimator android:duration="700" android:propertyName="fillAlpha"
+        android:valueFrom="0.7" android:valueTo="1" android:interpolator="@anim/oneui_ease_alpha_b" />
+    <objectAnimator android:duration="200" android:propertyName="fillAlpha"
+        android:valueFrom="1" android:valueTo="1" />
+</set>

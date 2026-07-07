@@ -11,4 +11,13 @@
         android:layout_height="match_parent"
         android:contentDescription="@null"
         android:scaleType="fitXY" />
+
+    <ProgressBar
+        android:id="@+id/widget_loading"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/oneui_spinner"
+        android:visibility="gone" />
 </FrameLayout>

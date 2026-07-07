@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Base vector for the One UI 8 loading spinner (from SESL sesl_vector_drawable_progress, drawable-v36).
+     Four r=28 circles in a 240x240 space, scaled 0.4 into a 96dp canvas.
+     Gradients require API 24+ (or vectorDrawables.useSupportLibrary). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="96dp" android:height="96dp"
+    android:viewportWidth="96" android:viewportHeight="96">
+
+    <!-- rotor: rotation animated, pivot at canvas centre -->
+    <group android:name="rotor"
+        android:translateX="48" android:translateY="48"
+        android:scaleX="0.4" android:scaleY="0.4">
+
+        <!-- cluster: scaleX/scaleY animated 1->2->1, pivot (120,120) == centre -->
+        <group android:name="cluster"
+            android:pivotX="120" android:pivotY="120"
+            android:translateX="-120" android:translateY="-120">
+
+            <!-- dot0 (left): translateX/Y animated -->
+            <group android:name="dot0"
+                android:translateX="7.75" android:translateY="91.75"
+                android:pivotX="28.25" android:pivotY="28.25"
+                android:scaleX="0.95" android:scaleY="0.95">
+                <group android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="dot0_fill" android:fillAlpha="1"
+                        android:pathData="M 0,-28 C 15.464,-28 28,-15.464 28,0 C 28,15.464 15.464,28 0,28 C -15.464,28 -28,15.464 -28,0 C -28,-15.464 -15.464,-28 0,-28 Z">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear"
+                                android:startX="22.960938" android:startY="80.87109"
+                                android:endX="-9.15625" android:endY="-97.58203">
+                                <item android:color="#E63DCC87" android:offset="0" />
+                                <item android:color="#E63BA3C3" android:offset="0.25" />
+                                <item android:color="#E6387AFF" android:offset="0.5" />
+                                <item android:color="#B7398AE8" android:offset="0.806" />
+                                <item android:color="#993BA3C3" android:offset="1" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+
+            <!-- dot1 (top) -->
+            <group android:name="dot1"
+                android:translateX="91.75" android:translateY="7.75"
+                android:pivotX="28.25" android:pivotY="28.25"
+                android:scaleX="0.95" android:scaleY="0.95">
+                <group android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="dot1_fill" android:fillAlpha="1"
+                        android:pathData="M 0,-28 C 15.464,-28 28,-15.464 28,0 C 28,15.464 15.464,28 0,28 C -15.464,28 -28,15.464 -28,0 C -28,-15.464 -15.464,-28 0,-28 Z">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear"
+                                android:startX="-15.839844" android:startY="-8.046875"
+                                android:endX="39.41427" android:endY="9.76213">
+                                <item android:color="#993BA3C3" android:offset="0" />
+                                <item android:color="#993CB3AC" android:offset="0.612" />
+                                <item android:color="#993DCC87" android:offset="1" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+
+            <!-- dot2 (right) -->
+            <group android:name="dot2"
+                android:translateX="175.75" android:translateY="91.75"
+                android:pivotX="28.25" android:pivotY="28.25"
+                android:scaleX="0.95" android:scaleY="0.95">
+                <group android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="dot2_fill" android:fillAlpha="1"
+                        android:pathData="M 0,-28 C 15.464,-28 28,-15.464 28,0 C 28,15.464 15.464,28 0,28 C -15.464,28 -28,15.464 -28,0 C -28,-15.464 -15.464,-28 0,-28 Z">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear"
+                                android:startX="9.467928" android:startY="-29.209497"
+                                android:endX="-5.4835525" android:endY="32.39227">
+                                <item android:color="#99387AFF" android:offset="0" />
+                                <item android:color="#C83A92DB" android:offset="0.612" />
+                                <item android:color="#E63CB9A2" android:offset="1" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+
+            <!-- dot3 (bottom) -->
+            <group android:name="dot3"
+                android:translateX="91.75" android:translateY="175.75"
+                android:pivotX="28.25" android:pivotY="28.25"
+                android:scaleX="0.95" android:scaleY="0.95">
+                <group android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="dot3_fill" android:fillAlpha="1"
+                        android:pathData="M 0,-28 C 15.464,-28 28,-15.464 28,0 C 28,15.464 15.464,28 0,28 C -15.464,28 -28,15.464 -28,0 C -28,-15.464 -15.464,-28 0,-28 Z">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear"
+                                android:startX="-16.316406" android:startY="9.574219"
+                                android:endX="69.625" android:endY="-33.015625">
+                                <item android:color="#E63DCC87" android:offset="0" />
+                                <item android:color="#E63DC591" android:offset="0.612" />
+                                <item android:color="#E63CB9A2" android:offset="1" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+        </group>
+    </group>
+</vector>

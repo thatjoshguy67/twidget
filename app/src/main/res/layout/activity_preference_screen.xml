@@ -6,8 +6,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:expandable="true"
-    app:expanded="true"
-    app:mainRoundedCorners="none"
+    app:expanded="false"
+    app:mainRoundedCorners="top"
     app:showNavButtonAsBack="true"
     app:title="@string/settings">
 

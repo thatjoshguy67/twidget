@@ -39,7 +39,8 @@
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
                     android:textColor="@color/oneui_text_primary"
-                    android:textSize="18sp"
+                    android:textFontWeight="700"
+                    android:textSize="28sp"
                     android:textStyle="bold" />
 
                 <TextView

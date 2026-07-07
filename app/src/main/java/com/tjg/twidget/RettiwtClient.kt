@@ -52,7 +52,12 @@ object RettiwtClient {
         )
         for (candidate in candidates) {
             try {
-                return finalize(parseUser(read(candidate, settings.apiKey)), username)
+                return enrichStatusFields(
+                    context,
+                    finalize(parseUser(read(candidate, settings.apiKey)), username),
+                    settings,
+                    bridgeUrl,
+                )
             } catch (error: Exception) {
                 lastError = error
             }
@@ -66,6 +71,40 @@ object RettiwtClient {
             }
         }
         throw lastError ?: IllegalStateException("Unable to fetch Rettiwt profile")
+    }
+
+    // Rettiwt doesn't report protected/verified status reliably. Fill unknown
+    // status fields from an official bridge endpoint when available, or from
+    // local X API credentials as a final source.
+    private fun enrichStatusFields(
+        context: Context,
+        parsed: ProfileStats,
+        settings: TwidgetSettings,
+        bridgeUrl: String,
+    ): ProfileStats {
+        if (parsed.isPrivate != null && parsed.isVerified != null) return parsed
+        bridgeOfficialStatus(parsed.userName, settings, bridgeUrl)?.let { official ->
+            return parsed.copy(
+                isVerified = parsed.isVerified ?: official.isVerified,
+                isPrivate = parsed.isPrivate ?: official.isPrivate,
+            )
+        }
+        if (!XApiClient.hasCredentials(settings)) return parsed
+        return runCatching {
+            val official = XApiClient.fetchProfile(context, parsed.userName)
+            parsed.copy(
+                isVerified = parsed.isVerified ?: official.isVerified,
+                isPrivate = parsed.isPrivate ?: official.isPrivate,
+            )
+        }.getOrDefault(parsed)
+    }
+
+    private fun bridgeOfficialStatus(username: String, settings: TwidgetSettings, bridgeUrl: String): ProfileStats? {
+        if (bridgeUrl.isBlank()) return null
+        val encoded = URLEncoder.encode(username.trim().trimStart('@'), StandardCharsets.UTF_8.name())
+        return runCatching {
+            parseUser(read("$bridgeUrl/official/user/$encoded", settings.apiKey))
+        }.getOrNull()?.takeIf { it.isPrivate != null || it.isVerified != null }
     }
 
     private fun finalize(parsed: ProfileStats, requestedUsername: String): ProfileStats {
@@ -121,7 +160,28 @@ object RettiwtClient {
             profileImage = profileImageUrl(user),
             isVerified = findBoolean(user, setOf("isVerified", "verified", "blueVerified", "blue_verified", "is_blue_verified", "verifiedType", "verified_type")),
             isPrivate = findBoolean(user, setOf("isPrivate", "private", "protected", "isProtected", "is_protected", "protectedProfile")),
+            history = parseHistory(json, user),
         )
+    }
+
+    private fun parseHistory(root: JSONObject, user: JSONObject): List<HistorySample> {
+        val array = root.optJSONArray("history")
+            ?: user.optJSONArray("history")
+            ?: return emptyList()
+        return List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { sample ->
+                sample ?: return@mapNotNull null
+                val timestamp = sample.optLong("ts", sample.optLong("timestamp", 0L))
+                if (timestamp <= 0L) return@mapNotNull null
+                HistorySample(
+                    dayLabel = sample.optString("dayLabel", ""),
+                    followers = sample.optLong("followers", 0L),
+                    following = sample.optLong("following", sample.optLong("followings", 0L)),
+                    posts = sample.optLong("posts", 0L),
+                    likes = sample.optLong("likes", 0L),
+                    timestamp = timestamp,
+                )
+            }
     }
 
     private fun profileImageUrl(user: JSONObject): String =

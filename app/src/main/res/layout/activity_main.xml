@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:expanded="true"
-    app:mainRoundedCorners="none"
+    app:mainRoundedCorners="top"
     app:title="@string/app_name">
 
     <!-- Drawer panel: account list + actions, filled at runtime -->

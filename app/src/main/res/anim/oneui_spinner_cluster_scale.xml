@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:ordering="together">
+    <set android:ordering="sequentially">
+        <objectAnimator android:duration="633" android:propertyName="scaleX"
+            android:valueFrom="1" android:valueTo="1" />
+        <objectAnimator android:duration="466" android:propertyName="scaleX"
+            android:valueFrom="1" android:valueTo="2" android:interpolator="@anim/oneui_ease_scale_up" />
+        <objectAnimator android:duration="700" android:propertyName="scaleX"
+            android:valueFrom="2" android:valueTo="1" android:interpolator="@anim/oneui_ease_scale_down" />
+    </set>
+    <set android:ordering="sequentially">
+        <objectAnimator android:duration="633" android:propertyName="scaleY"
+            android:valueFrom="1" android:valueTo="1" />
+        <objectAnimator android:duration="466" android:propertyName="scaleY"
+            android:valueFrom="1" android:valueTo="2" android:interpolator="@anim/oneui_ease_scale_up" />
+        <objectAnimator android:duration="700" android:propertyName="scaleY"
+            android:valueFrom="2" android:valueTo="1" android:interpolator="@anim/oneui_ease_scale_down" />
+    </set>
+</set>

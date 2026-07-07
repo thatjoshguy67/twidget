@@ -6,6 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
@@ -21,17 +22,19 @@ data class ProfileStats(
     val isVerified: Boolean? = null,
     val isPrivate: Boolean? = null,
     val syncedAt: Long = System.currentTimeMillis(),
+    val history: List<HistorySample> = emptyList(),
 )
 
 data class HistorySample(
     val dayLabel: String,
     val followers: Long,
-    val impressions: Long,
     val following: Long,
     val posts: Long,
     val likes: Long,
-    val followersGain: Long,
-    val impressionsDaily: Long,
+    val timestamp: Long,
+    // Interpolated chart filler between real samples. Render-only: estimated
+    // samples are never persisted and never feed deltas or insight numbers.
+    val estimated: Boolean = false,
 )
 
 data class TwidgetSettings(
@@ -58,12 +61,12 @@ data class TwidgetWidgetSettings(
     val showDelta: Boolean = true,
 )
 
-enum class HistoryRange(val labelRes: Int, val points: Int) {
-    WEEK(R.string.range_7d, 7),
-    MONTH(R.string.range_1m, 6),
-    THREE_MONTHS(R.string.range_3m, 12),
-    YTD(R.string.range_ytd, 0),
-    YEAR(R.string.range_1y, 12),
+enum class HistoryRange(val labelRes: Int) {
+    WEEK(R.string.range_7d),
+    MONTH(R.string.range_1m),
+    THREE_MONTHS(R.string.range_3m),
+    YTD(R.string.range_ytd),
+    YEAR(R.string.range_1y),
 }
 
 object TwidgetStore {
@@ -96,20 +99,25 @@ object TwidgetStore {
     private const val KEY_ONBOARDED = "onboarded"
     private const val KEY_ACCOUNTS = "accounts"
     private const val KEY_DASHBOARD_CARDS = "dashboard_cards"
+    private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
     private const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
+    private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+    private const val MAX_HISTORY_DAYS = 400
+    private const val HISTORY_MIGRATION_VERSION = 2
+    private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
+        "followers",
         "follower_ratio",
         "post_rate",
         "likes_per_post",
-        "milestone",
+        "momentum",
+        "following",
         "growth_pace",
         "best_day",
-        "momentum",
+        "posts",
+        "milestone",
         "audience_balance",
         "account_health",
-        "followers",
-        "following",
-        "posts",
         "likes",
     )
     const val LOGO_X = "x"
@@ -197,7 +205,7 @@ object TwidgetStore {
             logo = prefs.getString("widget_logo$suffix", prefs.getString("widget_logo", LOGO_X)) ?: LOGO_X,
             tapAction = prefs.getString("widget_tap_action$suffix", prefs.getString(KEY_TAP_ACTION, TAP_REFRESH)) ?: TAP_REFRESH,
             accountUsername = prefs.getString("widget_account$suffix", "") ?: "",
-            colorMode = prefs.getString("widget_color_mode$suffix", COLOR_MODE_LIGHT) ?: COLOR_MODE_LIGHT,
+            colorMode = prefs.getString("widget_color_mode$suffix", COLOR_MODE_SYSTEM) ?: COLOR_MODE_SYSTEM,
             fontFamily = prefs.getString("widget_font_family$suffix", FONT_ONE_UI_SANS) ?: FONT_ONE_UI_SANS,
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
         )
@@ -292,112 +300,170 @@ object TwidgetStore {
         return saved ?: fallbackStats(context, cleanUsername)
     }
 
-    fun history(context: Context, username: String = settings(context).username): List<HistorySample> {
-        val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
-        val saved = historyJson(context, cleanUsername)?.let { encoded ->
-            runCatching {
-                val array = JSONArray(encoded)
-                List(array.length()) { index -> historyFromJson(array.getJSONObject(index)) }
-            }.getOrNull()
-        }
-        return saved
-            ?.let { normalizeHistory(it, useDemoDefaults = !isOnboarded(context)) }
-            ?.let { backfillProfileMetrics(it, currentStats(context, cleanUsername)) }
-            ?.takeIf { it.size >= 4 }
-            ?: fallbackHistory(context, cleanUsername)
-    }
+    // Recent daily samples (last week), used by the widgets and their deltas.
+    fun history(context: Context, username: String = settings(context).username): List<HistorySample> =
+        fullHistory(context, username).takeLast(7)
 
-    // History over a selectable time range for the dashboard charts. Real daily
-    // samples only cover recent days, so longer ranges are a deterministic
-    // estimated growth curve that ends exactly at the current values.
-    fun rangedHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
-        if (range == HistoryRange.WEEK) return history(context, username)
+    // Every recorded daily sample, oldest first. Real data only — demo samples
+    // are merged in only before onboarding, and they are never persisted.
+    fun fullHistory(context: Context, username: String = settings(context).username): List<HistorySample> {
         val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
         val stats = currentStats(context, cleanUsername)
-        val totalDays = when (range) {
-            HistoryRange.MONTH -> 30
-            HistoryRange.THREE_MONTHS -> 90
-            HistoryRange.YEAR -> 365
-            HistoryRange.YTD -> daysSinceYearStart().coerceAtLeast(range.points)
-            else -> 7
+        val saved = savedHistory(context, cleanUsername)
+        val onboarded = isOnboarded(context)
+        val samples = if (onboarded) saved else mergeByDay(demoHistory() + saved)
+        val backfilled = flatBackfillProfileMetrics(samples, stats)
+            .ifEmpty { listOf(sampleFor(stats)) }
+        return backfilled
+    }
+
+    // Recorded samples inside the range window, oldest first. No synthetic
+    // history: ranges longer than the recorded history just return what exists.
+    fun rangedHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
+        val all = fullHistory(context, username)
+        return all.filter { it.timestamp >= rangeStart(range) }
+            .ifEmpty { listOfNotNull(all.lastOrNull()) }
+    }
+
+    // Chart-friendly view of the range: fixed buckets across the whole window.
+    // A bucket holding a recorded sample shows it as-is; empty buckets between
+    // two real data points (including anchors outside the window) get a linear
+    // interpolation flagged `estimated` so the chart can draw them lighter.
+    // Buckets before the first real data point are dropped, not invented.
+    fun chartHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
+        val all = fullHistory(context, username)
+        if (all.isEmpty()) return all
+        val monthly = range == HistoryRange.YTD || range == HistoryRange.YEAR
+        val labelFormat = SimpleDateFormat(if (monthly) "MMM" else "MMM d", Locale.US)
+        var previousEnd = rangeStart(range) - 1
+        return bucketEnds(range).mapNotNull { end ->
+            val bucketStart = previousEnd + 1
+            previousEnd = end
+            val sample = all.lastOrNull { it.timestamp in bucketStart..end } ?: estimateAt(all, end)
+            sample?.copy(dayLabel = labelFormat.format(Date(sample.timestamp)))
         }
-        val dayMillis = 24 * 60 * 60 * 1000L
-        val today = System.currentTimeMillis()
-        val labelFormat = SimpleDateFormat(if (range == HistoryRange.YEAR || range == HistoryRange.YTD) "MMM" else "MMM d", Locale.US)
-        val points = chartPointCount(range, totalDays)
-        return (0 until points).map { index ->
-            val frac = if (points == 1) 1.0 else index.toDouble() / (points - 1)
-            val daysAgo = ((1.0 - frac) * totalDays).toLong()
-            val followers = growthValue(stats.followersCount, frac, totalDays, 1)
-            HistorySample(
-                dayLabel = labelFormat.format(Date(today - daysAgo * dayMillis)),
-                followers = followers,
-                impressions = (followers * 6.45).toLong(),
-                following = growthValue(stats.followingsCount, frac, totalDays, 2),
-                posts = growthValue(stats.statusesCount, frac, totalDays, 3),
-                likes = growthValue(stats.likeCount, frac, totalDays, 4),
-                followersGain = 0,
-                impressionsDaily = 0,
-            )
+    }
+
+    private fun bucketEnds(range: HistoryRange): List<Long> {
+        val today = startOfDay(System.currentTimeMillis())
+        return when (range) {
+            HistoryRange.WEEK -> (6 downTo 0).map { today - it * DAY_MILLIS }
+            HistoryRange.MONTH -> (5 downTo 0).map { today - it * 5 * DAY_MILLIS }
+            HistoryRange.THREE_MONTHS -> (5 downTo 0).map { today - it * 15 * DAY_MILLIS }
+            HistoryRange.YTD, HistoryRange.YEAR -> {
+                val months = if (range == HistoryRange.YTD) {
+                    Calendar.getInstance().get(Calendar.MONTH) + 1
+                } else {
+                    12
+                }
+                (months - 1 downTo 0).map { offset ->
+                    val endOfMonth = Calendar.getInstance().apply {
+                        timeInMillis = today
+                        add(Calendar.MONTH, -offset)
+                        set(Calendar.DAY_OF_MONTH, getActualMaximum(Calendar.DAY_OF_MONTH))
+                    }
+                    minOf(startOfDay(endOfMonth.timeInMillis), today)
+                }
+            }
         }
     }
 
-    private fun chartPointCount(range: HistoryRange, totalDays: Int): Int = when (range) {
-        HistoryRange.YTD -> monthsSinceYearStart().coerceIn(1, 12)
-        else -> range.points.coerceAtLeast(1)
+    // Linear interpolation between the nearest real samples around `ts`. Null
+    // when `ts` isn't bracketed by real data — charts drop those buckets.
+    private fun estimateAt(all: List<HistorySample>, ts: Long): HistorySample? {
+        val before = all.lastOrNull { it.timestamp <= ts } ?: return null
+        val after = all.firstOrNull { it.timestamp > ts } ?: return null
+        val frac = (ts - before.timestamp).toDouble() / (after.timestamp - before.timestamp)
+        fun lerp(from: Long, to: Long): Long = (from + ((to - from) * frac).toLong())
+        return HistorySample(
+            dayLabel = "",
+            followers = lerp(before.followers, after.followers),
+            following = lerp(before.following, after.following),
+            posts = lerp(before.posts, after.posts),
+            likes = lerp(before.likes, after.likes),
+            timestamp = ts,
+            estimated = true,
+        )
     }
 
-    // Rising series from an estimated starting value to `current` (reached at
-    // frac == 1). A small deterministic wobble keeps the bars from looking
-    // perfectly linear without introducing per-redraw jitter.
-    private fun growthValue(current: Long, frac: Double, totalDays: Int, seed: Int): Long {
-        if (current <= 0) return 0
-        val growthRate = when {
-            current >= 100_000 -> 0.18
-            current >= 10_000 -> 0.14
-            current >= 1_000 -> 0.10
-            else -> 0.06
-        } * (totalDays / 365.0)
-        val start = (current / (1.0 + growthRate)).coerceAtLeast(0.0)
-        val base = start + (current - start) * frac
-        if (frac >= 1.0) return current
-        val wobble = Math.sin((frac * 6.0) + seed) * (current - start) * 0.05
-        return (base + wobble).toLong().coerceIn(0, current)
-    }
-
-    private fun daysSinceYearStart(): Int {
-        val now = java.util.Calendar.getInstance()
-        val start = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
-            set(java.util.Calendar.DAY_OF_MONTH, 1)
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
+    private fun rangeStart(range: HistoryRange): Long {
+        val today = startOfDay(System.currentTimeMillis())
+        return when (range) {
+            HistoryRange.WEEK -> today - 6 * DAY_MILLIS
+            HistoryRange.MONTH -> today - 29 * DAY_MILLIS
+            HistoryRange.THREE_MONTHS -> today - 89 * DAY_MILLIS
+            HistoryRange.YEAR -> today - 364 * DAY_MILLIS
+            HistoryRange.YTD -> Calendar.getInstance().apply {
+                set(Calendar.MONTH, Calendar.JANUARY)
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
         }
-        return (((now.timeInMillis - start.timeInMillis) / (24 * 60 * 60 * 1000L)).toInt()).coerceAtLeast(1)
     }
-
-    private fun monthsSinceYearStart(): Int =
-        java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1
 
     fun saveStats(context: Context, stats: ProfileStats) {
         val username = normalizeUsername(stats.userName).ifBlank { settings(context).username }
         addAccount(context, username)
-        val hasSavedHistory = prefs(context).contains(historyKey(username))
-        val currentHistory = if (hasSavedHistory) {
-            backfillProfileMetrics(history(context, username), stats)
-        } else {
-            seedHistoryFor(stats).dropLast(1)
-        }
-        val previous = currentHistory.lastOrNull()
-        val sample = sampleFor(stats, previous)
-        val next = if (currentHistory.lastOrNull()?.dayLabel == sample.dayLabel) {
-            currentHistory.dropLast(1) + sample
-        } else {
-            currentHistory + sample
-        }.takeLast(7)
+        recordTodayOpen(context, username, stats)
+        val saved = savedHistory(context, username)
+        val next = mergeByDay(saved + stats.history + sampleFor(stats)).filterNot { it.estimated }
         prefs(context).edit()
             .putString(profileKey(username), statsToJson(stats.copy(userName = username)).toString())
             .putString(historyKey(username), JSONArray(next.map { historyToJson(it) }).toString())
             .apply()
+    }
+
+    // --- Live "today" delta -------------------------------------------------
+    // Delta badges compare current values to yesterday's close when one is
+    // recorded, else to the first values seen today (captured at the first
+    // sync of the day) so deltas are live within hours of a fresh install.
+    fun todayDelta(context: Context, username: String, selector: (HistorySample) -> Long): Long {
+        val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
+        val baseline = deltaBaseline(context, cleanUsername) ?: return 0
+        return selector(sampleFor(currentStats(context, cleanUsername))) - selector(baseline)
+    }
+
+    private fun deltaBaseline(context: Context, username: String): HistorySample? {
+        val today = startOfDay(System.currentTimeMillis())
+        return fullHistory(context, username)
+            .lastOrNull { it.timestamp == today - DAY_MILLIS }
+            ?: todayOpen(context, username)
+    }
+
+    private fun todayOpen(context: Context, username: String): HistorySample? =
+        prefs(context).getString(todayOpenKey(username), null)
+            ?.let { encoded -> runCatching { historyFromJson(JSONObject(encoded)) }.getOrNull() }
+            ?.takeIf { it.timestamp == startOfDay(System.currentTimeMillis()) }
+
+    private fun recordTodayOpen(context: Context, username: String, stats: ProfileStats) {
+        if (todayOpen(context, username) != null) return
+        prefs(context).edit()
+            .putString(todayOpenKey(username), historyToJson(sampleFor(stats)).toString())
+            .apply()
+    }
+
+    private fun todayOpenKey(username: String) = "today_open_${normalizeUsername(username)}"
+
+    fun migrateStoredHistories(context: Context) {
+        val prefs = prefs(context)
+        if (prefs.getInt(KEY_HISTORY_MIGRATION_VERSION, 0) >= HISTORY_MIGRATION_VERSION) return
+        val edit = prefs.edit()
+        accounts(context).forEach { account ->
+            val username = normalizeUsername(account)
+            if (username.isBlank()) return@forEach
+            if (statsJson(context, username) == null && historyJson(context, username) == null) return@forEach
+            val stats = currentStats(context, username)
+            val normalized = collapseLeadingFlatRun(
+                flatBackfillProfileMetrics(savedHistory(context, username), stats)
+                    .ifEmpty { listOf(sampleFor(stats)) }
+            )
+            edit.putString(historyKey(username), JSONArray(normalized.map { historyToJson(it) }).toString())
+        }
+        edit.putInt(KEY_HISTORY_MIGRATION_VERSION, HISTORY_MIGRATION_VERSION)
+        edit.apply()
     }
 
     fun clearAccount(context: Context) {
@@ -415,11 +481,8 @@ object TwidgetStore {
             .apply()
     }
 
-    fun followersDelta(context: Context, username: String = settings(context).username): Long {
-        val samples = history(context, username)
-        if (samples.size < 2) return 0
-        return samples.last().followers - samples[samples.lastIndex - 1].followers
-    }
+    fun followersDelta(context: Context, username: String = settings(context).username): Long =
+        todayDelta(context, username) { it.followers }
 
     fun compactNumber(value: Long): String = when {
         abs(value) >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
@@ -463,17 +526,99 @@ object TwidgetStore {
             ?.takeIf { username.equals(defaultUsername, ignoreCase = true) }
     }
 
-    private fun sampleFor(stats: ProfileStats, previous: HistorySample? = null): HistorySample =
+    private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
             dayLabel = SimpleDateFormat("MMM d", Locale.US).format(Date(stats.syncedAt)),
             followers = stats.followersCount,
-            impressions = (stats.followersCount * 6.45).toLong(),
             following = stats.followingsCount,
             posts = stats.statusesCount,
             likes = stats.likeCount,
-            followersGain = previous?.let { stats.followersCount - it.followers }?.coerceAtLeast(0) ?: 0,
-            impressionsDaily = previous?.let { (stats.followersCount * 6.45).toLong() - it.impressions }?.coerceAtLeast(0) ?: 0,
+            timestamp = startOfDay(stats.syncedAt),
         )
+
+    private fun savedHistory(context: Context, username: String): List<HistorySample> {
+        val parsed = historyJson(context, username)?.let { encoded ->
+            runCatching {
+                val array = JSONArray(encoded)
+                List(array.length()) { index -> historyFromJson(array.getJSONObject(index)) }
+            }.getOrNull()
+        }.orEmpty()
+        return flattenLegacySeededRamp(mergeByDay(assignTimestamps(parsed.filter { it.dayLabel.isNotBlank() })))
+    }
+
+    // One sample per calendar day (the newest wins), oldest first. Daily
+    // resolution for the recent window; older samples (Wayback anchors) thin
+    // to one per month instead of being evicted by a hard cap.
+    private fun mergeByDay(samples: List<HistorySample>): List<HistorySample> {
+        val merged = linkedMapOf<Long, HistorySample>()
+        samples.sortedBy { it.timestamp }.forEach { merged[startOfDay(it.timestamp)] = it }
+        val cutoff = startOfDay(System.currentTimeMillis()) - MAX_HISTORY_DAYS * DAY_MILLIS
+        val (older, recent) = merged.values.partition { it.timestamp < cutoff }
+        if (older.isEmpty()) return recent
+        val monthly = linkedMapOf<Int, HistorySample>()
+        older.forEach { sample ->
+            val calendar = Calendar.getInstance().apply { timeInMillis = sample.timestamp }
+            monthly[calendar.get(Calendar.YEAR) * 12 + calendar.get(Calendar.MONTH)] = sample
+        }
+        return monthly.values.toList() + recent
+    }
+
+    private fun flattenLegacySeededRamp(samples: List<HistorySample>): List<HistorySample> {
+        if (samples.size < LEGACY_SEEDED_FOLLOWER_GAINS.size + 1) return samples
+        val seeded = samples.take(LEGACY_SEEDED_FOLLOWER_GAINS.size + 1)
+        if (!isConsecutiveDailyHistory(seeded)) return samples
+        val gains = seeded.zipWithNext().map { (previous, current) -> current.followers - previous.followers }
+        if (gains != LEGACY_SEEDED_FOLLOWER_GAINS) return samples
+
+        return mergeByDay(listOf(seeded.last()) + samples.drop(seeded.size))
+    }
+
+    private fun collapseLeadingFlatRun(samples: List<HistorySample>): List<HistorySample> {
+        if (samples.size < 2) return samples
+        val first = samples.first()
+        val flatRunEnd = samples.indexOfFirst { sample -> !sameMetricValues(first, sample) }
+            .let { if (it == -1) samples.lastIndex else it - 1 }
+        if (flatRunEnd <= 0) return samples
+        return samples.drop(flatRunEnd)
+    }
+
+    private fun sameMetricValues(left: HistorySample, right: HistorySample): Boolean =
+        left.followers == right.followers &&
+            left.following == right.following &&
+            left.posts == right.posts &&
+            left.likes == right.likes
+
+    private fun isConsecutiveDailyHistory(samples: List<HistorySample>): Boolean =
+        samples.zipWithNext().all { (previous, current) ->
+            startOfDay(current.timestamp) - startOfDay(previous.timestamp) == DAY_MILLIS
+        }
+
+    // Samples saved before timestamps existed get their day reconstructed from
+    // the "MMM d" label, anchored to the most recent matching date.
+    private fun assignTimestamps(samples: List<HistorySample>): List<HistorySample> =
+        samples.map { sample ->
+            if (sample.timestamp > 0) sample else sample.copy(timestamp = timestampFromLabel(sample.dayLabel))
+        }
+
+    private fun timestampFromLabel(label: String): Long {
+        val parsed = runCatching { SimpleDateFormat("MMM d", Locale.US).parse(label) }.getOrNull()
+            ?: return startOfDay(System.currentTimeMillis())
+        val day = Calendar.getInstance().apply {
+            val currentYear = get(Calendar.YEAR)
+            time = parsed
+            set(Calendar.YEAR, currentYear)
+        }
+        if (day.timeInMillis > System.currentTimeMillis()) day.add(Calendar.YEAR, -1)
+        return startOfDay(day.timeInMillis)
+    }
+
+    private fun startOfDay(millis: Long): Long = Calendar.getInstance().apply {
+        timeInMillis = millis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 
     private fun statsToJson(stats: ProfileStats): JSONObject = JSONObject()
         .put("fullName", stats.fullName)
@@ -506,85 +651,37 @@ object TwidgetStore {
     private fun historyToJson(sample: HistorySample): JSONObject = JSONObject()
         .put("dayLabel", sample.dayLabel)
         .put("followers", sample.followers)
-        .put("impressions", sample.impressions)
         .put("following", sample.following)
         .put("posts", sample.posts)
         .put("likes", sample.likes)
-        .put("followersGain", sample.followersGain)
-        .put("impressionsDaily", sample.impressionsDaily)
+        .put("ts", sample.timestamp)
 
     private fun historyFromJson(json: JSONObject): HistorySample = HistorySample(
         dayLabel = json.optString("dayLabel", ""),
         followers = json.optLong("followers", 0),
-        impressions = json.optLong("impressions", 0),
         following = json.optLong("following", 0),
         posts = json.optLong("posts", 0),
         likes = json.optLong("likes", 0),
-        followersGain = json.optLong("followersGain", 0),
-        impressionsDaily = json.optLong("impressionsDaily", 0),
+        timestamp = json.optLong("ts", 0),
     )
 
-    private fun normalizeHistory(samples: List<HistorySample>, useDemoDefaults: Boolean): List<HistorySample> {
-        val merged = linkedMapOf<String, HistorySample>()
-        if (useDemoDefaults) {
-            demoHistory().forEach { merged[it.dayLabel] = it }
-        }
-        samples.filter { it.dayLabel.isNotBlank() }.forEach { sample ->
-            val existing = merged[sample.dayLabel]
-            merged[sample.dayLabel] =
-                if (existing != null && sample.followersGain == 0L && sample.impressionsDaily == 0L) {
-                    sample.copy(
-                        followersGain = existing.followersGain,
-                        impressionsDaily = existing.impressionsDaily,
-                    )
-                } else {
-                    sample
-                }
-        }
-        return merged.values.toList().takeLast(7)
-    }
-
-    private fun backfillProfileMetrics(samples: List<HistorySample>, stats: ProfileStats): List<HistorySample> {
-        if (samples.size < 3) return samples
-        fun shouldBackfill(selector: (HistorySample) -> Long): Boolean =
-            samples.dropLast(1).map(selector).distinct().size <= 1 &&
-                samples.map(selector).distinct().size <= 2
-        val fillFollowing = shouldBackfill { it.following }
-        val fillPosts = shouldBackfill { it.posts }
-        val fillLikes = shouldBackfill { it.likes }
-        if (!fillFollowing && !fillPosts && !fillLikes) return samples
-        val followingValues = backfilledSeries(samples, stats.followingsCount) { it.following }
-        val postValues = backfilledSeries(samples, stats.statusesCount) { it.posts }
-        val likeValues = backfilledSeries(samples, stats.likeCount) { it.likes }
-        return samples.mapIndexed { index, sample ->
+    // Older builds only recorded followers, so early samples can carry zero
+    // following/posts/likes. Fill those gaps flat with the nearest later
+    // recorded value rather than inventing a trend.
+    private fun flatBackfillProfileMetrics(samples: List<HistorySample>, stats: ProfileStats): List<HistorySample> {
+        var following = stats.followingsCount
+        var posts = stats.statusesCount
+        var likes = stats.likeCount
+        return samples.asReversed().map { sample ->
+            if (sample.following > 0) following = sample.following
+            if (sample.posts > 0) posts = sample.posts
+            if (sample.likes > 0) likes = sample.likes
             sample.copy(
-                following = if (fillFollowing) followingValues[index] else sample.following,
-                posts = if (fillPosts) postValues[index] else sample.posts,
-                likes = if (fillLikes) likeValues[index] else sample.likes,
+                following = if (sample.following > 0) sample.following else following,
+                posts = if (sample.posts > 0) sample.posts else posts,
+                likes = if (sample.likes > 0) sample.likes else likes,
             )
-        }
-    }
-
-    private fun backfilledSeries(samples: List<HistorySample>, current: Long, selector: (HistorySample) -> Long): List<Long> {
-        val firstSaved = selector(samples.first()).takeIf { it > 0L && it != current }
-        val start = firstSaved ?: seedStartValue(current, samples.size)
-        val steps = (samples.size - 1).coerceAtLeast(1)
-        return samples.indices.map { index ->
-            if (index == samples.lastIndex) {
-                current
-            } else {
-                start + ((current - start) * index / steps)
-            }.coerceAtLeast(0)
-        }
-    }
-
-    private fun seedStartValue(current: Long, sampleCount: Int): Long {
-        val drift = when {
-            current >= 10_000 -> sampleCount * 6L
-            current >= 1_000 -> sampleCount * 3L
-            else -> sampleCount.toLong()
-        }
-        return (current - drift).coerceAtLeast(0)
+        }.asReversed()
     }
 
     private fun fallbackStats(context: Context, accountUsername: String = settings(context).username): ProfileStats {
@@ -599,69 +696,6 @@ object TwidgetStore {
         } else {
             demoStats()
         }
-    }
-
-    private fun fallbackHistory(context: Context, username: String = settings(context).username): List<HistorySample> =
-        if (isOnboarded(context)) seedHistoryFor(fallbackStats(context, username)) else demoHistory()
-
-    private fun seedHistoryFor(stats: ProfileStats): List<HistorySample> {
-        val formatter = SimpleDateFormat("MMM d", Locale.US)
-        val dayMillis = 24 * 60 * 60 * 1000L
-        val today = System.currentTimeMillis()
-        val gains = seedFollowerGains(stats.followersCount)
-        val totalGain = gains.sum()
-        val startFollowers = (stats.followersCount - totalGain).coerceAtLeast(0)
-        val followingGains = listOf(0L, 1L, 0L, 0L, 1L, 0L, 0L)
-        val postGains = listOf(4L, 5L, 3L, 6L, 4L, 3L, 0L)
-        val likeGains = listOf(7L, 8L, 5L, 9L, 6L, 6L, 0L)
-        return (6 downTo 0).map { offset ->
-            val index = 6 - offset
-            val followers = if (index == 6) {
-                stats.followersCount
-            } else {
-                (startFollowers + gains.take(index + 1).sum()).coerceAtMost(stats.followersCount)
-            }
-            val impressions = (followers * 6.45).toLong()
-            HistorySample(
-                dayLabel = formatter.format(Date(today - offset * dayMillis)),
-                followers = followers,
-                impressions = impressions,
-                following = backfilledValue(stats.followingsCount, followingGains, index),
-                posts = backfilledValue(stats.statusesCount, postGains, index),
-                likes = backfilledValue(stats.likeCount, likeGains, index),
-                followersGain = gains[index],
-                impressionsDaily = (gains[index] * 6.45).toLong(),
-            )
-        }
-    }
-
-    private fun seedFollowerGains(current: Long): List<Long> {
-        val baseGains = listOf(12L, 18L, 9L, 21L, 15L, 14L, 26L)
-        if (current <= 0L) return baseGains.map { 0L }
-        val baseTotal = baseGains.sum()
-        if (current >= baseTotal) return baseGains
-
-        val scaled = baseGains.map { it * current / baseTotal }.toMutableList()
-        if (scaled.last() == 0L) scaled[scaled.lastIndex] = 1L
-
-        var assigned = scaled.sum()
-        val order = baseGains.indices.sortedWith(
-            compareByDescending<Int> { (baseGains[it] * current) % baseTotal }
-                .thenByDescending { it },
-        )
-        var orderIndex = 0
-        while (assigned < current) {
-            scaled[order[orderIndex % order.size]] += 1L
-            assigned += 1L
-            orderIndex += 1
-        }
-        return scaled
-    }
-
-    private fun backfilledValue(current: Long, gains: List<Long>, index: Int): Long {
-        if (index >= gains.lastIndex) return current
-        val remainingGain = gains.drop(index).sum()
-        return (current - remainingGain).coerceAtLeast(0)
     }
 
     private fun fallbackAvatarUrl(username: String): String =
@@ -679,19 +713,18 @@ object TwidgetStore {
     )
 
     private fun demoHistory(): List<HistorySample> {
-        val labels = listOf("Jun 24", "Jun 25", "Jun 26", "Jun 27", "Jun 28", "Jun 29", "Jun 30")
+        val formatter = SimpleDateFormat("MMM d", Locale.US)
+        val today = startOfDay(System.currentTimeMillis())
         val followerGains = listOf(25L, 40L, 30L, 38L, 22L, 52L, 109L)
-        val impressions = listOf(10_200L, 18_300L, 13_700L, 19_800L, 8_900L, 22_400L, 49_515L)
-        return labels.indices.map { index ->
+        return followerGains.indices.map { index ->
+            val timestamp = today - (followerGains.lastIndex - index) * DAY_MILLIS
             HistorySample(
-                dayLabel = labels[index],
+                dayLabel = formatter.format(Date(timestamp)),
                 followers = 7_371L + followerGains.take(index + 1).sum(),
-                impressions = impressions[index],
                 following = 300L + index,
                 posts = 2_080L + index * 4L,
-                likes = 47_000L + impressions.take(index + 1).sum() / 20,
-                followersGain = followerGains[index],
-                impressionsDaily = impressions[index],
+                likes = 47_000L + index * 180L,
+                timestamp = timestamp,
             )
         }
     }

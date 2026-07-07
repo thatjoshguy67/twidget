@@ -8,6 +8,12 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Locale
 
 class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
     private lateinit var settings: TwidgetSettings
@@ -31,6 +37,13 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         val xApiActive = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API
 
         screen.addPreference(category(R.string.source_self_hosted))
+        val bridgeStatus = Preference(context).apply {
+            key = "bridge_status_pref"
+            title = getString(R.string.bridge_status)
+            summary = getString(R.string.status_checking)
+            isSelectable = false
+        }
+        screen.addPreference(bridgeStatus)
         screen.addPreference(EditTextPreference(context).apply {
             key = "self_hosted_url_pref"
             title = getString(R.string.self_hosted_rettiwt)
@@ -67,6 +80,13 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         })
 
         screen.addPreference(category(R.string.source_x_api))
+        val xApiStatus = Preference(context).apply {
+            key = "x_api_status_pref"
+            title = getString(R.string.x_api_status)
+            summary = getString(R.string.status_checking)
+            isSelectable = false
+        }
+        screen.addPreference(xApiStatus)
         screen.addPreference(Preference(context).apply {
             key = "x_api_explainer_pref"
             title = getString(R.string.x_api_explainer)
@@ -139,6 +159,87 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         })
 
         preferenceScreen = screen
+        refreshConnectorStatuses(bridgeStatus, xApiStatus)
+    }
+
+    private fun refreshConnectorStatuses(bridgeStatus: Preference, xApiStatus: Preference) {
+        val snapshot = settings
+        val appContext = requireContext().applicationContext
+        val account = TwidgetStore.accounts(appContext).firstOrNull()
+            ?: snapshot.username.takeIf { it.isNotBlank() }
+        Thread {
+            val bridge = runCatching { bridgeStatusSummary(snapshot) }
+                .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            val xApi = runCatching { xApiStatusSummary(appContext, snapshot, account) }
+                .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            if (!isAdded) return@Thread
+            requireActivity().runOnUiThread {
+                bridgeStatus.summary = connectorStatusPrefix(
+                    active = snapshot.dataSource != TwidgetStore.DATA_SOURCE_X_API,
+                    fallback = snapshot.dataSource == TwidgetStore.DATA_SOURCE_X_API,
+                    status = bridge,
+                )
+                xApiStatus.summary = connectorStatusPrefix(
+                    active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_X_API,
+                    fallback = false,
+                    status = xApi,
+                )
+            }
+        }.start()
+    }
+
+    private fun bridgeStatusSummary(settings: TwidgetSettings): String {
+        val baseUrl = settings.bridgeUrl.trim().trimEnd('/').ifBlank { return getString(R.string.status_not_configured) }
+        val connection = URL("$baseUrl/health").openConnection() as HttpURLConnection
+        connection.connectTimeout = 5_000
+        connection.readTimeout = 5_000
+        connection.requestMethod = "GET"
+        connection.setRequestProperty("Accept", "application/json")
+        if (settings.apiKey.isNotBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer ${settings.apiKey}")
+        }
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        if (code !in 200..299) return getString(R.string.status_http_error, code)
+        val json = runCatching { JSONObject(body) }.getOrNull()
+        val authMode = json?.optString("authMode").orEmpty()
+        return if (json?.optBoolean("ok") == true) {
+            if (authMode.isBlank()) getString(R.string.status_connected) else getString(R.string.status_connected_detail, authMode)
+        } else {
+            getString(R.string.status_unexpected_response)
+        }
+    }
+
+    private fun xApiStatusSummary(context: android.content.Context, settings: TwidgetSettings, account: String?): String {
+        if (!XApiClient.hasCredentials(settings)) return getString(R.string.status_not_configured)
+        if (account.isNullOrBlank()) return getString(R.string.status_not_configured)
+        XApiClient.fetchProfile(context, account)
+        return getString(R.string.status_connected)
+    }
+
+    private fun connectorStatusPrefix(active: Boolean, fallback: Boolean, status: String): String {
+        val prefix = when {
+            active -> getString(R.string.status_active)
+            fallback -> getString(R.string.status_fallback)
+            else -> getString(R.string.status_inactive)
+        }
+        return "$prefix • $status"
+    }
+
+    private fun friendlyError(error: Throwable): String {
+        val message = error.message.orEmpty()
+        return when {
+            message.contains("client-not-enrolled", ignoreCase = true) ||
+                message.contains("client forbidden", ignoreCase = true) ->
+                getString(R.string.status_x_client_forbidden)
+            message.contains("HTTP 403") -> getString(R.string.status_http_error, 403)
+            message.contains("HTTP 401") -> getString(R.string.status_http_error, 401)
+            else -> message
+                .replace(Regex("\\s+"), " ")
+                .take(96)
+                .ifBlank { error.javaClass.simpleName }
+        }.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString() }
     }
 
     private fun maskedToken(token: String): String =

@@ -6,6 +6,10 @@ keystore.properties
 .env.*
 *.keystore
 *.jks
+# Shared debug signing key (debug-only, standard android/androiddebugkey
+# credentials, no security value) — committed so CI and local debug builds
+# share a signature and update each other in place.
+!app/debug.keystore
 
 # Build output
 .gradle/

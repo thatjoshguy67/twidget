@@ -28,6 +28,16 @@ android {
     }
 
     signingConfigs {
+        // Checked-in debug keystore so every debug build — any machine, CI
+        // included — shares a signature and installs update in place.
+        // Debug-only: standard android/androiddebugkey credentials, no
+        // security value.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (releaseStoreFile != null) {
             create("release") {
                 storeFile = file(releaseStoreFile)

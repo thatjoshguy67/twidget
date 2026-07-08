@@ -106,7 +106,10 @@ object TwidgetStore {
     private const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     private const val MAX_HISTORY_DAYS = 400
-    private const val HISTORY_MIGRATION_VERSION = 2
+    // v3 (2026-07-08): drops persisted estimated samples — pool-synced graph
+    // estimates carried a partial-enumeration anchoring bug; sound ones come
+    // back from the pool after the server-side purge and regeneration.
+    private const val HISTORY_MIGRATION_VERSION = 3
     private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "followers",
@@ -471,7 +474,7 @@ object TwidgetStore {
             if (statsJson(context, username) == null && historyJson(context, username) == null) return@forEach
             val stats = currentStats(context, username)
             val normalized = collapseLeadingFlatRun(
-                flatBackfillProfileMetrics(savedHistory(context, username), stats)
+                flatBackfillProfileMetrics(savedHistory(context, username).filterNot { it.estimated }, stats)
                     .ifEmpty { listOf(sampleFor(stats)) }
             )
             edit.putString(historyKey(username), JSONArray(normalized.map { historyToJson(it) }).toString())

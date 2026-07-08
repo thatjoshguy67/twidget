@@ -25,6 +25,29 @@ const oauthStates = new Map();
 const oauthSessions = new Map();
 const historyStore = loadHistoryStore();
 
+// One-time cleanup (2026-07-08): earlier graph backfills anchored partial
+// follower enumerations at zero, storing wildly low estimates (an account's
+// newest ~1k follows mapped onto its first days). Drop every graph sample
+// and the per-account markers so the hourly loop regenerates them with
+// baseCount anchoring.
+if (!historyStore.graphPurgedAt) {
+  let purged = 0;
+  for (const key of Object.keys(historyStore.accounts)) {
+    const samples = historyStore.accounts[key] || [];
+    const kept = samples.filter((sample) => sample.src !== "graph");
+    purged += samples.length - kept.length;
+    historyStore.accounts[key] = kept;
+    if (historyStore.meta[key]) {
+      delete historyStore.meta[key].graphAt;
+      delete historyStore.meta[key].graphSamples;
+      delete historyStore.meta[key].graphSkipped;
+    }
+  }
+  historyStore.graphPurgedAt = Date.now();
+  saveHistoryStore();
+  if (purged) console.log(`Purged ${purged} stale graph samples`);
+}
+
 app.disable("x-powered-by");
 // Railway (and most PaaS) put exactly one proxy in front of the app. Trusting a
 // single hop keeps req.ip honest; `true` would trust any spoofed X-Forwarded-For.
@@ -657,6 +680,7 @@ function loadHistoryStore() {
       version: 1,
       accounts: parsed && typeof parsed.accounts === "object" && parsed.accounts ? parsed.accounts : {},
       meta: parsed && typeof parsed.meta === "object" && parsed.meta ? parsed.meta : {},
+      graphPurgedAt: Number(parsed?.graphPurgedAt) || undefined,
     };
   } catch (error) {
     if (error.code !== "ENOENT") {
@@ -722,11 +746,16 @@ async function backfillFromFollowerGraph(username) {
     }
     followerCreatedAts.reverse(); // API pages newest follow first
 
+    // Pagination often ends before the full list (rate limits, API caps), so
+    // the window covers only the newest follows; everything before it counts
+    // toward the anchor base or the curve collapses onto the account's start.
+    const baseCount = Math.max(0, total - followerCreatedAts.length);
     const points = reconstructFollowerHistory({
       followerCreatedAts,
       accountCreatedAt,
       currentCount: total,
       now: Date.now(),
+      baseCount,
     });
     const samples = points.map((point) => ({
       dayLabel: dayLabel(point.ts),
@@ -739,9 +768,15 @@ async function backfillFromFollowerGraph(username) {
       src: "graph",
     }));
     if (samples.length) storeSamples(key, samples, { preferExisting: true });
-    historyStore.meta[key] = { ...historyStore.meta[key], graphAt: Date.now(), graphSamples: samples.length };
+    historyStore.meta[key] = {
+      ...historyStore.meta[key],
+      graphAt: Date.now(),
+      graphSamples: samples.length,
+      graphEnumerated: followerCreatedAts.length,
+      graphTotal: total,
+    };
     saveHistoryStore();
-    console.log(`Follower-graph backfill for ${key}: ${samples.length} estimated samples from ${followerCreatedAts.length} followers`);
+    console.log(`Follower-graph backfill for ${key}: ${samples.length} estimated samples from ${followerCreatedAts.length}/${total} followers`);
   } catch (error) {
     // No marker on failure: refreshKnownAccounts retries next cycle, so the
     // feature self-activates once a valid key appears.

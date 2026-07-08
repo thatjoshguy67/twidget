@@ -6,18 +6,6 @@
     android:background="?roundedCornerColor"
     android:orientation="vertical">
 
-    <LinearLayout
-        android:id="@+id/range_selector"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?roundedCornerColor"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="26dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="26dp"
-        android:paddingBottom="8dp" />
-
     <dev.oneuiproject.oneui.widget.RoundedFrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

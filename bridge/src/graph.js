@@ -15,7 +15,13 @@
 // followerCreatedAts: creation timestamps (ms) in chronological FOLLOW order
 // (oldest follow first). Returns monthly { ts, followers } points from the
 // account's creation month up to (not including) today.
-export function reconstructFollowerHistory({ followerCreatedAts, accountCreatedAt, currentCount, now }) {
+//
+// baseCount: number of follows that happened BEFORE the enumerated window.
+// Pagination can end early, leaving only the newest follows — anchoring those
+// at count index+1 would map the recent tail onto the start of the account's
+// life (the "8 followers yesterday" bug). The stretch between account
+// creation and the first pin stays plain interpolation.
+export function reconstructFollowerHistory({ followerCreatedAts, accountCreatedAt, currentCount, now, baseCount = 0 }) {
   if (!accountCreatedAt || !currentCount || currentCount < 1) return [];
 
   const anchors = [{ time: accountCreatedAt, count: 0 }];
@@ -23,7 +29,7 @@ export function reconstructFollowerHistory({ followerCreatedAts, accountCreatedA
   followerCreatedAts.forEach((created, index) => {
     if (created > newestSeen && created <= now) {
       newestSeen = created;
-      anchors.push({ time: created, count: index + 1 });
+      anchors.push({ time: created, count: baseCount + index + 1 });
     }
   });
   anchors.push({ time: now, count: currentCount });

@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity() {
     private var isSyncing = false
     private var accounts = emptyList<String>()
     private var selectedAccount: String = ""
-    private var selectedRange: HistoryRange = HistoryRange.WEEK
     private var editMode = false
     private var draggedCardId: String? = null
     private var dragPreviewOrder: List<String>? = null
@@ -154,83 +153,16 @@ class MainActivity : AppCompatActivity() {
         val page = host.getChildAt(0)
             ?: LayoutInflater.from(this).inflate(R.layout.main_account_page, host, false)
                 .also { host.addView(it) }
-        buildRangeSelector(page)
         bindPage(page, selectedAccount)
     }
 
-    private fun buildRangeSelector(page: View) {
-        val row = page.findViewById<LinearLayout>(R.id.range_selector) ?: return
-        val ranges = unlockedRanges(selectedAccount)
-        if (selectedRange !in ranges) selectedRange = HistoryRange.WEEK
-        row.removeAllViews()
-        row.visibility = if (ranges.size < 2) View.GONE else View.VISIBLE
-        if (ranges.size < 2) return
-        ranges.forEach { range ->
-            val selected = range == selectedRange
-            val tab = TextView(this).apply {
-                text = getString(range.labelRes)
-                gravity = android.view.Gravity.CENTER
-                maxLines = 1
-                minHeight = dp(38)
-                setPadding(dp(6), 0, dp(6), 0)
-                // Chips share the row width equally; on narrow screens the
-                // label shrinks instead of overflowing its pill.
-                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                    this, 9, 14, 1, TypedValue.COMPLEX_UNIT_SP,
-                )
-                typeface = android.graphics.Typeface.create("sec", android.graphics.Typeface.BOLD)
-                setTextColor(if (selected) Color.WHITE else getColor(R.color.oneui_text_primary))
-                background = rangeChipBackground(selected)
-                isSelected = selected
-                setOnClickListener {
-                    if (selectedRange != range) {
-                        selectedRange = range
-                        clearDragPreview()
-                        buildRangeSelector(page)
-                        bindPage(page, selectedAccount)
-                    }
-                }
-            }
-            row.addView(tab, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = if (row.childCount == 0) 0 else dp(8)
-            })
-        }
-    }
-
-    // A range's chip appears once the recorded history outgrows the previous
-    // range's window — until then the longer range would draw the same bars.
-    // With only a week of data there is nothing to switch between, so the
-    // whole bar stays hidden.
-    private fun unlockedRanges(account: String): List<HistoryRange> {
-        val firstSample = TwidgetStore.fullHistory(this, account).first().timestamp
-        val spanDays = ((System.currentTimeMillis() - firstSample) / DAY_MILLIS).toInt() + 1
-        return HistoryRange.entries.filter { range ->
-            when (range) {
-                HistoryRange.WEEK -> true
-                HistoryRange.MONTH -> spanDays > 7
-                HistoryRange.THREE_MONTHS -> spanDays > 30
-                HistoryRange.YTD, HistoryRange.YEAR -> spanDays > 90
-            }
-        }
-    }
-
-    private fun rangeChipBackground(selected: Boolean): GradientDrawable =
-        GradientDrawable().apply {
-            cornerRadius = dp(20).toFloat()
-            if (selected) {
-                setColor(getColor(R.color.oneui_accent))
-            } else {
-                setColor(getColor(R.color.oneui_card_bg))
-                setStroke(dp(1), getColor(R.color.oneui_divider))
-            }
-        }
-
     private fun bindPage(page: View, account: String) {
         val stats = TwidgetStore.currentStats(this, account)
-        // Daily samples drive the numbers; the chart list is the same range
-        // bucketed down to a readable bar count.
-        val history = TwidgetStore.rangedHistory(this, account, selectedRange)
-        val chartHistory = TwidgetStore.chartHistory(this, account, selectedRange)
+        // Daily samples drive the numbers; the chart list is the same week
+        // bucketed down to a readable bar count. Analytics are fixed to the
+        // weekly window — the old range chips are gone.
+        val history = TwidgetStore.rangedHistory(this, account, HistoryRange.WEEK)
+        val chartHistory = TwidgetStore.chartHistory(this, account, HistoryRange.WEEK)
         bindHistoryNotice(page, history, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
@@ -274,34 +206,12 @@ class MainActivity : AppCompatActivity() {
                 notice.setText(R.string.estimated_notice)
                 notice.visibility = View.VISIBLE
             }
-            history.size < requiredHistoryDays(selectedRange) -> {
+            history.size < 7 -> {
                 notice.setText(R.string.history_notice)
                 notice.visibility = View.VISIBLE
             }
             else -> notice.visibility = View.GONE
         }
-    }
-
-    private fun requiredHistoryDays(range: HistoryRange): Int =
-        when (range) {
-            HistoryRange.WEEK -> 7
-            HistoryRange.MONTH -> 30
-            HistoryRange.THREE_MONTHS -> 90
-            HistoryRange.YEAR -> 365
-            HistoryRange.YTD -> daysSinceYearStart()
-        }
-
-    private fun daysSinceYearStart(): Int {
-        val now = java.util.Calendar.getInstance()
-        val start = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.MONTH, java.util.Calendar.JANUARY)
-            set(java.util.Calendar.DAY_OF_MONTH, 1)
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        return (((now.timeInMillis - start.timeInMillis) / DAY_MILLIS).toInt() + 1).coerceAtLeast(1)
     }
 
     // Net change across the whole visible range (last bucket minus first).

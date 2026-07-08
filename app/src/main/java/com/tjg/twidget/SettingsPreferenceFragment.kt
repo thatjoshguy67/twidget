@@ -89,11 +89,13 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             summary = dataSourceTitle(settings.dataSource)
             entries = arrayOf(
                 getString(R.string.source_default),
+                getString(R.string.source_fxtwitter),
                 getString(R.string.source_self_hosted),
                 getString(R.string.source_x_api),
             )
             entryValues = arrayOf(
                 TwidgetStore.DATA_SOURCE_DEFAULT,
+                TwidgetStore.DATA_SOURCE_FXTWITTER,
                 TwidgetStore.DATA_SOURCE_SELF_HOSTED,
                 TwidgetStore.DATA_SOURCE_X_API,
             )
@@ -334,6 +336,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     private fun dataSourceTitle(source: String): String = when (source) {
+        TwidgetStore.DATA_SOURCE_FXTWITTER -> getString(R.string.source_fxtwitter)
         TwidgetStore.DATA_SOURCE_SELF_HOSTED -> getString(R.string.source_self_hosted)
         TwidgetStore.DATA_SOURCE_X_API -> getString(R.string.source_x_api)
         else -> getString(R.string.source_default)

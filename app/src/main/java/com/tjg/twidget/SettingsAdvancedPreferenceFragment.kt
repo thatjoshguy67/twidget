@@ -36,6 +36,20 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         val selfHostedActive = settings.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED
         val xApiActive = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API
 
+        screen.addPreference(category(R.string.source_fxtwitter))
+        val fxTwitterStatus = Preference(context).apply {
+            key = "fxtwitter_status_pref"
+            title = getString(R.string.fxtwitter_status)
+            summary = getString(R.string.status_checking)
+            isSelectable = false
+        }
+        screen.addPreference(fxTwitterStatus)
+        screen.addPreference(Preference(context).apply {
+            key = "fxtwitter_explainer_pref"
+            title = getString(R.string.fxtwitter_explainer)
+            isSelectable = false
+        })
+
         screen.addPreference(category(R.string.source_self_hosted))
         val bridgeStatus = Preference(context).apply {
             key = "bridge_status_pref"
@@ -159,10 +173,14 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         })
 
         preferenceScreen = screen
-        refreshConnectorStatuses(bridgeStatus, xApiStatus)
+        refreshConnectorStatuses(bridgeStatus, xApiStatus, fxTwitterStatus)
     }
 
-    private fun refreshConnectorStatuses(bridgeStatus: Preference, xApiStatus: Preference) {
+    private fun refreshConnectorStatuses(
+        bridgeStatus: Preference,
+        xApiStatus: Preference,
+        fxTwitterStatus: Preference,
+    ) {
         val snapshot = settings
         val appContext = requireContext().applicationContext
         val account = TwidgetStore.accounts(appContext).firstOrNull()
@@ -172,17 +190,25 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             val xApi = runCatching { xApiStatusSummary(appContext, snapshot, account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            val fxTwitter = runCatching { fxTwitterStatusSummary(account) }
+                .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             if (!isAdded) return@Thread
             requireActivity().runOnUiThread {
                 bridgeStatus.summary = connectorStatusPrefix(
-                    active = snapshot.dataSource != TwidgetStore.DATA_SOURCE_X_API,
-                    fallback = snapshot.dataSource == TwidgetStore.DATA_SOURCE_X_API,
+                    active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT ||
+                        snapshot.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED,
+                    fallback = true,
                     status = bridge,
                 )
                 xApiStatus.summary = connectorStatusPrefix(
                     active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_X_API,
                     fallback = false,
                     status = xApi,
+                )
+                fxTwitterStatus.summary = connectorStatusPrefix(
+                    active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER,
+                    fallback = false,
+                    status = fxTwitter,
                 )
             }
         }.start()
@@ -216,6 +242,17 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         if (account.isNullOrBlank()) return getString(R.string.status_not_configured)
         XApiClient.fetchProfile(context, account)
         return getString(R.string.status_connected)
+    }
+
+    // Reports the live follower count so the FxTwitter numbers can be eyeballed
+    // against the bridge while evaluating the source.
+    private fun fxTwitterStatusSummary(account: String?): String {
+        if (account.isNullOrBlank()) return getString(R.string.status_not_configured)
+        val profile = FxTwitterClient.fetchProfile(account)
+        return getString(
+            R.string.status_connected_detail,
+            String.format(Locale.getDefault(), "%,d followers", profile.followersCount),
+        )
     }
 
     private fun connectorStatusPrefix(active: Boolean, fallback: Boolean, status: String): String {

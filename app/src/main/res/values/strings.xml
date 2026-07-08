@@ -73,6 +73,8 @@
     <string name="active_source">Active source</string>
     <string name="source_default">Default</string>
     <string name="source_default_summary">App provided Rettiwt</string>
+    <string name="source_fxtwitter">FxTwitter</string>
+    <string name="source_fxtwitter_summary">Free public FxTwitter API</string>
     <string name="source_self_hosted">Self hosted Rettiwt</string>
     <string name="source_self_hosted_summary">Use your own compatible bridge</string>
     <string name="source_x_api">X API</string>
@@ -80,8 +82,10 @@
     <string name="advanced_options">Advanced options</string>
     <string name="advanced_options_summary">Configure self-hosted and X API sources</string>
     <string name="x_api_explainer">The official X API is not free for general v2 access. Bring your own developer credentials from a project with active paid or pay-per-use X API access, and Twidget will call X directly from your device.</string>
+    <string name="fxtwitter_explainer">FxTwitter is a free public API that needs no credentials. Twidget calls it directly from your device; when it is the active source, the bridge stays available as a fallback.</string>
     <string name="bridge_status">Bridge status</string>
     <string name="x_api_status">X API status</string>
+    <string name="fxtwitter_status">FxTwitter status</string>
     <string name="status_active">Active</string>
     <string name="status_fallback">Fallback</string>
     <string name="status_inactive">Inactive</string>

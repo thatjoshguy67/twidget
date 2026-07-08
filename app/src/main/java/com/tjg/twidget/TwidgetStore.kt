@@ -77,6 +77,7 @@ object TwidgetStore {
     const val DATA_SOURCE_DEFAULT = "default_rettiwt"
     const val DATA_SOURCE_SELF_HOSTED = "self_hosted_rettiwt"
     const val DATA_SOURCE_X_API = "official_x_api"
+    const val DATA_SOURCE_FXTWITTER = "fxtwitter"
     const val COLOR_MODE_LIGHT = "light"
     const val COLOR_MODE_DARK = "dark"
     const val COLOR_MODE_SYSTEM = "system"

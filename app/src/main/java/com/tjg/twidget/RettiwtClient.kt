@@ -43,6 +43,16 @@ object RettiwtClient {
             }
         }
 
+        // FxTwitter source hits the public api.fxtwitter.com directly from the
+        // device; the bridge below stays as its fallback.
+        if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
+            try {
+                return finalize(FxTwitterClient.fetchProfile(username), username)
+            } catch (error: Exception) {
+                lastError = error
+            }
+        }
+
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
         val candidates = listOf(
             "$bridgeUrl/user/$encoded",
@@ -89,6 +99,15 @@ object RettiwtClient {
                 isPrivate = parsed.isPrivate ?: official.isPrivate,
             )
         }
+        runCatching { FxTwitterClient.fetchProfile(parsed.userName) }
+            .getOrNull()
+            ?.takeIf { it.isVerified != null || it.isPrivate != null }
+            ?.let { fx ->
+                return parsed.copy(
+                    isVerified = parsed.isVerified ?: fx.isVerified,
+                    isPrivate = parsed.isPrivate ?: fx.isPrivate,
+                )
+            }
         if (!XApiClient.hasCredentials(settings)) return parsed
         return runCatching {
             val official = XApiClient.fetchProfile(context, parsed.userName)

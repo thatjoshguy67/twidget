@@ -36,6 +36,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(express.json({ limit: "128kb" }));
+
 app.use((req, res, next) => {
   const key = req.ip || "unknown";
   const now = Date.now();
@@ -74,6 +76,7 @@ app.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "twidget-bridge",
+    upstream: "fxtwitter",
     authMode: process.env.RETTIWT_API_KEY ? "user" : "guest",
     xOAuthConfigured: Boolean(process.env.X_CLIENT_ID),
     history: {
@@ -195,6 +198,79 @@ app.get(["/official/user/:username", "/x/user/:username", "/api/x/user/:username
   }
 });
 
+// ---- Shared history pool ---------------------------------------------------
+// Opt-in clients register the accounts they track and read back the pooled
+// per-day history. The server sources every ongoing number itself (FxTwitter),
+// so there is nothing for a hostile client to poison; client uploads only
+// backfill days the server never observed, bounded by the server's own
+// real anchors.
+
+app.get("/history/:username", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const key = username.toLowerCase();
+  if (!historyStore.accounts[key]?.length) {
+    try {
+      const profile = await fetchProfile(username);
+      recordHistorySample(profile);
+      cache.set(key, { fetchedAt: Date.now(), data: profile });
+      void backfillFromWayback(username);
+      void backfillFromFollowerGraph(username);
+      console.log(`Pool registered ${key}`);
+    } catch (error) {
+      console.error(`Pool registration failed for ${username}:`, error);
+      res.status(502).json({ error: "profile_fetch_failed" });
+      return;
+    }
+  }
+  res.json({ userName: username, history: historyFor(username) });
+});
+
+app.post("/history/:username/backfill", (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const key = username.toLowerCase();
+  const existing = historyStore.accounts[key];
+  if (!existing?.length) {
+    res.status(409).json({ error: "account_not_registered" });
+    return;
+  }
+  const submitted = Array.isArray(req.body?.samples) ? req.body.samples.slice(0, maxHistoryDays) : [];
+  const accepted = acceptableClientSamples(existing, submitted);
+  if (accepted.length) {
+    storeSamples(key, accepted, { preferExisting: true });
+    console.log(`Pool backfill for ${key}: accepted ${accepted.length}/${submitted.length}`);
+  }
+  res.json({ accepted: accepted.length, rejected: submitted.length - accepted.length });
+});
+
+// Gap days only (server samples always win), never today, never estimates,
+// and follower counts capped relative to the server's own real anchors.
+// Worst case is a fabricated value on a day nobody observed, bracketed ever
+// more tightly as real samples accumulate around it.
+function acceptableClientSamples(existing, submitted) {
+  const real = existing.filter((sample) => !sample.est);
+  if (!real.length) return [];
+  const knownDays = new Set(existing.filter((sample) => !sample.est).map((sample) => sample.ts));
+  const today = startOfDay(Date.now());
+  const followerCap = Math.max(...real.map((sample) => sample.followers)) * 2 + 100;
+  const accepted = new Map();
+  for (const item of submitted) {
+    const sample = normalizeHistorySample(item);
+    if (!sample || sample.est) continue;
+    if (sample.ts >= today || knownDays.has(sample.ts) || accepted.has(sample.ts)) continue;
+    if (sample.followers > followerCap) continue;
+    accepted.set(sample.ts, { ...sample, src: "client" });
+  }
+  return Array.from(accepted.values());
+}
+
 app.get(["/user/:username", "/users/:username", "/details/:username"], async (req, res) => {
   await handleUser(req.params.username, res);
 });
@@ -219,7 +295,9 @@ app.use((_req, res) => {
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: "internal_error" });
+  // Body-parser rejections (bad JSON, oversize payload) carry their own status.
+  const status = Number(error?.status || error?.statusCode);
+  res.status(status >= 400 && status < 600 ? status : 500).json({ error: "internal_error" });
 });
 
 const server = app.listen(port, "0.0.0.0", () => {
@@ -307,7 +385,47 @@ async function handleUser(input, res) {
   }
 }
 
+// FxTwitter is the primary upstream: free, no credentials, and it reports
+// verified/protected directly. Rettiwt stays as the fallback for the days
+// FxTwitter is down or blocked.
 async function fetchProfile(username) {
+  try {
+    return await fetchFxProfile(username);
+  } catch (error) {
+    console.warn(`FxTwitter fetch failed for ${username}, falling back to Rettiwt:`, error?.message ?? error);
+  }
+  return fetchRettiwtProfile(username);
+}
+
+async function fetchFxProfile(username) {
+  const response = await fetch(`https://api.fxtwitter.com/${encodeURIComponent(username)}`, {
+    headers: { Accept: "application/json", "User-Agent": "TwidgetBridge/0.1" },
+    signal: AbortSignal.timeout(10000),
+  });
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`FxTwitter ${response.status}: ${stringValue(json.message) || "request failed"}`);
+  }
+  const user = json.user;
+  if (!user || typeof user !== "object") {
+    throw new Error(`FxTwitter returned no user (${stringValue(json.message) || "unknown"})`);
+  }
+  return {
+    fullName: stringValue(user.name) || username,
+    userName: (stringValue(user.screen_name) || username).replace(/^@+/, ""),
+    followersCount: numberValue(user.followers),
+    followingsCount: numberValue(user.following),
+    statusesCount: numberValue(user.tweets),
+    likeCount: numberValue(user.likes),
+    profileImage: highResolutionProfileImageUrl(user.avatar_url),
+    isVerified: user.verification && typeof user.verification === "object"
+      ? Boolean(user.verification.verified)
+      : booleanValue(user.verified),
+    isPrivate: user.protected !== undefined ? booleanValue(user.protected) : undefined,
+  };
+}
+
+async function fetchRettiwtProfile(username) {
   const rettiwt = new Rettiwt({
     ...(process.env.RETTIWT_API_KEY ? { apiKey: process.env.RETTIWT_API_KEY } : {}),
     timeout: 10000,

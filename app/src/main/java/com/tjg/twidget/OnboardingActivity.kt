@@ -19,6 +19,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -48,6 +49,7 @@ class OnboardingActivity : AppCompatActivity() {
         setContentView(R.layout.activity_onboarding)
         setupInput()
         setupButtons()
+        setupShareHistoryCheckbox()
         renderStep()
     }
 
@@ -116,6 +118,20 @@ class OnboardingActivity : AppCompatActivity() {
             when (step) {
                 STEP_PROFILE -> showAdvancedDialog()
                 STEP_WIDGETS -> enterApp()
+            }
+        }
+    }
+
+    // Saved immediately on toggle: the widgets step has no explicit finish
+    // action — users leave via the pin dialog, Continue, or back.
+    private fun setupShareHistoryCheckbox() {
+        findViewById<CheckBox>(R.id.share_history_checkbox).apply {
+            isChecked = TwidgetStore.settings(this@OnboardingActivity).shareHistory
+            setOnCheckedChangeListener { _, isChecked ->
+                TwidgetStore.saveSettings(
+                    this@OnboardingActivity,
+                    TwidgetStore.settings(this@OnboardingActivity).copy(shareHistory = isChecked),
+                )
             }
         }
     }

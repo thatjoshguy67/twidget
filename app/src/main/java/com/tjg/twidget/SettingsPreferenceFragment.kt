@@ -88,14 +88,14 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             dialogTitle = getString(R.string.active_source)
             summary = dataSourceTitle(settings.dataSource)
             entries = arrayOf(
-                getString(R.string.source_default),
                 getString(R.string.source_fxtwitter),
+                getString(R.string.source_default),
                 getString(R.string.source_self_hosted),
                 getString(R.string.source_x_api),
             )
             entryValues = arrayOf(
-                TwidgetStore.DATA_SOURCE_DEFAULT,
                 TwidgetStore.DATA_SOURCE_FXTWITTER,
+                TwidgetStore.DATA_SOURCE_DEFAULT,
                 TwidgetStore.DATA_SOURCE_SELF_HOSTED,
                 TwidgetStore.DATA_SOURCE_X_API,
             )
@@ -104,6 +104,16 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 val source = value as String
                 save(settings.copy(dataSource = source))
                 pref.summary = dataSourceTitle(source)
+                true
+            }
+        })
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "share_history_pref"
+            title = getString(R.string.share_history)
+            summary = getString(R.string.share_history_summary)
+            isChecked = settings.shareHistory
+            setOnPreferenceChangeListener { _, value ->
+                save(settings.copy(shareHistory = value as Boolean))
                 true
             }
         })

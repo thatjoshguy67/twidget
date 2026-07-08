@@ -211,8 +211,20 @@ object LockScreenFollowerViews {
 
             countPaint.textSize = fitTextSize(count, countPaint, width.toFloat(), 18f * density)
             deltaPaint.textSize = fitTextSize(deltaText, deltaPaint, width.toFloat(), 12f * density)
-            // Lay the icon/count/delta column out from the font metrics so the
-            // delta's descender never falls past the bitmap edge.
+            // fitTextSize only constrains width; the column must also fit the
+            // bitmap height or the delta clips at the bottom edge. Shrink both
+            // sizes together until it does, keeping at least a 1.5dp gap
+            // above and below the count.
+            fun columnHeight(): Float {
+                val cm = countPaint.fontMetrics
+                val dm = deltaPaint.fontMetrics
+                val dh = if (deltaText.isEmpty()) 0f else dm.descent - dm.ascent
+                return iconSize + (cm.descent - cm.ascent) + dh
+            }
+            while (columnHeight() > height - 3f * density && countPaint.textSize > 9f * density) {
+                countPaint.textSize -= 0.5f * density
+                deltaPaint.textSize = (countPaint.textSize * 0.68f).coerceAtLeast(8f * density)
+            }
             val countMetrics = countPaint.fontMetrics
             val deltaMetrics = deltaPaint.fontMetrics
             val countHeight = countMetrics.descent - countMetrics.ascent

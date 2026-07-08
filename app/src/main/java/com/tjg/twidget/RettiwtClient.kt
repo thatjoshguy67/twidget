@@ -44,10 +44,12 @@ object RettiwtClient {
         }
 
         // FxTwitter source hits the public api.fxtwitter.com directly from the
-        // device; the bridge below stays as its fallback.
+        // device; the bridge below stays as its fallback and, when the user
+        // has opted in, contributes to and serves the shared history pool.
         if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             try {
-                return finalize(FxTwitterClient.fetchProfile(username), username)
+                val stats = finalize(FxTwitterClient.fetchProfile(username), username)
+                return HistoryPool.enrich(context, stats, settings, bridgeUrl)
             } catch (error: Exception) {
                 lastError = error
             }

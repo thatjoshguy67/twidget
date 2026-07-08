@@ -48,6 +48,7 @@ data class TwidgetSettings(
     val refreshIntervalMinutes: Int,
     val widgetTapAction: String,
     val dataSource: String,
+    val shareHistory: Boolean,
 )
 
 data class TwidgetWidgetSettings(
@@ -95,6 +96,7 @@ object TwidgetStore {
     private const val KEY_REFRESH_INTERVAL = "refresh_interval"
     private const val KEY_TAP_ACTION = "tap_action"
     private const val KEY_DATA_SOURCE = "data_source"
+    private const val KEY_SHARE_HISTORY = "share_history"
     private const val KEY_PROFILE = "profile"
     private const val KEY_HISTORY = "history"
     private const val KEY_ONBOARDED = "onboarded"
@@ -136,7 +138,8 @@ object TwidgetStore {
             refreshOnLaunch = prefs.getBoolean(KEY_REFRESH_ON_LAUNCH, true),
             refreshIntervalMinutes = prefs.getInt(KEY_REFRESH_INTERVAL, 15).coerceIn(15, 240),
             widgetTapAction = prefs.getString(KEY_TAP_ACTION, TAP_REFRESH) ?: TAP_REFRESH,
-            dataSource = prefs.getString(KEY_DATA_SOURCE, DATA_SOURCE_DEFAULT) ?: DATA_SOURCE_DEFAULT,
+            dataSource = prefs.getString(KEY_DATA_SOURCE, DATA_SOURCE_FXTWITTER) ?: DATA_SOURCE_FXTWITTER,
+            shareHistory = prefs.getBoolean(KEY_SHARE_HISTORY, false),
         )
     }
 
@@ -153,6 +156,7 @@ object TwidgetStore {
             .putInt(KEY_REFRESH_INTERVAL, settings.refreshIntervalMinutes.coerceIn(15, 240))
             .putString(KEY_TAP_ACTION, settings.widgetTapAction)
             .putString(KEY_DATA_SOURCE, settings.dataSource)
+            .putBoolean(KEY_SHARE_HISTORY, settings.shareHistory)
             .apply()
         if (username.isNotBlank()) addAccount(context, username)
     }
@@ -181,6 +185,7 @@ object TwidgetStore {
             .putInt(KEY_REFRESH_INTERVAL, current.refreshIntervalMinutes.coerceIn(15, 240))
             .putString(KEY_TAP_ACTION, current.widgetTapAction)
             .putString(KEY_DATA_SOURCE, current.dataSource)
+            .putBoolean(KEY_SHARE_HISTORY, current.shareHistory)
             .putBoolean(KEY_ONBOARDED, cleanUsername.isNotBlank())
             .remove(KEY_PROFILE)
             .remove(KEY_HISTORY)

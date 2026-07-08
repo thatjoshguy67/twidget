@@ -71,10 +71,13 @@
     <string name="data_source">Data source</string>
     <string name="refresh">Refresh</string>
     <string name="active_source">Active source</string>
-    <string name="source_default">Default</string>
-    <string name="source_default_summary">App provided Rettiwt</string>
+    <string name="source_default">Twidget bridge</string>
+    <string name="source_default_summary">Shared Twidget server</string>
     <string name="source_fxtwitter">FxTwitter</string>
     <string name="source_fxtwitter_summary">Free public FxTwitter API</string>
+    <string name="share_history">Contribute to shared history</string>
+    <string name="share_history_summary">Share which public accounts you track with the Twidget server and get the community\'s pooled daily history back — deeper charts from day one. Only public follower counts are stored.</string>
+    <string name="share_history_onboarding_summary">Optional: get the community\'s pooled daily history for deeper charts from day one. Shares only which public accounts you track.</string>
     <string name="source_self_hosted">Self hosted Rettiwt</string>
     <string name="source_self_hosted_summary">Use your own compatible bridge</string>
     <string name="source_x_api">X API</string>

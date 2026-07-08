@@ -300,12 +300,13 @@ object TwidgetStore {
         return saved ?: fallbackStats(context, cleanUsername)
     }
 
-    // Recent daily samples (last week), used by the widgets and their deltas.
+    // Recent real daily samples (last week), used by the widgets.
     fun history(context: Context, username: String = settings(context).username): List<HistorySample> =
-        fullHistory(context, username).takeLast(7)
+        fullHistory(context, username).filterNot { it.estimated }.takeLast(7)
 
-    // Every recorded daily sample, oldest first. Real data only — demo samples
-    // are merged in only before onboarding, and they are never persisted.
+    // Every stored sample, oldest first: real daily closes and archive
+    // anchors, plus bridge-estimated reconstruction samples (est flag). Demo
+    // samples are merged in only before onboarding and never persisted.
     fun fullHistory(context: Context, username: String = settings(context).username): List<HistorySample> {
         val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
         val stats = currentStats(context, cleanUsername)
@@ -317,10 +318,10 @@ object TwidgetStore {
         return backfilled
     }
 
-    // Recorded samples inside the range window, oldest first. No synthetic
-    // history: ranges longer than the recorded history just return what exists.
+    // REAL samples inside the range window, oldest first — the input for
+    // every delta and insight number. Estimated samples never appear here.
     fun rangedHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
-        val all = fullHistory(context, username)
+        val all = fullHistory(context, username).filterNot { it.estimated }
         return all.filter { it.timestamp >= rangeStart(range) }
             .ifEmpty { listOfNotNull(all.lastOrNull()) }
     }
@@ -339,7 +340,11 @@ object TwidgetStore {
         return bucketEnds(range).mapNotNull { end ->
             val bucketStart = previousEnd + 1
             previousEnd = end
-            val sample = all.lastOrNull { it.timestamp in bucketStart..end } ?: estimateAt(all, end)
+            // Real sample in the bucket wins; else a stored estimate (graph
+            // reconstruction); else interpolate between surrounding points.
+            val sample = all.lastOrNull { it.timestamp in bucketStart..end && !it.estimated }
+                ?: all.lastOrNull { it.timestamp in bucketStart..end }
+                ?: estimateAt(all, end)
             sample?.copy(dayLabel = labelFormat.format(Date(sample.timestamp)))
         }
     }
@@ -409,7 +414,10 @@ object TwidgetStore {
         addAccount(context, username)
         recordTodayOpen(context, username, stats)
         val saved = savedHistory(context, username)
-        val next = mergeByDay(saved + stats.history + sampleFor(stats)).filterNot { it.estimated }
+        // Bridge-estimated samples (est flag) persist so charts can render
+        // them; the real-only filters in rangedHistory/history keep them out
+        // of every number.
+        val next = mergeByDay(saved + stats.history + sampleFor(stats))
         prefs(context).edit()
             .putString(profileKey(username), statsToJson(stats.copy(userName = username)).toString())
             .putString(historyKey(username), JSONArray(next.map { historyToJson(it) }).toString())
@@ -429,7 +437,7 @@ object TwidgetStore {
     private fun deltaBaseline(context: Context, username: String): HistorySample? {
         val today = startOfDay(System.currentTimeMillis())
         return fullHistory(context, username)
-            .lastOrNull { it.timestamp == today - DAY_MILLIS }
+            .lastOrNull { it.timestamp == today - DAY_MILLIS && !it.estimated }
             ?: todayOpen(context, username)
     }
 
@@ -551,7 +559,13 @@ object TwidgetStore {
     // to one per month instead of being evicted by a hard cap.
     private fun mergeByDay(samples: List<HistorySample>): List<HistorySample> {
         val merged = linkedMapOf<Long, HistorySample>()
-        samples.sortedBy { it.timestamp }.forEach { merged[startOfDay(it.timestamp)] = it }
+        samples.sortedBy { it.timestamp }.forEach { sample ->
+            val day = startOfDay(sample.timestamp)
+            val current = merged[day]
+            // A real measurement on a day always beats an estimate for it.
+            if (current != null && !current.estimated && sample.estimated) return@forEach
+            merged[day] = sample
+        }
         val cutoff = startOfDay(System.currentTimeMillis()) - MAX_HISTORY_DAYS * DAY_MILLIS
         val (older, recent) = merged.values.partition { it.timestamp < cutoff }
         if (older.isEmpty()) return recent
@@ -655,6 +669,7 @@ object TwidgetStore {
         .put("posts", sample.posts)
         .put("likes", sample.likes)
         .put("ts", sample.timestamp)
+        .apply { if (sample.estimated) put("est", true) }
 
     private fun historyFromJson(json: JSONObject): HistorySample = HistorySample(
         dayLabel = json.optString("dayLabel", ""),
@@ -663,6 +678,7 @@ object TwidgetStore {
         posts = json.optLong("posts", 0),
         likes = json.optLong("likes", 0),
         timestamp = json.optLong("ts", 0),
+        estimated = json.optBoolean("est", false),
     )
 
     // Older builds only recorded followers, so early samples can carry zero

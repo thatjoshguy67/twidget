@@ -180,6 +180,7 @@ object RettiwtClient {
                     posts = sample.optLong("posts", 0L),
                     likes = sample.optLong("likes", 0L),
                     timestamp = timestamp,
+                    estimated = sample.optBoolean("est", false),
                 )
             }
     }

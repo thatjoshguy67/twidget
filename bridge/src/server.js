@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Rettiwt } from "rettiwt-api";
+import { reconstructFollowerHistory } from "./graph.js";
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
@@ -13,6 +14,8 @@ const maxHistoryDays = Number(process.env.HISTORY_MAX_DAYS || 400);
 const historyRefreshMs = Number(process.env.HISTORY_REFRESH_MINUTES || 60) * 60 * 1000;
 const waybackEnabled = process.env.WAYBACK_BACKFILL !== "0";
 const waybackMaxSnapshots = Number(process.env.WAYBACK_MAX_SNAPSHOTS || 12);
+const graphEnabled = process.env.GRAPH_BACKFILL !== "0";
+const graphMaxFollowers = Number(process.env.GRAPH_MAX_FOLLOWERS || 25000);
 const historyStorePath = process.env.HISTORY_STORE_PATH ||
   (fs.existsSync("/data") ? "/data/twidget-history.json" : path.resolve(process.cwd(), "data", "twidget-history.json"));
 
@@ -78,6 +81,11 @@ app.get("/health", (_req, res) => {
       maxDays: maxHistoryDays,
       accounts: Object.keys(historyStore.accounts).length,
       waybackBackfilled: Object.values(historyStore.meta).filter((meta) => meta?.waybackAt).length,
+      graph: {
+        // Follower enumeration needs an authenticated Rettiwt session.
+        enabled: graphEnabled && Boolean(process.env.RETTIWT_API_KEY),
+        backfilled: Object.values(historyStore.meta).filter((meta) => meta?.graphAt).length,
+      },
     },
   });
 });
@@ -257,6 +265,7 @@ async function refreshKnownAccounts() {
     }
     for (const key of Object.keys(historyStore.accounts)) {
       if (!historyStore.meta[key]?.waybackAt) await backfillFromWayback(key);
+      if (!historyStore.meta[key]?.graphAt) await backfillFromFollowerGraph(key);
     }
   } finally {
     refreshing = false;
@@ -288,6 +297,7 @@ async function handleUser(input, res) {
     res.setHeader("X-Twidget-Cache", "miss");
     res.json(withHistory(profile));
     void backfillFromWayback(username);
+    void backfillFromFollowerGraph(username);
   } catch (error) {
     console.error(`Failed to fetch ${username}:`, error);
     res.status(502).json({
@@ -447,7 +457,11 @@ function storeSamples(key, samples, { preferExisting = false } = {}) {
   const byDay = new Map();
   for (const item of ordered) {
     const normalized = normalizeHistorySample(item);
-    if (normalized) byDay.set(normalized.ts, normalized);
+    if (!normalized) continue;
+    // A real measurement on a day always beats an estimate for that day.
+    const current = byDay.get(normalized.ts);
+    if (current && !current.est && normalized.est) continue;
+    byDay.set(normalized.ts, normalized);
   }
   historyStore.accounts[key] = capSamples(
     Array.from(byDay.values()).sort((left, right) => left.ts - right.ts),
@@ -503,6 +517,7 @@ function normalizeHistorySample(sample) {
     likes: numberValue(sample.likes),
     ts,
     ...(sample.src ? { src: stringValue(sample.src) } : {}),
+    ...(sample.est ? { est: true } : {}),
   };
 }
 
@@ -541,6 +556,80 @@ function saveHistoryStore() {
     fs.renameSync(tempPath, historyStorePath);
   } catch (error) {
     console.warn(`Unable to write history store at ${historyStorePath}:`, error);
+  }
+}
+
+// ---- Follower-graph backfill ---------------------------------------------
+// Reconstructs an estimated followers-over-time curve from the follow order
+// and follower account-creation dates (see graph.js). Works best for exactly
+// the small accounts archives miss, but needs an authenticated Rettiwt
+// session (RETTIWT_API_KEY) to enumerate followers — dormant without one.
+// Every sample is flagged est so clients render it as an estimate.
+
+const graphInFlight = new Set();
+
+async function backfillFromFollowerGraph(username) {
+  const key = cleanUsername(username).toLowerCase();
+  if (!graphEnabled || !process.env.RETTIWT_API_KEY || !key || graphInFlight.has(key)) return;
+  if (historyStore.meta[key]?.graphAt) return;
+  graphInFlight.add(key);
+  try {
+    const rettiwt = new Rettiwt({ apiKey: process.env.RETTIWT_API_KEY, timeout: 15000, maxRetries: 1 });
+    const details = await rettiwt.user.details(key);
+    const total = numberValue(details?.followersCount);
+    const accountCreatedAt = new Date(details?.createdAt ?? 0).getTime() || 0;
+    if (!details?.id || !total || !accountCreatedAt || total > graphMaxFollowers) {
+      historyStore.meta[key] = {
+        ...historyStore.meta[key],
+        graphAt: Date.now(),
+        graphSamples: 0,
+        graphSkipped: total > graphMaxFollowers ? "too_many_followers" : "missing_details",
+      };
+      saveHistoryStore();
+      return;
+    }
+
+    const followerCreatedAts = [];
+    let cursor;
+    for (let page = 0; page < Math.ceil(graphMaxFollowers / 100); page += 1) {
+      const result = await rettiwt.user.followers(details.id, 100, cursor);
+      const list = result?.list ?? [];
+      for (const follower of list) {
+        const created = new Date(follower?.createdAt ?? 0).getTime();
+        if (created > 0) followerCreatedAts.push(created);
+      }
+      cursor = result?.next?.value;
+      if (!cursor || !list.length) break;
+      await sleep(400);
+    }
+    followerCreatedAts.reverse(); // API pages newest follow first
+
+    const points = reconstructFollowerHistory({
+      followerCreatedAts,
+      accountCreatedAt,
+      currentCount: total,
+      now: Date.now(),
+    });
+    const samples = points.map((point) => ({
+      dayLabel: dayLabel(point.ts),
+      followers: point.followers,
+      following: 0,
+      posts: 0,
+      likes: 0,
+      ts: point.ts,
+      est: true,
+      src: "graph",
+    }));
+    if (samples.length) storeSamples(key, samples, { preferExisting: true });
+    historyStore.meta[key] = { ...historyStore.meta[key], graphAt: Date.now(), graphSamples: samples.length };
+    saveHistoryStore();
+    console.log(`Follower-graph backfill for ${key}: ${samples.length} estimated samples from ${followerCreatedAts.length} followers`);
+  } catch (error) {
+    // No marker on failure: refreshKnownAccounts retries next cycle, so the
+    // feature self-activates once a valid key appears.
+    console.warn(`Follower-graph backfill failed for ${key}:`, error?.message ?? error);
+  } finally {
+    graphInFlight.delete(key);
   }
 }
 

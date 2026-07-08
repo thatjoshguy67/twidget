@@ -62,7 +62,7 @@
     <string name="private_unverified">Private account</string>
     <string name="no_recent_gain">No recent gain</string>
     <string name="history_notice">History is captured once per day. Weekly data needs at least 7 days; longer ranges fill in as Twidget keeps syncing.</string>
-    <string name="estimated_notice">Faded bars are estimates between real data points. They fill in with real data as Twidget keeps syncing.</string>
+    <string name="estimated_notice">Faded bars are estimates reconstructed from limited history. Solid bars are real data, which grows as Twidget keeps syncing.</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Open settings</string>
     <string name="refresh_stats">Refresh stats</string>

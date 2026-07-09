@@ -16,6 +16,7 @@ keystore.properties
 .kotlin/
 build/
 node_modules/
+bridge/data/
 
 # IDE
 *.iml

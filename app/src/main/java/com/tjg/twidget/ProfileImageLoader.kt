@@ -52,6 +52,29 @@ object ProfileImageLoader {
         }.start()
     }
 
+    fun loadRoundedInto(context: Context, imageView: ImageView, url: String, radiusPx: Int) {
+        applyRoundedClip(imageView, radiusPx)
+        val imageUrl = highResolutionUrl(url)
+        if (imageUrl.isBlank()) {
+            imageView.visibility = View.GONE
+            return
+        }
+        imageView.visibility = View.VISIBLE
+        cachedBitmap(context, imageUrl)?.let {
+            imageView.setImageBitmap(it)
+            return
+        }
+        imageView.setImageDrawable(null)
+        Thread {
+            val bitmap = downloadToCache(context, imageUrl)
+            imageView.post {
+                if (bitmap != null) {
+                    imageView.setImageBitmap(bitmap)
+                }
+            }
+        }.start()
+    }
+
     fun cachedBitmap(context: Context, url: String): Bitmap? {
         val imageUrl = highResolutionUrl(url)
         if (imageUrl.isBlank()) return null
@@ -79,6 +102,16 @@ object ProfileImageLoader {
         val padding = (imageView.resources.displayMetrics.density * 10).toInt()
         imageView.setPadding(padding, padding, padding, padding)
         imageView.setImageResource(R.drawable.twidget_fg)
+    }
+
+    private fun applyRoundedClip(imageView: ImageView, radiusPx: Int) {
+        imageView.outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, radiusPx.toFloat())
+            }
+        }
+        imageView.clipToOutline = true
+        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
     }
 
     private fun circularCrop(source: Bitmap, sizePx: Int): Bitmap {

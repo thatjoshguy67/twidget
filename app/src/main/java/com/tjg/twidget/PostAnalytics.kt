@@ -1,12 +1,35 @@
 package com.tjg.twidget
 
+data class PostLink(
+    val display: String,
+    val url: String,
+)
+
+data class PostMedia(
+    val type: String,
+    val url: String,
+    val alt: String,
+    val width: Long,
+    val height: Long,
+)
+
 /** One post in the best/worst pair. */
 data class PostSummary(
     val url: String,
     val text: String,
     val views: Long,
+    val likes: Long,
+    val replies: Long,
+    val reposts: Long,
+    val quotes: Long,
     val engagements: Long,
     val timestamp: Long,
+    val createdAt: String,
+    val authorName: String,
+    val authorUserName: String,
+    val authorAvatar: String,
+    val links: List<PostLink> = emptyList(),
+    val media: List<PostMedia> = emptyList(),
 )
 
 /**

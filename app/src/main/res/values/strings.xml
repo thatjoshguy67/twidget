@@ -40,9 +40,11 @@
     <string name="across_posts">%1$d posts analyzed</string>
     <string name="per_follower_pct">%1$s / follower</string>
     <string name="post_analytics">Recent posts</string>
-    <string name="best_post">Best post</string>
-    <string name="worst_post">Quietest post</string>
-    <string name="post_views_and_engagements">%1$s views · %2$s engagements</string>
+    <string name="best_post">Best tweet this week</string>
+    <string name="worst_post">Quietest tweet this week</string>
+    <string name="tweet_handle_and_date">\@%1$s · %2$s</string>
+    <string name="tweet_metrics">%1$s views · %2$s replies · %3$s likes</string>
+    <string name="post_media">Post media</string>
     <string name="open_post">Open post</string>
     <string name="customize_cards">Customize cards</string>
     <string name="add_card">Add card</string>

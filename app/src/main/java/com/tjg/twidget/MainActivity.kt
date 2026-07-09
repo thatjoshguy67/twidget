@@ -15,6 +15,11 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ForegroundColorSpan
+import android.text.style.URLSpan
 import android.util.TypedValue
 import android.view.DragEvent
 import android.view.Gravity
@@ -39,6 +44,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -251,27 +258,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun emptyPostAnalyticsCard(account: String): View =
-        postAnalyticsShell(getString(R.string.post_analytics), getString(R.string.across_posts, 0), "@$account", null)
+        postAnalyticsShell(getString(R.string.post_analytics), "@$account", null)
 
-    private fun postAnalyticsCard(label: String, post: PostSummary): View {
-        val detail = getString(
-            R.string.post_views_and_engagements,
-            TwidgetStore.compactNumber(post.views),
-            TwidgetStore.compactNumber(post.engagements),
-        )
-        val url = post.url.takeIf { it.isNotBlank() }
-        return postAnalyticsShell(label, detail, post.text.ifBlank { url.orEmpty() }, url)
-    }
+    private fun postAnalyticsCard(label: String, post: PostSummary): View =
+        postAnalyticsShell(label, post.text.ifBlank { post.url }, post)
 
-    private fun postAnalyticsShell(label: String, detail: String, body: String, url: String?): View =
+    private fun postAnalyticsShell(label: String, body: String, post: PostSummary?): View =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
-            isClickable = url != null
-            isFocusable = url != null
-            contentDescription = if (url == null) label else getString(R.string.open_post)
-            url?.let { postUrl ->
+            isClickable = post?.url?.isNotBlank() == true
+            isFocusable = post?.url?.isNotBlank() == true
+            contentDescription = if (post == null) label else getString(R.string.open_post)
+            post?.url?.takeIf { it.isNotBlank() }?.let { postUrl ->
                 setOnClickListener {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(postUrl)))
                 }
@@ -290,14 +290,22 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
 
+            post?.let { addView(tweetAuthorRow(it), LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(11)
+            }) }
+
             addView(TextView(this@MainActivity).apply {
-                text = body.ifBlank { "--" }
+                text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
-                maxLines = 3
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                maxLines = 6
                 setTextColor(getColor(R.color.oneui_text_primary))
                 textSize = 15f
                 setLineSpacing(dp(2).toFloat(), 1f)
+                linksClickable = true
+                movementMethod = LinkMovementMethod.getInstance()
             }, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -305,20 +313,98 @@ class MainActivity : AppCompatActivity() {
                 topMargin = dp(7)
             })
 
-            addView(TextView(this@MainActivity).apply {
-                text = detail
-                includeFontPadding = false
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(getColor(R.color.oneui_text_secondary))
-                textSize = 13f
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = dp(8)
-            })
+            post?.media?.firstOrNull()?.let { media ->
+                addView(ImageView(this@MainActivity).apply {
+                    contentDescription = media.alt.ifBlank { getString(R.string.post_media) }
+                    ProfileImageLoader.loadRoundedInto(this@MainActivity, this, media.url, dp(14))
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(190),
+                ).apply {
+                    topMargin = dp(12)
+                })
+            }
+
+            post?.let {
+                addView(TextView(this@MainActivity).apply {
+                    text = tweetMetrics(it)
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_secondary))
+                    textSize = 13f
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(10)
+                })
+            }
         }
+
+    private fun tweetAuthorRow(post: PostSummary): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            addView(ImageView(this@MainActivity).apply {
+                ProfileImageLoader.loadInto(this@MainActivity, this, post.authorAvatar)
+            }, LinearLayout.LayoutParams(dp(38), dp(38)))
+
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(10), 0, 0, 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = post.authorName.ifBlank { post.authorUserName.ifBlank { getString(R.string.app_name) } }
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_primary))
+                    textSize = 14f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(
+                        R.string.tweet_handle_and_date,
+                        post.authorUserName.ifBlank { "x" },
+                        postDate(post),
+                    )
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_secondary))
+                    textSize = 12f
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
+    private fun formattedPostText(post: PostSummary): CharSequence {
+        val spannable = SpannableString(post.text.ifBlank { post.url })
+        post.links.forEach { link ->
+            val start = spannable.indexOf(link.display)
+            if (start < 0) return@forEach
+            val end = start + link.display.length
+            spannable.setSpan(URLSpan(link.url), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(getColor(R.color.oneui_accent)), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        return spannable
+    }
+
+    private fun postDate(post: PostSummary): String =
+        if (post.timestamp > 0L) {
+            SimpleDateFormat("MMM d, h:mm a", Locale.US).format(Date(post.timestamp))
+        } else {
+            post.createdAt
+        }
+
+    private fun tweetMetrics(post: PostSummary): String =
+        getString(
+            R.string.tweet_metrics,
+            TwidgetStore.compactNumber(post.views),
+            TwidgetStore.compactNumber(post.replies),
+            TwidgetStore.compactNumber(post.likes),
+        )
 
     private fun bindHistoryNotice(page: View, history: List<HistorySample>, chartHistory: List<HistorySample>) {
         val notice = page.findViewById<TextView>(R.id.history_notice) ?: return

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tablets / unfolded landscape: keep the column ~480dp regardless of width. -->
+    <dimen name="onboarding_side_padding">180dp</dimen>
+</resources>

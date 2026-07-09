@@ -166,6 +166,7 @@
     <string name="onboarding_title">Twidget</string>
     <string name="onboarding_overview_title">Welcome to Twidget</string>
     <string name="onboarding_done_title">You\'re all set!</string>
+    <string name="onboarding_handle_hint">\@</string>
     <string name="get_started">Get started</string>
     <string name="add_to_home_screen">Add to home screen</string>
     <string name="skip">Skip</string>

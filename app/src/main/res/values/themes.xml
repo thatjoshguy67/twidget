@@ -6,67 +6,6 @@
         <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
     </style>
 
-    <style name="AboutLinkRow">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">?android:attr/selectableItemBackground</item>
-        <item name="android:clickable">true</item>
-        <item name="android:focusable">true</item>
-        <item name="android:fontFamily">sans-serif</item>
-        <item name="android:lineSpacingExtra">2dp</item>
-        <item name="android:minHeight">64dp</item>
-        <item name="android:paddingHorizontal">12dp</item>
-        <item name="android:paddingVertical">12dp</item>
-        <item name="android:textColor">?android:textColorPrimary</item>
-        <item name="android:textSize">16sp</item>
-    </style>
-
-    <style name="AboutGlassPanel">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">@drawable/about_glass_card_bg</item>
-        <item name="android:orientation">vertical</item>
-    </style>
-
-    <style name="AboutCreditRow">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:background">?android:attr/selectableItemBackground</item>
-        <item name="android:clickable">true</item>
-        <item name="android:focusable">true</item>
-        <item name="android:orientation">vertical</item>
-        <item name="android:paddingStart">24dp</item>
-        <item name="android:paddingTop">18dp</item>
-        <item name="android:paddingEnd">24dp</item>
-        <item name="android:paddingBottom">18dp</item>
-    </style>
-
-    <style name="AboutCreditTitle">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:fontFamily">sec</item>
-        <item name="android:textColor">?android:textColorPrimary</item>
-        <item name="android:textSize">18sp</item>
-    </style>
-
-    <style name="AboutCreditSummary">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:fontFamily">sec</item>
-        <item name="android:lineSpacingExtra">2dp</item>
-        <item name="android:paddingTop">4dp</item>
-        <item name="android:textColor">?android:textColorSecondary</item>
-        <item name="android:textSize">14sp</item>
-    </style>
-
-    <style name="AboutDivider">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">1dp</item>
-        <item name="android:layout_marginStart">24dp</item>
-        <item name="android:layout_marginEnd">24dp</item>
-        <item name="android:background">@color/oneui_divider</item>
-    </style>
-
     <style name="WidgetPresetButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">48dp</item>

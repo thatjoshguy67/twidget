@@ -5,7 +5,16 @@
     android:id="@+id/about_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/onboarding_gradient_bg">
+    android:background="@drawable/about_gradient_bg">
+
+    <!-- Fades in over the gradient as the header collapses, so scrolling
+         settles the page onto the plain One UI background. -->
+    <View
+        android:id="@+id/about_gradient_fade"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="@color/oneui_bg" />
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/about_app_bar"
@@ -144,122 +153,86 @@
                 android:textColor="?android:textColorSecondary"
                 android:textSize="15sp" />
 
-            <TextView
+            <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="sec"
-                android:paddingStart="24dp"
-                android:paddingTop="18dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="8dp"
-                android:text="@string/about_credits_section"
-                android:textColor="?android:textColorSecondary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:text="@string/about_credits_section" />
 
-            <LinearLayout style="@style/AboutGlassPanel">
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/oneui_card_bg"
+                android:orientation="vertical">
 
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_tjg_credit"
-                    style="@style/AboutCreditRow">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    app:summary="@string/about_tjg_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_tjg_title" />
 
-                    <TextView
-                        style="@style/AboutCreditTitle"
-                        android:text="@string/about_tjg_title" />
-
-                    <TextView
-                        style="@style/AboutCreditSummary"
-                        android:text="@string/about_tjg_summary" />
-                </LinearLayout>
-
-                <View style="@style/AboutDivider" />
-
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_kingowen_credit"
-                    style="@style/AboutCreditRow">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_kingowen_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_kingowen_title" />
 
-                    <TextView
-                        style="@style/AboutCreditTitle"
-                        android:text="@string/about_kingowen_title" />
-
-                    <TextView
-                        style="@style/AboutCreditSummary"
-                        android:text="@string/about_kingowen_summary" />
-                </LinearLayout>
-
-                <View style="@style/AboutDivider" />
-
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_fxtwitter_credit"
-                    style="@style/AboutCreditRow">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_fxtwitter_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_fxtwitter_title" />
 
-                    <TextView
-                        style="@style/AboutCreditTitle"
-                        android:text="@string/about_fxtwitter_title" />
-
-                    <TextView
-                        style="@style/AboutCreditSummary"
-                        android:text="@string/about_fxtwitter_summary" />
-                </LinearLayout>
-
-                <View style="@style/AboutDivider" />
-
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_oneui_credit"
-                    style="@style/AboutCreditRow">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_oneui_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/oneui_project" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
-                    <TextView
-                        style="@style/AboutCreditTitle"
-                        android:text="@string/oneui_project" />
-
-                    <TextView
-                        style="@style/AboutCreditSummary"
-                        android:text="@string/about_oneui_summary" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <TextView
+            <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="sec"
-                android:paddingStart="24dp"
-                android:paddingTop="18dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="8dp"
-                android:text="@string/about_licenses_section"
-                android:textColor="?android:textColorSecondary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:text="@string/about_licenses_section" />
 
-            <LinearLayout style="@style/AboutGlassPanel">
-
-                <LinearLayout style="@style/AboutCreditRow">
-
-                    <TextView
-                        style="@style/AboutCreditTitle"
-                        android:text="@string/about_mit_title" />
-
-                    <TextView
-                        style="@style/AboutCreditSummary"
-                        android:text="@string/about_mit_summary" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <TextView
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="sec"
-                android:paddingStart="24dp"
-                android:paddingTop="20dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="8dp"
-                android:text="@string/about_links_section"
-                android:textColor="?android:textColorSecondary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:background="@color/oneui_card_bg"
+                android:orientation="vertical">
 
-            <LinearLayout
-                style="@style/AboutGlassPanel"
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:summary="@string/about_mit_summary"
+                    app:summaryMaxLines="6"
+                    app:title="@string/about_mit_title" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/about_links_section" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/oneui_card_bg"
+                android:orientation="vertical"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp">
 
@@ -304,7 +277,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/about_repo_link" />
-            </LinearLayout>
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

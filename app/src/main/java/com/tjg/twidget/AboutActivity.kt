@@ -152,12 +152,16 @@ class AboutActivity : AppCompatActivity() {
     private fun setupCollapsingContent() {
         val content = findViewById<View>(R.id.about_content)
         val hint = findViewById<View>(R.id.about_swipe_hint)
+        val gradientFade = findViewById<View>(R.id.about_gradient_fade)
         content.alpha = 0f
         findViewById<AppBarLayout>(R.id.about_app_bar).addOnOffsetChangedListener(
             AppBarLayout.OnOffsetChangedListener { appBar, verticalOffset ->
                 val range = appBar.totalScrollRange.coerceAtLeast(1)
                 val progress = abs(verticalOffset).toFloat() / range
                 content.alpha = ((progress - 0.25f) / 0.55f).coerceIn(0f, 1f)
+                // The gradient belongs to the expanded hero; scrolling settles
+                // the page onto the plain One UI background.
+                gradientFade.alpha = progress
                 hint.alpha = (1f - progress * 2f).coerceIn(0f, 1f)
                 hint.visibility = if (hint.alpha == 0f) View.INVISIBLE else View.VISIBLE
             }

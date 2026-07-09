@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var isSyncing = false
     private var accounts = emptyList<String>()
     private var selectedAccount: String = ""
+    private var analytics: PostAnalytics? = null
     private var editMode = false
     private var draggedCardId: String? = null
     private var dragPreviewOrder: List<String>? = null
@@ -158,6 +159,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindPage(page: View, account: String) {
         val stats = TwidgetStore.currentStats(this, account)
+        // Post analytics load from cache instantly; a background refresh below
+        // repaints when fresh data arrives.
+        analytics = AnalyticsClient.cached(this, account)
         // Daily samples drive the numbers; the chart list is the same week
         // bucketed down to a readable bar count. Analytics are fixed to the
         // weekly window — the old range chips are gone.
@@ -197,7 +201,124 @@ class MainActivity : AppCompatActivity() {
                 val wrapper = createDashboardCardWrapper(card, content)
                 container.addView(wrapper, dashboardCardLayoutParams(card))
             }
+
+        bindBestWorst(page, account)
+        maybeRefreshAnalytics(account)
     }
+
+    // Fetches fresh post analytics off the main thread when the cache is stale,
+    // then repaints the current account's dashboard.
+    private fun maybeRefreshAnalytics(account: String) {
+        if (editMode || !AnalyticsClient.isStale(analytics)) return
+        val bridgeUrl = TwidgetStore.settings(this).bridgeUrl.trim().trimEnd('/')
+        if (bridgeUrl.isBlank()) return
+        Thread {
+            val fresh = runCatching { AnalyticsClient.refresh(this, account, bridgeUrl) }.getOrNull() ?: return@Thread
+            runOnUiThread {
+                if (!isFinishing && selectedAccount.equals(account, ignoreCase = true) && !editMode) {
+                    analytics = fresh
+                    bindContent()
+                }
+            }
+        }.start()
+    }
+
+    private fun bindBestWorst(page: View, account: String) {
+        val section = page.findViewById<LinearLayout>(R.id.post_analytics_section) ?: return
+        val cards = page.findViewById<LinearLayout>(R.id.post_analytics_cards) ?: return
+        cards.removeAllViews()
+
+        val data = analytics
+        val posts = listOfNotNull(
+            data?.best?.let { getString(R.string.best_post) to it },
+            data?.worst?.let { getString(R.string.worst_post) to it },
+        )
+        if (posts.isEmpty()) {
+            section.visibility = if (data == null) View.GONE else View.VISIBLE
+            if (data != null) cards.addView(emptyPostAnalyticsCard(account))
+            return
+        }
+
+        section.visibility = View.VISIBLE
+        posts.forEachIndexed { index, (label, post) ->
+            cards.addView(postAnalyticsCard(label, post), LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                if (index > 0) topMargin = dp(8)
+            })
+        }
+    }
+
+    private fun emptyPostAnalyticsCard(account: String): View =
+        postAnalyticsShell(getString(R.string.post_analytics), getString(R.string.across_posts, 0), "@$account", null)
+
+    private fun postAnalyticsCard(label: String, post: PostSummary): View {
+        val detail = getString(
+            R.string.post_views_and_engagements,
+            TwidgetStore.compactNumber(post.views),
+            TwidgetStore.compactNumber(post.engagements),
+        )
+        val url = post.url.takeIf { it.isNotBlank() }
+        return postAnalyticsShell(label, detail, post.text.ifBlank { url.orEmpty() }, url)
+    }
+
+    private fun postAnalyticsShell(label: String, detail: String, body: String, url: String?): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
+            isClickable = url != null
+            isFocusable = url != null
+            contentDescription = if (url == null) label else getString(R.string.open_post)
+            url?.let { postUrl ->
+                setOnClickListener {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(postUrl)))
+                }
+            }
+
+            addView(TextView(this@MainActivity).apply {
+                text = label
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_secondary))
+                textSize = 13f
+                typeface = Typeface.create("sec", Typeface.BOLD)
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+
+            addView(TextView(this@MainActivity).apply {
+                text = body.ifBlank { "--" }
+                includeFontPadding = false
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_primary))
+                textSize = 15f
+                setLineSpacing(dp(2).toFloat(), 1f)
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(7)
+            })
+
+            addView(TextView(this@MainActivity).apply {
+                text = detail
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_secondary))
+                textSize = 13f
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(8)
+            })
+        }
 
     private fun bindHistoryNotice(page: View, history: List<HistorySample>, chartHistory: List<HistorySample>) {
         val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
@@ -576,9 +697,58 @@ class MainActivity : AppCompatActivity() {
                     },
                 )
             }
+            DashboardCardType.ENGAGEMENT_RATE -> analyticsSpec(
+                getString(R.string.engagement_rate),
+                getColor(R.color.oneui_accent),
+                { percent(it.engagementRate) },
+                { getString(R.string.avg_per_post, TwidgetStore.compactNumber(it.avgEngagements.roundToLong())) },
+            )
+            DashboardCardType.AVG_VIEWS -> analyticsSpec(
+                getString(R.string.avg_views),
+                getColor(R.color.metric_green),
+                { TwidgetStore.compactNumber(it.avgViews.roundToLong()) },
+                { getString(R.string.median_value, TwidgetStore.compactNumber(it.medianViews.roundToLong())) },
+            )
+            DashboardCardType.TOTAL_VIEWS -> analyticsSpec(
+                getString(R.string.total_views),
+                getColor(R.color.oneui_accent),
+                { TwidgetStore.compactNumber(it.totalViews) },
+                { getString(R.string.across_posts, it.postsAnalyzed) },
+            )
+            DashboardCardType.AVG_ENGAGEMENTS -> analyticsSpec(
+                getString(R.string.avg_engagements),
+                getColor(R.color.metric_green),
+                { TwidgetStore.compactNumber(it.avgEngagements.roundToLong()) },
+                { getString(R.string.per_follower_pct, percent(it.avgEngagementsPerFollower)) },
+            )
+            DashboardCardType.MEDIAN_ENGAGEMENTS -> analyticsSpec(
+                getString(R.string.median_engagements),
+                getColor(R.color.oneui_accent),
+                { TwidgetStore.compactNumber(it.medianEngagements.roundToLong()) },
+                { getString(R.string.across_posts, it.postsAnalyzed) },
+            )
             else -> error("Chart cards do not have insight specs.")
         }
     }
+
+    // Analytics cards fall back to a placeholder until the timeline fetch lands.
+    private fun analyticsSpec(
+        label: String,
+        accent: Int,
+        value: (PostAnalytics) -> String,
+        detail: (PostAnalytics) -> String,
+    ): InsightSpec {
+        val data = analytics
+        return InsightSpec(
+            label = label,
+            value = data?.let(value) ?: "--",
+            detail = data?.let(detail) ?: getString(R.string.analytics_syncing),
+            accent = accent,
+        )
+    }
+
+    private fun percent(fraction: Double): String =
+        String.format(Locale.US, "%.2f%%", fraction * 100)
 
     // Average per real elapsed day — samples can have gaps, so count days
     // between the first and last sample rather than counting samples.
@@ -1019,6 +1189,11 @@ class MainActivity : AppCompatActivity() {
         FOLLOWER_RATIO("follower_ratio", R.string.follower_ratio, DashboardCardSize.HALF),
         POST_RATE("post_rate", R.string.post_rate, DashboardCardSize.HALF),
         LIKES_PER_POST("likes_per_post", R.string.likes_per_post, DashboardCardSize.HALF),
+        ENGAGEMENT_RATE("engagement_rate", R.string.engagement_rate, DashboardCardSize.HALF),
+        AVG_VIEWS("avg_views", R.string.avg_views, DashboardCardSize.HALF),
+        TOTAL_VIEWS("total_views", R.string.total_views, DashboardCardSize.HALF),
+        AVG_ENGAGEMENTS("avg_engagements", R.string.avg_engagements, DashboardCardSize.HALF),
+        MEDIAN_ENGAGEMENTS("median_engagements", R.string.median_engagements, DashboardCardSize.HALF),
         MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.FULL),
         GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.HALF),
         BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.HALF),

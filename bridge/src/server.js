@@ -87,6 +87,9 @@ const sweepTimer = setInterval(() => {
   for (const [key, value] of hits) {
     if (now - value.startedAt > rateLimitWindowMs) hits.delete(key);
   }
+  for (const [key, value] of analyticsCache) {
+    if (now - value.cachedAt >= analyticsTtlMs) analyticsCache.delete(key);
+  }
 }, sweepIntervalMs);
 sweepTimer.unref?.();
 
@@ -280,6 +283,163 @@ function acceptableClientSamples(existing, submitted) {
     accepted.set(sample.ts, { ...sample, src: "client" });
   }
   return Array.from(accepted.values());
+}
+
+// ---- Post analytics --------------------------------------------------------
+// Reach + engagement over the recent timeline, plus the 7-day best/worst posts.
+// Timeline fetches are heavier than a profile lookup, so results are cached.
+
+const analyticsCache = new Map();
+const analyticsTtlMs = Number(process.env.ANALYTICS_TTL_SECONDS || 2700) * 1000; // 45 min
+const analyticsPostCount = Number(process.env.ANALYTICS_POST_COUNT || 100);
+const analyticsInFlight = new Map();
+
+app.get("/analytics/:username", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const key = username.toLowerCase();
+  const cached = analyticsCache.get(key);
+  if (cached && Date.now() - cached.cachedAt < analyticsTtlMs) {
+    res.setHeader("X-Twidget-Cache", "hit");
+    res.json(cached.data);
+    return;
+  }
+  try {
+    // Collapse concurrent requests for the same account onto one fetch.
+    let pending = analyticsInFlight.get(key);
+    if (!pending) {
+      pending = computeAnalytics(username).finally(() => analyticsInFlight.delete(key));
+      analyticsInFlight.set(key, pending);
+    }
+    const data = await pending;
+    analyticsCache.set(key, { cachedAt: Date.now(), data });
+    res.setHeader("X-Twidget-Cache", "miss");
+    res.json(data);
+  } catch (error) {
+    console.error(`Analytics failed for ${username}:`, error?.message ?? error);
+    res.status(502).json({ error: "analytics_failed" });
+  }
+});
+
+async function computeAnalytics(username) {
+  const rettiwt = new Rettiwt({ timeout: 15000, maxRetries: 1 });
+  const details = normalizeRettiwtUser(await rettiwt.user.details(username), username);
+  const userId = stringValue(details.id);
+  const followers = numberValue(details.followersCount);
+  if (!userId) throw new Error("no user id");
+
+  const timeline = await rettiwt.user.timeline(userId, analyticsPostCount);
+  // Original authored posts only — a pure retweet's metrics belong to someone
+  // else, so they would skew per-post reach and engagement.
+  const posts = (timeline?.list ?? [])
+    .map(normalizeTimelineTweet)
+    .filter((tweet) => tweet && !tweet.retweeted)
+    .map((tweet) => {
+      const likes = numberValue(tweet.likeCount);
+      const retweets = numberValue(tweet.retweetCount);
+      const replies = numberValue(tweet.replyCount);
+      const quotes = numberValue(tweet.quoteCount);
+      return {
+        id: stringValue(tweet.id),
+        url: stringValue(tweet.url) || `https://x.com/${username}/status/${stringValue(tweet.id)}`,
+        text: collapseText(tweet.fullText),
+        views: numberValue(tweet.viewCount),
+        engagements: likes + retweets + replies + quotes,
+        ts: new Date(tweet.createdAt || 0).getTime() || 0,
+      };
+    });
+
+  const postCount = posts.length;
+  const views = posts.map((post) => post.views);
+  const engagements = posts.map((post) => post.engagements);
+  const totalViews = sum(views);
+  const totalEngagements = sum(engagements);
+
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent = posts.filter((post) => post.ts >= weekAgo);
+  const ranked = recent.length ? recent : posts;
+  const best = maxBy(ranked, (post) => post.engagements);
+  const worst = minBy(ranked, (post) => post.engagements);
+
+  return {
+    userName: username,
+    followers,
+    postsAnalyzed: postCount,
+    windowDays: 7,
+    reach: {
+      totalViews,
+      avgViews: mean(views),
+      medianViews: median(views),
+      avgViewsPerFollower: followers > 0 && postCount > 0 ? totalViews / postCount / followers : 0,
+    },
+    engagement: {
+      totalEngagements,
+      avgEngagements: mean(engagements),
+      medianEngagements: median(engagements),
+      avgEngagementsPerFollower: followers > 0 && postCount > 0 ? totalEngagements / postCount / followers : 0,
+      engagementRate: totalViews > 0 ? totalEngagements / totalViews : 0,
+    },
+    // With only one post, best and worst would be identical — show just the one.
+    best: ranked.length ? best : null,
+    worst: ranked.length >= 2 ? worst : null,
+    cachedAt: Date.now(),
+  };
+}
+
+function normalizeRettiwtUser(details, fallbackUsername) {
+  const user = typeof details?.toJSON === "function" ? details.toJSON() : details;
+  return {
+    id: firstDefined(findDeep(user, ["id", "restId", "rest_id"]), ""),
+    userName: stringValue(firstDefined(findDeep(user, ["userName", "username", "screenName", "screen_name"]), fallbackUsername)),
+    followersCount: findDeep(user, ["followersCount", "followers_count", "followerCount", "follower_count"]),
+  };
+}
+
+function normalizeTimelineTweet(tweet) {
+  if (!tweet) return null;
+  const item = typeof tweet.toJSON === "function" ? tweet.toJSON() : tweet;
+  return {
+    id: firstDefined(findDeep(item, ["id", "restId", "rest_id"]), ""),
+    url: firstDefined(findDeep(item, ["url"]), ""),
+    fullText: firstDefined(findDeep(item, ["fullText", "full_text", "text"]), ""),
+    viewCount: firstDefined(findDeep(item, ["viewCount", "view_count"]), 0),
+    likeCount: firstDefined(findDeep(item, ["likeCount", "favorite_count", "favourite_count"]), 0),
+    retweetCount: firstDefined(findDeep(item, ["retweetCount", "retweet_count"]), 0),
+    replyCount: firstDefined(findDeep(item, ["replyCount", "reply_count"]), 0),
+    quoteCount: firstDefined(findDeep(item, ["quoteCount", "quote_count"]), 0),
+    createdAt: firstDefined(findDeep(item, ["createdAt", "created_at"]), ""),
+    retweeted: Boolean(firstDefined(item.retweetedTweet, item.retweeted_status_result, item.retweeted_status)),
+  };
+}
+
+function collapseText(value) {
+  return stringValue(value).replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function mean(values) {
+  return values.length ? sum(values) / values.length : 0;
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function maxBy(items, selector) {
+  return items.reduce((best, item) => (best === null || selector(item) > selector(best) ? item : best), null);
+}
+
+function minBy(items, selector) {
+  return items.reduce((worst, item) => (worst === null || selector(item) < selector(worst) ? item : worst), null);
 }
 
 app.get(["/user/:username", "/users/:username", "/details/:username"], async (req, res) => {

@@ -114,16 +114,15 @@ object TwidgetStore {
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "followers",
         "follower_ratio",
+        "engagement_rate",
         "post_rate",
         "likes_per_post",
-        "momentum",
         "following",
-        "growth_pace",
-        "best_day",
+        "avg_views",
+        "total_views",
+        "avg_engagements",
+        "median_engagements",
         "posts",
-        "milestone",
-        "audience_balance",
-        "account_health",
         "likes",
     )
     const val LOGO_X = "x"
@@ -287,7 +286,10 @@ object TwidgetStore {
             }.getOrNull()
         }.orEmpty()
         if (saved.isEmpty()) return DEFAULT_DASHBOARD_CARDS
-        return saved.filter { it in DEFAULT_DASHBOARD_CARDS }
+        // Keep the user's order for cards they have, drop retired ones, and
+        // append any new default cards so added metrics surface automatically.
+        val filtered = saved.filter { it in DEFAULT_DASHBOARD_CARDS }
+        return filtered + DEFAULT_DASHBOARD_CARDS.filter { it !in filtered }
     }
 
     fun saveDashboardCards(context: Context, cards: List<String>) {

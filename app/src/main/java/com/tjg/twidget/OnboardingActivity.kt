@@ -175,8 +175,8 @@ class OnboardingActivity : AppCompatActivity() {
         }
     }
 
-    // On the final step the blue gradient drains to the bottom of the screen,
-    // letting the near-white (light) / near-black (dark) background take over.
+    // On the final step the blue remains at the top while the near-white
+    // (light) / near-black (dark) background settles into the bottom.
     private fun settleBackground(animate: Boolean) {
         val overlay = findViewById<View>(R.id.done_fade_overlay)
         if (step == STEP_DONE) {

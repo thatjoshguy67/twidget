@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The "settled" onboarding look: plain One UI background over most of the
-    screen with the blue gradient emerging only toward the bottom — the same
-    composite the final onboarding step animates to.
+    The "settled" onboarding look: blue at the top, settling into the plain
+    One UI background toward the bottom — the same composite the final
+    onboarding step animates to.
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@drawable/onboarding_gradient_bg" />

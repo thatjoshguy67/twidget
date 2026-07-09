@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Fades in over the blue gradient on the "You're all set" step: opaque
-    near-white (light) / near-black (dark) across the top, going transparent
-    toward the bottom so only a sliver of blue remains at the base.
+    Fades in over the blue gradient on the "You're all set" step: transparent
+    across the top so the blue remains visible, becoming opaque near-white
+    (light) / near-black (dark) toward the bottom.
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <gradient
         android:angle="270"
-        android:startColor="@color/oneui_bg"
-        android:centerColor="@color/oneui_bg"
-        android:endColor="@color/onboarding_settle_fade"
+        android:startColor="@color/onboarding_settle_fade"
+        android:centerColor="@color/onboarding_settle_fade"
+        android:endColor="@color/oneui_bg"
         android:type="linear" />
 </shape>

@@ -14,4 +14,11 @@
     <color name="widget_setting_seek_bar_thumb_background_tint">#1F1F22</color>
     <color name="widget_setting_seek_bar_thumb_tint">@color/oneui_accent</color>
     <color name="widget_setting_seek_bar_tick_mark_solid_color">#77777A</color>
+    <!-- Onboarding radial gradient (top-center origin) — Figma dark theme -->
+    <color name="onboarding_grad_start">#101012</color>
+    <color name="onboarding_grad_center">#081928</color>
+    <color name="onboarding_grad_end">#00233F</color>
+    <!-- Glass pill button + input on the gradient -->
+    <color name="onboarding_glass">#996D6D70</color>
+    <color name="onboarding_glass_stroke">#26FFFFFF</color>
 </resources>

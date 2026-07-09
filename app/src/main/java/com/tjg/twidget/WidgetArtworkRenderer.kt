@@ -120,13 +120,18 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         textSize: Float,
     ): List<List<String>> {
-        val paint = textPaint(context, settings, Color.BLACK, bold = true).apply { this.textSize = textSize }
+        // Measure each word with the paint it will actually be drawn with —
+        // per-word weight/width means a single measuring paint would misjudge
+        // the heavier emphasis words and overflow the card.
+        fun measure(word: String) =
+            wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
+                .measureText(word)
+        val space = measure(" ")
         val lines = mutableListOf<MutableList<String>>()
         var current = mutableListOf<String>()
         var currentWidth = 0f
-        val space = paint.measureText(" ")
         words.forEach { word ->
-            val width = paint.measureText(word)
+            val width = measure(word)
             if (current.isNotEmpty() && currentWidth + space + width > maxWidth) {
                 lines += current
                 current = mutableListOf()
@@ -255,50 +260,86 @@ object WidgetArtworkRenderer {
         }
     }
 
-    // Word classes taken from the Figma 2x2 widget spec: number words Bold(700),
-    // tens Black(900), scale/connector words SemiBold(600) with the scale word
-    // slanted, "Followers" Regular(400) at 80% opacity.
+    // Word classes for the spelled-out follower count. Each maps to a
+    // typographic role that both fonts render in their own register (see the
+    // Figma 4x2 widget spec).
     private val ONES_WORDS = setOf(
         "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
         "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
         "Seventeen", "Eighteen", "Nineteen",
     )
     private val TENS_WORDS = setOf("Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
-    private val SCALE_WORDS = setOf("Thousand", "Million")
+    private val SCALE_WORDS = setOf("Thousand", "Million", "Billion")
     private val CONNECTOR_WORDS = setOf("Hundred", "and")
+
+    // Typographic role per word. TENS carries the loudest emphasis, ONES next,
+    // HUNDRED anchors the scale, SOFT words (thousand/million/"and") recede, and
+    // LABEL ("Followers") is the quietest. Emphasis is by weight, hierarchy by
+    // opacity — and for the variable font, by width too.
+    private enum class WordRole { TENS, ONES, HUNDRED, SOFT, LABEL, STRONG }
+
+    private fun roleOf(context: Context, word: String): WordRole {
+        if (word.equals(context.getString(R.string.followers), ignoreCase = true)) return WordRole.LABEL
+        return when (val bare = word.trim(',')) {
+            in TENS_WORDS -> WordRole.TENS
+            in ONES_WORDS -> WordRole.ONES
+            in SCALE_WORDS -> WordRole.SOFT
+            in CONNECTOR_WORDS -> if (bare == "Hundred") WordRole.HUNDRED else WordRole.SOFT
+            else -> WordRole.STRONG // bare numerals or unknown tokens
+        }
+    }
+
+    // Per-role weights, kept separate for the two families: One UI Sans reads
+    // heavy so its magnitude words sit at ExtraBold across the board, while
+    // Google Sans Flex has a true Black and peaks only on the tens word.
+    private fun oneUiWeightFor(role: WordRole): Int = when (role) {
+        WordRole.TENS, WordRole.ONES -> 800
+        WordRole.HUNDRED -> 600
+        WordRole.STRONG -> 700
+        WordRole.SOFT -> 400
+        WordRole.LABEL -> 200
+    }
+
+    private fun gsfWeightFor(role: WordRole): Int = when (role) {
+        WordRole.TENS -> 900
+        WordRole.ONES, WordRole.STRONG -> 700
+        WordRole.HUNDRED, WordRole.SOFT -> 600
+        WordRole.LABEL -> 400
+    }
+
+    private fun gsfWidthFor(role: WordRole): Int = when (role) {
+        WordRole.TENS -> 125
+        WordRole.ONES, WordRole.STRONG -> 110
+        WordRole.HUNDRED, WordRole.SOFT -> 100
+        WordRole.LABEL -> 80
+    }
 
     private fun wordPaint(
         context: Context,
         settings: TwidgetWidgetSettings,
         word: String,
         primary: Int,
-        secondary: Int,
+        @Suppress("UNUSED_PARAMETER") secondary: Int,
     ): Paint {
-        val isFollowers = word.equals(context.getString(R.string.followers), ignoreCase = true)
-        if (settings.fontFamily != TwidgetStore.FONT_GOOGLE_SANS_FLEX) {
-            return textPaint(context, settings, if (isFollowers) secondary else primary, bold = !isFollowers)
-        }
-        val bare = word.trim(',')
-        val weight = when {
-            isFollowers -> 400
-            bare in TENS_WORDS -> 900
-            bare in SCALE_WORDS || bare in CONNECTOR_WORDS -> 600
-            else -> 700 // ones/teens and plain numerals
-        }
-        val slanted = bare in SCALE_WORDS
+        val role = roleOf(context, word)
+        val gsf = settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX
+        val weight = if (gsf) gsfWeightFor(role) else oneUiWeightFor(role)
         return Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-            color = if (isFollowers) secondary else primary
-            typeface = gsfTypeface(context, weight)
-            // No-op on the bundled static cuts; picks up real axes if a variable
-            // Google Sans Flex is dropped into res/font.
-            setFontVariationSettings(buildString {
-                append("'wght' $weight")
-                if (isFollowers) append(", 'wdth' 85")
-                if (slanted) append(", 'slnt' -8")
-            })
-            if (slanted) textSkewX = -0.08f
+            // Label opacity (0.6) comes straight from the design.
+            color = if (role == WordRole.LABEL) withAlpha(primary, 0.6f) else primary
+            typeface = if (gsf) gsfTypeface(context, weight) else oneUiTypeface(context, weight)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Width axis is a no-op on the bundled static Google Sans Flex
+                // cuts; it takes effect once a true variable font is in res/font.
+                setFontVariationSettings(
+                    if (gsf) "'wght' $weight, 'wdth' ${gsfWidthFor(role)}" else "'wght' $weight",
+                )
+            }
         }
     }
+
+    private fun withAlpha(color: Int, fraction: Float): Int =
+        Color.argb((255 * fraction).toInt(), Color.red(color), Color.green(color), Color.blue(color))
 
     private val gsfWeightCache = mutableMapOf<Int, Typeface>()
 
@@ -309,6 +350,22 @@ object WidgetArtworkRenderer {
                 if (weight >= 700) R.font.google_sans_flex_bold else R.font.google_sans_flex_regular,
             ) ?: Typeface.DEFAULT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) Typeface.create(base, weight, false) else base
+        }
+
+    private val oneUiWeightCache = mutableMapOf<Int, Typeface>()
+
+    // One UI Sans (Samsung "sec") is a variable family; Typeface.create with an
+    // explicit weight picks up the real cut on API 28+, otherwise falls back to
+    // bold/regular. Weights below 400 can't be synthesized thinner than the base
+    // regular, which is why the label also leans on opacity for hierarchy.
+    private fun oneUiTypeface(context: Context, weight: Int): Typeface =
+        oneUiWeightCache.getOrPut(weight) {
+            val base = Typeface.create("sec", Typeface.NORMAL)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                Typeface.create(base, weight.coerceIn(1, 1000), false)
+            } else {
+                Typeface.create("sec", if (weight >= 700) Typeface.BOLD else Typeface.NORMAL)
+            }
         }
 
     private fun textPaint(context: Context, settings: TwidgetWidgetSettings, color: Int, bold: Boolean): Paint =

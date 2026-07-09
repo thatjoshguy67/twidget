@@ -164,10 +164,14 @@
     <string name="link_app_repo">https://github.com/Rishikant181/Rettiwt-API</string>
     <string name="sync_failed">Sync failed; showing cached stats.</string>
     <string name="onboarding_title">Twidget</string>
-    <string name="onboarding_overview_title">Track your X followers at a glance</string>
+    <string name="onboarding_overview_title">Welcome to Twidget</string>
+    <string name="onboarding_done_title">You\'re all set!</string>
+    <string name="get_started">Get started</string>
+    <string name="add_to_home_screen">Add to home screen</string>
+    <string name="skip">Skip</string>
     <string name="onboarding_overview_summary">Twidget keeps your follower count, recent changes, and One UI home screen widgets in sync from one profile.</string>
-    <string name="onboarding_profile_title">Choose your X profile</string>
-    <string name="onboarding_profile_summary">Enter the handle you want Twidget to track. You can add widgets after setup.</string>
+    <string name="onboarding_profile_title">Enter your handle</string>
+    <string name="onboarding_profile_summary">Don\'t worry, you can add more later</string>
     <string name="onboarding_tip_stats_title">Live follower stats</string>
     <string name="onboarding_tip_stats_summary">Sync followers, following, posts, and likes for any public X profile.</string>
     <string name="onboarding_tip_widgets_title">Home and lock screen widgets</string>

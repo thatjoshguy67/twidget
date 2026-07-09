@@ -5,8 +5,7 @@ import android.animation.ValueAnimator
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -16,19 +15,17 @@ import android.text.InputFilter
 import android.text.TextWatcher
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.OvershootInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
-import dev.oneuiproject.oneui.layout.ToolbarLayout
 
 class OnboardingActivity : AppCompatActivity() {
     private var step = STEP_OVERVIEW
@@ -37,8 +34,6 @@ class OnboardingActivity : AppCompatActivity() {
     private var startedOnWidgetStep = false
     private var previewFloatAnimator: ObjectAnimator? = null
     private val previewHandler = Handler(Looper.getMainLooper())
-    private var heroFollowers = 0L
-    private var cycleIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +45,7 @@ class OnboardingActivity : AppCompatActivity() {
         setupInput()
         setupButtons()
         setupShareHistoryCheckbox()
-        renderStep()
+        renderStep(animate = false)
     }
 
     override fun onDestroy() {
@@ -66,20 +61,16 @@ class OnboardingActivity : AppCompatActivity() {
             return
         }
         when (step) {
-            STEP_PROFILE -> {
-                step = STEP_OVERVIEW
-                renderStep()
-            }
-            STEP_WIDGETS -> {
-                if (startedOnWidgetStep) {
-                    super.onBackPressed()
-                } else {
-                    step = STEP_PROFILE
-                    renderStep()
-                }
-            }
+            STEP_PROFILE -> goToStep(STEP_OVERVIEW)
+            STEP_WIDGETS -> if (startedOnWidgetStep) super.onBackPressed() else goToStep(STEP_PROFILE)
+            STEP_DONE -> goToStep(STEP_WIDGETS)
             else -> super.onBackPressed()
         }
+    }
+
+    private fun goToStep(next: Int) {
+        step = next
+        renderStep(animate = true)
     }
 
     private fun setupInput() {
@@ -106,18 +97,19 @@ class OnboardingActivity : AppCompatActivity() {
     private fun setupButtons() {
         findViewById<AppCompatButton>(R.id.primary_button).setOnClickListener {
             when (step) {
-                STEP_OVERVIEW -> {
-                    step = STEP_PROFILE
-                    renderStep()
-                }
+                STEP_OVERVIEW -> goToStep(STEP_PROFILE)
                 STEP_PROFILE -> submitProfile()
-                STEP_WIDGETS -> requestWidgetPin()
+                STEP_WIDGETS -> {
+                    requestWidgetPin()
+                    goToStep(STEP_DONE)
+                }
+                STEP_DONE -> enterApp()
             }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).setOnClickListener {
             when (step) {
                 STEP_PROFILE -> showAdvancedDialog()
-                STEP_WIDGETS -> enterApp()
+                STEP_WIDGETS -> goToStep(STEP_DONE)
             }
         }
     }
@@ -136,20 +128,16 @@ class OnboardingActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderStep() {
-        findViewById<ToolbarLayout>(R.id.onboarding_toolbar_layout).setTitle(
-            when (step) {
-                STEP_PROFILE -> getString(R.string.profile_username)
-                STEP_WIDGETS -> getString(R.string.add_widget)
-                else -> getString(R.string.onboarding_title)
-            }
+    private fun renderStep(animate: Boolean = false) {
+        val steps = mapOf(
+            STEP_OVERVIEW to R.id.step_overview,
+            STEP_PROFILE to R.id.step_profile,
+            STEP_WIDGETS to R.id.step_widgets,
+            STEP_DONE to R.id.step_done,
         )
-        findViewById<View>(R.id.step_overview).visibility =
-            if (step == STEP_OVERVIEW) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.step_profile).visibility =
-            if (step == STEP_PROFILE) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.step_widgets).visibility =
-            if (step == STEP_WIDGETS) View.VISIBLE else View.GONE
+        steps.forEach { (which, viewId) ->
+            findViewById<View>(viewId).visibility = if (which == step) View.VISIBLE else View.GONE
+        }
         updateButtons()
         val imm = getSystemService(InputMethodManager::class.java)
         val input = findViewById<EditText>(R.id.username_input)
@@ -162,41 +150,62 @@ class OnboardingActivity : AppCompatActivity() {
         previewHandler.removeCallbacksAndMessages(null)
         previewFloatAnimator?.cancel()
         previewFloatAnimator = null
-        when (step) {
-            STEP_OVERVIEW -> startHeroPreview()
-            STEP_WIDGETS -> showWidgetPreview()
+        if (step == STEP_WIDGETS) showWidgetPreview()
+        if (animate) {
+            steps[step]?.let { animateStepIn(findViewById(it)) }
+            animateButtonsIn()
+        }
+    }
+
+    // A quiet fade-and-rise as each step's content and buttons appear.
+    private fun animateStepIn(view: View) {
+        view.alpha = 0f
+        view.translationY = 18f * resources.displayMetrics.density
+        view.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(320)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    private fun animateButtonsIn() {
+        listOf(R.id.primary_button, R.id.secondary_button).forEach { id ->
+            findViewById<AppCompatButton>(id).takeIf { it.visibility == View.VISIBLE }?.apply {
+                val target = if (isEnabled) 1f else 0.5f
+                alpha = 0f
+                translationY = 12f * resources.displayMetrics.density
+                animate().alpha(target).translationY(0f)
+                    .setStartDelay(60).setDuration(280)
+                    .setInterpolator(DecelerateInterpolator()).start()
+            }
         }
     }
 
     private fun updateButtons() {
-        val showSecondaryButton = when (step) {
-            STEP_PROFILE -> !XApiClient.hasCredentials(TwidgetStore.settings(this))
+        val showSecondary = when (step) {
+            STEP_PROFILE -> !addAccountMode && !XApiClient.hasCredentials(TwidgetStore.settings(this))
             STEP_WIDGETS -> true
             else -> false
         }
-        val singleButton = !showSecondaryButton
-        val density = resources.displayMetrics.density
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
                 isStarting -> getString(R.string.starting_twidget)
+                step == STEP_OVERVIEW -> getString(R.string.get_started)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
-                step == STEP_WIDGETS -> getString(R.string.add_widget)
+                step == STEP_PROFILE -> getString(R.string.continue_button)
+                step == STEP_WIDGETS -> getString(R.string.add_to_home_screen)
                 else -> getString(R.string.continue_button)
             }
+            setCompoundDrawablesRelativeWithIntrinsicBounds(
+                if (step == STEP_WIDGETS) R.drawable.ic_home_24 else 0, 0, 0, 0,
+            )
             isEnabled = !isStarting && (step != STEP_PROFILE || cleanUsername().isValidUsername())
             alpha = if (isEnabled) 1f else 0.5f
-            layoutParams = (layoutParams as LinearLayout.LayoutParams).apply {
-                marginStart = ((if (singleButton) 28 else 5) * density).toInt()
-                marginEnd = ((if (singleButton) 28 else 0) * density).toInt()
-            }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
-            text = if (step == STEP_WIDGETS) {
-                getString(R.string.continue_button)
-            } else {
-                getString(R.string.advanced_options)
-            }
-            visibility = if (singleButton) View.GONE else View.VISIBLE
+            text = if (step == STEP_WIDGETS) getString(R.string.skip) else getString(R.string.advanced_options)
+            visibility = if (showSecondary) View.VISIBLE else View.GONE
             isEnabled = !isStarting
             alpha = if (isEnabled) 1f else 0.5f
         }
@@ -286,78 +295,37 @@ class OnboardingActivity : AppCompatActivity() {
         }
     }
 
-    // --- Step 1: live 4x2 widget with a ticking follower count ---
-
-    private fun startHeroPreview() {
-        val host = findViewById<FrameLayout>(R.id.hero_preview_host)
-        host.background = previewPillBackground()
-        if (heroFollowers == 0L) heroFollowers = TwidgetStore.currentStats(this).followersCount
-        renderHeroPreview()
-        scheduleHeroTick()
-    }
-
-    private fun scheduleHeroTick() {
-        previewHandler.postDelayed({
-            if (step != STEP_OVERVIEW) return@postDelayed
-            heroFollowers += listOf(1L, 1L, 2L, 3L, -1L).random()
-            renderHeroPreview()
-            findViewById<FrameLayout>(R.id.hero_preview_host).apply {
-                scaleX = 1.03f
-                scaleY = 1.03f
-                animate().scaleX(1f).scaleY(1f).setDuration(250).start()
-            }
-            scheduleHeroTick()
-        }, 1600)
-    }
-
-    private fun renderHeroPreview() {
-        val density = resources.displayMetrics.density
-        val stats = TwidgetStore.currentStats(this).copy(followersCount = heroFollowers)
-        findViewById<ImageView>(R.id.hero_preview_image).setImageBitmap(
-            WidgetArtworkRenderer.render(
-                context = this,
-                widthPx = (280 * density).toInt(),
-                heightPx = (128 * density).toInt(),
-                stats = stats,
-                settings = TwidgetStore.widgetSettings(this),
-                mode = TwidgetWidget.LAYOUT_MODE_LARGE,
-                dark = false,
-            )
-        )
-    }
-
-    // --- Step 3: cycle through home widget sizes and lock screen variants ---
-
-    private data class WidgetPreviewSpec(
-        val widthDp: Int,
-        val heightDp: Int,
-        val mode: Int = 0,
-        val lockWide: Boolean? = null,
-        val pill: Boolean = true,
-    )
-
-    private val previewSpecs = listOf(
-        WidgetPreviewSpec(280, 128, mode = TwidgetWidget.LAYOUT_MODE_LARGE),
-        WidgetPreviewSpec(190, 90, mode = TwidgetWidget.LAYOUT_MODE_COMPACT_2X1),
-        WidgetPreviewSpec(142, 156, mode = TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE),
-        WidgetPreviewSpec(118, 44, lockWide = true, pill = false),
-        WidgetPreviewSpec(52, 56, lockWide = false, pill = false),
-    )
+    // --- Add-widget step: a single 4x2 preview on a glass card, gently floating.
 
     private fun showWidgetPreview() {
         val density = resources.displayMetrics.density
         val host = findViewById<FrameLayout>(R.id.widget_preview_host)
-        applyPreviewSpec(previewSpecs[cycleIndex])
+        host.setBackgroundResource(R.drawable.widget_preview_glass_bg)
+        host.clipToOutline = true
+        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+        findViewById<ImageView>(R.id.widget_preview_image).setImageBitmap(
+            WidgetArtworkRenderer.render(
+                context = this,
+                widthPx = (280 * density).toInt(),
+                heightPx = (130 * density).toInt(),
+                stats = TwidgetStore.currentStats(this),
+                settings = TwidgetStore.widgetSettings(this),
+                mode = TwidgetWidget.LAYOUT_MODE_LARGE,
+                dark = dark,
+                delta = TwidgetStore.followersDelta(this).takeIf { it != 0L } ?: 26L,
+            )
+        )
         host.alpha = 0f
-        host.scaleX = 0.7f
-        host.scaleY = 0.7f
+        host.scaleX = 0.85f
+        host.scaleY = 0.85f
         host.translationY = 0f
         host.animate()
             .alpha(1f)
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(500)
-            .setInterpolator(OvershootInterpolator(1.1f))
+            .setDuration(420)
+            .setInterpolator(DecelerateInterpolator())
             .withEndAction {
                 previewFloatAnimator = ObjectAnimator.ofFloat(host, View.TRANSLATION_Y, 0f, -6f * density).apply {
                     duration = 2000
@@ -368,63 +336,6 @@ class OnboardingActivity : AppCompatActivity() {
                 }
             }
             .start()
-        scheduleCycleTick()
-    }
-
-    private fun scheduleCycleTick() {
-        previewHandler.postDelayed({
-            if (step != STEP_WIDGETS) return@postDelayed
-            val host = findViewById<FrameLayout>(R.id.widget_preview_host)
-            host.animate()
-                .alpha(0f)
-                .scaleX(0.85f)
-                .scaleY(0.85f)
-                .setDuration(180)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction {
-                    cycleIndex = (cycleIndex + 1) % previewSpecs.size
-                    applyPreviewSpec(previewSpecs[cycleIndex])
-                    host.animate()
-                        .alpha(1f)
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(280)
-                        .setInterpolator(OvershootInterpolator(1.2f))
-                        .start()
-                }
-                .start()
-            scheduleCycleTick()
-        }, 2600)
-    }
-
-    private fun applyPreviewSpec(spec: WidgetPreviewSpec) {
-        val density = resources.displayMetrics.density
-        val host = findViewById<FrameLayout>(R.id.widget_preview_host)
-        host.layoutParams = (host.layoutParams as FrameLayout.LayoutParams).apply {
-            width = (spec.widthDp * density).toInt()
-            height = (spec.heightDp * density).toInt()
-        }
-        host.background = if (spec.pill) previewPillBackground() else null
-        val bitmap = if (spec.lockWide != null) {
-            LockScreenFollowerViews.previewArt(this, spec.lockWide)
-        } else {
-            WidgetArtworkRenderer.render(
-                context = this,
-                widthPx = (spec.widthDp * density).toInt(),
-                heightPx = (spec.heightDp * density).toInt(),
-                stats = TwidgetStore.currentStats(this),
-                settings = TwidgetStore.widgetSettings(this),
-                mode = spec.mode,
-                dark = false,
-                delta = TwidgetStore.followersDelta(this).takeIf { it != 0L } ?: 26L,
-            )
-        }
-        findViewById<ImageView>(R.id.widget_preview_image).setImageBitmap(bitmap)
-    }
-
-    private fun previewPillBackground() = GradientDrawable().apply {
-        cornerRadius = 26f * resources.displayMetrics.density
-        setColor(Color.argb(205, 255, 255, 255))
     }
 
     private fun submitProfile() {
@@ -463,8 +374,7 @@ class OnboardingActivity : AppCompatActivity() {
                 }
             }
         }.start()
-        step = STEP_WIDGETS
-        renderStep()
+        goToStep(STEP_WIDGETS)
     }
 
     private fun requestWidgetPin() {
@@ -501,5 +411,6 @@ class OnboardingActivity : AppCompatActivity() {
         private const val STEP_OVERVIEW = 0
         private const val STEP_PROFILE = 1
         private const val STEP_WIDGETS = 2
+        private const val STEP_DONE = 3
     }
 }

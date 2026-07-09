@@ -23,4 +23,8 @@
     <!-- Glass pill button + input on the gradient -->
     <color name="onboarding_glass">#99FCFCFF</color>
     <color name="onboarding_glass_stroke">#33FFFFFF</color>
+    <!-- Transparent-ish widget preview card on the add-widget step -->
+    <color name="onboarding_widget_card">#73FFFFFF</color>
+    <!-- "You're all set" settle: blue drains to the bottom, near-white takes over -->
+    <color name="onboarding_settle_fade">#00F1F1F3</color>
 </resources>

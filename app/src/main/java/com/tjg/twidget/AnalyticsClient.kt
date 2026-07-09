@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets
  */
 object AnalyticsClient {
     private const val PREFS = "twidget_analytics"
+    private const val CACHE_VERSION = 2
     private const val STALE_MS = 60 * 60 * 1000L // 1 hour
 
     fun cached(context: Context, username: String): PostAnalytics? {
@@ -182,7 +183,7 @@ object AnalyticsClient {
         return text
     }
 
-    private fun key(username: String): String = username.trim().trimStart('@').lowercase()
+    private fun key(username: String): String = "v$CACHE_VERSION:${username.trim().trimStart('@').lowercase()}"
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

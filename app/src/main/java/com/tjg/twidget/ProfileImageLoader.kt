@@ -75,6 +75,31 @@ object ProfileImageLoader {
         }.start()
     }
 
+    fun loadMediaInto(context: Context, imageView: ImageView, url: String, radiusPx: Int) {
+        applyRoundedClip(imageView, radiusPx)
+        val imageUrl = tweetMediaUrl(url)
+        if (imageUrl.isBlank()) {
+            imageView.visibility = View.GONE
+            return
+        }
+        imageView.visibility = View.VISIBLE
+        cachedMediaBitmap(context, imageUrl)?.let {
+            imageView.setImageBitmap(it)
+            return
+        }
+        imageView.setImageDrawable(null)
+        Thread {
+            val bitmap = downloadMediaToCache(context, imageUrl)
+            imageView.post {
+                if (bitmap != null) {
+                    imageView.setImageBitmap(bitmap)
+                } else {
+                    imageView.visibility = View.GONE
+                }
+            }
+        }.start()
+    }
+
     fun cachedBitmap(context: Context, url: String): Bitmap? {
         val imageUrl = highResolutionUrl(url)
         if (imageUrl.isBlank()) return null
@@ -87,16 +112,37 @@ object ProfileImageLoader {
     fun downloadToCache(context: Context, url: String): Bitmap? = runCatching {
         val imageUrl = highResolutionUrl(url)
         val file = cacheFile(context, imageUrl)
-        val connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
+        downloadFile(imageUrl, file)
+        BitmapFactory.decodeFile(file.absolutePath)
+    }.getOrNull()
+
+    private fun cachedMediaBitmap(context: Context, url: String): Bitmap? =
+        mediaCacheFile(context, url).takeIf { it.exists() }?.let { decodeSampledBitmap(it, 1_600) }
+
+    private fun downloadMediaToCache(context: Context, url: String): Bitmap? = runCatching {
+        val file = mediaCacheFile(context, url)
+        downloadFile(url, file)
+        decodeSampledBitmap(file, 1_600)
+    }.getOrNull()
+
+    private fun downloadFile(url: String, file: File) {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 8_000
-            readTimeout = 8_000
-            setRequestProperty("User-Agent", "Twidget/0.1 Android")
+            readTimeout = 12_000
+            instanceFollowRedirects = true
+            setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Android) Twidget/0.1")
+        }
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            connection.disconnect()
+            error("Image HTTP $code")
         }
         connection.inputStream.use { input ->
             file.outputStream().use { output -> input.copyTo(output) }
         }
-        BitmapFactory.decodeFile(file.absolutePath)
-    }.getOrNull()
+        connection.disconnect()
+    }
 
     private fun showFallback(imageView: ImageView) {
         val padding = (imageView.resources.displayMetrics.density * 10).toInt()
@@ -134,8 +180,27 @@ object ProfileImageLoader {
     private fun cacheFile(context: Context, url: String): File =
         File(context.cacheDir, "profile_avatar_${url.hashCode()}.png")
 
+    private fun mediaCacheFile(context: Context, url: String): File =
+        File(context.cacheDir, "tweet_media_${url.hashCode()}.img")
+
+    private fun decodeSampledBitmap(file: File, maxDimension: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > maxDimension || bounds.outHeight / sample > maxDimension) {
+            sample *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeFile(file.absolutePath, options)
+    }
+
     private fun highResolutionUrl(url: String): String =
         url.trim()
             .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
-            .replace(Regex("([?&]name=)normal(?=(&|$))"), "${'$'}1400x400")
+            .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
+
+    private fun tweetMediaUrl(url: String): String =
+        url.trim()
+            .replace(Regex("([?&]name=)orig(?=(&|$))")) { "${it.groupValues[1]}large" }
 }

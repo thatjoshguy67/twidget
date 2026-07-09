@@ -377,11 +377,9 @@ async function fetchFxWeeklyPosts(username, weekAgo) {
   }
   const requested = username.toLowerCase();
   return (Array.isArray(json.results) ? json.results : [])
-    .filter((status) => status?.type === "status")
-    .filter((status) => stringValue(status.author?.screen_name).toLowerCase() === requested)
-    .filter((status) => !status.reposted_by && !status.replying_to)
+    .filter((status) => isWeeklyOwnPost(status, requested, weekAgo))
     .map(normalizeFxStatus)
-    .filter((post) => post.ts >= weekAgo);
+    .sort((a, b) => b.ts - a.ts);
 }
 
 function normalizeFxStatus(status) {
@@ -401,13 +399,30 @@ function normalizeFxStatus(status) {
     reposts,
     quotes,
     engagements: likes + reposts + replies + quotes,
-    ts: numberValue(status.created_timestamp) * 1000 || new Date(status.created_at || 0).getTime() || 0,
+    ts: timestampForStatus(status),
     createdAt: stringValue(status.created_at),
     authorName: stringValue(status.author?.name),
     authorUserName: stringValue(status.author?.screen_name),
     authorAvatar: highResolutionProfileImageUrl(status.author?.avatar_url),
     media: mediaForStatus(status),
   };
+}
+
+function isWeeklyOwnPost(status, requestedUsername, weekAgo) {
+  if (!status || status.type !== "status") return false;
+  if (stringValue(status.author?.screen_name).toLowerCase() !== requestedUsername) return false;
+  if (status.reposted_by) return false;
+  if (status.replying_to || status.in_reply_to_status_id || status.in_reply_to_status_id_str) return false;
+
+  const id = stringValue(status.id);
+  if (stringValue(status.url).toLowerCase().includes(`/${requestedUsername}/status/`) === false) return false;
+
+  const ts = timestampForStatus(status);
+  return ts >= weekAgo && ts <= Date.now() + 5 * 60 * 1000 && (!id || status.conversation_id == null || stringValue(status.conversation_id) === id);
+}
+
+function timestampForStatus(status) {
+  return numberValue(status.created_timestamp) * 1000 || new Date(status.created_at || 0).getTime() || 0;
 }
 
 function displayTextAndLinks(status) {

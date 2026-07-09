@@ -1,8 +1,10 @@
 package com.tjg.twidget
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -17,6 +19,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.CollapsingToolbarLayout
 import kotlin.math.abs
 
 class AboutActivity : AppCompatActivity() {
@@ -26,6 +29,7 @@ class AboutActivity : AppCompatActivity() {
         setContentView(R.layout.activity_about)
         applySystemBarInsets()
         setupToolbar()
+        setupTransparentAppBar()
         setupVersion()
         setupCollapsingContent()
 
@@ -91,6 +95,25 @@ class AboutActivity : AppCompatActivity() {
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowTitleEnabled(false)
+        }
+    }
+
+    private fun setupTransparentAppBar() {
+        findViewById<AppBarLayout>(R.id.about_app_bar).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            elevation = 0f
+            stateListAnimator = null
+        }
+        findViewById<CollapsingToolbarLayout>(R.id.about_collapsing_toolbar).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            setContentScrim(ColorDrawable(Color.TRANSPARENT))
+            statusBarScrim = ColorDrawable(Color.TRANSPARENT)
+        }
+        findViewById<Toolbar>(R.id.about_toolbar).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+            elevation = 0f
         }
     }
 

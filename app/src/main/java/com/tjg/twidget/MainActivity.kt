@@ -316,7 +316,7 @@ class MainActivity : AppCompatActivity() {
             post?.media?.firstOrNull()?.let { media ->
                 addView(ImageView(this@MainActivity).apply {
                     contentDescription = media.alt.ifBlank { getString(R.string.post_media) }
-                    ProfileImageLoader.loadRoundedInto(this@MainActivity, this, media.url, dp(14))
+                    ProfileImageLoader.loadMediaInto(this@MainActivity, this, media.url, dp(14))
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     dp(190),

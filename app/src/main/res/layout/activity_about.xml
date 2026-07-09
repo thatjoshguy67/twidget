@@ -5,13 +5,14 @@
     android:id="@+id/about_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?roundedCornerColor">
+    android:background="@drawable/onboarding_gradient_bg">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/about_app_bar"
         style="?attr/appBarLayoutStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
         app:seslHeightProportion="0.5"
         app:seslUseCustomHeight="true">
 
@@ -19,6 +20,7 @@
             style="?attr/collapsingToolbarLayoutStyle"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="@android:color/transparent"
             app:layout_scrollFlags="exitUntilCollapsed|scroll">
 
             <LinearLayout
@@ -151,7 +153,24 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     app:showTopDivider="false"
+                    app:summary="@string/about_tjg_summary"
                     app:title="@string/about_tjg_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_kingowen_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_kingowen_summary"
+                    app:title="@string/about_kingowen_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_fxtwitter_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_fxtwitter_summary"
+                    app:title="@string/about_fxtwitter_title" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_oneui_credit"
@@ -194,9 +213,24 @@
                     android:text="@string/about_tjg_link" />
 
                 <TextView
+                    android:id="@+id/about_kingowen"
+                    style="@style/OneUI.RelativeLinkTextViewStyle"
+                    android:text="@string/about_kingowen_link" />
+
+                <TextView
+                    android:id="@+id/about_fxtwitter"
+                    style="@style/OneUI.RelativeLinkTextViewStyle"
+                    android:text="@string/about_fxtwitter_link" />
+
+                <TextView
                     android:id="@+id/about_oneui"
                     style="@style/OneUI.RelativeLinkTextViewStyle"
                     android:text="@string/oneui_project" />
+
+                <TextView
+                    android:id="@+id/about_rettiwt"
+                    style="@style/OneUI.RelativeLinkTextViewStyle"
+                    android:text="@string/about_rettiwt_link" />
 
                 <TextView
                     android:id="@+id/about_repo"

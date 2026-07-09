@@ -201,16 +201,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun bindHistoryNotice(page: View, history: List<HistorySample>, chartHistory: List<HistorySample>) {
         val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
-        when {
-            chartHistory.any { it.estimated } -> {
-                notice.setText(R.string.estimated_notice)
-                notice.visibility = View.VISIBLE
-            }
-            history.size < 7 -> {
-                notice.setText(R.string.history_notice)
-                notice.visibility = View.VISIBLE
-            }
-            else -> notice.visibility = View.GONE
+        // The daily-capture explanation lives in onboarding now; only the
+        // estimate footnote still surfaces on the dashboard.
+        if (chartHistory.any { it.estimated }) {
+            notice.setText(R.string.estimated_notice)
+            notice.visibility = View.VISIBLE
+        } else {
+            notice.visibility = View.GONE
         }
     }
 

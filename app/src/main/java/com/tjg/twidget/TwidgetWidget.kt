@@ -20,12 +20,12 @@ class TwidgetWidget : AppWidgetProvider() {
         if (intent.action == ACTION_REFRESH) {
             val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                // Partial update just flips the loading spinner on in the
-                // widget's existing layout; the full re-render below (which
-                // defaults it to gone) turns it back off.
-                AppWidgetManager.getInstance(context).partiallyUpdateAppWidget(
+                // Partial update flips the loading spinner on in the widget's
+                // existing layout; the full re-render below re-hides it.
+                val manager = AppWidgetManager.getInstance(context)
+                manager.partiallyUpdateAppWidget(
                     appWidgetId,
-                    RemoteViews(context.packageName, R.layout.widget_blur).apply {
+                    RemoteViews(context.packageName, spinnerLayout(context, manager, appWidgetId)).apply {
                         setViewVisibility(R.id.widget_loading, View.VISIBLE)
                     },
                 )
@@ -82,12 +82,7 @@ class TwidgetWidget : AppWidgetProvider() {
             // Google Sans Flex widgets are rendered as artwork bitmaps instead.
             val useGsf = widgetSettings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX
             val renderAsArtwork = useGsf || mode == LAYOUT_MODE_LARGE || mode == LAYOUT_MODE_COMPACT_SQUARE
-            val layoutResource = when {
-                mode == LAYOUT_MODE_LARGE -> R.layout.widget_blur
-                mode == LAYOUT_MODE_COMPACT_SQUARE || useGsf -> R.layout.widget_compact_square
-                mode == LAYOUT_MODE_COMPACT_2X1 -> R.layout.widget_compact_2x1
-                else -> R.layout.widget_compact_strip
-            }
+            val layoutResource = layoutResource(mode, useGsf)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
@@ -100,6 +95,10 @@ class TwidgetWidget : AppWidgetProvider() {
                 val base = if (dark) 16 else 255
                 val primary = if (dark) Color.WHITE else Color.BLACK
                 setInt(android.R.id.background, "setBackgroundColor", Color.argb(widgetSettings.tintAlpha, base, base, base))
+                // A full update must re-hide the spinner explicitly: the launcher
+                // keeps the VISIBLE state a tap-refresh partial update set, so
+                // relying on the layout's gone default leaves it stuck spinning.
+                setViewVisibility(R.id.widget_loading, View.GONE)
                 if (renderAsArtwork) {
                     val artwork = WidgetArtworkRenderer.render(
                         context = context,
@@ -142,6 +141,23 @@ class TwidgetWidget : AppWidgetProvider() {
                 setOnClickPendingIntent(android.R.id.background, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
             }
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        // Whichever layout a widget is currently showing — used for both the
+        // full render and the tap-refresh spinner so the partial update targets
+        // the right view hierarchy.
+        private fun layoutResource(mode: Int, useGsf: Boolean): Int = when {
+            mode == LAYOUT_MODE_LARGE -> R.layout.widget_blur
+            mode == LAYOUT_MODE_COMPACT_SQUARE || useGsf -> R.layout.widget_compact_square
+            mode == LAYOUT_MODE_COMPACT_2X1 -> R.layout.widget_compact_2x1
+            else -> R.layout.widget_compact_strip
+        }
+
+        fun spinnerLayout(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int): Int {
+            val mode = layoutMode(appWidgetManager.getAppWidgetOptions(appWidgetId))
+            val useGsf = TwidgetStore.widgetSettings(context, appWidgetId).fontFamily ==
+                TwidgetStore.FONT_GOOGLE_SANS_FLEX
+            return layoutResource(mode, useGsf)
         }
 
         fun layoutMode(minWidth: Int, minHeight: Int): Int = when {

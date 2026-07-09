@@ -166,6 +166,7 @@
     <string name="onboarding_title">Twidget</string>
     <string name="onboarding_overview_title">Welcome to Twidget</string>
     <string name="onboarding_done_title">You\'re all set!</string>
+    <string name="onboarding_done_summary">Twidget captures your stats once a day, so your weekly chart fills in over the first week and longer ranges keep growing as it syncs.</string>
     <string name="onboarding_handle_hint">\@</string>
     <string name="get_started">Get started</string>
     <string name="add_to_home_screen">Add to home screen</string>

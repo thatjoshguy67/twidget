@@ -72,6 +72,17 @@
                     android:gravity="center"
                     android:textColor="?android:textColorSecondary"
                     android:textSize="14sp" />
+
+                <ImageView
+                    android:id="@+id/about_header_github"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/about_repo_link"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_github_24"
+                    app:tint="?android:textColorPrimary" />
             </LinearLayout>
 
             <androidx.appcompat.widget.Toolbar
@@ -169,6 +180,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clickable="true"
+                    app:showTopDivider="false"
                     app:summary="@string/about_tjg_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_tjg_title" />
@@ -218,66 +230,12 @@
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    app:showTopDivider="false"
                     app:summary="@string/about_mit_summary"
                     app:summaryMaxLines="6"
                     app:title="@string/about_mit_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
-            <dev.oneuiproject.oneui.widget.Separator
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/about_links_section" />
-
-            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/oneui_card_bg"
-                android:orientation="vertical"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp">
-
-                <TextView
-                    android:id="@+id/about_tjg"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about_tjg_link" />
-
-                <TextView
-                    android:id="@+id/about_kingowen"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about_kingowen_link" />
-
-                <TextView
-                    android:id="@+id/about_fxtwitter"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about_fxtwitter_link" />
-
-                <TextView
-                    android:id="@+id/about_oneui"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/oneui_project" />
-
-                <TextView
-                    android:id="@+id/about_rettiwt"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about_rettiwt_link" />
-
-                <TextView
-                    android:id="@+id/about_repo"
-                    style="@style/OneUI.RelativeLinkTextViewStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/about_repo_link" />
-            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

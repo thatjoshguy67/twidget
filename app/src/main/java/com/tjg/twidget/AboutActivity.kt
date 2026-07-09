@@ -45,22 +45,7 @@ class AboutActivity : AppCompatActivity() {
         findViewById<View>(R.id.about_oneui_credit).setOnClickListener {
             openUrl(getString(R.string.link_oneui_project))
         }
-        findViewById<View>(R.id.about_tjg).setOnClickListener {
-            openUrl(getString(R.string.link_tjg))
-        }
-        findViewById<View>(R.id.about_kingowen).setOnClickListener {
-            openUrl(getString(R.string.link_kingowen))
-        }
-        findViewById<View>(R.id.about_fxtwitter).setOnClickListener {
-            openUrl(getString(R.string.link_fxtwitter))
-        }
-        findViewById<View>(R.id.about_oneui).setOnClickListener {
-            openUrl(getString(R.string.link_oneui_project))
-        }
-        findViewById<View>(R.id.about_rettiwt).setOnClickListener {
-            openUrl(getString(R.string.link_rettiwt))
-        }
-        findViewById<View>(R.id.about_repo).setOnClickListener {
+        findViewById<View>(R.id.about_header_github).setOnClickListener {
             openUrl(getString(R.string.link_app_repo))
         }
     }

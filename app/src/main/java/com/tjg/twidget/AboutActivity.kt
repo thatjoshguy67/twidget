@@ -1,6 +1,8 @@
 package com.tjg.twidget
 
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -11,13 +13,16 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.appbar.AppBarLayout
 import kotlin.math.abs
 
 class AboutActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        makeSystemBarsTransparent()
         setContentView(R.layout.activity_about)
         applySystemBarInsets()
         setupToolbar()
@@ -27,14 +32,29 @@ class AboutActivity : AppCompatActivity() {
         findViewById<View>(R.id.about_tjg_credit).setOnClickListener {
             openUrl(getString(R.string.link_tjg))
         }
+        findViewById<View>(R.id.about_kingowen_credit).setOnClickListener {
+            openUrl(getString(R.string.link_kingowen))
+        }
+        findViewById<View>(R.id.about_fxtwitter_credit).setOnClickListener {
+            openUrl(getString(R.string.link_fxtwitter))
+        }
         findViewById<View>(R.id.about_oneui_credit).setOnClickListener {
             openUrl(getString(R.string.link_oneui_project))
         }
         findViewById<View>(R.id.about_tjg).setOnClickListener {
             openUrl(getString(R.string.link_tjg))
         }
+        findViewById<View>(R.id.about_kingowen).setOnClickListener {
+            openUrl(getString(R.string.link_kingowen))
+        }
+        findViewById<View>(R.id.about_fxtwitter).setOnClickListener {
+            openUrl(getString(R.string.link_fxtwitter))
+        }
         findViewById<View>(R.id.about_oneui).setOnClickListener {
             openUrl(getString(R.string.link_oneui_project))
+        }
+        findViewById<View>(R.id.about_rettiwt).setOnClickListener {
+            openUrl(getString(R.string.link_rettiwt))
         }
         findViewById<View>(R.id.about_repo).setOnClickListener {
             openUrl(getString(R.string.link_app_repo))
@@ -71,6 +91,18 @@ class AboutActivity : AppCompatActivity() {
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowTitleEnabled(false)
+        }
+    }
+
+    private fun makeSystemBarsTransparent() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
         }
     }
 

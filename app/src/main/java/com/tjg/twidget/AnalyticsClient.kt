@@ -1,6 +1,7 @@
 package com.tjg.twidget
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -64,9 +65,48 @@ object AnalyticsClient {
             url = json.optString("url"),
             text = json.optString("text"),
             views = json.optLong("views"),
+            likes = json.optLong("likes"),
+            replies = json.optLong("replies"),
+            reposts = json.optLong("reposts"),
+            quotes = json.optLong("quotes"),
             engagements = json.optLong("engagements"),
             timestamp = json.optLong("ts"),
+            createdAt = json.optString("createdAt"),
+            authorName = json.optString("authorName"),
+            authorUserName = json.optString("authorUserName"),
+            authorAvatar = json.optString("authorAvatar"),
+            links = parseLinks(json.optJSONArray("links")),
+            media = parseMedia(json.optJSONArray("media")),
         )
+    }
+
+    private fun parseLinks(array: JSONArray?): List<PostLink> {
+        array ?: return emptyList()
+        return List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { item ->
+                item ?: return@mapNotNull null
+                PostLink(
+                    display = item.optString("display"),
+                    url = item.optString("url"),
+                )
+            }
+            .filter { it.display.isNotBlank() && it.url.isNotBlank() }
+    }
+
+    private fun parseMedia(array: JSONArray?): List<PostMedia> {
+        array ?: return emptyList()
+        return List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { item ->
+                item ?: return@mapNotNull null
+                PostMedia(
+                    type = item.optString("type"),
+                    url = item.optString("url"),
+                    alt = item.optString("alt"),
+                    width = item.optLong("width"),
+                    height = item.optLong("height"),
+                )
+            }
+            .filter { it.url.isNotBlank() }
     }
 
     private fun serialize(a: PostAnalytics): JSONObject = JSONObject()
@@ -101,8 +141,29 @@ object AnalyticsClient {
         .put("url", p.url)
         .put("text", p.text)
         .put("views", p.views)
+        .put("likes", p.likes)
+        .put("replies", p.replies)
+        .put("reposts", p.reposts)
+        .put("quotes", p.quotes)
         .put("engagements", p.engagements)
         .put("ts", p.timestamp)
+        .put("createdAt", p.createdAt)
+        .put("authorName", p.authorName)
+        .put("authorUserName", p.authorUserName)
+        .put("authorAvatar", p.authorAvatar)
+        .put("links", JSONArray(p.links.map { serializeLink(it) }))
+        .put("media", JSONArray(p.media.map { serializeMedia(it) }))
+
+    private fun serializeLink(link: PostLink): JSONObject = JSONObject()
+        .put("display", link.display)
+        .put("url", link.url)
+
+    private fun serializeMedia(media: PostMedia): JSONObject = JSONObject()
+        .put("type", media.type)
+        .put("url", media.url)
+        .put("alt", media.alt)
+        .put("width", media.width)
+        .put("height", media.height)
 
     private fun read(url: String, apiKey: String): String {
         val connection = URL(url).openConnection() as HttpURLConnection

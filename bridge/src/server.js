@@ -325,98 +325,129 @@ app.get("/analytics/:username", async (req, res) => {
 });
 
 async function computeAnalytics(username) {
-  const rettiwt = new Rettiwt({ timeout: 15000, maxRetries: 1 });
-  const details = normalizeRettiwtUser(await rettiwt.user.details(username), username);
-  const userId = stringValue(details.id);
-  const followers = numberValue(details.followersCount);
-  if (!userId) throw new Error("no user id");
-
-  const timeline = await rettiwt.user.timeline(userId, analyticsPostCount);
-  // Original authored posts only — a pure retweet's metrics belong to someone
-  // else, so they would skew per-post reach and engagement.
-  const posts = (timeline?.list ?? [])
-    .map(normalizeTimelineTweet)
-    .filter((tweet) => tweet && !tweet.retweeted)
-    .map((tweet) => {
-      const likes = numberValue(tweet.likeCount);
-      const retweets = numberValue(tweet.retweetCount);
-      const replies = numberValue(tweet.replyCount);
-      const quotes = numberValue(tweet.quoteCount);
-      return {
-        id: stringValue(tweet.id),
-        url: stringValue(tweet.url) || `https://x.com/${username}/status/${stringValue(tweet.id)}`,
-        text: collapseText(tweet.fullText),
-        views: numberValue(tweet.viewCount),
-        engagements: likes + retweets + replies + quotes,
-        ts: new Date(tweet.createdAt || 0).getTime() || 0,
-      };
-    });
+  const profile = await fetchFxProfile(username);
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const posts = await fetchFxWeeklyPosts(username, weekAgo);
 
   const postCount = posts.length;
   const views = posts.map((post) => post.views);
   const engagements = posts.map((post) => post.engagements);
   const totalViews = sum(views);
   const totalEngagements = sum(engagements);
-
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const recent = posts.filter((post) => post.ts >= weekAgo);
-  const ranked = recent.length ? recent : posts;
-  const best = maxBy(ranked, (post) => post.engagements);
-  const worst = minBy(ranked, (post) => post.engagements);
+  const best = maxBy(posts, (post) => post.engagements);
+  const worst = minBy(posts, (post) => post.engagements);
 
   return {
     userName: username,
-    followers,
+    followers: profile.followersCount,
     postsAnalyzed: postCount,
     windowDays: 7,
     reach: {
       totalViews,
       avgViews: mean(views),
       medianViews: median(views),
-      avgViewsPerFollower: followers > 0 && postCount > 0 ? totalViews / postCount / followers : 0,
+      avgViewsPerFollower: profile.followersCount > 0 && postCount > 0 ? totalViews / postCount / profile.followersCount : 0,
     },
     engagement: {
       totalEngagements,
       avgEngagements: mean(engagements),
       medianEngagements: median(engagements),
-      avgEngagementsPerFollower: followers > 0 && postCount > 0 ? totalEngagements / postCount / followers : 0,
+      avgEngagementsPerFollower: profile.followersCount > 0 && postCount > 0 ? totalEngagements / postCount / profile.followersCount : 0,
       engagementRate: totalViews > 0 ? totalEngagements / totalViews : 0,
     },
     // With only one post, best and worst would be identical — show just the one.
-    best: ranked.length ? best : null,
-    worst: ranked.length >= 2 ? worst : null,
+    best: posts.length ? best : null,
+    worst: posts.length >= 2 ? worst : null,
     cachedAt: Date.now(),
   };
 }
 
-function normalizeRettiwtUser(details, fallbackUsername) {
-  const user = typeof details?.toJSON === "function" ? details.toJSON() : details;
+async function fetchFxWeeklyPosts(username, weekAgo) {
+  const url = new URL(`https://api.fxtwitter.com/2/profile/${encodeURIComponent(username)}/statuses`);
+  url.searchParams.set("count", String(analyticsPostCount));
+  url.searchParams.set("since", String(weekAgo));
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", "User-Agent": "TwidgetBridge/0.1" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status === 204) return [];
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok || numberValue(json.code) >= 400) {
+    throw new Error(`FxTwitter statuses ${response.status}: ${stringValue(json.message) || "request failed"}`);
+  }
+  const requested = username.toLowerCase();
+  return (Array.isArray(json.results) ? json.results : [])
+    .filter((status) => status?.type === "status")
+    .filter((status) => stringValue(status.author?.screen_name).toLowerCase() === requested)
+    .filter((status) => !status.reposted_by && !status.replying_to)
+    .map(normalizeFxStatus)
+    .filter((post) => post.ts >= weekAgo);
+}
+
+function normalizeFxStatus(status) {
+  const likes = numberValue(status.likes);
+  const reposts = numberValue(status.reposts);
+  const replies = numberValue(status.replies);
+  const quotes = numberValue(status.quotes);
+  const textParts = displayTextAndLinks(status);
   return {
-    id: firstDefined(findDeep(user, ["id", "restId", "rest_id"]), ""),
-    userName: stringValue(firstDefined(findDeep(user, ["userName", "username", "screenName", "screen_name"]), fallbackUsername)),
-    followersCount: findDeep(user, ["followersCount", "followers_count", "followerCount", "follower_count"]),
+    id: stringValue(status.id),
+    url: stringValue(status.url),
+    text: textParts.text,
+    links: textParts.links,
+    views: numberValue(status.views),
+    likes,
+    replies,
+    reposts,
+    quotes,
+    engagements: likes + reposts + replies + quotes,
+    ts: numberValue(status.created_timestamp) * 1000 || new Date(status.created_at || 0).getTime() || 0,
+    createdAt: stringValue(status.created_at),
+    authorName: stringValue(status.author?.name),
+    authorUserName: stringValue(status.author?.screen_name),
+    authorAvatar: highResolutionProfileImageUrl(status.author?.avatar_url),
+    media: mediaForStatus(status),
   };
 }
 
-function normalizeTimelineTweet(tweet) {
-  if (!tweet) return null;
-  const item = typeof tweet.toJSON === "function" ? tweet.toJSON() : tweet;
-  return {
-    id: firstDefined(findDeep(item, ["id", "restId", "rest_id"]), ""),
-    url: firstDefined(findDeep(item, ["url"]), ""),
-    fullText: firstDefined(findDeep(item, ["fullText", "full_text", "text"]), ""),
-    viewCount: firstDefined(findDeep(item, ["viewCount", "view_count"]), 0),
-    likeCount: firstDefined(findDeep(item, ["likeCount", "favorite_count", "favourite_count"]), 0),
-    retweetCount: firstDefined(findDeep(item, ["retweetCount", "retweet_count"]), 0),
-    replyCount: firstDefined(findDeep(item, ["replyCount", "reply_count"]), 0),
-    quoteCount: firstDefined(findDeep(item, ["quoteCount", "quote_count"]), 0),
-    createdAt: firstDefined(findDeep(item, ["createdAt", "created_at"]), ""),
-    retweeted: Boolean(firstDefined(item.retweetedTweet, item.retweeted_status_result, item.retweeted_status)),
-  };
+function displayTextAndLinks(status) {
+  const raw = status.raw_text && typeof status.raw_text === "object" ? status.raw_text : null;
+  let text = stringValue(status.text).trim() || stringValue(raw?.text).trim();
+  const facets = Array.isArray(raw?.facets) ? raw.facets : [];
+  const links = facets
+    .map((facet) => ({
+      type: stringValue(facet.type),
+      original: stringValue(facet.original),
+      display: stringValue(facet.display),
+      replacement: stringValue(facet.replacement),
+    }))
+    .filter((facet) => facet.type === "url" && facet.display && (facet.replacement || facet.original))
+    .map((facet) => ({ display: facet.display, url: facet.replacement || facet.original }));
+
+  for (const link of links) {
+    if (!text.includes(link.display)) {
+      text = `${text} ${link.display}`.trim();
+    }
+  }
+  return { text: collapseText(text), links };
+}
+
+function mediaForStatus(status) {
+  const all = Array.isArray(status.media?.all) ? status.media.all : [];
+  return all
+    .map((item) => ({
+      type: stringValue(item.type),
+      url: stringValue(item.thumbnail_url) || stringValue(item.url),
+      alt: stringValue(item.altText),
+      width: numberValue(item.width),
+      height: numberValue(item.height),
+    }))
+    .filter((item) => item.url)
+    .slice(0, 4);
 }
 
 function collapseText(value) {
-  return stringValue(value).replace(/\s+/g, " ").trim().slice(0, 180);
+  return Array.from(stringValue(value).replace(/\s+/g, " ").trim()).slice(0, 180).join("");
 }
 
 function sum(values) {

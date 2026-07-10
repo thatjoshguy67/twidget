@@ -7,6 +7,7 @@ class SettingsActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_preference_screen)
+        applyEdgeToEdgeInsets(findViewById(R.id.preference_toolbar_layout))
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
             setTitle(getString(R.string.settings))
             setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }

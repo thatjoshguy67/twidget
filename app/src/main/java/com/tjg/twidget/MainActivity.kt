@@ -89,6 +89,7 @@ class MainActivity : EdgeToEdgeActivity() {
             return
         }
         setContentView(R.layout.activity_main)
+        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout))
         onBackPressedDispatcher.addCallback(this, exitEditModeOnBack)
         RefreshWorker.schedule(this)
         TwidgetStore.migrateStoredHistories(this)

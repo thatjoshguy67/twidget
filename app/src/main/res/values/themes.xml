@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Twidget" parent="OneUITheme">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="colorPrimary">@color/oneui_accent</item>
         <item name="drawerBackgroundColor">@color/oneui_drawer_bg</item>
         <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>

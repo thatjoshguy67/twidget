@@ -56,6 +56,14 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             isLockWide = providerClass == LockScreenFollowerWideWidget::class.java.name
         }
         setContentView(R.layout.activity_widget_config)
+        val buttonBar = findViewById<View>(R.id.config_button_bar)
+        val baseButtonMargin = (16 * resources.displayMetrics.density).toInt()
+        applyEdgeToEdgeInsets(findViewById(R.id.widget_config_root)) { navigationBarInset ->
+            (buttonBar.layoutParams as FrameLayout.LayoutParams).apply {
+                bottomMargin = baseButtonMargin + navigationBarInset
+                buttonBar.layoutParams = this
+            }
+        }
         if (isLockWidget) {
             // Lock screen artwork is monotone white — opacity, tint, font, and
             // tap action don't apply there; account and logo do.

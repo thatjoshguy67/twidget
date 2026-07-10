@@ -120,7 +120,7 @@ class AboutActivity : FoldablePopOverActivity() {
             // Keep the root (and its scroll fade) edge-to-edge so the transparent
             // status bar always reflects the current background. Only the app bar
             // content needs to start below the status icons.
-            view.setPadding(bars.left, 0, bars.right, bars.bottom)
+            view.setPadding(bars.left, 0, bars.right, 0)
             appBar.setPadding(0, bars.top, 0, 0)
             insets
         }

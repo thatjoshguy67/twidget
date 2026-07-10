@@ -3,6 +3,8 @@ package com.tjg.twidget
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.util.SeslRoundedCorner
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
@@ -18,6 +20,18 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         super.onViewCreated(view, savedInstanceState)
         // The trailing inset draws the bottom rounding instead.
         listView.seslSetLastRoundedCorner(false)
+        val baseBottomPadding = listView.paddingBottom
+        listView.clipToPadding = false
+        ViewCompat.setOnApplyWindowInsetsListener(listView) { list, insets ->
+            val navigationBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            list.setPadding(
+                list.paddingLeft,
+                list.paddingTop,
+                list.paddingRight,
+                baseBottomPadding + navigationBar,
+            )
+            insets
+        }
     }
 
     /** Call after the last preference is added, before assigning the screen. */

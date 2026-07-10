@@ -2,10 +2,12 @@
 <dev.oneuiproject.oneui.layout.ToolbarLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/widget_config_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:expandable="false"
     app:expanded="false"
+    app:handleInsets="false"
     app:showNavButtonAsBack="true"
     app:title="@string/widget_settings">
 
@@ -308,6 +310,7 @@
         </androidx.core.widget.NestedScrollView>
 
         <LinearLayout
+            android:id="@+id/config_button_bar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|center_horizontal"
@@ -354,3 +357,4 @@
         </LinearLayout>
     </FrameLayout>
 </dev.oneuiproject.oneui.layout.ToolbarLayout>
+    android:id="@+id/widget_config_root"

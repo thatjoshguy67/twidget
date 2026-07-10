@@ -18,16 +18,6 @@ object RettiwtClient {
             throw IllegalStateException("Username is required before syncing")
         }
         val bridgeUrl = effectiveBridgeUrl(settings)
-        if (bridgeUrl.isBlank()) {
-            val current = TwidgetStore.currentStats(context, username)
-            return current.copy(
-                fullName = current.fullName.takeIf { it.isNotBlank() && it != "Twidget" } ?: username,
-                userName = username,
-                profileImage = current.profileImage.ifBlank { fallbackAvatarUrl(username) },
-                syncedAt = System.currentTimeMillis(),
-            )
-        }
-
         var lastError: Exception? = null
         val useXApi = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API &&
             XApiClient.hasCredentials(settings)
@@ -37,7 +27,7 @@ object RettiwtClient {
         // back to the X API when the user has configured credentials.
         if (useXApi) {
             try {
-                return finalize(XApiClient.fetchProfile(context, username), username)
+                return finalize(withAvailableLikes(context, username, XApiClient.fetchProfile(context, username)), username)
             } catch (error: Exception) {
                 lastError = error
             }
@@ -53,6 +43,13 @@ object RettiwtClient {
             } catch (error: Exception) {
                 lastError = error
             }
+        }
+
+        // Direct providers above do not need a bridge. If one is unavailable
+        // and no fallback bridge was configured, preserve the real failure
+        // instead of marking stale cached numbers as freshly synced.
+        if (bridgeUrl.isBlank()) {
+            throw lastError ?: IllegalStateException("No data provider is configured")
         }
 
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
@@ -72,12 +69,17 @@ object RettiwtClient {
                 )
             } catch (error: Exception) {
                 lastError = error
+                // Compatibility aliases are only useful when an older
+                // self-hosted bridge says the route does not exist. Retrying
+                // the same failing upstream four times can otherwise stall a
+                // refresh for roughly 40 seconds.
+                if (error !is HttpError || error.code !in setOf(404, 405)) break
             }
         }
 
         if (!useXApi && XApiClient.hasCredentials(settings)) {
             try {
-                return finalize(XApiClient.fetchProfile(context, username), username)
+                return finalize(withAvailableLikes(context, username, XApiClient.fetchProfile(context, username)), username)
             } catch (error: Exception) {
                 lastError = error
             }
@@ -138,6 +140,21 @@ object RettiwtClient {
         )
     }
 
+    // X user public_metrics has no profile-wide likes count. Use FxTwitter for
+    // that one field when possible, otherwise retain the last observed value
+    // instead of recording a fabricated drop to zero.
+    private fun withAvailableLikes(context: Context, username: String, official: ProfileStats): ProfileStats {
+        val live = runCatching { FxTwitterClient.fetchProfile(username) }.getOrNull()
+        val previous = TwidgetStore.currentStats(context, username)
+        val likes = MetricProvenance.preferLiveThenPrevious(
+            liveValue = live?.likeCount,
+            liveKnown = live?.likesKnown == true,
+            previousValue = previous.likeCount,
+            previousKnown = previous.likesKnown,
+        )
+        return official.copy(likeCount = likes.value, likesKnown = likes.known)
+    }
+
     private fun effectiveBridgeUrl(settings: TwidgetSettings): String =
         when (settings.dataSource) {
             TwidgetStore.DATA_SOURCE_SELF_HOSTED,
@@ -159,7 +176,7 @@ object RettiwtClient {
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
-        if (code !in 200..299) throw IllegalStateException("HTTP $code: $body")
+        if (code !in 200..299) throw HttpError(code, "Bridge HTTP $code: ${body.take(300)}")
         return body
     }
 
@@ -176,12 +193,16 @@ object RettiwtClient {
             userName = findString(user, setOf("userName", "username", "screenName", "screen_name", "handle")).orEmpty().trimStart('@'),
             followersCount = findLong(user, setOf("followersCount", "followers_count", "followerCount", "follower_count")),
             followingsCount = findLong(user, setOf("followingsCount", "followingCount", "friends_count", "following_count")),
-            statusesCount = findLong(user, setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count", "listed_count")),
+            statusesCount = findLong(user, setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count")),
             likeCount = findLong(user, setOf("likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count")),
             profileImage = profileImageUrl(user),
             isVerified = findBoolean(user, setOf("isVerified", "verified", "blueVerified", "blue_verified", "is_blue_verified", "verifiedType", "verified_type")),
             isPrivate = findBoolean(user, setOf("isPrivate", "private", "protected", "isProtected", "is_protected", "protectedProfile")),
             history = parseHistory(json, user),
+            followersKnown = hasLong(user, setOf("followersCount", "followers_count", "followerCount", "follower_count")),
+            followingKnown = hasLong(user, setOf("followingsCount", "followingCount", "friends_count", "following_count")),
+            postsKnown = hasLong(user, setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count")),
+            likesKnown = hasLong(user, setOf("likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count")),
         )
     }
 
@@ -194,14 +215,20 @@ object RettiwtClient {
                 sample ?: return@mapNotNull null
                 val timestamp = sample.optLong("ts", sample.optLong("timestamp", 0L))
                 if (timestamp <= 0L) return@mapNotNull null
+                val dayLabel = sample.optString("dayLabel", "")
                 HistorySample(
-                    dayLabel = sample.optString("dayLabel", ""),
+                    dayLabel = dayLabel,
                     followers = sample.optLong("followers", 0L),
                     following = sample.optLong("following", sample.optLong("followings", 0L)),
                     posts = sample.optLong("posts", 0L),
                     likes = sample.optLong("likes", 0L),
-                    timestamp = timestamp,
+                    timestamp = localDayFromServer(timestamp, dayLabel),
                     estimated = sample.optBoolean("est", false),
+                    followersKnown = sample.has("followers") && !sample.isNull("followers"),
+                    followingKnown = (sample.has("following") && !sample.isNull("following")) ||
+                        (sample.has("followings") && !sample.isNull("followings")),
+                    postsKnown = sample.has("posts") && !sample.isNull("posts"),
+                    likesKnown = sample.has("likes") && !sample.isNull("likes"),
                 )
             }
     }
@@ -224,7 +251,7 @@ object RettiwtClient {
     private fun highResolutionProfileImageUrl(url: String): String =
         url.trim()
             .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
-            .replace(Regex("([?&]name=)normal(?=(&|$))"), "${'$'}1400x400")
+            .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
 
     private fun userObject(json: JSONObject): JSONObject =
         json.optJSONObject("user")
@@ -278,6 +305,29 @@ object RettiwtClient {
         return 0
     }
 
+    private fun hasLong(json: JSONObject, keys: Set<String>, depth: Int = 0): Boolean {
+        if (depth > 4) return false
+        if (keys.any { key ->
+                when (val value = json.opt(key)) {
+                    is Number -> true
+                    is String -> value.filter { it.isDigit() }.toLongOrNull() != null
+                    else -> false
+                }
+            }
+        ) return true
+        val names = json.names() ?: return false
+        for (index in 0 until names.length()) {
+            when (val value = json.opt(names.getString(index))) {
+                is JSONObject -> if (hasLong(value, keys, depth + 1)) return true
+                is JSONArray -> for (itemIndex in 0 until value.length()) {
+                    val child = value.opt(itemIndex) as? JSONObject ?: continue
+                    if (hasLong(child, keys, depth + 1)) return true
+                }
+            }
+        }
+        return false
+    }
+
     private fun findBoolean(json: JSONObject, keys: Set<String>, depth: Int = 0): Boolean? {
         if (depth > 4) return null
         keys.firstNotNullOfOrNull { key ->
@@ -311,4 +361,9 @@ object RettiwtClient {
 
     private fun fallbackAvatarUrl(username: String): String =
         "https://unavatar.io/twitter/${URLEncoder.encode(username.trimStart('@'), StandardCharsets.UTF_8.name())}"
+
+    private fun localDayFromServer(timestamp: Long, dayLabel: String): Long =
+        HistoryDates.localDayFromServer(timestamp, dayLabel)
+
+    private class HttpError(val code: Int, message: String) : IllegalStateException(message)
 }

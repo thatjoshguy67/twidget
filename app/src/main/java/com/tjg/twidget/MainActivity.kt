@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
     private var accounts = emptyList<String>()
     private var selectedAccount: String = ""
     private var analytics: PostAnalytics? = null
+    private val analyticsInFlight = mutableSetOf<String>()
     private var editMode = false
     private var draggedCardId: String? = null
     private var dragPreviewOrder: List<String>? = null
@@ -72,6 +73,8 @@ class MainActivity : AppCompatActivity() {
     private val drawerAccountItemIds = mutableMapOf<Int, String>()
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
+    private var lifecycleGeneration = 0L
+    private var syncGeneration = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,6 +97,14 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         render()
+    }
+
+    override fun onDestroy() {
+        // Invalidates every queued UI delivery owned by this Activity. The
+        // background result may still populate application caches, but can no
+        // longer retain or repaint a destroyed window.
+        lifecycleGeneration++
+        super.onDestroy()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -217,17 +228,24 @@ class MainActivity : AppCompatActivity() {
     // then repaints the current account's dashboard.
     private fun maybeRefreshAnalytics(account: String) {
         if (editMode || !AnalyticsClient.isStale(analytics)) return
-        val bridgeUrl = TwidgetStore.settings(this).bridgeUrl.trim().trimEnd('/')
-        if (bridgeUrl.isBlank()) return
-        Thread {
-            val fresh = runCatching { AnalyticsClient.refresh(this, account, bridgeUrl) }.getOrNull() ?: return@Thread
-            runOnUiThread {
-                if (!isFinishing && selectedAccount.equals(account, ignoreCase = true) && !editMode) {
+        val key = account.lowercase(Locale.US)
+        synchronized(analyticsInFlight) {
+            if (!analyticsInFlight.add(key)) return
+        }
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute(onRejected = {
+            synchronized(analyticsInFlight) { analyticsInFlight.remove(key) }
+        }) {
+            val fresh = runCatching { AnalyticsClient.refresh(applicationContext, account) }.getOrNull()
+            synchronized(analyticsInFlight) { analyticsInFlight.remove(key) }
+            fresh ?: return@execute
+            postUiIfCurrent(lifecycleToken) {
+                if (selectedAccount.equals(account, ignoreCase = true) && !editMode) {
                     analytics = fresh
                     bindContent()
                 }
             }
-        }.start()
+        }
     }
 
     private fun bindBestWorst(page: View, account: String) {
@@ -511,39 +529,52 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createChartCard(card: DashboardCardType, stats: ProfileStats, chartHistory: List<HistorySample>, history: List<HistorySample>): View {
-        val (layoutRes, valueId, deltaId, chartId, value, selector) = when (card) {
+        val (layoutRes, valueId, deltaId, chartId, value, known, selector) = when (card) {
             DashboardCardType.FOLLOWERS -> ChartBinding(
                 R.layout.metric_card_followers,
                 R.id.followers_value,
                 R.id.followers_delta,
                 R.id.followers_chart,
-                TwidgetStore.compactNumber(stats.followersCount),
+                if (stats.followersKnown) TwidgetStore.compactNumber(stats.followersCount) else "--",
+                { it.followersKnown },
             ) { it.followers }
             DashboardCardType.FOLLOWING -> ChartBinding(
                 R.layout.metric_card_following,
                 R.id.following_value,
                 R.id.following_delta,
                 R.id.following_chart,
-                TwidgetStore.compactNumber(stats.followingsCount),
+                if (stats.followingKnown) TwidgetStore.compactNumber(stats.followingsCount) else "--",
+                { it.followingKnown },
             ) { it.following }
             DashboardCardType.POSTS -> ChartBinding(
                 R.layout.metric_card_posts,
                 R.id.posts_value,
                 R.id.posts_delta,
                 R.id.posts_chart,
-                TwidgetStore.compactNumber(stats.statusesCount),
+                if (stats.postsKnown) TwidgetStore.compactNumber(stats.statusesCount) else "--",
+                { it.postsKnown },
             ) { it.posts }
             DashboardCardType.LIKES -> ChartBinding(
                 R.layout.metric_card_likes,
                 R.id.likes_value,
                 R.id.likes_delta,
                 R.id.likes_chart,
-                TwidgetStore.compactNumber(stats.likeCount),
+                if (stats.likesKnown) TwidgetStore.compactNumber(stats.likeCount) else "--",
+                { it.likesKnown },
             ) { it.likes }
             else -> error("Compact cards do not have chart layouts.")
         }
         return LayoutInflater.from(this).inflate(layoutRes, null, false).also {
-            bindMetric(it, valueId, deltaId, chartId, value, TwidgetStore.todayDelta(this, stats.userName, selector), chartHistory, selector)
+            bindMetric(
+                it,
+                valueId,
+                deltaId,
+                chartId,
+                value,
+                TwidgetStore.todayDelta(this, stats.userName, known, selector),
+                chartHistory.filter(known),
+                selector,
+            )
         }
     }
 
@@ -684,8 +715,12 @@ class MainActivity : AppCompatActivity() {
                 val diff = stats.followersCount - stats.followingsCount
                 InsightSpec(
                     label = getString(R.string.follower_ratio),
-                    value = decimal(stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1), "x"),
-                    detail = if (diff >= 0) {
+                    value = if (stats.followersKnown && stats.followingKnown) {
+                        decimal(stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1), "x")
+                    } else "--",
+                    detail = if (!stats.followersKnown || !stats.followingKnown) {
+                        getString(R.string.unknown_profile_status)
+                    } else if (diff >= 0) {
                         getString(R.string.more_followers_than_following, TwidgetStore.compactNumber(diff))
                     } else {
                         getString(R.string.fewer_followers_than_following, TwidgetStore.compactNumber(-diff))
@@ -695,14 +730,24 @@ class MainActivity : AppCompatActivity() {
             }
             DashboardCardType.POST_RATE -> InsightSpec(
                 label = getString(R.string.post_rate),
-                value = decimal(dailyAverage(history) { it.posts }.coerceAtLeast(0.0), ""),
-                detail = getString(R.string.per_range, TwidgetStore.signedNumber(rangeDelta(history) { it.posts })),
+                value = history.filter { it.postsKnown }.let { known ->
+                    if (known.size >= 2) decimal(dailyAverage(known) { it.posts }.coerceAtLeast(0.0), "") else "--"
+                },
+                detail = history.filter { it.postsKnown }.let { known ->
+                    if (known.size >= 2) {
+                        getString(R.string.per_range, TwidgetStore.signedNumber(rangeDelta(known) { it.posts }))
+                    } else getString(R.string.unknown_profile_status)
+                },
                 accent = getColor(R.color.metric_green),
             )
             DashboardCardType.LIKES_PER_POST -> InsightSpec(
                 label = getString(R.string.likes_per_post),
-                value = decimal(stats.likeCount.toDouble() / stats.statusesCount.coerceAtLeast(1), ""),
-                detail = "${TwidgetStore.compactNumber(stats.likeCount)} ${getString(R.string.likes).lowercase(Locale.US)}",
+                value = if (stats.likesKnown && stats.postsKnown) {
+                    decimal(stats.likeCount.toDouble() / stats.statusesCount.coerceAtLeast(1), "")
+                } else "--",
+                detail = if (stats.likesKnown) {
+                    "${TwidgetStore.compactNumber(stats.likeCount)} ${getString(R.string.likes).lowercase(Locale.US)}"
+                } else getString(R.string.unknown_profile_status),
                 accent = getColor(R.color.oneui_accent),
             )
             DashboardCardType.MILESTONE -> {
@@ -799,7 +844,7 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.total_views),
                 getColor(R.color.oneui_accent),
                 { TwidgetStore.compactNumber(it.totalViews) },
-                { getString(R.string.across_posts, it.postsAnalyzed) },
+                { analyticsCoverage(it) },
             )
             DashboardCardType.AVG_ENGAGEMENTS -> analyticsSpec(
                 getString(R.string.avg_engagements),
@@ -811,11 +856,18 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.median_engagements),
                 getColor(R.color.oneui_accent),
                 { TwidgetStore.compactNumber(it.medianEngagements.roundToLong()) },
-                { getString(R.string.across_posts, it.postsAnalyzed) },
+                { analyticsCoverage(it) },
             )
             else -> error("Chart cards do not have insight specs.")
         }
     }
+
+    private fun analyticsCoverage(data: PostAnalytics): String =
+        if (data.isSampled) {
+            getString(R.string.posts_from_capped_status_sample, data.postsAnalyzed, data.statusesInspected)
+        } else {
+            getString(R.string.across_posts, data.postsAnalyzed)
+        }
 
     // Analytics cards fall back to a placeholder until the timeline fetch lands.
     private fun analyticsSpec(
@@ -1065,15 +1117,18 @@ class MainActivity : AppCompatActivity() {
         synchronized(downloadingDrawerAvatarUrls) {
             if (!downloadingDrawerAvatarUrls.add(url)) return
         }
-        Thread {
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute(onRejected = {
+            synchronized(downloadingDrawerAvatarUrls) {
+                downloadingDrawerAvatarUrls.remove(url)
+            }
+        }) {
             val loaded = ProfileImageLoader.downloadToCache(applicationContext, url) != null
             synchronized(downloadingDrawerAvatarUrls) {
                 downloadingDrawerAvatarUrls.remove(url)
             }
-            if (loaded) {
-                runOnUiThread { buildDrawer() }
-            }
-        }.start()
+            if (loaded) postUiIfCurrent(lifecycleToken, ::buildDrawer)
+        }
     }
 
     private fun applyDrawerIconTints(drawerNav: DrawerNavigationView) {
@@ -1186,16 +1241,27 @@ class MainActivity : AppCompatActivity() {
         }
         val account = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
         isSyncing = true
+        val generation = ++syncGeneration
+        val lifecycleToken = lifecycleGeneration
         // Launch-time syncs show the same spinner as a pull refresh.
         findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = true
-        Thread {
+        AppExecutors.execute(onRejected = {
+            postUiIfCurrent(lifecycleToken) {
+                if (generation != syncGeneration) return@postUiIfCurrent
+                isSyncing = false
+                findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+                Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            val appContext = applicationContext
             val result = runCatching {
-                val stats = RettiwtClient.refresh(this, account)
-                TwidgetStore.saveStats(this, stats)
-                TwidgetWidget.updateAll(this)
+                val stats = RettiwtClient.refresh(appContext, account)
+                TwidgetStore.saveStats(appContext, stats)
+                TwidgetWidget.updateAll(appContext)
                 stats
             }
-            runOnUiThread {
+            postUiIfCurrent(lifecycleToken) {
+                if (generation != syncGeneration) return@postUiIfCurrent
                 isSyncing = false
                 findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
                 render()
@@ -1203,7 +1269,14 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
                 }
             }
-        }.start()
+        }
+    }
+
+    private fun postUiIfCurrent(lifecycleToken: Long, action: () -> Unit) {
+        runOnUiThread {
+            if (lifecycleToken != lifecycleGeneration || isFinishing || isDestroyed) return@runOnUiThread
+            action()
+        }
     }
 
     private fun openSettings() {
@@ -1260,6 +1333,7 @@ class MainActivity : AppCompatActivity() {
         val deltaId: Int,
         val chartId: Int,
         val value: String,
+        val known: (HistorySample) -> Boolean,
         val selector: (HistorySample) -> Long,
     )
 

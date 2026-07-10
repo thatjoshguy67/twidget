@@ -23,10 +23,11 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="7,671"
-                android:textColor="#000000"
+                android:text="@string/preview_follower_count"
+                android:textColor="@color/widget_preview_text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
@@ -34,20 +35,22 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
                 android:text="@string/followers"
-                android:textColor="#000000"
+                android:textColor="@color/widget_preview_text_primary"
                 android:textSize="21sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="+21"
-                android:textColor="@color/metric_green"
+                android:text="@string/preview_follower_delta"
+                android:textColor="@color/widget_preview_delta_positive"
                 android:textSize="18sp" />
         </LinearLayout>
 
@@ -63,16 +66,17 @@
                 android:layout_height="14dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_logo_x"
-                app:tint="#000000" />
+                app:tint="@color/widget_preview_text_primary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="\@thatjoshguy69"
-                android:textColor="#000000"
+                android:text="@string/preview_account_handle"
+                android:textColor="@color/widget_preview_text_secondary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>

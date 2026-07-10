@@ -45,7 +45,7 @@
             android:gravity="end"
             android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="7,671"
+            android:text="@string/preview_follower_count"
             android:textColor="#FFFFFF"
             android:textFontWeight="800"
             android:textSize="20sp" />
@@ -59,7 +59,7 @@
             android:gravity="end"
             android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="+21"
+            android:text="@string/preview_follower_delta"
             android:textColor="#69DC76"
             android:textFontWeight="700"
             android:textSize="15sp" />

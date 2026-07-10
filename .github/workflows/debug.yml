@@ -11,6 +11,29 @@ permissions:
   contents: read
 
 jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: bridge/.nvmrc
+          cache: npm
+          cache-dependency-path: bridge/package-lock.json
+
+      - name: Install and verify bridge
+        run: |
+          npm ci
+          npm run check
+          npm test
+          npm audit --omit=dev
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -27,13 +50,13 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK and run lint
+      - name: Test and build debug APK
         env:
           # oneui-design + SESL libs live on GitHub Packages, which requires
           # auth even for public packages (token needs read:packages).
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-        run: ./gradlew assembleDebug lintDebug --no-daemon --stacktrace
+        run: ./gradlew testDebugUnitTest assembleDebug lintDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4

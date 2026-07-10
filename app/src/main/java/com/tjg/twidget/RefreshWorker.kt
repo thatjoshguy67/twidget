@@ -36,7 +36,8 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
         return if (anySuccess) Result.success() else Result.retry()
     }
 
-    // The default account plus every account a widget is pinned to.
+    // Every tracked account plus any legacy widget-pinned account that is no
+    // longer in the account list.
     private fun accountsToSync(context: Context): List<String> {
         val manager = AppWidgetManager.getInstance(context)
         val widgetIds = listOf(
@@ -44,7 +45,8 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
             LockScreenFollowerSmallWidget::class.java,
             LockScreenFollowerWideWidget::class.java,
         ).flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
-        val accounts = widgetIds.map { TwidgetStore.widgetSettings(context, it).accountUsername } +
+        val accounts = TwidgetStore.accounts(context) +
+            widgetIds.map { TwidgetStore.widgetSettings(context, it).accountUsername } +
             TwidgetStore.settings(context).username
         return accounts
             .map { it.trim().trimStart('@') }

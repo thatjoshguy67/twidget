@@ -16,6 +16,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object ProfileImageLoader {
+    private const val MAX_IMAGE_BYTES = 12 * 1024 * 1024L
+    private const val MAX_IMAGE_CACHE_BYTES = 32 * 1024 * 1024L
     fun applyCircleClip(imageView: ImageView) {
         imageView.outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
@@ -29,6 +31,8 @@ object ProfileImageLoader {
     fun loadInto(context: Context, imageView: ImageView, url: String) {
         applyCircleClip(imageView)
         val imageUrl = highResolutionUrl(url)
+        val requestToken = "profile:$imageUrl"
+        imageView.setTag(R.id.profile_image_request, requestToken)
         if (imageUrl.isBlank()) {
             showFallback(imageView)
             return
@@ -41,20 +45,25 @@ object ProfileImageLoader {
         }
 
         showFallback(imageView)
-        Thread {
+        AppExecutors.execute {
             val bitmap = downloadToCache(context, imageUrl)
             imageView.post {
-                if (bitmap != null) {
+                if (imageView.isAttachedToWindow &&
+                    imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null
+                ) {
+                    applyCircleClip(imageView)
                     imageView.setPadding(0, 0, 0, 0)
                     imageView.setImageBitmap(bitmap)
                 }
             }
-        }.start()
+        }
     }
 
     fun loadRoundedInto(context: Context, imageView: ImageView, url: String, radiusPx: Int) {
         applyRoundedClip(imageView, radiusPx)
         val imageUrl = highResolutionUrl(url)
+        val requestToken = "rounded:$imageUrl"
+        imageView.setTag(R.id.profile_image_request, requestToken)
         if (imageUrl.isBlank()) {
             imageView.visibility = View.GONE
             return
@@ -65,19 +74,23 @@ object ProfileImageLoader {
             return
         }
         imageView.setImageDrawable(null)
-        Thread {
+        AppExecutors.execute {
             val bitmap = downloadToCache(context, imageUrl)
             imageView.post {
-                if (bitmap != null) {
+                if (imageView.isAttachedToWindow &&
+                    imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null
+                ) {
                     imageView.setImageBitmap(bitmap)
                 }
             }
-        }.start()
+        }
     }
 
     fun loadMediaInto(context: Context, imageView: ImageView, url: String, radiusPx: Int) {
         applyRoundedClip(imageView, radiusPx)
         val imageUrl = tweetMediaUrl(url)
+        val requestToken = "media:$imageUrl"
+        imageView.setTag(R.id.profile_image_request, requestToken)
         if (imageUrl.isBlank()) {
             imageView.visibility = View.GONE
             return
@@ -88,16 +101,19 @@ object ProfileImageLoader {
             return
         }
         imageView.setImageDrawable(null)
-        Thread {
+        AppExecutors.execute {
             val bitmap = downloadMediaToCache(context, imageUrl)
             imageView.post {
+                if (!imageView.isAttachedToWindow ||
+                    imageView.getTag(R.id.profile_image_request) != requestToken
+                ) return@post
                 if (bitmap != null) {
                     imageView.setImageBitmap(bitmap)
                 } else {
                     imageView.visibility = View.GONE
                 }
             }
-        }.start()
+        }
     }
 
     fun cachedBitmap(context: Context, url: String): Bitmap? {
@@ -138,16 +154,51 @@ object ProfileImageLoader {
             connection.disconnect()
             error("Image HTTP $code")
         }
-        connection.inputStream.use { input ->
-            file.outputStream().use { output -> input.copyTo(output) }
+        if (connection.contentLengthLong > MAX_IMAGE_BYTES) {
+            connection.disconnect()
+            error("Image is too large")
         }
-        connection.disconnect()
+        val temporary = File.createTempFile(file.name, ".tmp", file.parentFile)
+        try {
+            connection.inputStream.use { input ->
+                temporary.outputStream().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var total = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        total += read
+                        if (total > MAX_IMAGE_BYTES) error("Image is too large")
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+            if (file.exists() && !file.delete()) error("Unable to replace image cache file")
+            if (!temporary.renameTo(file)) error("Unable to commit image cache file")
+            file.parentFile?.let { trimImageCache(it, file) }
+        } finally {
+            temporary.delete()
+            connection.disconnect()
+        }
+    }
+
+    private fun trimImageCache(directory: File, keep: File) {
+        val cached = directory.listFiles()
+            ?.filter { it.name.startsWith("profile_avatar_") || it.name.startsWith("tweet_media_") }
+            ?.sortedByDescending { it.lastModified() }
+            .orEmpty()
+        var retained = 0L
+        cached.forEach { candidate ->
+            retained += candidate.length()
+            if (retained > MAX_IMAGE_CACHE_BYTES && candidate != keep) candidate.delete()
+        }
     }
 
     private fun showFallback(imageView: ImageView) {
-        val padding = (imageView.resources.displayMetrics.density * 10).toInt()
-        imageView.setPadding(padding, padding, padding, padding)
-        imageView.setImageResource(R.drawable.twidget_fg)
+        imageView.clipToOutline = false
+        imageView.setBackgroundResource(0)
+        imageView.setPadding(0, 0, 0, 0)
+        imageView.setImageResource(R.mipmap.ic_launcher)
     }
 
     private fun applyRoundedClip(imageView: ImageView, radiusPx: Int) {

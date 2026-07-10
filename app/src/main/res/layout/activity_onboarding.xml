@@ -107,6 +107,7 @@
                         android:background="@drawable/onboarding_input_bg"
                         android:fontFamily="sec"
                         android:hint="@string/onboarding_handle_hint"
+                        android:importantForAutofill="no"
                         android:imeOptions="actionDone"
                         android:includeFontPadding="false"
                         android:inputType="text"
@@ -241,37 +242,35 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/primary_button"
+                style="@style/OneUI.ContainedButton"
                 android:layout_width="0dp"
                 android:layout_height="58dp"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
-                android:background="@drawable/onboarding_glass_button_bg"
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:stateListAnimator="@null"
                 android:text="@string/continue_button"
                 android:textAllCaps="false"
-                android:textColor="?android:textColorPrimary"
                 android:textSize="17sp"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/secondary_button"
+                style="@style/OneUI.ContainedButton"
                 android:layout_width="0dp"
                 android:layout_height="58dp"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
-                android:background="@drawable/onboarding_glass_button_bg"
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:stateListAnimator="@null"
                 android:text="@string/advanced_options"
                 android:textAllCaps="false"
-                android:textColor="?android:textColorPrimary"
                 android:textSize="17sp"
                 android:textStyle="bold"
+                android:theme="@style/OneUI.ContainedButtonTheme"
                 android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>

@@ -3,6 +3,7 @@ package com.tjg.twidget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -15,34 +16,6 @@ import android.view.View
 import android.widget.RemoteViews
 
 class TwidgetWidget : AppWidgetProvider() {
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH) {
-            val appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                // Partial update flips the loading spinner on in the widget's
-                // existing layout; the full re-render below re-hides it.
-                val manager = AppWidgetManager.getInstance(context)
-                manager.partiallyUpdateAppWidget(
-                    appWidgetId,
-                    RemoteViews(context.packageName, spinnerLayout(context, manager, appWidgetId)).apply {
-                        setViewVisibility(R.id.widget_loading, View.VISIBLE)
-                    },
-                )
-            }
-            val pending = goAsync()
-            Thread {
-                runCatching {
-                    val account = TwidgetStore.widgetSettings(context, appWidgetId).accountUsername
-                        .ifBlank { TwidgetStore.settings(context).username }
-                    TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
-                }
-                updateAll(context)
-                pending.finish()
-            }.start()
-        }
-    }
-
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
@@ -59,7 +32,6 @@ class TwidgetWidget : AppWidgetProvider() {
     }
 
     companion object {
-        private const val ACTION_REFRESH = "com.tjg.twidget.action.REFRESH"
         const val LAYOUT_MODE_LARGE = 0
         const val LAYOUT_MODE_COMPACT_2X1 = 1
         const val LAYOUT_MODE_COMPACT_STRIP = 2
@@ -207,8 +179,8 @@ class TwidgetWidget : AppWidgetProvider() {
                 else -> PendingIntent.getBroadcast(
                     context,
                     1000 + appWidgetId,
-                    Intent(context, TwidgetWidget::class.java)
-                        .setAction(ACTION_REFRESH)
+                    Intent(context, WidgetRefreshReceiver::class.java)
+                        .setAction(WidgetRefreshReceiver.ACTION_REFRESH)
                         .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
@@ -266,11 +238,11 @@ class TwidgetWidget : AppWidgetProvider() {
 
         private fun warmProfileImageCache(context: Context, manager: AppWidgetManager, appWidgetId: Int, url: String) {
             if (url.isBlank()) return
-            Thread {
+            AppExecutors.execute {
                 if (ProfileImageLoader.downloadToCache(context, url) != null) {
                     updateWidget(context, manager, appWidgetId)
                 }
-            }.start()
+            }
         }
 
         fun followersInWords(value: Long): String {
@@ -329,5 +301,57 @@ class TwidgetWidget : AppWidgetProvider() {
             9L -> "Nine"
             else -> "Zero"
         }
+    }
+}
+
+/**
+ * Private receiver for the custom tap-to-refresh action. Keeping it separate
+ * from the exported AppWidgetProvider prevents other apps from triggering
+ * arbitrary network refreshes with an explicit broadcast.
+ */
+class WidgetRefreshReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != ACTION_REFRESH) return
+        val appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID,
+        )
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            val manager = AppWidgetManager.getInstance(context)
+            manager.partiallyUpdateAppWidget(
+                appWidgetId,
+                RemoteViews(
+                    context.packageName,
+                    TwidgetWidget.spinnerLayout(context, manager, appWidgetId),
+                ).apply {
+                    setViewVisibility(R.id.widget_loading, View.VISIBLE)
+                },
+            )
+        }
+        val pending = goAsync()
+        AppExecutors.execute(onRejected = {
+            // Re-render immediately so a saturated executor cannot leave the
+            // partially-updated loading RemoteViews stuck on screen.
+            try {
+                TwidgetWidget.updateAll(context)
+            } finally {
+                pending.finish()
+            }
+        }) {
+            try {
+                runCatching {
+                    val account = TwidgetStore.widgetSettings(context, appWidgetId).accountUsername
+                        .ifBlank { TwidgetStore.settings(context).username }
+                    TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
+                }
+                TwidgetWidget.updateAll(context)
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_REFRESH = "com.tjg.twidget.action.REFRESH"
     }
 }

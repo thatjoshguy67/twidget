@@ -12,7 +12,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -22,7 +21,7 @@ import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import kotlin.math.abs
 
-class AboutActivity : AppCompatActivity() {
+class AboutActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         makeSystemBarsTransparent()
@@ -116,9 +115,14 @@ class AboutActivity : AppCompatActivity() {
 
     private fun applySystemBarInsets() {
         val root = findViewById<View>(R.id.about_root)
+        val appBar = findViewById<AppBarLayout>(R.id.about_app_bar)
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            // Keep the root (and its scroll fade) edge-to-edge so the transparent
+            // status bar always reflects the current background. Only the app bar
+            // content needs to start below the status icons.
+            view.setPadding(bars.left, 0, bars.right, bars.bottom)
+            appBar.setPadding(0, bars.top, 0, 0)
             insets
         }
         ViewCompat.requestApplyInsets(root)
@@ -146,7 +150,9 @@ class AboutActivity : AppCompatActivity() {
                 content.alpha = ((progress - 0.25f) / 0.55f).coerceIn(0f, 1f)
                 // The gradient belongs to the expanded hero; scrolling settles
                 // the page onto the plain One UI background.
-                gradientFade.alpha = progress
+                // Let the hero recede early in the scroll, leaving the settled
+                // One UI background in place for the remainder of the page.
+                gradientFade.alpha = (progress * 2f).coerceIn(0f, 1f)
                 hint.alpha = (1f - progress * 2f).coerceIn(0f, 1f)
                 hint.visibility = if (hint.alpha == 0f) View.INVISIBLE else View.VISIBLE
             }

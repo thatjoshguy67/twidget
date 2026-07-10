@@ -37,16 +37,17 @@ object AnalyticsClient {
     fun refresh(context: Context, username: String): PostAnalytics {
         val clean = username.trim().trimStart('@')
         val settings = TwidgetStore.settings(context)
+        val endpoint = TwidgetStore.bridgeEndpoint(settings)
         val analytics = if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             ProviderFallback.directThenOptionalFallback(
                 direct = { fetchFxTwitter(clean) },
-                // The shared bridge remains an optional fallback, but a
-                // healthy FxTwitter setup never contacts it.
-                fallback = settings.bridgeUrl.trim().takeIf { it.isNotBlank() }
-                    ?.let { { fetchBridge(clean, settings) } },
+                // Sharing history is the bridge opt-in: only then does the
+                // bridge remain an optional fallback, and a healthy FxTwitter
+                // setup never contacts it either way.
+                fallback = if (settings.shareHistory) ({ fetchBridge(context, clean, endpoint) }) else null,
             )
         } else {
-            fetchBridge(clean, settings)
+            fetchBridge(context, clean, endpoint)
         }.copy(cachedAt = System.currentTimeMillis())
         prefs(context).edit()
             .putString(key(context, clean), serialize(analytics).toString())
@@ -54,11 +55,9 @@ object AnalyticsClient {
         return analytics
     }
 
-    private fun fetchBridge(username: String, settings: TwidgetSettings): PostAnalytics {
-        val bridgeUrl = settings.bridgeUrl.trim().trimEnd('/')
-        if (bridgeUrl.isBlank()) throw IllegalStateException("Analytics bridge is not configured")
+    private fun fetchBridge(context: Context, username: String, endpoint: BridgeEndpoint): PostAnalytics {
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
-        val body = read("$bridgeUrl/analytics/$encoded", settings.apiKey)
+        val body = read("${endpoint.url}/analytics/$encoded", endpoint.token, logContext = context)
         return parse(JSONObject(body))
     }
 
@@ -384,7 +383,10 @@ object AnalyticsClient {
         .put("width", media.width)
         .put("height", media.height)
 
-    private fun read(url: String, apiKey: String): String {
+    // `logContext` is only passed for bridge requests; direct FxTwitter calls
+    // stay out of the debug bridge log.
+    private fun read(url: String, apiKey: String, logContext: Context? = null): String {
+        val startedAt = System.currentTimeMillis()
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 12_000
         connection.readTimeout = 20_000
@@ -395,9 +397,17 @@ object AnalyticsClient {
             connection.setRequestProperty("X-Rettiwt-Api-Key", apiKey)
             connection.setRequestProperty("Authorization", "Bearer $apiKey")
         }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        val code: Int
+        val text: String
+        try {
+            code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        } catch (error: Exception) {
+            BridgeLog.record(logContext, "GET", url, null, null, System.currentTimeMillis() - startedAt, error = error.message)
+            throw error
+        }
+        BridgeLog.record(logContext, "GET", url, code, text, System.currentTimeMillis() - startedAt)
         if (code !in 200..299) throw IllegalStateException("Analytics HTTP $code: ${text.take(200)}")
         return text
     }

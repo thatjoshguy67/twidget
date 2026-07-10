@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets
  * is exchanged for an app-only bearer token (cached until it stops working).
  */
 object XApiClient {
+    const val DEVELOPER_PORTAL_URL = "https://developer.x.com/en/portal/dashboard"
     private const val TOKEN_URL = "https://api.x.com/oauth2/token"
     private const val USER_FIELDS = "public_metrics,profile_image_url,verified,verified_type,protected"
 

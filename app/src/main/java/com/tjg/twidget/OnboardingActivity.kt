@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -23,7 +22,6 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 
@@ -122,10 +120,7 @@ class OnboardingActivity : AppCompatActivity() {
             }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).setOnClickListener {
-            when (step) {
-                STEP_PROFILE -> showAdvancedDialog()
-                STEP_WIDGETS -> goToStep(STEP_DONE)
-            }
+            if (step == STEP_WIDGETS) goToStep(STEP_DONE)
         }
     }
 
@@ -223,11 +218,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun updateButtons() {
-        val showSecondary = when (step) {
-            STEP_PROFILE -> !addAccountMode && !XApiClient.hasCredentials(TwidgetStore.settings(this))
-            STEP_WIDGETS -> true
-            else -> false
-        }
+        val showSecondary = step == STEP_WIDGETS
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
                 isStarting -> getString(R.string.starting_twidget)
@@ -241,99 +232,10 @@ class OnboardingActivity : AppCompatActivity() {
             alpha = if (isEnabled) 1f else 0.5f
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
-            text = if (step == STEP_WIDGETS) getString(R.string.skip) else getString(R.string.advanced_options)
+            text = getString(R.string.skip)
             visibility = if (showSecondary) View.VISIBLE else View.GONE
             isEnabled = !isStarting
             alpha = if (isEnabled) 1f else 0.5f
-        }
-    }
-
-    private fun showAdvancedDialog() {
-        val content = layoutInflater.inflate(R.layout.dialog_onboarding_advanced, null)
-        val settings = TwidgetStore.settings(this)
-        val keyInput = content.findViewById<EditText>(R.id.x_api_key_input).apply {
-            setText(settings.xApiKey)
-        }
-        val secretInput = content.findViewById<EditText>(R.id.x_api_secret_input).apply {
-            setText(settings.xApiSecret)
-        }
-        content.findViewById<View>(R.id.x_api_portal_link).setOnClickListener {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(X_DEVELOPER_PORTAL_URL)))
-        }
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.advanced_options)
-            .setView(content)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.connect_x_api, null)
-            .create()
-        dialog.setOnDismissListener { asyncGeneration++ }
-        dialog.setOnShowListener {
-            val connectButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-            connectButton.setOnClickListener {
-                val key = keyInput.text.toString().trim()
-                val secret = secretInput.text.toString().trim()
-                if (key.isBlank() || secret.isBlank()) {
-                    (if (key.isBlank()) keyInput else secretInput).apply {
-                        error = getString(R.string.x_api_credentials_error)
-                        requestFocus()
-                    }
-                    return@setOnClickListener
-                }
-                connectButton.isEnabled = false
-                connectButton.text = getString(R.string.connecting)
-                // Verified on-device against api.x.com; the credentials never
-                // touch the Twidget bridge.
-                val testUsername = cleanUsername()
-                    .ifBlank { settings.username }
-                    .ifBlank { "XDevelopers" }
-                val generation = ++asyncGeneration
-                AppExecutors.execute(onRejected = {
-                    connectButton.isEnabled = true
-                    connectButton.text = getString(R.string.connect_x_api)
-                    Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
-                }) {
-                    val result = runCatching {
-                        val bearer = XApiClient.exchangeBearer(key, secret)
-                        XApiClient.fetchProfileWithBearer(testUsername, bearer)
-                        bearer
-                    }
-                    postUiIfCurrent(generation) {
-                        result.onSuccess { bearer ->
-                            TwidgetStore.saveXApiBearer(this, bearer)
-                            TwidgetStore.saveSettings(
-                                this,
-                                TwidgetStore.settings(this).copy(
-                                    xApiKey = key,
-                                    xApiSecret = secret,
-                                    dataSource = TwidgetStore.DATA_SOURCE_X_API,
-                                ),
-                            )
-                            Toast.makeText(this, R.string.x_api_connected, Toast.LENGTH_SHORT).show()
-                            dialog.dismiss()
-                        }.onFailure {
-                            connectButton.isEnabled = true
-                            connectButton.text = getString(R.string.connect_x_api)
-                            val message = xApiConnectError(it)
-                            keyInput.error = message
-                            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                            keyInput.requestFocus()
-                        }
-                    }
-                }
-            }
-        }
-        dialog.show()
-    }
-
-    private fun xApiConnectError(error: Throwable): String {
-        val message = error.message.orEmpty()
-        return if (
-            message.contains("client-not-enrolled", ignoreCase = true) ||
-            message.contains("client forbidden", ignoreCase = true)
-        ) {
-            getString(R.string.status_x_client_forbidden)
-        } else {
-            getString(R.string.x_api_connect_failed)
         }
     }
 
@@ -515,7 +417,6 @@ class OnboardingActivity : AppCompatActivity() {
         matches(Regex("^[A-Za-z0-9_]{1,15}$"))
 
     companion object {
-        const val X_DEVELOPER_PORTAL_URL = "https://developer.x.com/en/portal/dashboard"
         const val EXTRA_ADD_ACCOUNT = "com.tjg.twidget.extra.ADD_ACCOUNT"
         const val EXTRA_SHOW_WIDGET_STEP = "com.tjg.twidget.extra.SHOW_WIDGET_STEP"
         private const val STEP_OVERVIEW = 0

@@ -17,7 +17,7 @@ object RettiwtClient {
         if (username.isBlank()) {
             throw IllegalStateException("Username is required before syncing")
         }
-        val bridgeUrl = effectiveBridgeUrl(settings)
+        val endpoint = TwidgetStore.bridgeEndpoint(settings)
         var lastError: Exception? = null
         val useXApi = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API &&
             XApiClient.hasCredentials(settings)
@@ -34,38 +34,33 @@ object RettiwtClient {
         }
 
         // FxTwitter source hits the public api.fxtwitter.com directly from the
-        // device; the bridge below stays as its fallback and, when the user
-        // has opted in, contributes to and serves the shared history pool.
+        // device. Sharing history is the bridge opt-in: with it enabled the
+        // bridge serves the shared history pool and stays available as a
+        // fallback; with it off the app talks to FxTwitter only.
         if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             try {
                 val stats = finalize(FxTwitterClient.fetchProfile(username), username)
-                return HistoryPool.enrich(context, stats, settings, bridgeUrl)
+                return HistoryPool.enrich(context, stats, settings, endpoint)
             } catch (error: Exception) {
+                if (!settings.shareHistory) throw error
                 lastError = error
             }
         }
 
-        // Direct providers above do not need a bridge. If one is unavailable
-        // and no fallback bridge was configured, preserve the real failure
-        // instead of marking stale cached numbers as freshly synced.
-        if (bridgeUrl.isBlank()) {
-            throw lastError ?: IllegalStateException("No data provider is configured")
-        }
-
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
         val candidates = listOf(
-            "$bridgeUrl/user/$encoded",
-            "$bridgeUrl/users/$encoded",
-            "$bridgeUrl/details/$encoded",
-            "$bridgeUrl?username=$encoded",
+            "${endpoint.url}/user/$encoded",
+            "${endpoint.url}/users/$encoded",
+            "${endpoint.url}/details/$encoded",
+            "${endpoint.url}?username=$encoded",
         )
         for (candidate in candidates) {
             try {
                 return enrichStatusFields(
                     context,
-                    finalize(parseUser(read(candidate, settings.apiKey)), username),
+                    finalize(parseUser(read(context, candidate, endpoint.token)), username),
                     settings,
-                    bridgeUrl,
+                    endpoint,
                 )
             } catch (error: Exception) {
                 lastError = error
@@ -94,10 +89,10 @@ object RettiwtClient {
         context: Context,
         parsed: ProfileStats,
         settings: TwidgetSettings,
-        bridgeUrl: String,
+        endpoint: BridgeEndpoint,
     ): ProfileStats {
         if (parsed.isPrivate != null && parsed.isVerified != null) return parsed
-        bridgeOfficialStatus(parsed.userName, settings, bridgeUrl)?.let { official ->
+        bridgeOfficialStatus(context, parsed.userName, endpoint)?.let { official ->
             return parsed.copy(
                 isVerified = parsed.isVerified ?: official.isVerified,
                 isPrivate = parsed.isPrivate ?: official.isPrivate,
@@ -122,11 +117,10 @@ object RettiwtClient {
         }.getOrDefault(parsed)
     }
 
-    private fun bridgeOfficialStatus(username: String, settings: TwidgetSettings, bridgeUrl: String): ProfileStats? {
-        if (bridgeUrl.isBlank()) return null
+    private fun bridgeOfficialStatus(context: Context, username: String, endpoint: BridgeEndpoint): ProfileStats? {
         val encoded = URLEncoder.encode(username.trim().trimStart('@'), StandardCharsets.UTF_8.name())
         return runCatching {
-            parseUser(read("$bridgeUrl/official/user/$encoded", settings.apiKey))
+            parseUser(read(context, "${endpoint.url}/official/user/$encoded", endpoint.token))
         }.getOrNull()?.takeIf { it.isPrivate != null || it.isVerified != null }
     }
 
@@ -155,14 +149,8 @@ object RettiwtClient {
         return official.copy(likeCount = likes.value, likesKnown = likes.known)
     }
 
-    private fun effectiveBridgeUrl(settings: TwidgetSettings): String =
-        when (settings.dataSource) {
-            TwidgetStore.DATA_SOURCE_SELF_HOSTED,
-            TwidgetStore.DATA_SOURCE_X_API -> settings.bridgeUrl.trim().trimEnd('/')
-            else -> settings.bridgeUrl.trim().trimEnd('/')
-        }
-
-    private fun read(url: String, apiKey: String): String {
+    private fun read(context: Context?, url: String, apiKey: String): String {
+        val startedAt = System.currentTimeMillis()
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
@@ -173,9 +161,17 @@ object RettiwtClient {
             connection.setRequestProperty("Authorization", "Bearer $apiKey")
         }
 
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        val code: Int
+        val body: String
+        try {
+            code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        } catch (error: Exception) {
+            BridgeLog.record(context, "GET", url, null, null, System.currentTimeMillis() - startedAt, error = error.message)
+            throw error
+        }
+        BridgeLog.record(context, "GET", url, code, body, System.currentTimeMillis() - startedAt)
         if (code !in 200..299) throw HttpError(code, "Bridge HTTP $code: ${body.take(300)}")
         return body
     }

@@ -203,6 +203,14 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
+                    <ImageView
+                        android:id="@+id/done_profile_avatar"
+                        android:layout_width="96dp"
+                        android:layout_height="96dp"
+                        android:layout_marginBottom="28dp"
+                        android:background="@drawable/avatar_twidget"
+                        android:contentDescription="@null" />
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

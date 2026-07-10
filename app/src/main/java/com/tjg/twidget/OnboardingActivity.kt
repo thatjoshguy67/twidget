@@ -161,6 +161,7 @@ class OnboardingActivity : AppCompatActivity() {
         previewFloatAnimator?.cancel()
         previewFloatAnimator = null
         if (step == STEP_WIDGETS) showWidgetPreview()
+        if (step == STEP_DONE) showDoneProfileAvatar()
         settleBackground(animate)
         if (animate) {
             // The "all set" title rises further and slower, settling into the
@@ -373,13 +374,25 @@ class OnboardingActivity : AppCompatActivity() {
                 TwidgetStore.saveStats(this, RettiwtClient.refresh(this, username))
                 TwidgetWidget.updateAll(this)
             }
-            if (result.isFailure) {
-                postUiIfCurrent(generation) {
+            postUiIfCurrent(generation) {
+                if (result.isFailure) {
                     Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+                } else if (step == STEP_DONE) {
+                    showDoneProfileAvatar()
                 }
             }
         }
         goToStep(STEP_WIDGETS)
+    }
+
+    private fun showDoneProfileAvatar() {
+        val username = TwidgetStore.settings(this).username
+        val stats = TwidgetStore.currentStats(this, username)
+        ProfileImageLoader.loadInto(
+            this,
+            findViewById<ImageView>(R.id.done_profile_avatar),
+            stats.profileImage,
+        )
     }
 
     private fun postUiIfCurrent(generation: Long, action: () -> Unit) {

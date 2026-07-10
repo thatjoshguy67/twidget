@@ -117,6 +117,8 @@ object TwidgetStore {
     private const val KEY_DASHBOARD_CARDS = "dashboard_cards"
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
     private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
+    private const val KEY_FAKE_UPDATE = "debug_fake_update"
+    private const val KEY_UPDATE_AVAILABLE = "update_available"
     const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     private const val MAX_HISTORY_DAYS = 400
@@ -202,7 +204,29 @@ object TwidgetStore {
         prefs(context).getBoolean(KEY_DEBUG_MENU, false)
 
     fun setDebugMenuUnlocked(context: Context, unlocked: Boolean) {
-        prefs(context).edit().putBoolean(KEY_DEBUG_MENU, unlocked).apply()
+        prefs(context).edit().apply {
+            putBoolean(KEY_DEBUG_MENU, unlocked)
+            // A faked update must not leave a phantom badge behind once the
+            // debug menu (its only off switch) is hidden.
+            if (!unlocked) remove(KEY_FAKE_UPDATE)
+        }.apply()
+    }
+
+    fun fakeUpdateAvailable(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
+
+    fun setFakeUpdateAvailable(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_FAKE_UPDATE, enabled).apply()
+    }
+
+    // Powers the update badges (Settings "About Twidget" row, drawer settings
+    // cog). Reflects the last completed real check, or the debug fake flag.
+    fun updateAvailable(context: Context): Boolean =
+        fakeUpdateAvailable(context) ||
+            prefs(context).getBoolean(KEY_UPDATE_AVAILABLE, false)
+
+    fun setUpdateAvailable(context: Context, available: Boolean) {
+        prefs(context).edit().putBoolean(KEY_UPDATE_AVAILABLE, available).apply()
     }
 
     fun cachedXApiBearer(context: Context): String {

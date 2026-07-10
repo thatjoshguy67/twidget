@@ -11,6 +11,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -44,6 +45,16 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
             summary = getString(R.string.rerun_onboarding_summary)
             setOnPreferenceClickListener {
                 startActivity(Intent(context, OnboardingActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "debug_fake_update_pref"
+            title = getString(R.string.trigger_fake_update)
+            summary = getString(R.string.trigger_fake_update_summary)
+            isChecked = TwidgetStore.fakeUpdateAvailable(context)
+            setOnPreferenceChangeListener { _, value ->
+                TwidgetStore.setFakeUpdateAvailable(context, value as Boolean)
                 true
             }
         })

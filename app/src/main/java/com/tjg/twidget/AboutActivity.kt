@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Animatable
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -11,21 +12,36 @@ import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import dev.oneuiproject.oneui.widget.CardItemView
+import java.io.File
 import kotlin.math.abs
 
 class AboutActivity : FoldablePopOverActivity() {
     private var versionTapCount = 0
     private var versionTapToast: Toast? = null
+    private var updateCheckGeneration = 0
+    private var availableRelease: AppRelease? = null
+    private var pendingInstallApk: File? = null
+    private var waitingForInstallPermission = false
+
+    private val updateChannel: UpdateChannel
+        get() = if (getPreferences(MODE_PRIVATE).getBoolean(PREF_BETA_RELEASES, false)) {
+            UpdateChannel.BETA
+        } else {
+            UpdateChannel.STABLE
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +52,7 @@ class AboutActivity : FoldablePopOverActivity() {
         setupVersion()
         setupCollapsingContent()
         setupCreditAvatars()
+        setupUpdates()
 
         findViewById<View>(R.id.about_tjg_credit).setOnClickListener {
             openUrl(getString(R.string.link_tjg))
@@ -49,9 +66,6 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<View>(R.id.about_oneui_credit).setOnClickListener {
             openUrl(getString(R.string.link_oneui_project))
         }
-        findViewById<View>(R.id.about_header_github).setOnClickListener {
-            openUrl(getString(R.string.link_app_repo))
-        }
         findViewById<View>(R.id.about_open_source_licenses).setOnClickListener {
             showOpenSourceLicenses()
         }
@@ -61,9 +75,21 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(R.string.app_info)
+        menu.add(Menu.NONE, MENU_GITHUB, 0, R.string.about_repo_link)
+            .setIcon(R.drawable.ic_github_24)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(Menu.NONE, MENU_APP_INFO, 1, R.string.app_info)
             .setIcon(R.drawable.ic_info_24)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        menu.add(MENU_UPDATE_CHANNEL, MENU_STABLE, 2, R.string.update_channel_stable)
+            .setCheckable(true)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(MENU_UPDATE_CHANNEL, MENU_BETA, 2, R.string.update_channel_beta)
+            .setCheckable(true)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.setGroupCheckable(MENU_UPDATE_CHANNEL, true, true)
+        menu.findItem(if (updateChannel == UpdateChannel.BETA) MENU_BETA else MENU_STABLE)
+            .isChecked = true
         return true
     }
 
@@ -72,7 +98,11 @@ class AboutActivity : FoldablePopOverActivity() {
             onBackPressedDispatcher.onBackPressed()
             return true
         }
-        if (item.title == getString(R.string.app_info)) {
+        if (item.itemId == MENU_GITHUB) {
+            openUrl(getString(R.string.link_app_repo))
+            return true
+        }
+        if (item.itemId == MENU_APP_INFO) {
             startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -81,7 +111,24 @@ class AboutActivity : FoldablePopOverActivity() {
             )
             return true
         }
+        if (item.itemId == MENU_STABLE || item.itemId == MENU_BETA) {
+            val channel = if (item.itemId == MENU_BETA) UpdateChannel.BETA else UpdateChannel.STABLE
+            getPreferences(MODE_PRIVATE).edit()
+                .putBoolean(PREF_BETA_RELEASES, channel == UpdateChannel.BETA)
+                .apply()
+            item.isChecked = true
+            checkForUpdates(channel)
+            return true
+        }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (waitingForInstallPermission && packageManager.canRequestPackageInstalls()) {
+            waitingForInstallPermission = false
+            pendingInstallApk?.let(::launchPackageInstaller)
+        }
     }
 
     private fun setupToolbar() {
@@ -164,6 +211,157 @@ class AboutActivity : FoldablePopOverActivity() {
         return packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
     }
 
+    private fun setupUpdates() {
+        findViewById<AppCompatButton>(R.id.about_update_button).setOnClickListener {
+            availableRelease?.let(::downloadUpdate)
+        }
+        checkForUpdates(updateChannel)
+    }
+
+    private fun checkForUpdates(channel: UpdateChannel) {
+        val generation = ++updateCheckGeneration
+        availableRelease = null
+        if (TwidgetStore.fakeUpdateAvailable(this)) {
+            val release = fakeRelease()
+            availableRelease = release
+            showUpdateAvailable(release)
+            return
+        }
+        showUpdateChecking()
+        AppExecutors.execute(
+            onRejected = { runOnUiThread { if (generation == updateCheckGeneration) hideUpdateUi() } },
+        ) {
+            val result = runCatching {
+                AppUpdateManager.findUpdate(appVersionName(), channel)
+            }
+            runOnUiThread {
+                if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
+                // Only a completed check may flip the persisted badge state;
+                // a network failure keeps whatever the last check concluded.
+                result.onSuccess { TwidgetStore.setUpdateAvailable(this, it != null) }
+                val release = result.getOrNull()
+                availableRelease = release
+                if (release == null) hideUpdateUi() else showUpdateAvailable(release)
+            }
+        }
+    }
+
+    // Debug aid: pretend the next minor version has been published so the
+    // update button and badges can be exercised without a real release.
+    private fun fakeRelease(): AppRelease {
+        val current = AppVersion.parse(appVersionName()) ?: AppVersion(1, 0, 0, null, null)
+        val next = AppVersion(current.major, current.minor + 1, 0, null, null)
+        return AppRelease(
+            version = next,
+            assetName = "twidget-v$next.apk",
+            downloadUrl = "https://github.com/thatjoshguy67/twidget/releases/download/twidget-v$next/twidget-v$next.apk",
+            prerelease = false,
+        )
+    }
+
+    private fun showUpdateChecking() {
+        findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
+        findViewById<ImageView>(R.id.about_update_spinner).apply {
+            visibility = View.VISIBLE
+            setImageResource(R.drawable.oneui_spinner)
+            OneUiSpinner.loop(this)
+        }
+    }
+
+    private fun showUpdateAvailable(release: AppRelease) {
+        hideUpdateSpinner()
+        findViewById<AppCompatButton>(R.id.about_update_button).apply {
+            contentDescription = getString(R.string.update_to_version, release.version.toString())
+            isEnabled = true
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun hideUpdateUi() {
+        hideUpdateSpinner()
+        findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
+    }
+
+    private fun hideUpdateSpinner() {
+        findViewById<ImageView>(R.id.about_update_spinner).apply {
+            (drawable as? Animatable)?.stop()
+            setImageDrawable(null)
+            visibility = View.GONE
+        }
+    }
+
+    private fun downloadUpdate(release: AppRelease) {
+        val generation = ++updateCheckGeneration
+        findViewById<AppCompatButton>(R.id.about_update_button).apply {
+            isEnabled = false
+            visibility = View.GONE
+        }
+        showUpdateChecking()
+        AppExecutors.execute(
+            onRejected = { runOnUiThread { showDownloadFailure(release) } },
+        ) {
+            val apk = runCatching {
+                AppUpdateManager.download(release, File(cacheDir, "updates"))
+            }.getOrNull()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (generation != updateCheckGeneration) {
+                    apk?.delete()
+                    return@runOnUiThread
+                }
+                if (apk == null) {
+                    showDownloadFailure(release)
+                } else if (!isValidUpdateApk(apk, release)) {
+                    apk.delete()
+                    showUpdateAvailable(release)
+                    Toast.makeText(this, R.string.update_invalid_apk, Toast.LENGTH_LONG).show()
+                } else {
+                    pendingInstallApk = apk
+                    beginInstall(apk)
+                }
+            }
+        }
+    }
+
+    private fun showDownloadFailure(release: AppRelease) {
+        showUpdateAvailable(release)
+        Toast.makeText(this, R.string.update_download_failed, Toast.LENGTH_LONG).show()
+    }
+
+    private fun isValidUpdateApk(apk: File, release: AppRelease): Boolean {
+        val archive = packageManager.getPackageArchiveInfo(apk.absolutePath, 0) ?: return false
+        val archiveVersion = archive.versionName?.let(AppVersion::parse) ?: return false
+        return archive.packageName == packageName && archiveVersion == release.version
+    }
+
+    private fun beginInstall(apk: File) {
+        hideUpdateUi()
+        if (packageManager.canRequestPackageInstalls()) {
+            launchPackageInstaller(apk)
+            return
+        }
+        waitingForInstallPermission = true
+        Toast.makeText(this, R.string.update_install_permission, Toast.LENGTH_LONG).show()
+        startActivity(
+            Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:$packageName"),
+            ),
+        )
+    }
+
+    private fun launchPackageInstaller(apk: File) {
+        val uri = FileProvider.getUriForFile(this, "$packageName.update_files", apk)
+        startActivity(
+            Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                data = uri
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                putExtra(Intent.EXTRA_RETURN_RESULT, true)
+            },
+        )
+    }
+
     private fun setupCollapsingContent() {
         val content = findViewById<View>(R.id.about_content)
         val hint = findViewById<View>(R.id.about_swipe_hint)
@@ -238,5 +436,11 @@ class AboutActivity : FoldablePopOverActivity() {
         private const val DEBUG_UNLOCK_TAPS = 7
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
+        private const val PREF_BETA_RELEASES = "beta_releases"
+        private const val MENU_APP_INFO = 1
+        private const val MENU_UPDATE_CHANNEL = 2
+        private const val MENU_STABLE = 3
+        private const val MENU_BETA = 4
+        private const val MENU_GITHUB = 5
     }
 }

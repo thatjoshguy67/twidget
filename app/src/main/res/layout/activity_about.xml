@@ -74,15 +74,27 @@
                     android:textSize="14sp" />
 
                 <ImageView
-                    android:id="@+id/about_header_github"
+                    android:id="@+id/about_update_spinner"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:layout_marginTop="16dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/about_repo_link"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_github_24"
-                    app:tint="?android:textColorPrimary" />
+                    android:layout_marginTop="12dp"
+                    android:contentDescription="@string/checking_for_updates"
+                    android:src="@drawable/oneui_spinner"
+                    android:visibility="gone" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/about_update_button"
+                    style="@style/OneUI.ContainedButton"
+                    android:layout_width="160dp"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="sec"
+                    android:text="@string/update"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <androidx.appcompat.widget.Toolbar

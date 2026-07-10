@@ -41,6 +41,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import dev.oneuiproject.oneui.layout.Badge
 import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
@@ -104,6 +105,15 @@ class MainActivity : EdgeToEdgeActivity() {
     override fun onResume() {
         super.onResume()
         render()
+        updateSettingsBadge()
+    }
+
+    // Orange dot on the drawer's settings cog while an app update is
+    // available, mirroring official Samsung apps.
+    private fun updateSettingsBadge() {
+        findViewById<DrawerLayout>(R.id.main_toolbar_layout).setHeaderButtonBadge(
+            if (TwidgetStore.updateAvailable(this)) Badge.DOT else Badge.NONE
+        )
     }
 
     override fun onDestroy() {

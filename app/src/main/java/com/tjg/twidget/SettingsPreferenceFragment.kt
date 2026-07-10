@@ -141,6 +141,8 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         screen.addPreference(Preference(context).apply {
             key = "about_twidget"
             title = getString(R.string.about_twidget)
+            // Native SESL update badge, as on the About rows of Samsung apps.
+            dotVisibility = TwidgetStore.updateAvailable(context)
             setOnPreferenceClickListener {
                 requireActivity().startSettingsSubActivity(Intent(context, AboutActivity::class.java))
                 true

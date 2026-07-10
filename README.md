@@ -59,6 +59,13 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 
 The app id is `com.tjg.twidget`.
 
+The stable version is set in `version.properties`. Debug and beta APKs are
+labeled `v<version>-debug.N` and `v<version>-beta.N`; `N` is one plus the
+number of commits since the base version was set, so changing the stable
+version resets both channels to `.1`. Rebuilding the same commit keeps the
+same reproducible version. Use `-PprereleaseNumber=N` only when a non-Git build
+needs an explicit sequence number.
+
 ## Notes
 
 - Before the first successful sync, tracked accounts show zero/unknown values rather than demo follower counts.

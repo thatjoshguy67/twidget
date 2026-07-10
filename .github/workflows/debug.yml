@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # prerelease number is the distance from the base-version commit
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -58,10 +60,20 @@ jobs:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: ./gradlew testDebugUnitTest assembleDebug lintDebug --no-daemon --stacktrace
 
+      - name: Read debug version
+        id: version
+        run: |
+          VERSION=$(jq -r '.elements[0].versionName' app/build/outputs/apk/debug/output-metadata.json)
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-debug\.[1-9][0-9]*$'; then
+            echo "::error::Built APK has invalid debug version $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: twidget-debug
+          name: twidget-v${{ steps.version.outputs.version }}
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 

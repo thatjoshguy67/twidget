@@ -26,9 +26,9 @@ jobs:
             echo "::error::Release versions must be plain semver (e.g. 1.1.0); use the Pre-release workflow for suffixed versions."
             exit 1
           fi
-          GRADLE_VERSION=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
+          GRADLE_VERSION=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
           if [ "$VERSION" != "$GRADLE_VERSION" ]; then
-            echo "::error::Input version $VERSION does not match versionName $GRADLE_VERSION in app/build.gradle.kts"
+            echo "::error::Input version $VERSION does not match versionName $GRADLE_VERSION in version.properties"
             exit 1
           fi
           TAG="twidget-v$VERSION"

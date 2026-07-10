@@ -15,6 +15,43 @@ fun signingValue(propKey: String, envKey: String): String? =
     keystoreProperties.getProperty(propKey) ?: System.getenv(envKey)
 val releaseStoreFile: String? = signingValue("storeFile", "RELEASE_STORE_FILE")
 
+val versionProperties = Properties().apply {
+    rootProject.file("version.properties").inputStream().use { load(it) }
+}
+val baseVersionName = versionProperties.getProperty("versionName")
+    ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) }
+    ?: error("version.properties must contain a semantic version such as versionName=1.0.0")
+val (versionMajor, versionMinor, versionPatch) = baseVersionName.split('.').map(String::toInt)
+require(versionMinor < 1_000 && versionPatch < 1_000) {
+    "Android version codes require version minor and patch components below 1000"
+}
+
+data class CommandResult(val exitCode: Int, val output: String)
+
+fun git(vararg args: String): CommandResult = runCatching {
+    val process = ProcessBuilder(listOf("git", *args))
+        .directory(rootProject.projectDir)
+        .redirectErrorStream(true)
+        .start()
+    CommandResult(process.waitFor(), process.inputStream.bufferedReader().use { it.readText().trim() })
+}.getOrElse { CommandResult(-1, "") }
+
+// A clean build's prerelease number is one plus the commit distance from the
+// commit that set the base version. Changing version.properties resets it to 1.
+// An explicit Gradle property remains available for non-Git build environments.
+val prereleaseNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIntOrNull()
+    ?: run {
+        val versionFileStatus = git("status", "--porcelain", "--", "version.properties")
+        val versionCommit = git("log", "-1", "--format=%H", "--", "version.properties")
+        if (versionFileStatus.output.isNotBlank() || versionCommit.exitCode != 0 || versionCommit.output.isBlank()) {
+            1
+        } else {
+            git("rev-list", "--count", "${versionCommit.output}..HEAD")
+                .output.toIntOrNull()?.plus(1) ?: 1
+        }
+    }
+require(prereleaseNumber > 0) { "prereleaseNumber must be greater than zero" }
+
 android {
     namespace = "com.tjg.twidget"
     compileSdk = 36
@@ -23,8 +60,8 @@ android {
         applicationId = "com.tjg.twidget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
+        versionName = baseVersionName
     }
 
     signingConfigs {
@@ -49,9 +86,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            versionNameSuffix = "-debug.$prereleaseNumber"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.findByName("release")
+        }
+        create("beta") {
+            initWith(getByName("release"))
+            versionNameSuffix = "-beta.$prereleaseNumber"
+            matchingFallbacks += listOf("release")
         }
     }
 

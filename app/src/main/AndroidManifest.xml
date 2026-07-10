@@ -50,6 +50,16 @@
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
+        <activity
+            android:name=".SettingsDebugActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false" />
+
+        <activity
+            android:name=".DebugBridgeLogActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false" />
+
         <receiver
             android:name=".TwidgetWidget"
             android:exported="true"

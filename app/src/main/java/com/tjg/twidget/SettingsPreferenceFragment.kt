@@ -28,7 +28,7 @@ import androidx.preference.SwitchPreferenceCompat
 import dev.oneuiproject.oneui.preference.LayoutPreference
 import dev.oneuiproject.oneui.R as IconR
 
-class SettingsPreferenceFragment : PreferenceFragmentCompat() {
+class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -146,18 +146,19 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         })
-        if (resources.getBoolean(R.bool.show_debug_onboarding)) {
+        // Hidden until the version number in About has been tapped seven times.
+        if (TwidgetStore.debugMenuUnlocked(context)) {
             screen.addPreference(Preference(context).apply {
-                key = "debug_onboarding"
-                title = getString(R.string.test_onboarding)
-                summary = getString(R.string.debug_only)
+                key = "debug_menu"
+                title = getString(R.string.debug_menu)
                 setOnPreferenceClickListener {
-                    startActivity(Intent(context, OnboardingActivity::class.java))
+                    requireActivity().startSettingsSubActivity(Intent(context, SettingsDebugActivity::class.java))
                     true
                 }
             })
         }
 
+        screen.addBottomInset()
         preferenceScreen = screen
     }
 
@@ -185,7 +186,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
 
         accounts.forEachIndexed { index, username ->
             card.addView(accountRow(username))
-            card.addView(divider(startMargin = dp(86)))
+            card.addView(divider(startMargin = dp(78)))
         }
         card.addView(addAccountRow())
         return card
@@ -199,8 +200,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(76)
-            setPadding(dp(22), dp(10), dp(18), dp(10))
+            // Native SESL two-line preference rows measure 70dp tall with
+            // content inset 18dp from the card edge.
+            minimumHeight = dp(70)
+            setPadding(dp(18), dp(8), dp(18), dp(8))
             isClickable = true
             isFocusable = true
             setBackgroundResource(resolveSelectableItemBackground())
@@ -222,9 +225,11 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
-                    text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(18))
+                    // Native SESL list sizes (17sp title / 13sp secondary) so
+                    // the card reads consistently with the preference rows.
+                    text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(16))
                     setTextColor(context.getColor(R.color.oneui_text_primary))
-                    textSize = 19f
+                    textSize = 17f
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
                     maxLines = 1
@@ -232,13 +237,13 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 addView(TextView(context).apply {
                     text = context.getString(R.string.account_handle, username.trimStart('@'))
                     setTextColor(context.getColor(R.color.oneui_text_secondary))
-                    textSize = 15f
+                    textSize = 13f
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
                     maxLines = 1
                 })
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(18)
+                marginStart = dp(16)
                 marginEnd = dp(10)
             })
 
@@ -308,11 +313,12 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
         TextView(requireContext()).apply {
             text = getString(R.string.add_account)
             setTextColor(context.getColor(R.color.oneui_text_primary))
-            textSize = 19f
+            textSize = 17f
             typeface = Typeface.create("sec", Typeface.NORMAL)
             gravity = Gravity.CENTER_VERTICAL
-            minHeight = dp(66)
-            setPadding(dp(22), 0, dp(22), 0)
+            // Native single-line preference rows measure 56dp.
+            minHeight = dp(56)
+            setPadding(dp(18), 0, dp(18), 0)
             isClickable = true
             isFocusable = true
             setBackgroundResource(resolveSelectableItemBackground())

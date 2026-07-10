@@ -22,22 +22,22 @@ object HistoryPool {
     private const val POOL_PREFS = "twidget_pool"
     private const val RETRY_DELAY_MS = 60 * 60 * 1000L
 
-    fun enrich(context: Context, stats: ProfileStats, settings: TwidgetSettings, bridgeUrl: String): ProfileStats {
-        if (!settings.shareHistory || bridgeUrl.isBlank()) return stats
+    fun enrich(context: Context, stats: ProfileStats, settings: TwidgetSettings, endpoint: BridgeEndpoint): ProfileStats {
+        if (!settings.shareHistory) return stats
         if (stats.isPrivate == true) return stats
         val username = stats.userName.trim().trimStart('@')
         if (username.isBlank()) return stats
         // Pool state is per-day server-side; one exchange per account per day.
         if (!needsSync(context, username)) return stats
         markAttempted(context, username)
-        val pooled = runCatching { fetchPooledHistory(username, bridgeUrl, settings.apiKey) }.getOrNull() ?: return stats
+        val pooled = runCatching { fetchPooledHistory(context, username, endpoint) }.getOrNull() ?: return stats
         markSynced(context, username)
         return if (pooled.isEmpty()) stats else stats.copy(history = stats.history + pooled)
     }
 
     // Registers the account when unknown and returns the pooled history.
-    private fun fetchPooledHistory(username: String, bridgeUrl: String, apiKey: String): List<HistorySample> {
-        val body = request("GET", "$bridgeUrl/history/${encode(username)}", null, apiKey)
+    private fun fetchPooledHistory(context: Context, username: String, endpoint: BridgeEndpoint): List<HistorySample> {
+        val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}", null, endpoint.token)
         val array = JSONObject(body).optJSONArray("history") ?: JSONArray()
         return List(array.length()) { index -> array.optJSONObject(index) }
             .mapNotNull { sample ->
@@ -92,7 +92,8 @@ object HistoryPool {
     private fun encode(username: String): String =
         URLEncoder.encode(username, StandardCharsets.UTF_8.name())
 
-    private fun request(method: String, url: String, body: String?, apiKey: String): String {
+    private fun request(context: Context, method: String, url: String, body: String?, apiKey: String): String {
+        val startedAt = System.currentTimeMillis()
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 10_000
         connection.readTimeout = 10_000
@@ -107,9 +108,17 @@ object HistoryPool {
             connection.doOutput = true
             connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
         }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        val code: Int
+        val text: String
+        try {
+            code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+        } catch (error: Exception) {
+            BridgeLog.record(context, method, url, null, null, System.currentTimeMillis() - startedAt, requestBody = body, error = error.message)
+            throw error
+        }
+        BridgeLog.record(context, method, url, code, text, System.currentTimeMillis() - startedAt, requestBody = body)
         if (code !in 200..299) throw IllegalStateException("Pool HTTP $code: ${text.take(200)}")
         return text
     }

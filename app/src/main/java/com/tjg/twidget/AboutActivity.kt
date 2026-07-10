@@ -12,6 +12,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -22,6 +23,9 @@ import com.google.android.material.appbar.CollapsingToolbarLayout
 import kotlin.math.abs
 
 class AboutActivity : FoldablePopOverActivity() {
+    private var versionTapCount = 0
+    private var versionTapToast: Toast? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         makeSystemBarsTransparent()
@@ -130,8 +134,35 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun setupVersion() {
         val text = getString(R.string.about_version, appVersionName())
-        findViewById<TextView>(R.id.about_header_version).text = text
-        findViewById<TextView>(R.id.about_compact_version).text = text
+        listOf(R.id.about_header_version, R.id.about_compact_version).forEach { id ->
+            findViewById<TextView>(id).apply {
+                this.text = text
+                setOnClickListener { onVersionTapped() }
+            }
+        }
+    }
+
+    // Seven taps on the version number unlock the hidden debug menu in
+    // Settings, Android developer-options style.
+    private fun onVersionTapped() {
+        if (TwidgetStore.debugMenuUnlocked(this)) {
+            showVersionTapToast(getString(R.string.debug_menu_already_unlocked))
+            return
+        }
+        versionTapCount++
+        val remaining = DEBUG_UNLOCK_TAPS - versionTapCount
+        when {
+            remaining <= 0 -> {
+                TwidgetStore.setDebugMenuUnlocked(this, true)
+                showVersionTapToast(getString(R.string.debug_menu_unlocked))
+            }
+            remaining <= 3 -> showVersionTapToast(getString(R.string.debug_menu_countdown, remaining))
+        }
+    }
+
+    private fun showVersionTapToast(message: String) {
+        versionTapToast?.cancel()
+        versionTapToast = Toast.makeText(this, message, Toast.LENGTH_SHORT).also { it.show() }
     }
 
     private fun appVersionName(): String {
@@ -161,5 +192,9 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun openUrl(url: String) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    companion object {
+        private const val DEBUG_UNLOCK_TAPS = 7
     }
 }

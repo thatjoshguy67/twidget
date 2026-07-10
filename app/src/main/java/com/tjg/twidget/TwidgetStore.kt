@@ -59,6 +59,11 @@ data class TwidgetSettings(
     val shareHistory: Boolean,
 )
 
+// Resolved bridge target for the current settings: the shared Twidget bridge
+// by default, or the user's own instance (with its token) when self-hosted is
+// the active source. The token is never sent to the shared bridge.
+data class BridgeEndpoint(val url: String, val token: String)
+
 data class TwidgetWidgetSettings(
     val tintAlpha: Int,
     val tintColor: Int,
@@ -111,7 +116,8 @@ object TwidgetStore {
     private const val KEY_ACCOUNTS = "accounts"
     private const val KEY_DASHBOARD_CARDS = "dashboard_cards"
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
-    private const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
+    private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
+    const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     private const val MAX_HISTORY_DAYS = 400
     // v5 persists per-metric provenance while retaining v4's removal of
@@ -140,7 +146,7 @@ object TwidgetStore {
         SecureCredentialStore.migrateFrom(context, prefs)
         return TwidgetSettings(
             username = prefs.getString(KEY_USERNAME, "") ?: "",
-            bridgeUrl = (prefs.getString(KEY_BRIDGE_URL, "") ?: "").ifBlank { DEFAULT_BRIDGE_URL },
+            bridgeUrl = selfHostedUrl(prefs),
             apiKey = SecureCredentialStore.read(context, SecureCredentialStore.BRIDGE_API_TOKEN),
             xApiToken = SecureCredentialStore.read(context, SecureCredentialStore.X_API_TOKEN),
             xApiKey = SecureCredentialStore.read(context, SecureCredentialStore.X_API_KEY),
@@ -174,6 +180,29 @@ object TwidgetStore {
             .putBoolean(KEY_SHARE_HISTORY, settings.shareHistory)
             .apply()
         if (username.isNotBlank()) addAccount(context, username)
+    }
+
+    // `bridgeUrl` holds only a user-entered self-hosted URL. Older builds
+    // persisted the shared bridge URL as if the user had typed it; treat that
+    // stored value as "not customised".
+    private fun selfHostedUrl(prefs: SharedPreferences): String =
+        (prefs.getString(KEY_BRIDGE_URL, "") ?: "").trim().trimEnd('/')
+            .takeUnless { it == DEFAULT_BRIDGE_URL }.orEmpty()
+
+    fun bridgeEndpoint(settings: TwidgetSettings): BridgeEndpoint {
+        val custom = settings.bridgeUrl.trim().trimEnd('/')
+        return if (settings.dataSource == DATA_SOURCE_SELF_HOSTED && custom.isNotBlank()) {
+            BridgeEndpoint(custom, settings.apiKey)
+        } else {
+            BridgeEndpoint(DEFAULT_BRIDGE_URL, "")
+        }
+    }
+
+    fun debugMenuUnlocked(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DEBUG_MENU, false)
+
+    fun setDebugMenuUnlocked(context: Context, unlocked: Boolean) {
+        prefs(context).edit().putBoolean(KEY_DEBUG_MENU, unlocked).apply()
     }
 
     fun cachedXApiBearer(context: Context): String {

@@ -6,10 +6,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceViewHolder
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -17,7 +19,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
+class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
     private val mainHandler = Handler(Looper.getMainLooper())
     private var statusRefreshGeneration = 0
@@ -45,34 +47,43 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         val screen = preferenceManager.createPreferenceScreen(context)
         val selfHostedActive = settings.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED
         val xApiActive = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API
+        val customUrlSet = settings.bridgeUrl.isNotBlank()
 
         screen.addPreference(category(R.string.source_fxtwitter))
-        val fxTwitterStatus = Preference(context).apply {
-            key = "fxtwitter_status_pref"
-            title = getString(R.string.fxtwitter_status)
-            summary = getString(R.string.status_checking)
-            isSelectable = false
-        }
+        val fxTwitterStatus = statusPreference(
+            keyName = "fxtwitter_status_pref",
+            titleRes = R.string.fxtwitter_status,
+            active = settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER,
+            infoTitleRes = R.string.source_fxtwitter,
+            infoTextRes = R.string.fxtwitter_explainer,
+        )
         screen.addPreference(fxTwitterStatus)
-        screen.addPreference(Preference(context).apply {
-            key = "fxtwitter_explainer_pref"
-            title = getString(R.string.fxtwitter_explainer)
-            isSelectable = false
-        })
+
+        screen.addPreference(category(R.string.source_default))
+        val bridgeStatus = statusPreference(
+            keyName = "bridge_status_pref",
+            titleRes = R.string.bridge_status,
+            active = settings.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT ||
+                (selfHostedActive && !customUrlSet),
+            infoTitleRes = R.string.source_default,
+            infoTextRes = R.string.bridge_explainer,
+        )
+        screen.addPreference(bridgeStatus)
 
         screen.addPreference(category(R.string.source_self_hosted))
-        val bridgeStatus = Preference(context).apply {
-            key = "bridge_status_pref"
-            title = getString(R.string.bridge_status)
-            summary = getString(R.string.status_checking)
-            isSelectable = false
-        }
-        screen.addPreference(bridgeStatus)
+        val selfHostedStatus = statusPreference(
+            keyName = "self_hosted_status_pref",
+            titleRes = R.string.self_hosted_status,
+            active = selfHostedActive && customUrlSet,
+            infoTitleRes = R.string.source_self_hosted,
+            infoTextRes = R.string.self_hosted_explainer,
+        )
+        screen.addPreference(selfHostedStatus)
         screen.addPreference(EditTextPreference(context).apply {
             key = "self_hosted_url_pref"
             title = getString(R.string.self_hosted_rettiwt)
             text = settings.bridgeUrl
-            summary = settings.bridgeUrl.ifBlank { getString(R.string.rettiwt_bridge_hint) }
+            summary = settings.bridgeUrl.ifBlank { getString(R.string.self_hosted_url_hint) }
             isEnabled = selfHostedActive
             setOnBindEditTextListener {
                 it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
@@ -81,7 +92,7 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { pref, value ->
                 val url = (value as String).trim().trimEnd('/')
                 save(settings.copy(bridgeUrl = url))
-                pref.summary = url.ifBlank { getString(R.string.rettiwt_bridge_hint) }
+                pref.summary = url.ifBlank { getString(R.string.self_hosted_url_hint) }
                 true
             }
         })
@@ -104,18 +115,14 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         })
 
         screen.addPreference(category(R.string.source_x_api))
-        val xApiStatus = Preference(context).apply {
-            key = "x_api_status_pref"
-            title = getString(R.string.x_api_status)
-            summary = getString(R.string.status_checking)
-            isSelectable = false
-        }
+        val xApiStatus = statusPreference(
+            keyName = "x_api_status_pref",
+            titleRes = R.string.x_api_status,
+            active = xApiActive,
+            infoTitleRes = R.string.source_x_api,
+            infoTextRes = R.string.x_api_explainer,
+        )
         screen.addPreference(xApiStatus)
-        screen.addPreference(Preference(context).apply {
-            key = "x_api_explainer_pref"
-            title = getString(R.string.x_api_explainer)
-            isSelectable = false
-        })
         screen.addPreference(EditTextPreference(context).apply {
             key = "x_api_key_pref"
             title = getString(R.string.x_api_key)
@@ -176,18 +183,20 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
             isEnabled = xApiActive
             setOnPreferenceClickListener {
                 startActivity(
-                    Intent(Intent.ACTION_VIEW, Uri.parse(OnboardingActivity.X_DEVELOPER_PORTAL_URL))
+                    Intent(Intent.ACTION_VIEW, Uri.parse(XApiClient.DEVELOPER_PORTAL_URL))
                 )
                 true
             }
         })
 
+        screen.addBottomInset()
         preferenceScreen = screen
-        refreshConnectorStatuses(bridgeStatus, xApiStatus, fxTwitterStatus)
+        refreshConnectorStatuses(bridgeStatus, selfHostedStatus, xApiStatus, fxTwitterStatus)
     }
 
     private fun refreshConnectorStatuses(
         bridgeStatus: Preference,
+        selfHostedStatus: Preference,
         xApiStatus: Preference,
         fxTwitterStatus: Preference,
     ) {
@@ -196,28 +205,46 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         val appContext = requireContext().applicationContext
         val account = TwidgetStore.accounts(appContext).firstOrNull()
             ?: snapshot.username.takeIf { it.isNotBlank() }
+        val customUrl = snapshot.bridgeUrl.trim().trimEnd('/')
         val rejectedSummary = getString(R.string.status_failed, getString(R.string.sync_failed))
         AppExecutors.execute(onRejected = {
             mainHandler.post {
                 if (!isAdded || generation != statusRefreshGeneration) return@post
                 bridgeStatus.summary = rejectedSummary
+                selfHostedStatus.summary = rejectedSummary
                 xApiStatus.summary = rejectedSummary
                 fxTwitterStatus.summary = rejectedSummary
             }
         }) {
-            val bridge = runCatching { bridgeStatusSummary(snapshot) }
+            val bridge = runCatching { bridgeHealthSummary(TwidgetStore.DEFAULT_BRIDGE_URL, "") }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            val selfHosted = if (customUrl.isBlank()) {
+                getString(R.string.status_not_configured)
+            } else {
+                runCatching { bridgeHealthSummary(customUrl, snapshot.apiKey) }
+                    .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            }
             val xApi = runCatching { xApiStatusSummary(appContext, snapshot, account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             val fxTwitter = runCatching { fxTwitterStatusSummary(account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             mainHandler.post {
                 if (!isAdded || generation != statusRefreshGeneration) return@post
+                val selfHostedActive = snapshot.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED &&
+                    customUrl.isNotBlank()
                 bridgeStatus.summary = connectorStatusPrefix(
                     active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT ||
-                        snapshot.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED,
-                    fallback = true,
+                        (snapshot.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED && customUrl.isBlank()),
+                    // The shared bridge only backs up FxTwitter when the user
+                    // has opted into shared history.
+                    fallback = snapshot.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER &&
+                        snapshot.shareHistory,
                     status = bridge,
+                )
+                selfHostedStatus.summary = connectorStatusPrefix(
+                    active = selfHostedActive,
+                    fallback = false,
+                    status = selfHosted,
                 )
                 xApiStatus.summary = connectorStatusPrefix(
                     active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_X_API,
@@ -233,15 +260,14 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun bridgeStatusSummary(settings: TwidgetSettings): String {
-        val baseUrl = settings.bridgeUrl.trim().trimEnd('/').ifBlank { return getString(R.string.status_not_configured) }
+    private fun bridgeHealthSummary(baseUrl: String, token: String): String {
         val connection = URL("$baseUrl/health").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000
         connection.readTimeout = 5_000
         connection.requestMethod = "GET"
         connection.setRequestProperty("Accept", "application/json")
-        if (settings.apiKey.isNotBlank()) {
-            connection.setRequestProperty("Authorization", "Bearer ${settings.apiKey}")
+        if (token.isNotBlank()) {
+            connection.setRequestProperty("Authorization", "Bearer $token")
         }
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
@@ -300,6 +326,49 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
 
     private fun maskedToken(token: String): String =
         if (token.isBlank()) "*".repeat(26) else "*".repeat(token.length.coerceIn(12, 26))
+
+    // SESL renders non-selectable rows with the dimmed summary colour, which
+    // suits inactive sources; the active source stays selectable so its title
+    // keeps the normal colour. Either way the (i) button opens the explainer.
+    private fun statusPreference(
+        keyName: String,
+        titleRes: Int,
+        active: Boolean,
+        infoTitleRes: Int,
+        infoTextRes: Int,
+    ): Preference =
+        SourceStatusPreference(requireContext()) { showSourceInfo(infoTitleRes, infoTextRes) }.apply {
+            key = keyName
+            title = getString(titleRes)
+            summary = getString(R.string.status_checking)
+            isSelectable = active
+            setOnPreferenceClickListener {
+                showSourceInfo(infoTitleRes, infoTextRes)
+                true
+            }
+        }
+
+    private fun showSourceInfo(titleRes: Int, textRes: Int) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(titleRes)
+            .setMessage(textRes)
+            .setPositiveButton(R.string.done, null)
+            .show()
+    }
+
+    private class SourceStatusPreference(
+        context: android.content.Context,
+        private val onInfo: () -> Unit,
+    ) : Preference(context) {
+        init {
+            widgetLayoutResource = R.layout.preference_widget_info
+        }
+
+        override fun onBindViewHolder(holder: PreferenceViewHolder) {
+            super.onBindViewHolder(holder)
+            holder.findViewById(R.id.preference_info_button)?.setOnClickListener { onInfo() }
+        }
+    }
 
     private fun category(titleRes: Int): PreferenceCategory =
         PreferenceCategory(requireContext()).apply {

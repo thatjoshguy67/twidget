@@ -176,6 +176,7 @@
     <string name="about">About</string>
     <string name="about_summary">Twidget turns public X/Twitter profile data into a compact follower dashboard, cached history, weekly tweet analytics, and Samsung One UI home and lock screen widgets.</string>
     <string name="about_credits_section">Credits</string>
+    <string name="about_projects_section">Open source projects</string>
     <string name="about_tjg_title">That Josh Guy</string>
     <string name="about_tjg_summary">Design, development, and far too many widget experiments</string>
     <string name="about_kingowen_title">KingOwenFYI</string>

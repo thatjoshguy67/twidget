@@ -23,6 +23,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.appbar.CollapsingToolbarLayout
+import dev.oneuiproject.oneui.widget.CardItemView
 import kotlin.math.abs
 
 class AboutActivity : FoldablePopOverActivity() {
@@ -38,6 +39,7 @@ class AboutActivity : FoldablePopOverActivity() {
         setupTransparentAppBar()
         setupVersion()
         setupCollapsingContent()
+        setupCreditAvatars()
 
         findViewById<View>(R.id.about_tjg_credit).setOnClickListener {
             openUrl(getString(R.string.link_tjg))
@@ -203,6 +205,23 @@ class AboutActivity : FoldablePopOverActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
+    private fun setupCreditAvatars() {
+        loadCreditAvatar(R.id.about_tjg_credit, TJG_X_USERNAME)
+        loadCreditAvatar(R.id.about_kingowen_credit, KINGOWEN_X_USERNAME)
+    }
+
+    private fun loadCreditAvatar(rowId: Int, username: String) {
+        val row = findViewById<CardItemView>(rowId).apply {
+            iconSize = (48 * resources.displayMetrics.density).toInt()
+            icon = getDrawable(R.drawable.avatar_twidget)
+        }
+        ProfileImageLoader.loadInto(
+            this,
+            row.getIconImageView(),
+            "https://unavatar.io/twitter/$username",
+        )
+    }
+
     private fun showOpenSourceLicenses() {
         val notices = resources.openRawResource(R.raw.open_source_licenses)
             .bufferedReader()
@@ -233,5 +252,7 @@ class AboutActivity : FoldablePopOverActivity() {
 
     companion object {
         private const val DEBUG_UNLOCK_TAPS = 7
+        private const val TJG_X_USERNAME = "thatjoshguy69"
+        private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
     }
 }

@@ -194,13 +194,25 @@
                     app:summary="@string/about_kingowen_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_kingowen_title" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/about_projects_section" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/oneui_card_bg"
+                android:orientation="vertical">
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_fxtwitter_credit"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clickable="true"
-                    app:showTopDivider="true"
+                    app:showTopDivider="false"
                     app:summary="@string/about_fxtwitter_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_fxtwitter_title" />

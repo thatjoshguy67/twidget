@@ -230,7 +230,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                     maxLines = 1
                 })
                 addView(TextView(context).apply {
-                    text = "@${username.trimStart('@')}"
+                    text = context.getString(R.string.account_handle, username.trimStart('@'))
                     setTextColor(context.getColor(R.color.oneui_text_secondary))
                     textSize = 15f
                     typeface = Typeface.create("sec", Typeface.NORMAL)

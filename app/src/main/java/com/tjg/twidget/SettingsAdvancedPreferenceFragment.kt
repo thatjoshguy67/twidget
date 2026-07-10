@@ -3,6 +3,8 @@ package com.tjg.twidget
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
@@ -17,6 +19,8 @@ import java.util.Locale
 
 class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
     private lateinit var settings: TwidgetSettings
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var statusRefreshGeneration = 0
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         settings = TwidgetStore.settings(requireContext())
@@ -28,6 +32,12 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         super.onResume()
         settings = TwidgetStore.settings(requireContext())
         buildScreen()
+    }
+
+    override fun onDestroyView() {
+        statusRefreshGeneration++
+        mainHandler.removeCallbacksAndMessages(null)
+        super.onDestroyView()
     }
 
     private fun buildScreen() {
@@ -182,18 +192,27 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
         fxTwitterStatus: Preference,
     ) {
         val snapshot = settings
+        val generation = ++statusRefreshGeneration
         val appContext = requireContext().applicationContext
         val account = TwidgetStore.accounts(appContext).firstOrNull()
             ?: snapshot.username.takeIf { it.isNotBlank() }
-        Thread {
+        val rejectedSummary = getString(R.string.status_failed, getString(R.string.sync_failed))
+        AppExecutors.execute(onRejected = {
+            mainHandler.post {
+                if (!isAdded || generation != statusRefreshGeneration) return@post
+                bridgeStatus.summary = rejectedSummary
+                xApiStatus.summary = rejectedSummary
+                fxTwitterStatus.summary = rejectedSummary
+            }
+        }) {
             val bridge = runCatching { bridgeStatusSummary(snapshot) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             val xApi = runCatching { xApiStatusSummary(appContext, snapshot, account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             val fxTwitter = runCatching { fxTwitterStatusSummary(account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
-            if (!isAdded) return@Thread
-            requireActivity().runOnUiThread {
+            mainHandler.post {
+                if (!isAdded || generation != statusRefreshGeneration) return@post
                 bridgeStatus.summary = connectorStatusPrefix(
                     active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT ||
                         snapshot.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED,
@@ -211,7 +230,7 @@ class SettingsAdvancedPreferenceFragment : PreferenceFragmentCompat() {
                     status = fxTwitter,
                 )
             }
-        }.start()
+        }
     }
 
     private fun bridgeStatusSummary(settings: TwidgetSettings): String {

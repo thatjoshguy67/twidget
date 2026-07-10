@@ -16,11 +16,12 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:fontFamily="sec"
             android:gravity="center_vertical"
             android:includeFontPadding="false"
             android:maxLines="4"
-            android:text="Seven Thousand,\nSix Hundred and\nSeventy One\nFollowers"
-            android:textColor="#000000"
+            android:text="@string/preview_followers_square"
+            android:textColor="@color/widget_preview_text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -35,26 +36,28 @@
                 android:layout_height="14dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_logo_x"
-                app:tint="#000000" />
+                app:tint="@color/widget_preview_text_primary" />
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="\@thatjoshguy69"
-                android:textColor="#000000"
+                android:text="@string/preview_account_handle"
+                android:textColor="@color/widget_preview_text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sec"
                 android:includeFontPadding="false"
-                android:text="+21"
-                android:textColor="@color/metric_green"
+                android:text="@string/preview_follower_delta"
+                android:textColor="@color/widget_preview_delta_positive"
                 android:textSize="12sp"
                 android:textStyle="bold" />
         </LinearLayout>

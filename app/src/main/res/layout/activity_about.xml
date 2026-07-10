@@ -251,6 +251,7 @@
         <ImageView
             android:layout_width="56dp"
             android:layout_height="56dp"
+            android:contentDescription="@null"
             android:rotation="180"
             android:src="@drawable/ic_oui_keyboard_arrow_down"
             app:tint="?android:textColorSecondary" />
@@ -258,6 +259,7 @@
         <ImageView
             android:layout_width="72dp"
             android:layout_height="72dp"
+            android:contentDescription="@null"
             android:layout_marginTop="-26dp"
             android:rotation="180"
             android:src="@drawable/ic_oui_keyboard_arrow_down"

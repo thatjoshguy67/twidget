@@ -197,7 +197,7 @@ class WidgetConfigActivity : AppCompatActivity() {
                     maxLines = 1
                 })
                 addView(TextView(context).apply {
-                    text = "@${username.trimStart('@')}"
+                    text = context.getString(R.string.account_handle, username.trimStart('@'))
                     setTextColor(context.getColor(R.color.oneui_text_secondary))
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                     typeface = Typeface.create("sec", Typeface.NORMAL)
@@ -260,9 +260,14 @@ class WidgetConfigActivity : AppCompatActivity() {
 
         val stats = TwidgetStore.currentStats(this, selectedAccount)
         val previewSpec = homePreviewSpec()
+        // Match the live widget's resolved color mode. The old tint-color
+        // shortcut treated System/Dark as a light card whenever the stored
+        // tint happened to be white, leaving white artwork with no contrast.
+        val darkPreview = isDarkPreview()
+        val previewBase = if (darkPreview) 16 else 255
         preview.background = GradientDrawable().apply {
             cornerRadius = resources.displayMetrics.density * previewSpec.cornerRadiusDp
-            setColor(Color.argb(tintAlpha, tintComponent(16), tintComponent(16), tintComponent(16)))
+            setColor(Color.argb(tintAlpha, previewBase, previewBase, previewBase))
         }
         preview.layoutParams = preview.layoutParams.apply {
             width = dp(previewSpec.widthDp)
@@ -278,7 +283,7 @@ class WidgetConfigActivity : AppCompatActivity() {
                     stats = stats,
                     settings = previewSettings,
                     mode = previewSpec.mode,
-                    dark = isDarkPreview(),
+                    dark = darkPreview,
                     delta = TwidgetStore.followersDelta(this@WidgetConfigActivity, selectedAccount),
                 )
             )
@@ -374,15 +379,10 @@ class WidgetConfigActivity : AppCompatActivity() {
         return typed.resourceId
     }
 
-    private fun tintComponent(component: Int): Int =
-        if (isDarkTint()) component else 255
-
-    private fun isDarkTint(): Boolean = Color.red(tintColor) < 128
     private fun isDarkPreview(): Boolean =
         colorMode == TwidgetStore.COLOR_MODE_DARK ||
             (colorMode == TwidgetStore.COLOR_MODE_SYSTEM &&
-                (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) ||
-            isDarkTint()
+                (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
     private fun homePreviewSpec(): HomePreviewSpec {
         val fallback = HomePreviewSpec(TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE, 176, 176, 24f)
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return fallback

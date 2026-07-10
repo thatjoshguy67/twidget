@@ -8,10 +8,15 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "check": "node --check src/server.js && node --check src/infrastructure.js && node --check scripts/migrate-history-to-postgres.mjs",
+    "history:migrate": "node scripts/migrate-history-to-postgres.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "express": "^5.1.0",
+    "pg": "^8.22.0",
+    "redis": "^5.12.1",
     "rettiwt-api": "^7.1.2"
   }
 }

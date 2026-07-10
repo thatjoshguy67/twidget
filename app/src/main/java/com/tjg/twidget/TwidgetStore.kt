@@ -23,6 +23,10 @@ data class ProfileStats(
     val isPrivate: Boolean? = null,
     val syncedAt: Long = System.currentTimeMillis(),
     val history: List<HistorySample> = emptyList(),
+    val followersKnown: Boolean = true,
+    val followingKnown: Boolean = true,
+    val postsKnown: Boolean = true,
+    val likesKnown: Boolean = true,
 )
 
 data class HistorySample(
@@ -35,6 +39,10 @@ data class HistorySample(
     // Interpolated chart filler between real samples. Render-only: estimated
     // samples are never persisted and never feed deltas or insight numbers.
     val estimated: Boolean = false,
+    val followersKnown: Boolean = true,
+    val followingKnown: Boolean = true,
+    val postsKnown: Boolean = true,
+    val likesKnown: Boolean = true,
 )
 
 data class TwidgetSettings(
@@ -106,10 +114,9 @@ object TwidgetStore {
     private const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     private const val MAX_HISTORY_DAYS = 400
-    // v3 (2026-07-08): drops persisted estimated samples — pool-synced graph
-    // estimates carried a partial-enumeration anchoring bug; sound ones come
-    // back from the pool after the server-side purge and regeneration.
-    private const val HISTORY_MIGRATION_VERSION = 3
+    // v5 persists per-metric provenance while retaining v4's removal of
+    // estimates and preservation of legitimate flat real periods.
+    private const val HISTORY_MIGRATION_VERSION = 5
     private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "followers",
@@ -130,13 +137,14 @@ object TwidgetStore {
 
     fun settings(context: Context): TwidgetSettings {
         val prefs = prefs(context)
+        SecureCredentialStore.migrateFrom(context, prefs)
         return TwidgetSettings(
             username = prefs.getString(KEY_USERNAME, "") ?: "",
             bridgeUrl = (prefs.getString(KEY_BRIDGE_URL, "") ?: "").ifBlank { DEFAULT_BRIDGE_URL },
-            apiKey = prefs.getString(KEY_API_KEY, "") ?: "",
-            xApiToken = prefs.getString(KEY_X_API_TOKEN, "") ?: "",
-            xApiKey = prefs.getString(KEY_X_API_KEY, "") ?: "",
-            xApiSecret = prefs.getString(KEY_X_API_SECRET, "") ?: "",
+            apiKey = SecureCredentialStore.read(context, SecureCredentialStore.BRIDGE_API_TOKEN),
+            xApiToken = SecureCredentialStore.read(context, SecureCredentialStore.X_API_TOKEN),
+            xApiKey = SecureCredentialStore.read(context, SecureCredentialStore.X_API_KEY),
+            xApiSecret = SecureCredentialStore.read(context, SecureCredentialStore.X_API_SECRET),
             refreshOnLaunch = prefs.getBoolean(KEY_REFRESH_ON_LAUNCH, true),
             refreshIntervalMinutes = prefs.getInt(KEY_REFRESH_INTERVAL, 15).coerceIn(15, 240),
             widgetTapAction = prefs.getString(KEY_TAP_ACTION, TAP_REFRESH) ?: TAP_REFRESH,
@@ -147,13 +155,18 @@ object TwidgetStore {
 
     fun saveSettings(context: Context, settings: TwidgetSettings) {
         val username = normalizeUsername(settings.username)
+        SecureCredentialStore.write(
+            context,
+            mapOf(
+                SecureCredentialStore.BRIDGE_API_TOKEN to settings.apiKey,
+                SecureCredentialStore.X_API_TOKEN to settings.xApiToken,
+                SecureCredentialStore.X_API_KEY to settings.xApiKey,
+                SecureCredentialStore.X_API_SECRET to settings.xApiSecret,
+            ),
+        )
         prefs(context).edit()
             .putString(KEY_USERNAME, username)
             .putString(KEY_BRIDGE_URL, settings.bridgeUrl.trim().trimEnd('/'))
-            .putString(KEY_API_KEY, settings.apiKey.trim())
-            .putString(KEY_X_API_TOKEN, settings.xApiToken.trim())
-            .putString(KEY_X_API_KEY, settings.xApiKey.trim())
-            .putString(KEY_X_API_SECRET, settings.xApiSecret.trim())
             .putBoolean(KEY_REFRESH_ON_LAUNCH, settings.refreshOnLaunch)
             .putInt(KEY_REFRESH_INTERVAL, settings.refreshIntervalMinutes.coerceIn(15, 240))
             .putString(KEY_TAP_ACTION, settings.widgetTapAction)
@@ -163,11 +176,16 @@ object TwidgetStore {
         if (username.isNotBlank()) addAccount(context, username)
     }
 
-    fun cachedXApiBearer(context: Context): String =
-        prefs(context).getString(KEY_X_API_BEARER, "") ?: ""
+    fun cachedXApiBearer(context: Context): String {
+        SecureCredentialStore.migrateFrom(context, prefs(context))
+        return SecureCredentialStore.read(context, SecureCredentialStore.X_API_BEARER)
+    }
 
     fun saveXApiBearer(context: Context, token: String) {
-        prefs(context).edit().putString(KEY_X_API_BEARER, token.trim()).apply()
+        SecureCredentialStore.write(
+            context,
+            mapOf(SecureCredentialStore.X_API_BEARER to token),
+        )
     }
 
     fun isOnboarded(context: Context): Boolean {
@@ -179,10 +197,13 @@ object TwidgetStore {
     fun completeOnboarding(context: Context, username: String) {
         val cleanUsername = normalizeUsername(username)
         val current = settings(context)
+        SecureCredentialStore.write(
+            context,
+            mapOf(SecureCredentialStore.BRIDGE_API_TOKEN to current.apiKey),
+        )
         prefs(context).edit()
             .putString(KEY_USERNAME, cleanUsername)
             .putString(KEY_BRIDGE_URL, current.bridgeUrl.trim().trimEnd('/'))
-            .putString(KEY_API_KEY, current.apiKey.trim())
             .putBoolean(KEY_REFRESH_ON_LAUNCH, current.refreshOnLaunch)
             .putInt(KEY_REFRESH_INTERVAL, current.refreshIntervalMinutes.coerceIn(15, 240))
             .putString(KEY_TAP_ACTION, current.widgetTapAction)
@@ -324,6 +345,7 @@ object TwidgetStore {
         val saved = savedHistory(context, cleanUsername)
         val onboarded = isOnboarded(context)
         val samples = if (onboarded) saved else mergeByDay(demoHistory() + saved)
+        if (samples.isEmpty() && stats.syncedAt <= 0L) return emptyList()
         val backfilled = flatBackfillProfileMetrics(samples, stats)
             .ifEmpty { listOf(sampleFor(stats)) }
         return backfilled
@@ -399,6 +421,10 @@ object TwidgetStore {
             likes = lerp(before.likes, after.likes),
             timestamp = ts,
             estimated = true,
+            followersKnown = before.followersKnown && after.followersKnown,
+            followingKnown = before.followingKnown && after.followingKnown,
+            postsKnown = before.postsKnown && after.postsKnown,
+            likesKnown = before.likesKnown && after.likesKnown,
         )
     }
 
@@ -440,9 +466,20 @@ object TwidgetStore {
     // recorded, else to the first values seen today (captured at the first
     // sync of the day) so deltas are live within hours of a fresh install.
     fun todayDelta(context: Context, username: String, selector: (HistorySample) -> Long): Long {
+        return todayDelta(context, username, { true }, selector)
+    }
+
+    fun todayDelta(
+        context: Context,
+        username: String,
+        known: (HistorySample) -> Boolean,
+        selector: (HistorySample) -> Long,
+    ): Long {
         val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
         val baseline = deltaBaseline(context, cleanUsername) ?: return 0
-        return selector(sampleFor(currentStats(context, cleanUsername))) - selector(baseline)
+        val current = sampleFor(currentStats(context, cleanUsername))
+        if (!known(current) || !known(baseline)) return 0
+        return selector(current) - selector(baseline)
     }
 
     private fun deltaBaseline(context: Context, username: String): HistorySample? {
@@ -475,10 +512,10 @@ object TwidgetStore {
             if (username.isBlank()) return@forEach
             if (statsJson(context, username) == null && historyJson(context, username) == null) return@forEach
             val stats = currentStats(context, username)
-            val normalized = collapseLeadingFlatRun(
-                flatBackfillProfileMetrics(savedHistory(context, username).filterNot { it.estimated }, stats)
-                    .ifEmpty { listOf(sampleFor(stats)) }
-            )
+            val normalized = flatBackfillProfileMetrics(
+                savedHistory(context, username).filterNot { it.estimated },
+                stats,
+            ).ifEmpty { if (stats.syncedAt > 0L) listOf(sampleFor(stats)) else emptyList() }
             edit.putString(historyKey(username), JSONArray(normalized.map { historyToJson(it) }).toString())
         }
         edit.putInt(KEY_HISTORY_MIGRATION_VERSION, HISTORY_MIGRATION_VERSION)
@@ -486,6 +523,7 @@ object TwidgetStore {
     }
 
     fun clearAccount(context: Context) {
+        SecureCredentialStore.clear(context, SecureCredentialStore.BRIDGE_API_TOKEN)
         prefs(context).edit()
             .remove(KEY_API_KEY)
             .apply()
@@ -513,6 +551,7 @@ object TwidgetStore {
         if (value > 0) "+${compactNumber(value)}" else compactNumber(value)
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
+        if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
         val formatter = SimpleDateFormat("MMM d, h:mm a", Locale.US)
         return context.getString(R.string.last_synced, formatter.format(Date(stats.syncedAt)))
     }
@@ -553,6 +592,10 @@ object TwidgetStore {
             posts = stats.statusesCount,
             likes = stats.likeCount,
             timestamp = startOfDay(stats.syncedAt),
+            followersKnown = stats.followersKnown,
+            followingKnown = stats.followingKnown,
+            postsKnown = stats.postsKnown,
+            likesKnown = stats.likesKnown,
         )
 
     private fun savedHistory(context: Context, username: String): List<HistorySample> {
@@ -589,34 +632,16 @@ object TwidgetStore {
     }
 
     private fun flattenLegacySeededRamp(samples: List<HistorySample>): List<HistorySample> {
-        if (samples.size < LEGACY_SEEDED_FOLLOWER_GAINS.size + 1) return samples
-        val seeded = samples.take(LEGACY_SEEDED_FOLLOWER_GAINS.size + 1)
-        if (!isConsecutiveDailyHistory(seeded)) return samples
-        val gains = seeded.zipWithNext().map { (previous, current) -> current.followers - previous.followers }
-        if (gains != LEGACY_SEEDED_FOLLOWER_GAINS) return samples
+        if (!HistoryMigrationPolicy.matchesLegacySeededRamp(
+                samples,
+                LEGACY_SEEDED_FOLLOWER_GAINS,
+                ::startOfDay,
+            )
+        ) return samples
 
+        val seeded = samples.take(LEGACY_SEEDED_FOLLOWER_GAINS.size + 1)
         return mergeByDay(listOf(seeded.last()) + samples.drop(seeded.size))
     }
-
-    private fun collapseLeadingFlatRun(samples: List<HistorySample>): List<HistorySample> {
-        if (samples.size < 2) return samples
-        val first = samples.first()
-        val flatRunEnd = samples.indexOfFirst { sample -> !sameMetricValues(first, sample) }
-            .let { if (it == -1) samples.lastIndex else it - 1 }
-        if (flatRunEnd <= 0) return samples
-        return samples.drop(flatRunEnd)
-    }
-
-    private fun sameMetricValues(left: HistorySample, right: HistorySample): Boolean =
-        left.followers == right.followers &&
-            left.following == right.following &&
-            left.posts == right.posts &&
-            left.likes == right.likes
-
-    private fun isConsecutiveDailyHistory(samples: List<HistorySample>): Boolean =
-        samples.zipWithNext().all { (previous, current) ->
-            startOfDay(current.timestamp) - startOfDay(previous.timestamp) == DAY_MILLIS
-        }
 
     // Samples saved before timestamps existed get their day reconstructed from
     // the "MMM d" label, anchored to the most recent matching date.
@@ -659,18 +684,26 @@ object TwidgetStore {
             stats.isPrivate?.let { put("isPrivate", it) }
         }
         .put("syncedAt", stats.syncedAt)
+        .put("followersKnown", stats.followersKnown)
+        .put("followingKnown", stats.followingKnown)
+        .put("postsKnown", stats.postsKnown)
+        .put("likesKnown", stats.likesKnown)
 
     private fun statsFromJson(json: JSONObject): ProfileStats = ProfileStats(
-        fullName = json.optString("fullName", "That Josh Guy"),
-        userName = json.optString("userName", "thatjoshguy69"),
-        followersCount = json.optLong("followersCount", 7_671),
-        followingsCount = json.optLong("followingsCount", 321),
-        statusesCount = json.optLong("statusesCount", 2_104),
-        likeCount = json.optLong("likeCount", 49_515),
+        fullName = json.optString("fullName", ""),
+        userName = json.optString("userName", ""),
+        followersCount = json.optLong("followersCount", 0),
+        followingsCount = json.optLong("followingsCount", 0),
+        statusesCount = json.optLong("statusesCount", 0),
+        likeCount = json.optLong("likeCount", 0),
         profileImage = json.optString("profileImage", ""),
         isVerified = if (json.optBoolean("statusFieldsKnown", false) && json.has("isVerified")) json.optBoolean("isVerified") else null,
         isPrivate = if (json.optBoolean("statusFieldsKnown", false) && json.has("isPrivate")) json.optBoolean("isPrivate") else null,
-        syncedAt = json.optLong("syncedAt", System.currentTimeMillis()),
+        syncedAt = json.optLong("syncedAt", 0L),
+        followersKnown = json.optBoolean("followersKnown", json.optLong("followersCount", 0L) > 0L),
+        followingKnown = json.optBoolean("followingKnown", json.optLong("followingsCount", 0L) > 0L),
+        postsKnown = json.optBoolean("postsKnown", json.optLong("statusesCount", 0L) > 0L),
+        likesKnown = json.optBoolean("likesKnown", json.optLong("likeCount", 0L) > 0L),
     )
 
     private fun historyToJson(sample: HistorySample): JSONObject = JSONObject()
@@ -680,6 +713,10 @@ object TwidgetStore {
         .put("posts", sample.posts)
         .put("likes", sample.likes)
         .put("ts", sample.timestamp)
+        .put("followersKnown", sample.followersKnown)
+        .put("followingKnown", sample.followingKnown)
+        .put("postsKnown", sample.postsKnown)
+        .put("likesKnown", sample.likesKnown)
         .apply { if (sample.estimated) put("est", true) }
 
     private fun historyFromJson(json: JSONObject): HistorySample = HistorySample(
@@ -690,23 +727,27 @@ object TwidgetStore {
         likes = json.optLong("likes", 0),
         timestamp = json.optLong("ts", 0),
         estimated = json.optBoolean("est", false),
+        followersKnown = json.optBoolean("followersKnown", json.optLong("followers", 0L) > 0L),
+        followingKnown = json.optBoolean("followingKnown", json.optLong("following", 0L) > 0L),
+        postsKnown = json.optBoolean("postsKnown", json.optLong("posts", 0L) > 0L),
+        likesKnown = json.optBoolean("likesKnown", json.optLong("likes", 0L) > 0L),
     )
 
     // Older builds only recorded followers, so early samples can carry zero
     // following/posts/likes. Fill those gaps flat with the nearest later
     // recorded value rather than inventing a trend.
     private fun flatBackfillProfileMetrics(samples: List<HistorySample>, stats: ProfileStats): List<HistorySample> {
-        var following = stats.followingsCount
-        var posts = stats.statusesCount
-        var likes = stats.likeCount
+        var following = stats.followingsCount.takeIf { stats.followingKnown } ?: 0L
+        var posts = stats.statusesCount.takeIf { stats.postsKnown } ?: 0L
+        var likes = stats.likeCount.takeIf { stats.likesKnown } ?: 0L
         return samples.asReversed().map { sample ->
-            if (sample.following > 0) following = sample.following
-            if (sample.posts > 0) posts = sample.posts
-            if (sample.likes > 0) likes = sample.likes
+            if (sample.followingKnown) following = sample.following
+            if (sample.postsKnown) posts = sample.posts
+            if (sample.likesKnown) likes = sample.likes
             sample.copy(
-                following = if (sample.following > 0) sample.following else following,
-                posts = if (sample.posts > 0) sample.posts else posts,
-                likes = if (sample.likes > 0) sample.likes else likes,
+                following = if (sample.followingKnown) sample.following else following,
+                posts = if (sample.postsKnown) sample.posts else posts,
+                likes = if (sample.likesKnown) sample.likes else likes,
             )
         }.asReversed()
     }
@@ -714,11 +755,19 @@ object TwidgetStore {
     private fun fallbackStats(context: Context, accountUsername: String = settings(context).username): ProfileStats {
         val username = normalizeUsername(accountUsername).ifBlank { settings(context).username }
         return if (isOnboarded(context) && username.isNotBlank()) {
-            demoStats().copy(
+            ProfileStats(
                 fullName = username,
                 userName = username,
+                followersCount = 0,
+                followingsCount = 0,
+                statusesCount = 0,
+                likeCount = 0,
                 profileImage = fallbackAvatarUrl(username),
-                syncedAt = System.currentTimeMillis(),
+                syncedAt = 0L,
+                followersKnown = false,
+                followingKnown = false,
+                postsKnown = false,
+                likesKnown = false,
             )
         } else {
             demoStats()

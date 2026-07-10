@@ -10,6 +10,11 @@
     <color name="oneui_accent">#4da2ff</color>
     <color name="oneui_accent_translucent">#334da2ff</color>
     <color name="oneui_preview_bg">#333333</color>
+    <!-- Static launcher widget previews mirror the dark widget card. -->
+    <color name="widget_preview_surface">#17171A</color>
+    <color name="widget_preview_text_primary">#FFFFFF</color>
+    <color name="widget_preview_text_secondary">#99FFFFFF</color>
+    <color name="widget_preview_delta_positive">#67C582</color>
     <color name="widget_setting_progress_color_control_normal">#6669696C</color>
     <color name="widget_setting_seek_bar_thumb_background_tint">#1F1F22</color>
     <color name="widget_setting_seek_bar_thumb_tint">@color/oneui_accent</color>

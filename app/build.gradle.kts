@@ -80,7 +80,8 @@ configurations.configureEach {
 
 dependencies {
     implementation("io.github.tribalfs:oneui-design:0.9.13+oneui8")
-    implementation("androidx.work:work-runtime:2.10.1")
+    implementation("androidx.work:work-runtime:2.11.2")
     implementation("io.github.oneuiproject:icons:1.1.0")
     implementation("sesl.androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01+1.0.0-sesl8+rev0")
+    testImplementation("junit:junit:4.13.2")
 }

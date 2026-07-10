@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets
 
 /**
  * Talks to the official X API directly from the device with the user's own
- * credentials, so accurate stats never depend on the shared Twidget bridge.
+ * credentials, so official profile fields never depend on the shared Twidget bridge.
  * Accepts either a ready-made bearer token, or an API key/secret pair which
  * is exchanged for an app-only bearer token (cached until it stops working).
  */
@@ -88,7 +88,9 @@ object XApiClient {
             followersCount = metrics.optLong("followers_count"),
             followingsCount = metrics.optLong("following_count"),
             statusesCount = metrics.optLong("tweet_count"),
-            likeCount = metrics.optLong("like_count"),
+            // X user public_metrics does not expose profile-wide likes. The
+            // provider coordinator fills this from FxTwitter or cached data.
+            likeCount = 0,
             profileImage = highResolutionProfileImageUrl(user.optString("profile_image_url")),
             // Absent fields stay unknown (null) instead of claiming false.
             isVerified = if (user.has("verified") || user.has("verified_type")) {
@@ -99,6 +101,10 @@ object XApiClient {
             },
             isPrivate = if (user.has("protected")) user.optBoolean("protected") else null,
             syncedAt = System.currentTimeMillis(),
+            followersKnown = metrics.has("followers_count"),
+            followingKnown = metrics.has("following_count"),
+            postsKnown = metrics.has("tweet_count"),
+            likesKnown = false,
         )
     }
 
@@ -129,7 +135,7 @@ object XApiClient {
     private fun highResolutionProfileImageUrl(url: String): String =
         url.trim()
             .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
-            .replace(Regex("([?&]name=)normal(?=(&|$))"), "${'$'}1400x400")
+            .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
 
     class HttpError(val code: Int, message: String) : IllegalStateException(message)
 }

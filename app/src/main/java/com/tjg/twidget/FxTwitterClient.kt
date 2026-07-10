@@ -40,6 +40,10 @@ object FxTwitterClient {
                 ?: if (user.has("verified")) user.optBoolean("verified") else null,
             isPrivate = if (user.has("protected")) user.optBoolean("protected") else null,
             syncedAt = System.currentTimeMillis(),
+            followersKnown = user.has("followers") && !user.isNull("followers"),
+            followingKnown = user.has("following") && !user.isNull("following"),
+            postsKnown = user.has("tweets") && !user.isNull("tweets"),
+            likesKnown = user.has("likes") && !user.isNull("likes"),
         )
     }
 

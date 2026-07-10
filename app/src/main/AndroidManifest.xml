@@ -5,6 +5,8 @@
 
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
@@ -35,14 +37,17 @@
 
         <activity
             android:name=".AboutActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
             android:name=".SettingsActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
             android:name=".SettingsAdvancedActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <receiver
@@ -62,6 +67,10 @@
                 android:name="android.appwidget.provider.semConfigureActivity"
                 android:value="com.tjg.twidget.WidgetConfigActivity" />
         </receiver>
+
+        <receiver
+            android:name=".WidgetRefreshReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".LockScreenFollowerServiceBoxReceiver"

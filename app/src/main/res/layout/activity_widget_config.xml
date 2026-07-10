@@ -357,4 +357,3 @@
         </LinearLayout>
     </FrameLayout>
 </dev.oneuiproject.oneui.layout.ToolbarLayout>
-    android:id="@+id/widget_config_root"

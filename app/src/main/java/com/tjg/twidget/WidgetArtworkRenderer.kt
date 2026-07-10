@@ -328,13 +328,11 @@ object WidgetArtworkRenderer {
             // Label opacity (0.6) comes straight from the design.
             color = if (role == WordRole.LABEL) withAlpha(primary, 0.6f) else primary
             typeface = if (gsf) gsfTypeface(context, weight) else oneUiTypeface(context, weight)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Width axis is a no-op on the bundled static Google Sans Flex
-                // cuts; it takes effect once a true variable font is in res/font.
-                setFontVariationSettings(
-                    if (gsf) "'wght' $weight, 'wdth' ${gsfWidthFor(role)}" else "'wght' $weight",
-                )
-            }
+            // Width axis is a no-op on the bundled static Google Sans Flex
+            // cuts; it takes effect once a true variable font is in res/font.
+            setFontVariationSettings(
+                if (gsf) "'wght' $weight, 'wdth' ${gsfWidthFor(role)}" else "'wght' $weight",
+            )
         }
     }
 

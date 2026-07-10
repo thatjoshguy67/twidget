@@ -26,7 +26,7 @@
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="7,671"
+                android:text="@string/preview_follower_count"
                 android:textColor="#000000"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -51,7 +51,7 @@
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="+21"
+                android:text="@string/preview_follower_delta"
                 android:textColor="@color/metric_green"
                 android:textSize="18sp" />
         </LinearLayout>
@@ -78,7 +78,7 @@
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="1"
-                android:text="\@thatjoshguy69"
+                android:text="@string/preview_account_handle"
                 android:textColor="#000000"
                 android:textSize="12sp"
                 android:textStyle="bold" />

@@ -7,6 +7,7 @@
     <string name="lockscreen_follower_2x1_label">Followers 2x1</string>
     <string name="dashboard_title">That Josh Guy</string>
     <string name="last_synced">Last synced: %1$s</string>
+    <string name="not_synced_yet">Not synced yet</string>
     <string name="sync">Sync</string>
     <string name="add_widget_to_home">Add widget to home screen</string>
     <string name="settings">Settings</string>
@@ -38,11 +39,18 @@
     <string name="avg_per_post">%1$s avg / post</string>
     <string name="median_value">%1$s median</string>
     <string name="across_posts">%1$d posts analyzed</string>
+    <string name="posts_from_capped_status_sample">%1$d posts from a capped %2$d-status sample</string>
     <string name="per_follower_pct">%1$s / follower</string>
     <string name="post_analytics">Recent posts</string>
     <string name="best_post">Best tweet this week</string>
     <string name="worst_post">Quietest tweet this week</string>
     <string name="tweet_handle_and_date">\@%1$s · %2$s</string>
+    <string name="account_handle">\@%1$s</string>
+    <string name="preview_follower_count">7,671</string>
+    <string name="preview_follower_delta">+21</string>
+    <string name="preview_account_handle">\@thatjoshguy69</string>
+    <string name="preview_followers_large">Seven Thousand, Six\nHundred and Seventy\nOne Followers</string>
+    <string name="preview_followers_square">Seven Thousand,\nSix Hundred and\nSeventy One\nFollowers</string>
     <string name="tweet_metrics">%1$s views · %2$s replies · %3$s likes</string>
     <string name="post_media">Post media</string>
     <string name="open_post">Open post</string>
@@ -215,7 +223,7 @@
     <string name="onboarding_username_label">X username</string>
     <string name="onboarding_username_error">Enter a valid X username.</string>
     <string name="continue_button">Continue</string>
-    <string name="starting_twidget">Starting...</string>
+    <string name="starting_twidget">Starting…</string>
     <string name="connect_x_api">Connect</string>
     <string name="connecting">Connecting…</string>
     <string name="x_api_connected">Connected to the X API.</string>

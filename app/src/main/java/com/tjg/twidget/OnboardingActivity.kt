@@ -34,6 +34,7 @@ class OnboardingActivity : AppCompatActivity() {
     private var startedOnWidgetStep = false
     private var previewFloatAnimator: ObjectAnimator? = null
     private val previewHandler = Handler(Looper.getMainLooper())
+    private var asyncGeneration = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +51,7 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        asyncGeneration++
         previewHandler.removeCallbacksAndMessages(null)
         previewFloatAnimator?.cancel()
         previewFloatAnimator = null
@@ -264,6 +266,7 @@ class OnboardingActivity : AppCompatActivity() {
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.connect_x_api, null)
             .create()
+        dialog.setOnDismissListener { asyncGeneration++ }
         dialog.setOnShowListener {
             val connectButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             connectButton.setOnClickListener {
@@ -283,14 +286,18 @@ class OnboardingActivity : AppCompatActivity() {
                 val testUsername = cleanUsername()
                     .ifBlank { settings.username }
                     .ifBlank { "XDevelopers" }
-                Thread {
+                val generation = ++asyncGeneration
+                AppExecutors.execute(onRejected = {
+                    connectButton.isEnabled = true
+                    connectButton.text = getString(R.string.connect_x_api)
+                    Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+                }) {
                     val result = runCatching {
                         val bearer = XApiClient.exchangeBearer(key, secret)
                         XApiClient.fetchProfileWithBearer(testUsername, bearer)
                         bearer
                     }
-                    runOnUiThread {
-                        if (isDestroyed) return@runOnUiThread
+                    postUiIfCurrent(generation) {
                         result.onSuccess { bearer ->
                             TwidgetStore.saveXApiBearer(this, bearer)
                             TwidgetStore.saveSettings(
@@ -312,7 +319,7 @@ class OnboardingActivity : AppCompatActivity() {
                             keyInput.requestFocus()
                         }
                     }
-                }.start()
+                }
             }
         }
         dialog.show()
@@ -420,7 +427,7 @@ class OnboardingActivity : AppCompatActivity() {
                 settings = TwidgetStore.widgetSettings(this),
                 mode = spec.mode,
                 dark = dark,
-                delta = TwidgetStore.followersDelta(this).takeIf { it != 0L } ?: 26L,
+                delta = TwidgetStore.followersDelta(this),
             )
         }
         findViewById<ImageView>(R.id.widget_preview_image).setImageBitmap(bitmap)
@@ -436,33 +443,48 @@ class OnboardingActivity : AppCompatActivity() {
             isStarting = true
             updateButtons()
             TwidgetStore.addOnboardingAccount(this, username)
-            Thread {
+            val generation = ++asyncGeneration
+            AppExecutors.execute(onRejected = {
+                isStarting = false
+                updateButtons()
+                Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+            }) {
                 val result = runCatching {
                     TwidgetStore.saveStats(this, RettiwtClient.refresh(this, username))
                     TwidgetWidget.updateAll(this)
                 }
-                runOnUiThread {
+                postUiIfCurrent(generation) {
                     if (result.isFailure) {
                         Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
                     }
                     finish()
                 }
-            }.start()
+            }
             return
         }
         TwidgetStore.completeOnboarding(this, username)
-        Thread {
+        val generation = ++asyncGeneration
+        AppExecutors.execute(onRejected = {
+            Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+        }) {
             val result = runCatching {
                 TwidgetStore.saveStats(this, RettiwtClient.refresh(this, username))
                 TwidgetWidget.updateAll(this)
             }
             if (result.isFailure) {
-                runOnUiThread {
+                postUiIfCurrent(generation) {
                     Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
                 }
             }
-        }.start()
+        }
         goToStep(STEP_WIDGETS)
+    }
+
+    private fun postUiIfCurrent(generation: Long, action: () -> Unit) {
+        runOnUiThread {
+            if (generation != asyncGeneration || isFinishing || isDestroyed) return@runOnUiThread
+            action()
+        }
     }
 
     private fun requestWidgetPin() {

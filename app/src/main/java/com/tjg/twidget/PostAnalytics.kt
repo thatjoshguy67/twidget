@@ -34,13 +34,17 @@ data class PostSummary(
 
 /**
  * Reach and engagement over the recent timeline, plus the 7-day best/worst
- * posts. Sourced from the bridge's /analytics endpoint (guest-mode timeline)
- * and cached per account.
+ * posts. Sourced directly from FxTwitter or from the selected bridge and cached
+ * per provider and account.
  */
 data class PostAnalytics(
     val userName: String,
     val followers: Long,
     val postsAnalyzed: Int,
+    /** Timeline rows inspected before replies/reposts/old posts were removed. */
+    val statusesInspected: Int = postsAnalyzed,
+    /** True when the bounded FxTwitter walk stopped before the timeline ended. */
+    val isSampled: Boolean = false,
     val windowDays: Int,
     val totalViews: Long,
     val avgViews: Double,

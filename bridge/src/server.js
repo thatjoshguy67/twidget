@@ -2,25 +2,67 @@ import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { Pool } from "pg";
+import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
+import {
+  LocalFixedWindowLimiter,
+  LocalHistoryRepository,
+  PostgresHistoryRepository,
+  RedisFixedWindowLimiter,
+  SharedJsonCache,
+  normalizeHistorySample,
+} from "./infrastructure.js";
 
 const app = express();
-const port = Number(process.env.PORT || 8787);
-const cacheTtlMs = Number(process.env.CACHE_TTL_SECONDS || 900) * 1000;
-const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_SECONDS || 60) * 1000;
-const rateLimitMax = Number(process.env.RATE_LIMIT_MAX || 60);
-const maxHistoryDays = Number(process.env.HISTORY_MAX_DAYS || 400);
-const historyRefreshMs = Number(process.env.HISTORY_REFRESH_MINUTES || 60) * 60 * 1000;
-const waybackEnabled = process.env.WAYBACK_BACKFILL !== "0";
-const waybackMaxSnapshots = Number(process.env.WAYBACK_MAX_SNAPSHOTS || 12);
+const port = envInteger("PORT", 8787, 1, 65535);
+const cacheTtlMs = envInteger("CACHE_TTL_SECONDS", 900, 30, 86400) * 1000;
+const rateLimitWindowMs = envInteger("RATE_LIMIT_WINDOW_SECONDS", 60, 1, 3600) * 1000;
+const rateLimitMax = envInteger("RATE_LIMIT_MAX", 60, 1, 10000);
+const expensiveRateLimitMax = envInteger("EXPENSIVE_RATE_LIMIT_MAX", 12, 1, 1000);
+const maxTrackedIps = envInteger("RATE_LIMIT_MAX_IPS", 10000, 100, 100000);
+const maxCacheEntries = envInteger("MAX_CACHE_ENTRIES", 1000, 10, 100000);
+const maxConcurrentUpstream = envInteger("MAX_CONCURRENT_UPSTREAM", 8, 1, 100);
+const maxPendingOAuth = envInteger("OAUTH_MAX_PENDING", 1000, 10, 10000);
+const maxHistoryDays = envInteger("HISTORY_MAX_DAYS", 400, 7, 3650);
+const maxHistoryAccounts = envInteger("HISTORY_MAX_ACCOUNTS", 250, 1, 100000);
+const historyRegistrationsPerHour = envInteger("HISTORY_REGISTRATIONS_PER_HOUR", 30, 1, 10000);
+const historyRefreshMs = envInteger("HISTORY_REFRESH_MINUTES", 60, 15, 1440) * 60 * 1000;
+const historySampleRetentionDays = envInteger("HISTORY_SAMPLE_RETENTION_DAYS", 0, 0, 36500);
+const historyInactiveAccountDays = envInteger("HISTORY_INACTIVE_ACCOUNT_DAYS", 0, 0, 36500);
+const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 * 1000;
+const historyClientBackfillEnabled = process.env.HISTORY_CLIENT_BACKFILL === "1";
+// Archive lookups fan one request out into many remote fetches, so self-hosters
+// must opt in deliberately. It is unsafe as a public-instance default.
+const waybackEnabled = process.env.WAYBACK_BACKFILL === "1";
+const waybackMaxSnapshots = envInteger("WAYBACK_MAX_SNAPSHOTS", 12, 1, 50);
+const maxWaybackConcurrent = envInteger("WAYBACK_MAX_CONCURRENT", 1, 1, 5);
+const bridgeApiToken = String(process.env.BRIDGE_API_TOKEN || "").trim();
+const historyAdminToken = String(process.env.HISTORY_ADMIN_TOKEN || "").trim();
+const xOAuthEnabled = process.env.X_OAUTH_ENABLED === "1";
+const publicOfficialApi = process.env.PUBLIC_OFFICIAL_API === "1";
 const historyStorePath = process.env.HISTORY_STORE_PATH ||
   (fs.existsSync("/data") ? "/data/twidget-history.json" : path.resolve(process.cwd(), "data", "twidget-history.json"));
+const historyBackend = String(process.env.HISTORY_BACKEND || "json").trim().toLowerCase();
+const redisUrl = String(process.env.REDIS_URL || "").trim();
 
-const cache = new Map();
-const hits = new Map();
+const redisClient = await connectRedis(redisUrl);
+const cache = new SharedJsonCache({ client: redisClient, prefix: "twidget:profile", maxEntries: maxCacheEntries });
+const analyticsCache = new SharedJsonCache({ client: redisClient, prefix: "twidget:analytics", maxEntries: maxCacheEntries });
+const requestLimiter = redisClient
+  ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:all", windowMs: rateLimitWindowMs })
+  : new LocalFixedWindowLimiter({ windowMs: rateLimitWindowMs, maxKeys: maxTrackedIps });
+const expensiveLimiter = redisClient
+  ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:expensive", windowMs: rateLimitWindowMs })
+  : new LocalFixedWindowLimiter({ windowMs: rateLimitWindowMs, maxKeys: maxTrackedIps });
+const historyRegistrationLimiter = redisClient
+  ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:history-registration", windowMs: 60 * 60 * 1000 })
+  : new LocalFixedWindowLimiter({ windowMs: 60 * 60 * 1000, maxKeys: 1 });
+const historyRepository = await createHistoryRepository();
 const oauthStates = new Map();
 const oauthSessions = new Map();
-const historyStore = loadHistoryStore();
+const profileInFlight = new Map();
+let upstreamActive = 0;
 
 // The follower-graph reconstruction feature is gone (removed 2026-07-08:
 // Rettiwt enumeration only ever returned ~1 page and the weekly-only app UI
@@ -28,89 +70,133 @@ const historyStore = loadHistoryStore();
 // markers left in the store.
 {
   let purged = 0;
-  for (const key of Object.keys(historyStore.accounts)) {
-    const samples = historyStore.accounts[key] || [];
+  for (const key of await historyRepository.listAccounts()) {
+    const samples = await historyRepository.getHistory(key);
+    const meta = await historyRepository.getMeta(key);
     const kept = samples.filter((sample) => sample.src !== "graph");
     purged += samples.length - kept.length;
-    historyStore.accounts[key] = kept;
-    for (const marker of ["graphAt", "graphSamples", "graphSkipped", "graphEnumerated", "graphTotal"]) {
-      if (historyStore.meta[key]) delete historyStore.meta[key][marker];
+    if (samples.length !== kept.length) {
+      await historyRepository.deleteAccount(key);
+      if (kept.length) await historyRepository.storeSamples(key, kept, { touchAccess: false });
     }
+    for (const marker of ["graphAt", "graphSamples", "graphSkipped", "graphEnumerated", "graphTotal"]) {
+      delete meta[marker];
+    }
+    if (kept.length) await historyRepository.setMeta(key, meta);
   }
   if (purged) {
-    saveHistoryStore();
     console.log(`Purged ${purged} legacy graph samples`);
   }
 }
 
 app.disable("x-powered-by");
-// Railway (and most PaaS) put exactly one proxy in front of the app. Trusting a
-// single hop keeps req.ip honest; `true` would trust any spoofed X-Forwarded-For.
-app.set("trust proxy", 1);
+// Railway puts one proxy in front of the service. Self-hosters with a different
+// topology must set the exact hop count; Express warns against blanket `true`.
+app.set("trust proxy", envInteger("TRUST_PROXY_HOPS", 1, 0, 10));
 
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  const corsOrigin = String(process.env.CORS_ALLOW_ORIGIN || "").trim();
+  if (corsOrigin) res.setHeader("Access-Control-Allow-Origin", corsOrigin);
   res.setHeader("Cache-Control", "no-store");
   next();
 });
 
-app.use(express.json({ limit: "128kb" }));
-
+// Reject abusive requests before parsing any body. Expensive endpoints also
+// get a smaller budget because they can trigger remote API work.
+app.use(rateLimit(requestLimiter, rateLimitMax));
 app.use((req, res, next) => {
-  const key = req.ip || "unknown";
-  const now = Date.now();
-  const bucket = hits.get(key);
-  if (!bucket || now - bucket.startedAt > rateLimitWindowMs) {
-    hits.set(key, { startedAt: now, count: 1 });
+  if (/^\/(admin|analytics|history|official|oauth)\b/.test(req.path)) {
+    return rateLimit(expensiveLimiter, expensiveRateLimitMax)(req, res, next);
+  }
+  next();
+});
+
+// Administrative deletion has a separate credential that must never be
+// distributed to app clients. Protect the namespace centrally so future
+// operator routes cannot accidentally inherit public bridge access.
+app.use("/admin", (req, res, next) => {
+  if (!historyAdminToken) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  if (!tokenMatches(requestToken(req), historyAdminToken)) {
+    res.setHeader("WWW-Authenticate", "Bearer");
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+});
+
+// Optional protection for self-hosted bridges. Health and OAuth browser
+// callbacks remain public; every data endpoint requires the configured token.
+app.use((req, res, next) => {
+  if (!bridgeApiToken || req.path === "/health" || req.path === "/" || req.path.startsWith("/oauth/") || req.path.startsWith("/admin/")) {
     next();
     return;
   }
-
-  bucket.count += 1;
-  if (bucket.count > rateLimitMax) {
-    res.status(429).json({ error: "rate_limited" });
+  if (tokenMatches(requestToken(req), bridgeApiToken)) {
+    next();
     return;
   }
-
-  next();
+  res.setHeader("WWW-Authenticate", "Bearer");
+  res.status(401).json({ error: "unauthorized" });
 });
+
+const historyJsonBody = express.json({ limit: "64kb", strict: true });
 
 // Both in-memory maps would otherwise grow unbounded on a long-lived public
 // instance: expired cache entries are only ever overwritten, and each unique
 // client IP leaves a hits bucket behind. Sweep both periodically.
-const sweepIntervalMs = Math.max(rateLimitWindowMs, cacheTtlMs);
+const sweepIntervalMs = Math.max(10_000, Math.min(rateLimitWindowMs, cacheTtlMs));
 const sweepTimer = setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of cache) {
-    if (now - value.fetchedAt >= cacheTtlMs) cache.delete(key);
-  }
-  for (const [key, value] of hits) {
-    if (now - value.startedAt > rateLimitWindowMs) hits.delete(key);
-  }
-  for (const [key, value] of analyticsCache) {
-    if (now - value.cachedAt >= analyticsTtlMs) analyticsCache.delete(key);
-  }
+  cache.sweep(cacheTtlMs, "fetchedAt");
+  analyticsCache.sweep(analyticsTtlMs, "cachedAt");
+  requestLimiter.sweep?.();
+  expensiveLimiter.sweep?.();
+  cleanupOAuthMaps();
 }, sweepIntervalMs);
 sweepTimer.unref?.();
 
-app.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
+let storageHealth = { checkedAt: 0, ok: true };
+app.get("/health", async (_req, res) => {
+  if (Date.now() - storageHealth.checkedAt >= 5000) {
+    try {
+      await historyRepository.healthCheck();
+      storageHealth = { checkedAt: Date.now(), ok: true };
+    } catch (error) {
+      console.warn("History readiness check failed:", error?.message || error);
+      storageHealth = { checkedAt: Date.now(), ok: false };
+    }
+  }
+  res.status(storageHealth.ok ? 200 : 503).json({
+    ok: storageHealth.ok,
     service: "twidget-bridge",
     upstream: "fxtwitter",
-    xOAuthConfigured: Boolean(process.env.X_CLIENT_ID),
+    authMode: bridgeApiToken ? "bearer" : "public",
+    xOAuthConfigured: xOAuthEnabled && Boolean(process.env.X_CLIENT_ID),
     history: {
       enabled: true,
+      backend: historyRepository.backendName(),
       maxDays: maxHistoryDays,
-      accounts: Object.keys(historyStore.accounts).length,
-      waybackBackfilled: Object.values(historyStore.meta).filter((meta) => meta?.waybackAt).length,
+      sampleRetentionDays: historySampleRetentionDays || null,
+      inactiveAccountDays: historyInactiveAccountDays || null,
+      clientBackfill: historyClientBackfillEnabled,
+      archiveBackfill: waybackEnabled,
     },
+    sharedState: redisClient ? "redis" : "local",
   });
 });
 
 app.get("/oauth/x/start", (req, res) => {
   const clientId = process.env.X_CLIENT_ID;
-  if (!clientId) {
+  if (!xOAuthEnabled || !clientId || !process.env.X_CALLBACK_URL) {
     res.status(501).json({ error: "x_oauth_not_configured" });
     return;
   }
@@ -122,6 +208,11 @@ app.get("/oauth/x/start", (req, res) => {
   const challenge = base64Url(crypto.createHash("sha256").update(verifier).digest());
 
   cleanupOAuthMaps();
+  if (oauthStates.size >= maxPendingOAuth) {
+    res.setHeader("Retry-After", "60");
+    res.status(503).json({ error: "oauth_capacity_reached" });
+    return;
+  }
   oauthStates.set(state, {
     createdAt: Date.now(),
     redirectUri,
@@ -141,6 +232,10 @@ app.get("/oauth/x/start", (req, res) => {
 });
 
 app.get("/oauth/x/callback", async (req, res) => {
+  if (!xOAuthEnabled) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
   const state = String(req.query.state || "");
   const record = oauthStates.get(state);
   oauthStates.delete(state);
@@ -156,16 +251,22 @@ app.get("/oauth/x/callback", async (req, res) => {
   }
 
   try {
-    const token = await exchangeXCode({
-      code: String(req.query.code || ""),
-      redirectUri: record.redirectUri,
-      verifier: record.verifier,
+    const user = await withUpstreamSlot(async () => {
+      const token = await exchangeXCode({
+        code: String(req.query.code || ""),
+        redirectUri: record.redirectUri,
+        verifier: record.verifier,
+      });
+      return fetchXMe(token.access_token);
     });
-    const user = await fetchXMe(token.access_token);
+    cleanupOAuthMaps();
+    if (oauthSessions.size >= maxPendingOAuth) {
+      res.redirect(returnUrl(record.returnUri, { error: "oauth_capacity_reached" }));
+      return;
+    }
     const session = base64Url(crypto.randomBytes(24));
     oauthSessions.set(session, {
       createdAt: Date.now(),
-      token,
       user,
     });
     res.redirect(returnUrl(record.returnUri, {
@@ -181,12 +282,20 @@ app.get("/oauth/x/callback", async (req, res) => {
 });
 
 app.get("/oauth/x/session/:session", (req, res) => {
+  if (!xOAuthEnabled) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
   cleanupOAuthMaps();
-  const session = oauthSessions.get(String(req.params.session || ""));
+  const key = String(req.params.session || "");
+  const session = oauthSessions.get(key);
   if (!session) {
     res.status(404).json({ error: "session_not_found" });
     return;
   }
+  // The deep-link handoff is single-use, limiting exposure if a session URL is
+  // copied from browser history or logs.
+  oauthSessions.delete(key);
   res.json(session.user);
 });
 
@@ -196,20 +305,17 @@ app.get(["/official/user/:username", "/x/user/:username", "/api/x/user/:username
     res.status(400).json({ error: "invalid_username" });
     return;
   }
-  if (!process.env.X_BEARER_TOKEN) {
+  if ((!publicOfficialApi && !bridgeApiToken) || !process.env.X_BEARER_TOKEN) {
     res.status(501).json({ error: "x_api_not_configured" });
     return;
   }
 
   try {
-    const data = await fetchOfficialXProfile(username);
+    const data = await withUpstreamSlot(() => fetchOfficialXProfile(username));
     res.json(data);
   } catch (error) {
     console.error(`Official X API fetch failed for ${username}:`, error);
-    res.status(502).json({
-      error: "x_api_fetch_failed",
-      message: error instanceof Error ? error.message : "Unknown X API error",
-    });
+    sendUpstreamFailure(res, "x_api_fetch_failed", error);
   }
 });
 
@@ -227,30 +333,56 @@ app.get("/history/:username", async (req, res) => {
     return;
   }
   const key = username.toLowerCase();
-  if (!historyStore.accounts[key]?.length) {
+  const existing = await historyRepository.getHistory(key, { touch: true });
+  if (!existing.length) {
+    const accountExists = await historyRepository.hasAccount(key);
+    const accountCount = await historyRepository.countAccounts();
+    if (!accountExists && accountCount >= maxHistoryAccounts) {
+      res.status(503).json({ error: "history_capacity_reached" });
+      return;
+    }
+    if (!accountExists && !(await takeHistoryRegistrationSlot())) {
+      res.setHeader("Retry-After", "3600");
+      res.status(429).json({ error: "history_registration_limited" });
+      return;
+    }
     try {
-      const profile = await fetchProfile(username);
-      recordHistorySample(profile);
-      cache.set(key, { fetchedAt: Date.now(), data: profile });
+      const profile = await fetchProfileLimited(username);
+      if (profile.isPrivate === true) {
+        res.status(403).json({ error: "private_account_not_pooled" });
+        return;
+      }
+      const registered = await recordHistorySample(profile, { allowNew: true });
+      if (registered === null) {
+        res.status(503).json({ error: "history_capacity_reached" });
+        return;
+      }
+      await cache.set(key, { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
       void backfillFromWayback(username);
       console.log(`Pool registered ${key}`);
     } catch (error) {
       console.error(`Pool registration failed for ${username}:`, error);
-      res.status(502).json({ error: "profile_fetch_failed" });
+      sendUpstreamFailure(res, "profile_fetch_failed", error);
       return;
     }
   }
-  res.json({ userName: username, history: historyFor(username) });
+  res.json({ userName: username, history: await historyFor(username, { touch: true }) });
 });
 
-app.post("/history/:username/backfill", (req, res) => {
+app.post("/history/:username/backfill", (req, res, next) => {
+  if (!historyClientBackfillEnabled) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+  next();
+}, historyJsonBody, async (req, res) => {
   const username = cleanUsername(req.params.username);
   if (!username) {
     res.status(400).json({ error: "invalid_username" });
     return;
   }
   const key = username.toLowerCase();
-  const existing = historyStore.accounts[key];
+  const existing = await historyRepository.getHistory(key, { touch: true });
   if (!existing?.length) {
     res.status(409).json({ error: "account_not_registered" });
     return;
@@ -258,10 +390,20 @@ app.post("/history/:username/backfill", (req, res) => {
   const submitted = Array.isArray(req.body?.samples) ? req.body.samples.slice(0, maxHistoryDays) : [];
   const accepted = acceptableClientSamples(existing, submitted);
   if (accepted.length) {
-    storeSamples(key, accepted, { preferExisting: true });
+    await storeSamples(key, accepted, { preferExisting: true });
     console.log(`Pool backfill for ${key}: accepted ${accepted.length}/${submitted.length}`);
   }
   res.json({ accepted: accepted.length, rejected: submitted.length - accepted.length });
+});
+
+app.delete("/admin/history/:username", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  await historyRepository.deleteAccount(username.toLowerCase());
+  res.status(204).end();
 });
 
 // Gap days only (server samples always win), never today, never estimates,
@@ -289,9 +431,8 @@ function acceptableClientSamples(existing, submitted) {
 // Reach + engagement over the recent timeline, plus the 7-day best/worst posts.
 // Timeline fetches are heavier than a profile lookup, so results are cached.
 
-const analyticsCache = new Map();
-const analyticsTtlMs = Number(process.env.ANALYTICS_TTL_SECONDS || 2700) * 1000; // 45 min
-const analyticsPostCount = Number(process.env.ANALYTICS_POST_COUNT || 100);
+const analyticsTtlMs = envInteger("ANALYTICS_TTL_SECONDS", 2700, 60, 86400) * 1000; // 45 min
+const analyticsPostCount = envInteger("ANALYTICS_POST_COUNT", 100, 1, 200);
 const analyticsInFlight = new Map();
 
 app.get("/analytics/:username", async (req, res) => {
@@ -301,9 +442,10 @@ app.get("/analytics/:username", async (req, res) => {
     return;
   }
   const key = username.toLowerCase();
-  const cached = analyticsCache.get(key);
+  const cached = await analyticsCache.get(key);
   if (cached && Date.now() - cached.cachedAt < analyticsTtlMs) {
     res.setHeader("X-Twidget-Cache", "hit");
+    setPublicCache(res, 900);
     res.json(cached.data);
     return;
   }
@@ -311,16 +453,18 @@ app.get("/analytics/:username", async (req, res) => {
     // Collapse concurrent requests for the same account onto one fetch.
     let pending = analyticsInFlight.get(key);
     if (!pending) {
-      pending = computeAnalytics(username).finally(() => analyticsInFlight.delete(key));
+      pending = withUpstreamSlot(() => computeAnalytics(username))
+        .finally(() => analyticsInFlight.delete(key));
       analyticsInFlight.set(key, pending);
     }
     const data = await pending;
-    analyticsCache.set(key, { cachedAt: Date.now(), data });
+    await analyticsCache.set(key, { cachedAt: Date.now(), data }, analyticsTtlMs * 2);
     res.setHeader("X-Twidget-Cache", "miss");
+    setPublicCache(res, 900);
     res.json(data);
   } catch (error) {
     console.error(`Analytics failed for ${username}:`, error?.message ?? error);
-    res.status(502).json({ error: "analytics_failed" });
+    sendUpstreamFailure(res, "analytics_failed", error);
   }
 });
 
@@ -520,13 +664,24 @@ app.use((error, _req, res, _next) => {
 const server = app.listen(port, "0.0.0.0", () => {
   console.log(`Twidget bridge listening on ${port}`);
 });
+server.requestTimeout = envInteger("REQUEST_TIMEOUT_MS", 30_000, 1_000, 300_000);
+server.headersTimeout = envInteger("HEADERS_TIMEOUT_MS", 15_000, 1_000, server.requestTimeout);
+server.keepAliveTimeout = envInteger("KEEP_ALIVE_TIMEOUT_MS", 5_000, 1_000, 60_000);
+server.maxHeadersCount = envInteger("MAX_HEADERS_COUNT", 100, 20, 1000);
+server.maxRequestsPerSocket = envInteger("MAX_REQUESTS_PER_SOCKET", 100, 1, 10000);
 
 // Exit 0 on deploy teardown so npm doesn't report the SIGTERM as a crash.
 for (const signal of ["SIGTERM", "SIGINT"]) {
   process.on(signal, () => {
     console.log(`${signal} received, shutting down`);
-    saveHistoryStore();
-    server.close(() => process.exit(0));
+    server.closeIdleConnections?.();
+    server.close(async () => {
+      await Promise.allSettled([
+        historyRepository.close(),
+        redisClient?.quit(),
+      ]);
+      process.exit(0);
+    });
     setTimeout(() => process.exit(0), 4000).unref();
   });
 }
@@ -537,32 +692,53 @@ const refreshTimer = setInterval(refreshKnownAccounts, historyRefreshMs);
 refreshTimer.unref?.();
 const bootRefreshTimer = setTimeout(refreshKnownAccounts, 15_000);
 bootRefreshTimer.unref?.();
+const pruneTimer = setInterval(pruneHistory, historyPruneMs);
+pruneTimer.unref?.();
 
 let refreshing = false;
 async function refreshKnownAccounts() {
   if (refreshing) return;
+  const releaseLock = await acquireJobLock("history-refresh", Math.max(historyRefreshMs, 10 * 60 * 1000));
+  if (!releaseLock) return;
   refreshing = true;
   try {
     const today = startOfDay(Date.now());
-    for (const key of Object.keys(historyStore.accounts)) {
-      const samples = historyStore.accounts[key] || [];
+    const accounts = await historyRepository.listAccounts();
+    for (const key of accounts) {
+      const samples = await historyRepository.getHistory(key);
       const latest = samples[samples.length - 1];
       if (latest && latest.ts >= today) continue;
       try {
-        const profile = await fetchProfile(key);
-        recordHistorySample(profile);
-        cache.set(key, { fetchedAt: Date.now(), data: profile });
+        const profile = await fetchProfileLimited(key);
+        await recordHistorySample(profile);
+        await cache.set(key, { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
         console.log(`Daily refresh recorded ${key}`);
       } catch (error) {
         console.warn(`Daily refresh failed for ${key}:`, error);
       }
       await sleep(3000);
     }
-    for (const key of Object.keys(historyStore.accounts)) {
-      if (!historyStore.meta[key]?.waybackAt) await backfillFromWayback(key);
+    for (const key of accounts) {
+      if (!(await historyRepository.getMeta(key)).waybackAt) await backfillFromWayback(key);
     }
   } finally {
     refreshing = false;
+    await releaseLock();
+  }
+}
+
+async function pruneHistory() {
+  const releaseLock = await acquireJobLock("history-prune", historyPruneMs);
+  if (!releaseLock) return;
+  try {
+    const result = await historyRepository.prune();
+    if (result.deletedAccounts || result.deletedSamples) {
+      console.log(`History retention pruned ${result.deletedAccounts} accounts and ${result.deletedSamples} samples`);
+    }
+  } catch (error) {
+    console.warn("History retention failed:", error);
+  } finally {
+    await releaseLock();
   }
 }
 
@@ -577,27 +753,44 @@ async function handleUser(input, res) {
     return;
   }
 
-  const cached = cache.get(username.toLowerCase());
+  const cached = await cache.get(username.toLowerCase());
   if (cached && Date.now() - cached.fetchedAt < cacheTtlMs) {
     res.setHeader("X-Twidget-Cache", "hit");
-    res.json(withHistory(cached.data));
+    setPublicCache(res, 300);
+    res.json(await withHistory(cached.data));
     return;
   }
 
   try {
-    const profile = await fetchProfile(username);
-    recordHistorySample(profile);
-    cache.set(username.toLowerCase(), { fetchedAt: Date.now(), data: profile });
+    const profile = await fetchProfileLimited(username);
+    // Ordinary profile lookups must not opt users into persistent pooled
+    // history. Existing opt-in accounts still receive their daily update.
+    await recordHistorySample(profile);
+    await cache.set(username.toLowerCase(), { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
     res.setHeader("X-Twidget-Cache", "miss");
-    res.json(withHistory(profile));
-    void backfillFromWayback(username);
+    setPublicCache(res, 300);
+    res.json(await withHistory(profile));
   } catch (error) {
     console.error(`Failed to fetch ${username}:`, error);
-    res.status(502).json({
-      error: "profile_fetch_failed",
-      message: error instanceof Error ? error.message : "Unknown Rettiwt error",
-    });
+    if (cached) {
+      res.setHeader("Warning", '110 - "Response is stale"');
+      res.setHeader("X-Twidget-Cache", "stale");
+      setPublicCache(res, 60);
+      res.json(await withHistory(cached.data));
+      return;
+    }
+    sendUpstreamFailure(res, "profile_fetch_failed", error);
   }
+}
+
+async function fetchProfileLimited(username) {
+  const key = cleanUsername(username).toLowerCase();
+  const existing = profileInFlight.get(key);
+  if (existing) return existing;
+  const pending = withUpstreamSlot(() => fetchProfile(username))
+    .finally(() => profileInFlight.delete(key));
+  profileInFlight.set(key, pending);
+  return pending;
 }
 
 // FxTwitter is the primary upstream: free, no credentials, and it reports
@@ -629,9 +822,13 @@ async function fetchFxProfile(username) {
     fullName: stringValue(user.name) || username,
     userName: (stringValue(user.screen_name) || username).replace(/^@+/, ""),
     followersCount: numberValue(user.followers),
+    followersCountKnown: user.followers !== undefined && user.followers !== null,
     followingsCount: numberValue(user.following),
+    followingsCountKnown: user.following !== undefined && user.following !== null,
     statusesCount: numberValue(user.tweets),
+    statusesCountKnown: user.tweets !== undefined && user.tweets !== null,
     likeCount: numberValue(user.likes),
+    likeCountKnown: user.likes !== undefined && user.likes !== null,
     profileImage: highResolutionProfileImageUrl(user.avatar_url),
     isVerified: user.verification && typeof user.verification === "object"
       ? Boolean(user.verification.verified)
@@ -679,6 +876,7 @@ async function fetchOfficialXProfile(username) {
       Authorization: `Bearer ${process.env.X_BEARER_TOKEN}`,
       Accept: "application/json",
     },
+    signal: AbortSignal.timeout(10000),
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -692,13 +890,21 @@ function normalizeUser(user, fallbackUsername) {
     findDeep(user, ["isVerified", "verified", "blueVerified", "blue_verified", "is_blue_verified"]),
     findDeep(user, ["verifiedType", "verified_type"]),
   );
+  const followers = findDeep(user, ["followersCount", "followers_count", "followerCount", "follower_count"]);
+  const following = findDeep(user, ["followingsCount", "followingCount", "friends_count", "following_count"]);
+  const statuses = findDeep(user, ["statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count", "listed_count"]);
+  const likes = findDeep(user, ["likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count"]);
   return {
     fullName: stringValue(firstDefined(findDeep(user, ["fullName", "name", "displayName", "display_name"]), fallbackUsername)),
     userName: stringValue(firstDefined(findDeep(user, ["userName", "username", "screenName", "screen_name", "handle"]), fallbackUsername)).replace(/^@+/, ""),
-    followersCount: numberValue(findDeep(user, ["followersCount", "followers_count", "followerCount", "follower_count"])),
-    followingsCount: numberValue(findDeep(user, ["followingsCount", "followingCount", "friends_count", "following_count"])),
-    statusesCount: numberValue(findDeep(user, ["statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count", "listed_count"])),
-    likeCount: numberValue(findDeep(user, ["likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count"])),
+    followersCount: numberValue(followers),
+    followersCountKnown: followers !== undefined && followers !== null,
+    followingsCount: numberValue(following),
+    followingsCountKnown: following !== undefined && following !== null,
+    statusesCount: numberValue(statuses),
+    statusesCountKnown: statuses !== undefined && statuses !== null,
+    likeCount: numberValue(likes),
+    likeCountKnown: likes !== undefined && likes !== null,
     profileImage: highResolutionProfileImageUrl(findDeep(user, ["profileImage", "profile_image_url_https", "profile_image_url", "avatar", "avatarUrl", "avatar_url", "imageUrl", "image_url"])),
     isVerified: booleanValue(verified),
     isPrivate: booleanValue(findDeep(user, ["isPrivate", "private", "protected", "isProtected", "is_protected", "protectedProfile"])),
@@ -727,6 +933,7 @@ async function exchangeXCode({ code, redirectUri, verifier }) {
     method: "POST",
     headers,
     body,
+    signal: AbortSignal.timeout(10000),
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -738,6 +945,7 @@ async function exchangeXCode({ code, redirectUri, verifier }) {
 async function fetchXMe(accessToken) {
   const response = await fetch("https://api.x.com/2/users/me?user.fields=public_metrics,profile_image_url,verified,verified_type,protected", {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(10000),
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -752,9 +960,15 @@ function normalizeXUser(user) {
     fullName: stringValue(user.name || user.username),
     userName: stringValue(user.username).replace(/^@+/, ""),
     followersCount: numberValue(metrics.followers_count),
+    followersCountKnown: metrics.followers_count !== undefined && metrics.followers_count !== null,
     followingsCount: numberValue(metrics.following_count),
+    followingsCountKnown: metrics.following_count !== undefined && metrics.following_count !== null,
     statusesCount: numberValue(metrics.tweet_count),
-    likeCount: 0,
+    statusesCountKnown: metrics.tweet_count !== undefined && metrics.tweet_count !== null,
+    // X user public_metrics has no profile-wide likes count. Omit it rather
+    // than returning a fabricated zero.
+    likeCount: undefined,
+    likeCountKnown: false,
     profileImage: highResolutionProfileImageUrl(user.profile_image_url),
     isVerified: user.verified !== undefined || user.verified_type !== undefined
       ? Boolean(booleanValue(user.verified) || verifiedTypeValue(user.verified_type))
@@ -764,64 +978,47 @@ function normalizeXUser(user) {
   return Object.fromEntries(Object.entries(normalized).filter(([, value]) => value !== undefined));
 }
 
-function withHistory(profile) {
+async function withHistory(profile) {
   const username = cleanUsername(profile.userName);
   return {
     ...profile,
     syncedAt: Date.now(),
-    history: historyFor(username),
+    history: await historyFor(username),
   };
 }
 
-function recordHistorySample(profile) {
+async function recordHistorySample(profile, { allowNew = false } = {}) {
   const username = cleanUsername(profile.userName);
   if (!username) return [];
-  return storeSamples(username.toLowerCase(), [historySampleFor(profile, Date.now())]);
+  const key = username.toLowerCase();
+  if (profile.isPrivate === true) {
+    // The pool is explicitly for public accounts. If an existing account turns
+    // private, stop serving and refreshing its previously collected history.
+    await historyRepository.deleteAccount(key);
+    return [];
+  }
+  if (!allowNew && !(await historyRepository.hasAccount(key))) return [];
+  if (allowNew) {
+    const registered = await historyRepository.registerAccount(
+      key,
+      [historySampleFor(profile, Date.now())],
+      maxHistoryAccounts,
+    );
+    return registered ? historyRepository.getHistory(key) : null;
+  }
+  return storeSamples(key, [historySampleFor(profile, Date.now())], { touchAccess: false });
 }
 
 // Merge new samples into an account's history, one per calendar day. New
 // samples win by default; preferExisting keeps recorded daily closes intact
 // when merging coarser data such as Wayback anchors.
-function storeSamples(key, samples, { preferExisting = false } = {}) {
-  const existing = Array.isArray(historyStore.accounts[key]) ? historyStore.accounts[key] : [];
-  const ordered = preferExisting ? [...samples, ...existing] : [...existing, ...samples];
-  const byDay = new Map();
-  for (const item of ordered) {
-    const normalized = normalizeHistorySample(item);
-    if (!normalized) continue;
-    // A real measurement on a day always beats an estimate for that day.
-    const current = byDay.get(normalized.ts);
-    if (current && !current.est && normalized.est) continue;
-    byDay.set(normalized.ts, normalized);
-  }
-  historyStore.accounts[key] = capSamples(
-    Array.from(byDay.values()).sort((left, right) => left.ts - right.ts),
-  );
-  saveHistoryStore();
-  return historyStore.accounts[key];
+async function storeSamples(key, samples, { preferExisting = false, touchAccess = true } = {}) {
+  return historyRepository.storeSamples(key, samples, { preferExisting, touchAccess });
 }
 
-// Daily resolution for the recent window; older samples (Wayback anchors)
-// thin to one per month instead of being evicted by a hard cap.
-function capSamples(samples) {
-  const cutoff = startOfDay(Date.now()) - maxHistoryDays * 24 * 60 * 60 * 1000;
-  const recent = samples.filter((sample) => sample.ts >= cutoff);
-  const older = samples.filter((sample) => sample.ts < cutoff);
-  if (!older.length) return recent;
-  const monthly = new Map();
-  for (const sample of older) {
-    const date = new Date(sample.ts);
-    monthly.set(date.getFullYear() * 12 + date.getMonth(), sample);
-  }
-  return [...monthly.values(), ...recent];
-}
-
-function historyFor(username) {
+async function historyFor(username, { touch = false } = {}) {
   const key = cleanUsername(username).toLowerCase();
-  return (historyStore.accounts[key] || [])
-    .map(normalizeHistorySample)
-    .filter(Boolean)
-    .sort((left, right) => left.ts - right.ts);
+  return historyRepository.getHistory(key, { touch });
 }
 
 function historySampleFor(profile, now) {
@@ -829,65 +1026,32 @@ function historySampleFor(profile, now) {
   return {
     dayLabel: dayLabel(ts),
     followers: numberValue(profile.followersCount),
+    followersKnown: profileMetricKnown(profile, "followersCount"),
     following: numberValue(profile.followingsCount),
+    followingKnown: profileMetricKnown(profile, "followingsCount"),
     posts: numberValue(profile.statusesCount),
+    postsKnown: profileMetricKnown(profile, "statusesCount"),
     likes: numberValue(profile.likeCount),
+    likesKnown: profileMetricKnown(profile, "likeCount"),
     ts,
+    src: "live",
   };
 }
 
-function normalizeHistorySample(sample) {
-  if (!sample || typeof sample !== "object") return null;
-  const ts = startOfDay(numberValue(firstDefined(sample.ts, sample.timestamp, sample.syncedAt)));
-  if (!ts) return null;
-  return {
-    dayLabel: stringValue(sample.dayLabel) || dayLabel(ts),
-    followers: numberValue(sample.followers),
-    following: numberValue(firstDefined(sample.following, sample.followings)),
-    posts: numberValue(sample.posts),
-    likes: numberValue(sample.likes),
-    ts,
-    ...(sample.src ? { src: stringValue(sample.src) } : {}),
-    ...(sample.est ? { est: true } : {}),
-  };
+function profileMetricKnown(profile, field) {
+  const explicit = profile[`${field}Known`];
+  if (typeof explicit === "boolean") return explicit;
+  return Object.hasOwn(profile, field) && profile[field] !== undefined && profile[field] !== null;
 }
 
 function startOfDay(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 0;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
 function dayLabel(ts) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(ts));
-}
-
-function loadHistoryStore() {
-  try {
-    const raw = fs.readFileSync(historyStorePath, "utf8");
-    const parsed = JSON.parse(raw);
-    return {
-      version: 1,
-      accounts: parsed && typeof parsed.accounts === "object" && parsed.accounts ? parsed.accounts : {},
-      meta: parsed && typeof parsed.meta === "object" && parsed.meta ? parsed.meta : {},
-    };
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      console.warn(`Unable to read history store at ${historyStorePath}:`, error);
-    }
-    return { version: 1, accounts: {}, meta: {} };
-  }
-}
-
-function saveHistoryStore() {
-  try {
-    fs.mkdirSync(path.dirname(historyStorePath), { recursive: true });
-    const tempPath = `${historyStorePath}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(historyStore, null, 2));
-    fs.renameSync(tempPath, historyStorePath);
-  } catch (error) {
-    console.warn(`Unable to write history store at ${historyStorePath}:`, error);
-  }
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(ts));
 }
 
 // ---- Wayback Machine backfill -------------------------------------------
@@ -899,7 +1063,11 @@ const waybackInFlight = new Set();
 async function backfillFromWayback(username) {
   const key = cleanUsername(username).toLowerCase();
   if (!waybackEnabled || !key || waybackInFlight.has(key)) return;
-  if (historyStore.meta[key]?.waybackAt) return;
+  if (waybackInFlight.size >= maxWaybackConcurrent) return;
+  const existingMeta = await historyRepository.getMeta(key);
+  if (existingMeta.waybackAt) return;
+  const releaseLock = await acquireJobLock(`wayback:${key}`, 10 * 60 * 1000);
+  if (!releaseLock) return;
   waybackInFlight.add(key);
   try {
     const snapshots = await waybackSnapshots(key);
@@ -909,16 +1077,15 @@ async function backfillFromWayback(username) {
       if (sample) samples.push(sample);
       await sleep(500);
     }
-    if (samples.length) storeSamples(key, samples, { preferExisting: true });
-    historyStore.meta[key] = { ...historyStore.meta[key], waybackAt: Date.now(), waybackSamples: samples.length };
-    saveHistoryStore();
+    if (samples.length) await storeSamples(key, samples, { preferExisting: true, touchAccess: false });
+    await historyRepository.setMeta(key, { ...existingMeta, waybackAt: Date.now(), waybackSamples: samples.length });
     console.log(`Wayback backfill for ${key}: ${samples.length} of ${snapshots.length} snapshots usable`);
   } catch (error) {
     console.warn(`Wayback backfill failed for ${key}:`, error);
-    historyStore.meta[key] = { ...historyStore.meta[key], waybackAt: Date.now(), waybackSamples: 0 };
-    saveHistoryStore();
+    await historyRepository.setMeta(key, { ...existingMeta, waybackAt: Date.now(), waybackSamples: 0 });
   } finally {
     waybackInFlight.delete(key);
+    await releaseLock();
   }
 }
 
@@ -969,20 +1136,36 @@ async function waybackSample(timestamp, original) {
     });
     if (!response.ok) return null;
     const html = await response.text();
-    const followers = matchCount(html, [
+    const followers = matchOptionalCount(html, [
       /"followers_count"\s*:\s*(\d+)/,
       /followers_count&quot;\s*:\s*(\d+)/,
       /ProfileNav-item--followers[\s\S]{0,600}?data-count="(\d+)"/,
       /data-nav="followers"[\s\S]{0,300}?title="([\d.,  ]+)\s+Follower/i,
       /title="([\d.,  ]+)\s+Followers?"/i,
     ]);
-    if (!followers) return null;
+    if (followers === null) return null;
+    const following = matchOptionalCount(html, [
+      /"friends_count"\s*:\s*(\d+)/,
+      /friends_count&quot;\s*:\s*(\d+)/,
+    ]);
+    const posts = matchOptionalCount(html, [
+      /"statuses_count"\s*:\s*(\d+)/,
+      /statuses_count&quot;\s*:\s*(\d+)/,
+    ]);
+    const likes = matchOptionalCount(html, [
+      /"favourites_count"\s*:\s*(\d+)/,
+      /favourites_count&quot;\s*:\s*(\d+)/,
+    ]);
     return {
       dayLabel: dayLabel(ts),
       followers,
-      following: matchCount(html, [/"friends_count"\s*:\s*(\d+)/, /friends_count&quot;\s*:\s*(\d+)/]),
-      posts: matchCount(html, [/"statuses_count"\s*:\s*(\d+)/, /statuses_count&quot;\s*:\s*(\d+)/]),
-      likes: matchCount(html, [/"favourites_count"\s*:\s*(\d+)/, /favourites_count&quot;\s*:\s*(\d+)/]),
+      followersKnown: true,
+      following: following ?? 0,
+      followingKnown: following !== null,
+      posts: posts ?? 0,
+      postsKnown: posts !== null,
+      likes: likes ?? 0,
+      likesKnown: likes !== null,
       ts,
       src: "wayback",
     };
@@ -995,18 +1178,18 @@ async function waybackSample(timestamp, original) {
 function waybackDayTs(timestamp) {
   const match = /^(\d{4})(\d{2})(\d{2})/.exec(String(timestamp));
   if (!match) return 0;
-  const time = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getTime();
+  const time = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return Number.isNaN(time) ? 0 : time;
 }
 
-function matchCount(html, patterns) {
+function matchOptionalCount(html, patterns) {
   for (const pattern of patterns) {
     const match = pattern.exec(html);
     if (!match) continue;
     const value = Number(String(match[1]).replace(/\D/g, ""));
-    if (Number.isFinite(value) && value > 0) return value;
+    if (Number.isFinite(value) && value >= 0) return value;
   }
-  return 0;
+  return null;
 }
 
 async function fetchWebProfilePrivacy(username) {
@@ -1029,20 +1212,15 @@ async function fetchWebProfilePrivacy(username) {
 }
 
 function xRedirectUri(req) {
-  if (process.env.X_CALLBACK_URL) return process.env.X_CALLBACK_URL;
-  const proto = req.get("x-forwarded-proto") || req.protocol || "https";
-  return `${proto}://${req.get("host")}/oauth/x/callback`;
+  const configured = String(process.env.X_CALLBACK_URL || "").trim();
+  if (configured) return configured;
+  throw new Error("X_CALLBACK_URL is required when X OAuth is enabled");
 }
 
 function validReturnUri(value) {
   const uri = String(value || "");
-  if (!uri) return "";
-  try {
-    const parsed = new URL(uri);
-    return parsed.protocol === "twidget:" ? uri : "";
-  } catch {
-    return "";
-  }
+  const allowed = String(process.env.TWIDGET_ANDROID_RETURN_URI || "twidget://oauth/x");
+  return uri === allowed ? uri : "";
 }
 
 function returnUrl(returnUri, params) {
@@ -1064,6 +1242,169 @@ function cleanupOAuthMaps() {
   for (const [key, value] of oauthSessions) {
     if (now - value.createdAt > ttl) oauthSessions.delete(key);
   }
+}
+
+function rateLimit(limiter, max) {
+  return async (req, res, next) => {
+    const key = req.ip || req.socket?.remoteAddress || "unknown";
+    try {
+      const result = await limiter.take(key);
+      if (result.capacityReached) {
+        res.setHeader("Retry-After", String(Math.ceil(result.retryMs / 1000)));
+        res.status(503).json({ error: "rate_limiter_capacity_reached" });
+        return;
+      }
+      const resetSeconds = Math.max(1, Math.ceil(result.retryMs / 1000));
+      res.setHeader("RateLimit-Limit", String(max));
+      res.setHeader("RateLimit-Remaining", String(Math.max(0, max - result.count)));
+      res.setHeader("RateLimit-Reset", String(resetSeconds));
+      if (result.count > max) {
+        res.setHeader("Retry-After", String(resetSeconds));
+        res.status(429).json({ error: "rate_limited" });
+        return;
+      }
+      next();
+    } catch (error) {
+      // A configured shared limiter must fail closed. Falling back locally
+      // during a Redis outage would multiply the request budget per replica.
+      console.warn("Rate limiter unavailable:", error?.message || error);
+      res.setHeader("Retry-After", "5");
+      res.status(503).json({ error: "rate_limiter_unavailable" });
+    }
+  };
+}
+
+function requestToken(req) {
+  const authorization = String(req.get("authorization") || "");
+  const bearer = /^Bearer\s+(.+)$/i.exec(authorization)?.[1];
+  return String(bearer || req.get("x-rettiwt-api-key") || "").trim();
+}
+
+function tokenMatches(received, expected) {
+  const left = Buffer.from(String(received));
+  const right = Buffer.from(String(expected));
+  return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
+}
+
+async function takeHistoryRegistrationSlot() {
+  const result = await historyRegistrationLimiter.take("all");
+  return !result.capacityReached && result.count <= historyRegistrationsPerHour;
+}
+
+class ServiceBusyError extends Error {}
+
+async function withUpstreamSlot(task) {
+  if (upstreamActive >= maxConcurrentUpstream) {
+    throw new ServiceBusyError("Upstream concurrency limit reached");
+  }
+  upstreamActive += 1;
+  try {
+    return await task();
+  } finally {
+    upstreamActive -= 1;
+  }
+}
+
+function sendUpstreamFailure(res, code, error) {
+  if (error instanceof ServiceBusyError) {
+    res.setHeader("Retry-After", "5");
+    res.status(503).json({ error: "service_busy" });
+    return;
+  }
+  res.status(502).json({ error: code });
+}
+
+function setPublicCache(res, sharedSeconds) {
+  if (bridgeApiToken) return;
+  res.setHeader(
+    "Cache-Control",
+    `public, max-age=30, s-maxage=${sharedSeconds}, stale-while-revalidate=${sharedSeconds}`,
+  );
+}
+
+async function connectRedis(url) {
+  if (!url) return null;
+  const client = createRedisClient({
+    url,
+    disableOfflineQueue: true,
+    socket: {
+      connectTimeout: envInteger("REDIS_CONNECT_TIMEOUT_MS", 3000, 250, 30000),
+      reconnectStrategy: (retries) => Math.min(100 * 2 ** Math.min(retries, 5), 3000),
+    },
+  });
+  client.on("error", (error) => console.warn("Redis connection error:", error?.message || error));
+  await client.connect();
+  console.log("Shared rate limits and response caches use Redis");
+  return client;
+}
+
+async function createHistoryRepository() {
+  let repository;
+  if (historyBackend === "postgres") {
+    const connectionString = String(process.env.HISTORY_DATABASE_URL || "").trim();
+    if (!connectionString) throw new Error("HISTORY_DATABASE_URL is required when HISTORY_BACKEND=postgres");
+    const pool = new Pool({
+      connectionString,
+      max: envInteger("HISTORY_DATABASE_POOL_MAX", 10, 1, 50),
+      connectionTimeoutMillis: envInteger("HISTORY_DATABASE_CONNECT_TIMEOUT_MS", 5000, 250, 30000),
+      idleTimeoutMillis: envInteger("HISTORY_DATABASE_IDLE_TIMEOUT_MS", 30000, 1000, 300000),
+      statement_timeout: envInteger("HISTORY_DATABASE_STATEMENT_TIMEOUT_MS", 10000, 1000, 60000),
+      application_name: "twidget-bridge",
+    });
+    pool.on("error", (error) => console.error("PostgreSQL pool error:", error));
+    repository = new PostgresHistoryRepository({
+      pool,
+      maxHistoryDays,
+      sampleRetentionDays: historySampleRetentionDays,
+      inactiveAccountDays: historyInactiveAccountDays,
+    });
+  } else if (historyBackend === "json") {
+    repository = new LocalHistoryRepository({
+      filePath: historyStorePath,
+      maxHistoryDays,
+      sampleRetentionDays: historySampleRetentionDays,
+      inactiveAccountDays: historyInactiveAccountDays,
+    });
+  } else {
+    throw new Error(`Unsupported HISTORY_BACKEND: ${historyBackend}`);
+  }
+  await repository.initialize();
+  const pruned = await repository.prune();
+  if (pruned.deletedAccounts || pruned.deletedSamples) {
+    console.log(`History retention pruned ${pruned.deletedAccounts} accounts and ${pruned.deletedSamples} samples at startup`);
+  }
+  console.log(`History backend: ${repository.backendName()}`);
+  return repository;
+}
+
+async function acquireJobLock(name, ttlMs) {
+  if (!redisClient) return async () => {};
+  const key = `twidget:lock:${name}`;
+  const token = base64Url(crypto.randomBytes(18));
+  try {
+    const acquired = await redisClient.set(key, token, { NX: true, PX: Math.max(1000, Math.trunc(ttlMs)) });
+    if (acquired !== "OK") return null;
+  } catch (error) {
+    console.warn(`Unable to acquire ${name} lock:`, error?.message || error);
+    return null;
+  }
+  return async () => {
+    try {
+      await redisClient.eval(
+        "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end",
+        { keys: [key], arguments: [token] },
+      );
+    } catch (error) {
+      console.warn(`Unable to release ${name} lock:`, error?.message || error);
+    }
+  };
+}
+
+function envInteger(name, fallback, min, max) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
 function base64Url(buffer) {

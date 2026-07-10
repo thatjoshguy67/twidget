@@ -1,10 +1,9 @@
 package com.tjg.twidget
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 
-class SettingsAdvancedActivity : AppCompatActivity() {
+class SettingsAdvancedActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_preference_screen)

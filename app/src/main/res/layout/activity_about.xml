@@ -238,12 +238,12 @@
                     app:title="@string/about_open_source_licenses_title" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_legal_disclaimer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:clickable="true"
                     app:showTopDivider="true"
-                    app:summary="@string/about_legal_disclaimer_summary"
-                    app:summaryMaxLines="10"
-                    app:title="@string/about_legal_disclaimer_title" />
+                    app:title="@string/about_legal_notice_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
         </LinearLayout>

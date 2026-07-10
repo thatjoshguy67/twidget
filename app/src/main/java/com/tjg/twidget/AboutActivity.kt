@@ -57,6 +57,9 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<View>(R.id.about_open_source_licenses).setOnClickListener {
             showOpenSourceLicenses()
         }
+        findViewById<View>(R.id.about_legal_disclaimer).setOnClickListener {
+            showLegalNotice()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -216,6 +219,14 @@ class AboutActivity : FoldablePopOverActivity() {
         AlertDialog.Builder(this)
             .setTitle(R.string.about_open_source_licenses_title)
             .setView(ScrollView(this).apply { addView(textView) })
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun showLegalNotice() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.about_legal_notice_title)
+            .setMessage(R.string.about_legal_disclaimer_summary)
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }

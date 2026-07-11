@@ -73,13 +73,35 @@ class TwidgetWidget : AppWidgetProvider() {
             val delta = TwidgetStore.followersDelta(context, account)
 
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
-                val responsiveViews = responsiveSpecs(artworkWidth, artworkHeight).associate { spec ->
-                    SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat()) to createRemoteViews(
+                val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
+                responsiveSpecs(artworkWidth, artworkHeight).forEach { spec ->
+                    responsiveViews[SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())] = createRemoteViews(
                         context = context,
                         appWidgetId = appWidgetId,
                         width = spec.renderWidth,
                         height = spec.renderHeight,
                         mode = spec.mode,
+                        widgetSettings = widgetSettings,
+                        account = account,
+                        stats = stats,
+                        delta = delta,
+                        drawArtworkBackground = false,
+                    )
+                }
+                // Exact launcher allocations override the fallback buckets.
+                // This prevents fitCenter from introducing horizontal gutters
+                // when an OEM's cells have an unusual aspect ratio, while the
+                // fallback entries remain available for an immediate layout
+                // switch during resize before the options callback arrives.
+                widgetSizes(options).forEach { size ->
+                    val width = size.width.toInt().coerceAtLeast(1)
+                    val height = size.height.toInt().coerceAtLeast(1)
+                    responsiveViews[size] = createRemoteViews(
+                        context = context,
+                        appWidgetId = appWidgetId,
+                        width = width,
+                        height = height,
+                        mode = layoutModeForAosp(width, height),
                         widgetSettings = widgetSettings,
                         account = account,
                         stats = stats,
@@ -186,6 +208,14 @@ class TwidgetWidget : AppWidgetProvider() {
                 spec
             }
         }
+
+        @Suppress("DEPRECATION")
+        private fun widgetSizes(options: Bundle): List<SizeF> =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                options.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java).orEmpty()
+            } else {
+                options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES).orEmpty()
+            }
 
         // Whichever layout a widget is currently showing — used for both the
         // full render and the tap-refresh spinner so the partial update targets

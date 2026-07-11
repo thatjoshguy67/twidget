@@ -21,7 +21,7 @@ object BangerClient {
     private const val PREFS = "twidget_bangers"
     private const val VERSION = 2
     private const val PAGES_PER_REFRESH = 5
-    private const val MAX_POSTS = 1_000
+    private const val MAX_POSTS = 75_000
     private const val PAGE_SIZE = 100
 
     fun refresh(
@@ -58,6 +58,8 @@ object BangerClient {
         var complete = state.optBoolean("complete", false)
         var postsScanned = state.optInt("postsScanned", 0)
         var capped = state.optBoolean("capped", false)
+        // A raised MAX_POSTS lets a previously capped scan resume from its cursor.
+        if (capped && postsScanned < MAX_POSTS) capped = false
         var cursor = if (complete || capped) "" else state.optString("cursor")
         val seenCursors = mutableSetOf<String>()
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())

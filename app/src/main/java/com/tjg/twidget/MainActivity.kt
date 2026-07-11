@@ -222,7 +222,7 @@ class MainActivity : EdgeToEdgeActivity() {
         // weekly window — the old range chips are gone.
         val history = TwidgetStore.rangedHistory(this, account, HistoryRange.WEEK)
         val chartHistory = TwidgetStore.chartHistory(this, account, HistoryRange.WEEK)
-        bindHistoryNotice(page, history, chartHistory)
+        bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
         container.layoutTransition = LayoutTransition().apply {
@@ -480,17 +480,11 @@ class MainActivity : EdgeToEdgeActivity() {
             TwidgetStore.compactNumber(post.likes),
         )
 
-    private fun bindHistoryNotice(page: View, history: List<HistorySample>, chartHistory: List<HistorySample>) {
+    private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
         val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
         // The daily-capture explanation lives in onboarding now; only the
         // estimate footnote still surfaces on the dashboard.
-        if (history.any { it.sharedImport }) {
-            notice.setText(R.string.shared_imported_history_notice)
-            notice.visibility = View.VISIBLE
-        } else if (history.any { it.imported }) {
-            notice.setText(R.string.imported_history_notice)
-            notice.visibility = View.VISIBLE
-        } else if (chartHistory.any { it.estimated }) {
+        if (chartHistory.any { it.estimated }) {
             notice.setText(R.string.estimated_notice)
             notice.visibility = View.VISIBLE
         } else {

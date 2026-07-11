@@ -93,8 +93,6 @@
     <string name="private_unverified">Private account</string>
     <string name="no_recent_gain">No recent gain</string>
     <string name="history_notice">History is captured once per day. Weekly data needs at least 7 days; longer ranges fill in as Twidget keeps syncing.</string>
-    <string name="imported_history_notice">Follower history includes a local X Analytics import reconstructed from daily follows and unfollows. It is not shared with the community pool.</string>
-    <string name="shared_imported_history_notice">Follower history includes an X Analytics import checked against trusted bridge snapshots before joining the community pool.</string>
     <string name="estimated_notice">Faded bars are estimates reconstructed from limited history. Solid bars are real data, which grows as Twidget keeps syncing.</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Open settings</string>

@@ -168,8 +168,13 @@ object XAnalyticsImportPolicy {
     ): Int {
         require(imported.isNotEmpty()) { "The import contains no follower history." }
         val newest = imported.maxBy { it.timestamp }
-        require(abs(newest.followers - currentFollowers) <= trendTolerance(0, currentFollowers)) {
-            "The latest follower count does not match this account."
+        if (abs(newest.followers - currentFollowers) > trendTolerance(0, currentFollowers)) {
+            throw AnalyticsValidationException(
+                code = "analytics_follower_mismatch",
+                expectedFollowers = currentFollowers,
+                detectedFollowers = newest.followers,
+                message = "The latest follower count does not match this account.",
+            )
         }
         val importedByDay = imported.associateBy { it.timestamp }
         val anchors = trusted
@@ -184,8 +189,13 @@ object XAnalyticsImportPolicy {
             val reconstructed = importedByDay.getValue(anchor.timestamp)
             val days = (abs(newest.timestamp - anchor.timestamp).toDouble() / DAY_MILLIS).roundToInt()
             val tolerance = trendTolerance(days, currentFollowers)
-            require(abs(anchor.followers - reconstructed.followers) <= tolerance) {
-                "The CSV follower trend differs from trusted local history on ${anchor.dayLabel}."
+            if (abs(anchor.followers - reconstructed.followers) > tolerance) {
+                throw AnalyticsValidationException(
+                    code = "analytics_trend_mismatch",
+                    expectedFollowers = anchor.followers,
+                    detectedFollowers = reconstructed.followers,
+                    message = "The CSV follower trend differs from trusted local history on ${anchor.dayLabel}.",
+                )
             }
         }
         return anchors.size
@@ -198,3 +208,10 @@ object XAnalyticsImportPolicy {
             ceil(maxOf(0, days) / 30.0).toLong() * 2L,
         )
 }
+
+class AnalyticsValidationException(
+    val code: String,
+    val expectedFollowers: Long?,
+    val detectedFollowers: Long?,
+    message: String,
+) : IllegalArgumentException(message)

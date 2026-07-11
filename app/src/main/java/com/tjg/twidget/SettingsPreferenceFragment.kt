@@ -19,8 +19,6 @@ import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -32,13 +30,6 @@ import dev.oneuiproject.oneui.R as IconR
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
-    private var pendingAnalyticsAccount: String? = null
-    private val analyticsCsvPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val username = pendingAnalyticsAccount
-        pendingAnalyticsAccount = null
-        if (uri == null || username == null) return@registerForActivityResult
-        previewAnalyticsImport(username, uri)
-    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         settings = TwidgetStore.settings(requireContext())
@@ -312,101 +303,10 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun beginAnalyticsImport(username: String) {
-        val stats = TwidgetStore.currentStats(requireContext(), username)
-        if (!stats.followersKnown) {
-            Toast.makeText(requireContext(), R.string.analytics_import_sync_first, Toast.LENGTH_LONG).show()
-            return
-        }
-        pendingAnalyticsAccount = username
-        analyticsCsvPicker.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel"))
-    }
-
-    private fun previewAnalyticsImport(username: String, uri: android.net.Uri) {
-        val context = requireContext()
-        val stats = TwidgetStore.currentStats(context, username)
-        val result = runCatching {
-            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-                XAnalyticsCsvImporter.parse(reader, stats.followersCount)
-            } ?: throw IllegalArgumentException(getString(R.string.analytics_import_cannot_open))
-        }.getOrElse { error ->
-            Toast.makeText(
-                context,
-                getString(R.string.analytics_import_failed, error.message ?: getString(R.string.analytics_import_unknown_error)),
-                Toast.LENGTH_LONG,
-            ).show()
-            return
-        }
-        val useBridge = settings.shareHistory ||
-            settings.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT ||
-            settings.dataSource == TwidgetStore.DATA_SOURCE_SELF_HOSTED
-
-        AlertDialog.Builder(context)
-            .setTitle(R.string.import_x_analytics)
-            .setMessage(
-                getString(
-                    if (useBridge) R.string.analytics_import_confirm_bridge else R.string.analytics_import_confirm_local,
-                    username.trimStart('@'),
-                    result.samples.size,
-                    result.firstDate.toString(),
-                    result.lastDate.toString(),
-                    TwidgetStore.compactNumber(stats.followersCount),
-                )
-            )
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.import_action) { _, _ ->
-                if (useBridge) {
-                    Toast.makeText(context, R.string.analytics_import_checking_bridge, Toast.LENGTH_SHORT).show()
-                    AppExecutors.execute(onRejected = {
-                        if (isAdded) Toast.makeText(context, R.string.analytics_import_busy, Toast.LENGTH_LONG).show()
-                    }) {
-                        val imported = runCatching {
-                            HistoryPool.importAnalytics(
-                                context,
-                                username,
-                                result.movements,
-                                TwidgetStore.bridgeEndpoint(settings),
-                            )
-                        }
-                        activity?.runOnUiThread {
-                            if (!isAdded) return@runOnUiThread
-                            imported.onSuccess { accepted ->
-                                val current = TwidgetStore.currentStats(context, username)
-                                TwidgetStore.saveStats(context, current.copy(history = accepted.history))
-                                TwidgetWidget.updateAll(context)
-                                Toast.makeText(
-                                    context,
-                                    getString(
-                                        R.string.analytics_import_complete_bridge,
-                                        accepted.accepted,
-                                        accepted.checkedAnchors,
-                                    ),
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            }.onFailure { error -> showAnalyticsImportError(error) }
-                        }
-                    }
-                } else {
-                    val imported = runCatching {
-                        TwidgetStore.importFollowerHistory(context, username, result.samples)
-                    }.getOrElse { error ->
-                        showAnalyticsImportError(error)
-                        return@setPositiveButton
-                    }
-                    TwidgetWidget.updateAll(context)
-                    Toast.makeText(context, getString(R.string.analytics_import_complete, imported), Toast.LENGTH_LONG).show()
-                }
-            }
-            .show()
-    }
-
-    private fun showAnalyticsImportError(error: Throwable) {
-        val message = when {
-            error.message.orEmpty().contains("analytics_trend_mismatch") -> getString(R.string.analytics_import_trend_mismatch)
-            error.message.orEmpty().contains("insufficient_trusted_history") -> getString(R.string.analytics_import_not_enough_history)
-            error.message.orEmpty().contains("private_account_not_pooled") -> getString(R.string.analytics_import_private)
-            else -> error.message ?: getString(R.string.analytics_import_unknown_error)
-        }
-        Toast.makeText(requireContext(), getString(R.string.analytics_import_failed, message), Toast.LENGTH_LONG).show()
+        startActivity(
+            Intent(requireContext(), AnalyticsImportActivity::class.java)
+                .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username)
+        )
     }
 
     private fun deleteAccount(username: String) {

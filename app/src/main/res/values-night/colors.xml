@@ -30,4 +30,8 @@
     <color name="onboarding_widget_card">#4D000000</color>
     <!-- "You're all set" settle: blue drains to the bottom, near-black takes over -->
     <color name="onboarding_settle_fade">#00010102</color>
+    <color name="import_grad_start">#003B66</color>
+    <color name="import_grad_center">#081928</color>
+    <color name="import_grad_end">#010102</color>
+    <color name="import_failure_start">#6B2028</color>
 </resources>

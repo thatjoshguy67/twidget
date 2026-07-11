@@ -52,6 +52,19 @@ class XAnalyticsCsvImporterTest {
         assertTrue(runCatching { XAnalyticsImportPolicy.validate(imported, trusted.takeLast(1), 1_000) }.isFailure)
     }
 
+    @Test
+    fun `latest mismatch reports stored and detected follower counts`() {
+        val imported = listOf(history(1, 994, true), history(2, 997, true), history(3, 1_050, true))
+
+        val error = runCatching {
+            XAnalyticsImportPolicy.validate(imported, listOf(history(1, 994)), 1_000)
+        }.exceptionOrNull() as AnalyticsValidationException
+
+        assertEquals("analytics_follower_mismatch", error.code)
+        assertEquals(1_000L, error.expectedFollowers)
+        assertEquals(1_050L, error.detectedFollowers)
+    }
+
     private fun history(day: Long, followers: Long, imported: Boolean = false) = HistorySample(
         dayLabel = "Jul $day",
         followers = followers,

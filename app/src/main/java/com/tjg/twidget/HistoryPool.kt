@@ -154,7 +154,17 @@ object HistoryPool {
             throw error
         }
         BridgeLog.record(context, method, url, code, text, System.currentTimeMillis() - startedAt, requestBody = body)
-        if (code !in 200..299) throw IllegalStateException("Pool HTTP $code: ${text.take(200)}")
+        if (code !in 200..299) {
+            val error = runCatching { JSONObject(text) }.getOrNull()
+            val detail = error?.optJSONObject("detail")
+            throw BridgeImportException(
+                status = code,
+                code = error?.optString("error").orEmpty().ifBlank { "pool_http_error" },
+                expectedFollowers = detail?.optLong("expected")?.takeIf { detail.has("expected") },
+                detectedFollowers = detail?.optLong("reconstructed")?.takeIf { detail.has("reconstructed") },
+                message = "Pool HTTP $code: ${text.take(200)}",
+            )
+        }
         return text
     }
 
@@ -167,3 +177,11 @@ data class BridgeAnalyticsImport(
     val checkedAnchors: Int,
     val history: List<HistorySample>,
 )
+
+class BridgeImportException(
+    val status: Int,
+    val code: String,
+    val expectedFollowers: Long?,
+    val detectedFollowers: Long?,
+    message: String,
+) : IllegalStateException(message)

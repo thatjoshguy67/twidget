@@ -6,13 +6,13 @@ import { Pool } from "pg";
 import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
 import { bangerScore } from "./banger-score.js";
+import { prepareAnalyticsImport } from "./analytics-import.js";
 import {
   LocalFixedWindowLimiter,
   LocalHistoryRepository,
   PostgresHistoryRepository,
   RedisFixedWindowLimiter,
   SharedJsonCache,
-  normalizeHistorySample,
 } from "./infrastructure.js";
 
 const app = express();
@@ -32,7 +32,6 @@ const historyRefreshMs = envInteger("HISTORY_REFRESH_MINUTES", 60, 15, 1440) * 6
 const historySampleRetentionDays = envInteger("HISTORY_SAMPLE_RETENTION_DAYS", 0, 0, 36500);
 const historyInactiveAccountDays = envInteger("HISTORY_INACTIVE_ACCOUNT_DAYS", 0, 0, 36500);
 const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 * 1000;
-const historyClientBackfillEnabled = process.env.HISTORY_CLIENT_BACKFILL === "1";
 const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
 const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 75000, 20, 100000);
 const bangerScoringVersion = 2;
@@ -192,7 +191,7 @@ app.get("/health", async (_req, res) => {
       maxDays: maxHistoryDays,
       sampleRetentionDays: historySampleRetentionDays || null,
       inactiveAccountDays: historyInactiveAccountDays || null,
-      clientBackfill: historyClientBackfillEnabled,
+      analyticsImport: true,
       archiveBackfill: waybackEnabled,
     },
     sharedState: redisClient ? "redis" : "local",
@@ -326,10 +325,9 @@ app.get(["/official/user/:username", "/x/user/:username", "/api/x/user/:username
 
 // ---- Shared history pool ---------------------------------------------------
 // Opt-in clients register the accounts they track and read back the pooled
-// per-day history. The server sources every ongoing number itself (FxTwitter),
-// so there is nothing for a hostile client to poison; client uploads only
-// backfill days the server never observed, bounded by the server's own
-// real anchors.
+// per-day history. Ordinary samples remain server-sourced. Explicit X
+// Analytics imports submit movements rather than totals and are admitted only
+// after reconstruction matches independent live and stored follower anchors.
 
 app.get("/history/:username", async (req, res) => {
   const username = cleanUsername(req.params.username);
@@ -374,13 +372,7 @@ app.get("/history/:username", async (req, res) => {
   res.json({ userName: username, history: await historyFor(username, { touch: true }) });
 });
 
-app.post("/history/:username/backfill", (req, res, next) => {
-  if (!historyClientBackfillEnabled) {
-    res.status(404).json({ error: "not_found" });
-    return;
-  }
-  next();
-}, historyJsonBody, async (req, res) => {
+app.post("/history/:username/analytics-import", historyJsonBody, async (req, res) => {
   const username = cleanUsername(req.params.username);
   if (!username) {
     res.status(400).json({ error: "invalid_username" });
@@ -388,17 +380,46 @@ app.post("/history/:username/backfill", (req, res, next) => {
   }
   const key = username.toLowerCase();
   const existing = await historyRepository.getHistory(key, { touch: true });
-  if (!existing?.length) {
-    res.status(409).json({ error: "account_not_registered" });
+  if (!existing.length) {
+    res.status(409).json({ error: "insufficient_trusted_history" });
     return;
   }
-  const submitted = Array.isArray(req.body?.samples) ? req.body.samples.slice(0, maxHistoryDays) : [];
-  const accepted = acceptableClientSamples(existing, submitted);
-  if (accepted.length) {
-    await storeSamples(key, accepted, { preferExisting: true });
-    console.log(`Pool backfill for ${key}: accepted ${accepted.length}/${submitted.length}`);
+  try {
+    const profile = await fetchProfileLimited(username);
+    if (profile.isPrivate === true) {
+      res.status(403).json({ error: "private_account_not_pooled" });
+      return;
+    }
+    if (!profileMetricKnown(profile, "followersCount")) {
+      res.status(503).json({ error: "current_followers_unavailable" });
+      return;
+    }
+    const validation = prepareAnalyticsImport({
+      movements: req.body?.movements,
+      currentFollowers: numberValue(profile.followersCount),
+      existing,
+    });
+    if (!validation.ok) {
+      const status = validation.error === "insufficient_trusted_history" ? 409 :
+        validation.error === "analytics_trend_mismatch" ? 422 : 400;
+      res.status(status).json({ error: validation.error, ...(validation.detail ? { detail: validation.detail } : {}) });
+      return;
+    }
+    await recordHistorySample(profile);
+    await cache.set(key, { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
+    if (validation.samples.length) {
+      await storeSamples(key, validation.samples, { preferExisting: true });
+    }
+    console.log(`X Analytics import for ${key}: accepted ${validation.samples.length}, checked ${validation.checkedAnchors} anchors`);
+    res.json({
+      accepted: validation.samples.length,
+      checkedAnchors: validation.checkedAnchors,
+      history: await historyFor(username, { touch: true }),
+    });
+  } catch (error) {
+    console.error(`X Analytics import failed for ${username}:`, error);
+    sendUpstreamFailure(res, "profile_fetch_failed", error);
   }
-  res.json({ accepted: accepted.length, rejected: submitted.length - accepted.length });
 });
 
 app.delete("/admin/history/:username", async (req, res) => {
@@ -410,27 +431,6 @@ app.delete("/admin/history/:username", async (req, res) => {
   await historyRepository.deleteAccount(username.toLowerCase());
   res.status(204).end();
 });
-
-// Gap days only (server samples always win), never today, never estimates,
-// and follower counts capped relative to the server's own real anchors.
-// Worst case is a fabricated value on a day nobody observed, bracketed ever
-// more tightly as real samples accumulate around it.
-function acceptableClientSamples(existing, submitted) {
-  const real = existing.filter((sample) => !sample.est);
-  if (!real.length) return [];
-  const knownDays = new Set(existing.filter((sample) => !sample.est).map((sample) => sample.ts));
-  const today = startOfDay(Date.now());
-  const followerCap = Math.max(...real.map((sample) => sample.followers)) * 2 + 100;
-  const accepted = new Map();
-  for (const item of submitted) {
-    const sample = normalizeHistorySample(item);
-    if (!sample || sample.est) continue;
-    if (sample.ts >= today || knownDays.has(sample.ts) || accepted.has(sample.ts)) continue;
-    if (sample.followers > followerCap) continue;
-    accepted.set(sample.ts, { ...sample, src: "client" });
-  }
-  return Array.from(accepted.values());
-}
 
 // ---- Post analytics --------------------------------------------------------
 // Reach + engagement over the recent timeline, plus the 7-day best/worst posts.

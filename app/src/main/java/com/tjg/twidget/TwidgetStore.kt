@@ -43,9 +43,11 @@ data class HistorySample(
     val followingKnown: Boolean = true,
     val postsKnown: Boolean = true,
     val likesKnown: Boolean = true,
-    // Reconstructed locally from an X Analytics CSV selected for this account.
-    // Imported samples are never sent to the shared history pool.
+    // Reconstructed from an X Analytics CSV selected for this account.
+    // Local imports stay on-device; sharedImport marks bridge-verified rows.
     val imported: Boolean = false,
+    // True when the bridge admitted the import after server-side validation.
+    val sharedImport: Boolean = false,
 )
 
 data class TwidgetSettings(
@@ -537,7 +539,14 @@ object TwidgetStore {
         // A newer import can replace a previous import, while existing
         // live/bridge observations are appended last and always win on overlap.
         val saved = savedHistory(context, cleanUsername)
-        val next = mergeByDay(saved.filter { it.imported } + imported + saved.filterNot { it.imported })
+        val stats = currentStats(context, cleanUsername)
+        require(stats.followersKnown && stats.syncedAt >= startOfDay(System.currentTimeMillis())) {
+            "Sync this account today before importing its analytics."
+        }
+        XAnalyticsImportPolicy.validate(imported, saved, stats.followersCount)
+        val replaceable = saved.filter { it.imported && !it.sharedImport }
+        val trusted = saved.filterNot { it.imported && !it.sharedImport }
+        val next = mergeByDay(replaceable + imported + trusted)
         prefs(context).edit()
             .putString(historyKey(cleanUsername), JSONArray(next.map { historyToJson(it) }).toString())
             .apply()
@@ -801,6 +810,7 @@ object TwidgetStore {
         .put("postsKnown", sample.postsKnown)
         .put("likesKnown", sample.likesKnown)
         .apply { if (sample.imported) put("imported", true) }
+        .apply { if (sample.sharedImport) put("sharedImport", true) }
         .apply { if (sample.estimated) put("est", true) }
 
     private fun historyFromJson(json: JSONObject): HistorySample = HistorySample(
@@ -816,6 +826,7 @@ object TwidgetStore {
         postsKnown = json.optBoolean("postsKnown", json.optLong("posts", 0L) > 0L),
         likesKnown = json.optBoolean("likesKnown", json.optLong("likes", 0L) > 0L),
         imported = json.optBoolean("imported", false),
+        sharedImport = json.optBoolean("sharedImport", false),
     )
 
     // Older builds only recorded followers, so early samples can carry zero

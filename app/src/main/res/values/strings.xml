@@ -94,6 +94,7 @@
     <string name="no_recent_gain">No recent gain</string>
     <string name="history_notice">History is captured once per day. Weekly data needs at least 7 days; longer ranges fill in as Twidget keeps syncing.</string>
     <string name="imported_history_notice">Follower history includes a local X Analytics import reconstructed from daily follows and unfollows. It is not shared with the community pool.</string>
+    <string name="shared_imported_history_notice">Follower history includes an X Analytics import checked against trusted bridge snapshots before joining the community pool.</string>
     <string name="estimated_notice">Faded bars are estimates reconstructed from limited history. Solid bars are real data, which grows as Twidget keeps syncing.</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Open settings</string>
@@ -160,7 +161,14 @@
     <string name="analytics_import_cannot_open">Twidget could not open that file.</string>
     <string name="analytics_import_unknown_error">Unknown import error.</string>
     <string name="analytics_import_failed">Import failed: %1$s</string>
-    <string name="analytics_import_confirm">Import %2$d days of follower history into @%1$s?\n\nRange: %3$s to %4$s\nCurrent anchor: %5$s followers\n\nX exports do not include an account name or follower totals. Twidget will bind this file to @%1$s because you opened the import from that account, reconstruct earlier totals from daily follows and unfollows, and keep the result on this device. It will not enter the shared pool.</string>
+    <string name="analytics_import_confirm_bridge">Check and contribute %2$d days of follower history for @%1$s?\n\nRange: %3$s to %4$s\nCurrent local count: %5$s followers\n\nThe bridge will fetch @%1$s independently, reconstruct the CSV from daily follows and unfollows, and compare it with trusted stored snapshots. The import is refused if the latest count or trend differs beyond a tiny margin.</string>
+    <string name="analytics_import_confirm_local">Import %2$d days of local follower history into @%1$s?\n\nRange: %3$s to %4$s\nCurrent local count: %5$s followers\n\nTwidget will reconstruct the CSV from daily follows and unfollows, then compare every overlapping day with trusted local snapshots. The import is refused if the latest count or trend differs beyond a tiny margin. Nothing is uploaded.</string>
+    <string name="analytics_import_checking_bridge">Checking the CSV against bridge history…</string>
+    <string name="analytics_import_busy">Twidget is busy. Try the import again shortly.</string>
+    <string name="analytics_import_trend_mismatch">The CSV trend does not match trusted follower history.</string>
+    <string name="analytics_import_not_enough_history">There is not enough trusted history to verify this CSV safely.</string>
+    <string name="analytics_import_private">Private accounts cannot contribute to shared history.</string>
+    <string name="analytics_import_complete_bridge">Added %1$d verified gap days after checking %2$d trusted snapshots.</string>
     <string name="analytics_import_complete">Imported %1$d days of local follower history.</string>
     <string name="delete">Delete</string>
     <string name="cannot_delete_last_account">You need at least one account.</string>

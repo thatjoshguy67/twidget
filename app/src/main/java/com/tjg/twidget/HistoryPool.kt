@@ -14,9 +14,10 @@ import java.util.Calendar
 /**
  * Opt-in shared history pool. When enabled, each tracked account is registered
  * with the Twidget bridge (which sources the ongoing numbers itself) and the
- * pooled per-day history is merged back into local charts. The app never
- * uploads local samples: the public server remains the authority for pooled
- * history and cannot be poisoned by device data.
+ * pooled per-day history is merged back into local charts. Ordinary local
+ * samples are never uploaded. An explicit X Analytics import sends only the
+ * CSV movements, which the bridge independently validates against live and
+ * stored follower snapshots before admitting any gap days.
  */
 object HistoryPool {
     private const val POOL_PREFS = "twidget_pool"
@@ -35,11 +36,44 @@ object HistoryPool {
         return if (pooled.isEmpty()) stats else stats.copy(history = stats.history + pooled)
     }
 
+    fun importAnalytics(
+        context: Context,
+        username: String,
+        movements: List<XAnalyticsMovement>,
+        endpoint: BridgeEndpoint,
+    ): BridgeAnalyticsImport {
+        val payload = JSONObject().put("movements", JSONArray().apply {
+            movements.forEach { movement ->
+                put(JSONObject()
+                    .put("date", movement.date.toString())
+                    .put("newFollows", movement.newFollows)
+                    .put("unfollows", movement.unfollows))
+            }
+        })
+        val body = request(
+            context,
+            "POST",
+            "${endpoint.url}/history/${encode(username)}/analytics-import",
+            payload.toString(),
+            endpoint.token,
+        )
+        val root = JSONObject(body)
+        return BridgeAnalyticsImport(
+            accepted = root.optInt("accepted", 0),
+            checkedAnchors = root.optInt("checkedAnchors", 0),
+            history = parseHistory(root.optJSONArray("history") ?: JSONArray()),
+        )
+    }
+
     // Registers the account when unknown and returns the pooled history.
     private fun fetchPooledHistory(context: Context, username: String, endpoint: BridgeEndpoint): List<HistorySample> {
         val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}", null, endpoint.token)
         val array = JSONObject(body).optJSONArray("history") ?: JSONArray()
-        return List(array.length()) { index -> array.optJSONObject(index) }
+        return parseHistory(array)
+    }
+
+    private fun parseHistory(array: JSONArray): List<HistorySample> =
+        List(array.length()) { index -> array.optJSONObject(index) }
             .mapNotNull { sample ->
                 sample ?: return@mapNotNull null
                 val timestamp = sample.optLong("ts", sample.optLong("timestamp", 0L))
@@ -58,9 +92,10 @@ object HistoryPool {
                         (sample.has("followings") && !sample.isNull("followings")),
                     postsKnown = sample.has("posts") && !sample.isNull("posts"),
                     likesKnown = sample.has("likes") && !sample.isNull("likes"),
+                    imported = sample.optString("src") == "x_analytics",
+                    sharedImport = sample.optString("src") == "x_analytics",
                 )
             }
-    }
 
     private fun needsSync(context: Context, username: String): Boolean =
         poolPrefs(context).getLong("synced_${username.lowercase()}", 0L) < startOfToday() &&
@@ -126,3 +161,9 @@ object HistoryPool {
     private fun localDayFromServer(timestamp: Long, dayLabel: String): Long =
         HistoryDates.localDayFromServer(timestamp, dayLabel)
 }
+
+data class BridgeAnalyticsImport(
+    val accepted: Int,
+    val checkedAnchors: Int,
+    val history: List<HistorySample>,
+)

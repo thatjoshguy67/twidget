@@ -6,9 +6,19 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.roundToInt
+
+data class XAnalyticsMovement(
+    val date: LocalDate,
+    val newFollows: Long,
+    val unfollows: Long,
+)
 
 data class XAnalyticsImport(
     val samples: List<HistorySample>,
+    val movements: List<XAnalyticsMovement>,
     val firstDate: LocalDate,
     val lastDate: LocalDate,
 )
@@ -46,7 +56,7 @@ object XAnalyticsCsvImporter {
 
         val days = records.drop(1).filterNot { row -> row.all { it.isBlank() } }.mapIndexed { offset, row ->
             require(row.size >= requiredWidth) { "Row ${offset + 2} is incomplete." }
-            DailyMovement(
+            XAnalyticsMovement(
                 date = runCatching { LocalDate.parse(row[dateIndex].trim(), dateFormatter) }
                     .getOrElse { throw IllegalArgumentException("Row ${offset + 2} has an invalid date.") },
                 newFollows = unsignedLong(row[followsIndex], offset + 2, "New follows"),
@@ -88,6 +98,7 @@ object XAnalyticsCsvImporter {
 
         return XAnalyticsImport(
             samples = samples,
+            movements = days.asReversed(),
             firstDate = days.last().date,
             lastDate = days.first().date,
         )
@@ -145,9 +156,45 @@ object XAnalyticsCsvImporter {
         return rows
     }
 
-    private data class DailyMovement(
-        val date: LocalDate,
-        val newFollows: Long,
-        val unfollows: Long,
-    )
+}
+
+object XAnalyticsImportPolicy {
+    private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+
+    fun validate(
+        imported: List<HistorySample>,
+        trusted: List<HistorySample>,
+        currentFollowers: Long,
+    ): Int {
+        require(imported.isNotEmpty()) { "The import contains no follower history." }
+        val newest = imported.maxBy { it.timestamp }
+        require(abs(newest.followers - currentFollowers) <= trendTolerance(0, currentFollowers)) {
+            "The latest follower count does not match this account."
+        }
+        val importedByDay = imported.associateBy { it.timestamp }
+        val anchors = trusted
+            .filter { !it.estimated && (!it.imported || it.sharedImport) && it.followersKnown }
+            .filter { importedByDay.containsKey(it.timestamp) }
+            .sortedBy { it.timestamp }
+        val historical = anchors.filter { it.timestamp < newest.timestamp }
+        require(historical.isNotEmpty()) {
+            "There is not enough trusted local history to verify this CSV yet."
+        }
+        anchors.forEach { anchor ->
+            val reconstructed = importedByDay.getValue(anchor.timestamp)
+            val days = (abs(newest.timestamp - anchor.timestamp).toDouble() / DAY_MILLIS).roundToInt()
+            val tolerance = trendTolerance(days, currentFollowers)
+            require(abs(anchor.followers - reconstructed.followers) <= tolerance) {
+                "The CSV follower trend differs from trusted local history on ${anchor.dayLabel}."
+            }
+        }
+        return anchors.size
+    }
+
+    fun trendTolerance(days: Int, currentFollowers: Long = 0L): Long =
+        maxOf(
+            3L,
+            ceil(currentFollowers * 0.001).toLong(),
+            ceil(maxOf(0, days) / 30.0).toLong() * 2L,
+        )
 }

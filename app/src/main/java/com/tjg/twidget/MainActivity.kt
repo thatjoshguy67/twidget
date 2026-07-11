@@ -484,7 +484,10 @@ class MainActivity : EdgeToEdgeActivity() {
         val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
         // The daily-capture explanation lives in onboarding now; only the
         // estimate footnote still surfaces on the dashboard.
-        if (history.any { it.imported }) {
+        if (history.any { it.sharedImport }) {
+            notice.setText(R.string.shared_imported_history_notice)
+            notice.visibility = View.VISIBLE
+        } else if (history.any { it.imported }) {
             notice.setText(R.string.imported_history_notice)
             notice.visibility = View.VISIBLE
         } else if (chartHistory.any { it.estimated }) {

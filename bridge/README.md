@@ -27,7 +27,7 @@ npm test
 - `GET /analytics/:username` — recent original-post analytics, cached for 45 minutes.
 - `GET /banger/:username` — opt-in, resumable Hall of Fame scan for the account's best balanced post.
 - `GET /history/:username` — opt-in pooled daily history registration/read.
-- `POST /history/:username/backfill` — disabled by default; accepts bounded client gap samples only when explicitly enabled.
+- `POST /history/:username/analytics-import` — reconstructs X Analytics movements and admits gap days only when live and stored follower anchors match within a tight margin.
 - `DELETE /admin/history/:username` — operator-only permanent deletion; hidden unless `HISTORY_ADMIN_TOKEN` is configured.
 - `GET /official/user/:username` — disabled publicly by default, even with an X bearer configured.
 - `/oauth/x/*` — disabled by default.
@@ -140,7 +140,6 @@ controls include:
 - `HISTORY_BACKEND=postgres` and `HISTORY_DATABASE_URL` — shared history for multiple replicas.
 - `HISTORY_SAMPLE_RETENTION_DAYS`, `HISTORY_INACTIVE_ACCOUNT_DAYS` — optional permanent deletion policies.
 - `HISTORY_ADMIN_TOKEN` — separate operator credential for explicit history deletion.
-- `HISTORY_CLIENT_BACKFILL=1` — explicitly enables client history uploads.
 - `WAYBACK_BACKFILL=1` — explicitly enables archive fetching.
 - `X_BEARER_TOKEN` and `PUBLIC_OFFICIAL_API=1` — official endpoint credentials and public exposure opt-in.
 - `X_OAUTH_ENABLED=1`, `X_CLIENT_ID`, and `X_CALLBACK_URL` — OAuth opt-in and fixed callback.

@@ -53,7 +53,9 @@ test("bridge security and health defaults", async (t) => {
   assert.equal(health.status, 200);
   assert.equal(health.headers.get("access-control-allow-origin"), null);
   assert.equal(health.headers.get("x-content-type-options"), "nosniff");
-  assert.equal((await health.json()).authMode, "bearer");
+  const healthBody = await health.json();
+  assert.equal(healthBody.authMode, "bearer");
+  assert.equal(healthBody.history.analyticsImport, true);
 
   const unauthorized = await fetch(`${base}/official/user/example`);
   assert.equal(unauthorized.status, 401);
@@ -64,7 +66,7 @@ test("bridge security and health defaults", async (t) => {
   });
   assert.equal(protectedRoute.status, 501);
 
-  const disabledBackfill = await fetch(`${base}/history/example/backfill`, {
+  const removedLegacyBackfill = await fetch(`${base}/history/example/backfill`, {
     method: "POST",
     headers: {
       Authorization: "Bearer test-token",
@@ -72,7 +74,7 @@ test("bridge security and health defaults", async (t) => {
     },
     body: JSON.stringify({ samples: [] }),
   });
-  assert.equal(disabledBackfill.status, 404);
+  assert.equal(removedLegacyBackfill.status, 404);
 
   const unauthorizedDelete = await fetch(`${base}/admin/history/example`, { method: "DELETE" });
   assert.equal(unauthorizedDelete.status, 401);

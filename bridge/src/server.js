@@ -35,7 +35,7 @@ const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 *
 const historyClientBackfillEnabled = process.env.HISTORY_CLIENT_BACKFILL === "1";
 const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
 const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 1000, 20, 10000);
-const bangerScoringVersion = 1;
+const bangerScoringVersion = 2;
 // Archive lookups fan one request out into many remote fetches, so self-hosters
 // must opt in deliberately. It is unsafe as a public-instance default.
 const waybackEnabled = process.env.WAYBACK_BACKFILL === "1";
@@ -553,7 +553,6 @@ async function refreshBanger(username) {
   const meta = await historyRepository.getMeta(key);
   let state = normalizeBangerState(meta.banger);
   if (state.version !== bangerScoringVersion) state = normalizeBangerState(null);
-  if (!state.baselineFollowers) state.baselineFollowers = Math.max(1, profile.followersCount);
   let cursor = state.complete || state.capped ? "" : state.cursor;
   const pages = state.complete || state.capped ? 1 : bangerPagesPerRequest;
   const seenCursors = new Set();
@@ -570,7 +569,7 @@ async function refreshBanger(username) {
       const post = normalizeFxStatus(status);
       if (post.views <= 0) continue;
       if (!state.complete && !state.capped) state.postsScanned += 1;
-      const score = bangerScore(post, state.baselineFollowers);
+      const score = bangerScore(post);
       if (!state.post || score > state.score || post.url === state.post.url) {
         state.post = post;
         state.score = score;
@@ -641,7 +640,6 @@ function normalizeBangerState(value) {
     postsScanned: numberValue(state.postsScanned),
     cursor: stringValue(state.cursor),
     updatedAt: numberValue(state.updatedAt),
-    baselineFollowers: numberValue(state.baselineFollowers),
   };
 }
 

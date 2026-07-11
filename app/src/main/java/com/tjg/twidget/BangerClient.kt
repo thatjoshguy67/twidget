@@ -6,8 +6,7 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import kotlin.math.ln
-import kotlin.math.pow
+import kotlin.math.sqrt
 
 data class BangerResult(
     val post: PostSummary?,
@@ -20,7 +19,7 @@ data class BangerResult(
 /** Builds a durable per-account Hall of Fame without retaining full timelines. */
 object BangerClient {
     private const val PREFS = "twidget_bangers"
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val PAGES_PER_REFRESH = 5
     private const val MAX_POSTS = 1_000
     private const val PAGE_SIZE = 100
@@ -28,13 +27,12 @@ object BangerClient {
     fun refresh(
         context: Context,
         username: String,
-        followers: Long,
         settings: TwidgetSettings,
         endpoint: BridgeEndpoint,
     ): BangerResult = if (settings.shareHistory) {
         fetchShared(context, username, endpoint)
     } else {
-        refreshLocal(context, username, followers)
+        refreshLocal(context, username)
     }
 
     fun clear(context: Context, username: String) {
@@ -51,7 +49,7 @@ object BangerClient {
         return resultFromJson(root)
     }
 
-    private fun refreshLocal(context: Context, username: String, followers: Long): BangerResult {
+    private fun refreshLocal(context: Context, username: String): BangerResult {
         val key = "v$VERSION:${username.lowercase(Locale.US)}"
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val state = prefs.getString(key, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
@@ -60,7 +58,6 @@ object BangerClient {
         var complete = state.optBoolean("complete", false)
         var postsScanned = state.optInt("postsScanned", 0)
         var capped = state.optBoolean("capped", false)
-        val baselineFollowers = state.optLong("baselineFollowers", followers.coerceAtLeast(1)).coerceAtLeast(1)
         var cursor = if (complete || capped) "" else state.optString("cursor")
         val seenCursors = mutableSetOf<String>()
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
@@ -84,7 +81,7 @@ object BangerClient {
                 val post = AnalyticsClient.parseFxPost(status)
                 if (post.views <= 0) continue
                 if (!complete && !capped) postsScanned++
-                val score = BangerScore.calculate(post, baselineFollowers)
+                val score = BangerScore.calculate(post)
                 if (winner == null || score > winnerScore || post.url == winner?.url) {
                     winner = post
                     winnerScore = score
@@ -113,7 +110,6 @@ object BangerClient {
             .put("complete", complete)
             .put("postsScanned", postsScanned)
             .put("capped", capped)
-            .put("baselineFollowers", baselineFollowers)
             .put("cursor", cursor)
             .put("updatedAt", System.currentTimeMillis())
         winner?.let { stored.put("post", postToJson(it)) }
@@ -170,16 +166,18 @@ object BangerClient {
         }))
 }
 
+// A banger is a post that hit hard in absolute terms, so rank by weighted
+// engagement volume. Engagement *rate* falls as reach grows, so it is only
+// a bounded quality multiplier: it lets a well-received post edge out a
+// hollow one of similar size, but can never lift a small high-rate post
+// over a genuinely viral one. Must match bridge/src/banger-score.js.
 internal object BangerScore {
-    fun calculate(post: PostSummary, followers: Long): Double {
+    fun calculate(post: PostSummary): Double {
         if (post.views <= 0) return 0.0
-        val views = post.views.toDouble()
-        val reachReference = maxOf(1_000.0, followers.coerceAtLeast(1) * 10.0)
-        val reach = (ln(views + 1.0) / ln(reachReference + 1.0)).coerceIn(0.05, 2.0)
-        val approval = (post.likes + 2.0) / (views + 100.0)
-        val meaningful = post.replies * 2.0 + post.reposts * 3.0 + post.quotes * 4.0
-        val interaction = (meaningful + 1.0) / (views + 200.0)
-        return (reach * (approval / 0.03).coerceAtLeast(0.001) *
-            (interaction / 0.01).coerceAtLeast(0.001)).pow(1.0 / 3.0)
+        val impact = post.likes + post.replies * 2.0 + post.reposts * 3.0 + post.quotes * 4.0
+        if (impact <= 0) return 0.0
+        val rate = impact / (post.views + 100.0)
+        val quality = sqrt(rate / 0.02).coerceIn(0.5, 1.5)
+        return impact * quality
     }
 }

@@ -51,7 +51,7 @@ object AnalyticsClient {
             fetchBridge(context, clean, endpoint)
         }
         val hallOfFame = runCatching {
-            BangerClient.refresh(context, clean, weekly.followers, settings, endpoint)
+            BangerClient.refresh(context, clean, settings, endpoint)
         }.getOrNull()
         val analytics = weekly.copy(
             banger = hallOfFame?.post ?: previous?.banger,

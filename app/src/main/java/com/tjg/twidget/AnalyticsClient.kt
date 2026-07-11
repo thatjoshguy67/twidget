@@ -28,7 +28,13 @@ object AnalyticsClient {
 
     fun cached(context: Context, username: String): PostAnalytics? {
         val raw = prefs(context).getString(key(context, username), null) ?: return null
-        return runCatching { parse(JSONObject(raw)) }.getOrNull()
+        val parsed = runCatching { parse(JSONObject(raw)) }.getOrNull() ?: return null
+        val latest = BangerClient.cached(context, username) ?: return parsed
+        return parsed.copy(
+            banger = latest.post ?: parsed.banger,
+            bangerComplete = latest.complete,
+            bangerPostsScanned = latest.postsScanned,
+        )
     }
 
     fun isStale(analytics: PostAnalytics?): Boolean =

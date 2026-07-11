@@ -29,10 +29,20 @@ object BangerClient {
         username: String,
         settings: TwidgetSettings,
         endpoint: BridgeEndpoint,
-    ): BangerResult = if (settings.shareHistory) {
-        fetchShared(context, username, endpoint)
-    } else {
-        refreshLocal(context, username)
+    ): BangerResult {
+        val result = if (settings.shareHistory) {
+            fetchShared(context, username, endpoint)
+        } else {
+            refreshLocal(context, username)
+        }
+        remember(context, username, result)
+        return result
+    }
+
+    fun cached(context: Context, username: String): BangerResult? {
+        val key = "latest:${username.trim().trimStart('@').lowercase(Locale.US)}"
+        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(key, null) ?: return null
+        return runCatching { resultFromJson(JSONObject(raw)) }.getOrNull()
     }
 
     fun clear(context: Context, username: String) {
@@ -41,6 +51,17 @@ object BangerClient {
         val edit = prefs.edit()
         prefs.all.keys.filter { it.endsWith(suffix) }.forEach(edit::remove)
         edit.apply()
+    }
+
+    private fun remember(context: Context, username: String, result: BangerResult) {
+        val key = "latest:${username.trim().trimStart('@').lowercase(Locale.US)}"
+        val json = JSONObject()
+            .put("score", result.score)
+            .put("complete", result.complete)
+            .put("postsScanned", result.postsScanned)
+            .put("capped", result.capped)
+        result.post?.let { json.put("post", postToJson(it)) }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(key, json.toString()).apply()
     }
 
     private fun fetchShared(context: Context, username: String, endpoint: BridgeEndpoint): BangerResult {

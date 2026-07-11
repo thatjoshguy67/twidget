@@ -3,9 +3,12 @@ package com.tjg.twidget
 import android.appwidget.AppWidgetManager
 import android.animation.LayoutTransition
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
@@ -39,6 +42,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.oneuiproject.oneui.layout.Badge
@@ -77,6 +81,14 @@ class MainActivity : EdgeToEdgeActivity() {
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
     private var lifecycleGeneration = 0L
     private var syncGeneration = 0L
+    private val bangerUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val username = intent?.getStringExtra(BangerScanWorker.EXTRA_USERNAME) ?: return
+            if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            analytics = AnalyticsClient.cached(this@MainActivity, selectedAccount)
+            bindContent()
+        }
+    }
     private val exitEditModeOnBack = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
             setEditMode(false)
@@ -107,6 +119,21 @@ class MainActivity : EdgeToEdgeActivity() {
         super.onResume()
         render()
         updateSettingsBadge()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            bangerUpdateReceiver,
+            IntentFilter(BangerScanWorker.ACTION_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(bangerUpdateReceiver) }
+        super.onStop()
     }
 
     // Orange dot on the drawer's settings cog while an app update is
@@ -264,6 +291,12 @@ class MainActivity : EdgeToEdgeActivity() {
         cards.removeAllViews()
 
         val data = analytics
+        var bangerScanning = BangerScanWorker.isScanning(this, account)
+        if (data != null && data.banger == null && !bangerScanning) {
+            BangerScanWorker.enqueue(this, account)
+            bangerScanning = true
+        }
+        val bangerProgress = BangerScanWorker.postsScanned(this, account)
         val posts = listOfNotNull(
             data?.banger?.let {
                 getString(if (data.bangerComplete) R.string.all_time_banger else R.string.best_banger_found) to it
@@ -273,19 +306,27 @@ class MainActivity : EdgeToEdgeActivity() {
             },
             data?.worst?.let { getString(R.string.worst_post) to it },
         )
-        if (posts.isEmpty()) {
+        if (posts.isEmpty() && !bangerScanning) {
             section.visibility = if (data == null) View.GONE else View.VISIBLE
             if (data != null) cards.addView(emptyPostAnalyticsCard(account))
             return
         }
 
         section.visibility = View.VISIBLE
+        if (bangerScanning) {
+            val progress = if (bangerProgress > 0) {
+                getString(R.string.banger_scanning_progress, NumberFormat.getIntegerInstance().format(bangerProgress))
+            } else {
+                getString(R.string.banger_scanning)
+            }
+            cards.addView(postAnalyticsShell(getString(R.string.finding_banger), progress, null))
+        }
         posts.forEachIndexed { index, (label, post) ->
             cards.addView(postAnalyticsCard(label, post), LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                if (index > 0) topMargin = dp(8)
+                if (index > 0 || bangerScanning) topMargin = dp(8)
             })
         }
     }

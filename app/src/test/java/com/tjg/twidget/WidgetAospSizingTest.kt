@@ -35,4 +35,26 @@ class WidgetAospSizingTest {
             TwidgetWidget.layoutModeForAosp(width = 373, height = 210),
         )
     }
+
+    @Test
+    fun `responsive variants cover each width and height bucket`() {
+        assertEquals(
+            listOf(
+                Triple(110, 40, TwidgetWidget.LAYOUT_MODE_COMPACT_2X1),
+                Triple(231, 40, TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP),
+                Triple(110, 111, TwidgetWidget.LAYOUT_MODE_LARGE),
+                Triple(231, 111, TwidgetWidget.LAYOUT_MODE_LARGE),
+            ),
+            TwidgetWidget.responsiveSpecs().map { Triple(it.minWidth, it.minHeight, it.mode) },
+        )
+    }
+
+    @Test
+    fun `responsive variant for current allocation uses exact artwork size`() {
+        val current = TwidgetWidget.responsiveSpecs(currentWidth = 320, currentHeight = 280)
+            .single { it.minWidth == 231 && it.minHeight == 111 }
+
+        assertEquals(320, current.renderWidth)
+        assertEquals(280, current.renderHeight)
+    }
 }

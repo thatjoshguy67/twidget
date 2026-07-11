@@ -10,8 +10,9 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.util.TypedValue
+import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
 
@@ -66,68 +67,110 @@ class TwidgetWidget : AppWidgetProvider() {
                 layoutModeForAosp(artworkWidth, artworkHeight)
             }
             val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
-            // Launchers can replace RemoteViews font families—even Samsung's
-            // own `sec` family—so every size renders its text as artwork.
-            val renderAsArtwork = true
-            val layoutResource = layoutResource(mode, renderAsArtwork)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
-            val followersText = when (mode) {
-                LAYOUT_MODE_LARGE, LAYOUT_MODE_COMPACT_SQUARE -> followersInWords(stats.followersCount)
-                else -> fullNumber(stats.followersCount)
+
+            val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
+                val responsiveViews = responsiveSpecs(artworkWidth, artworkHeight).associate { spec ->
+                    SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat()) to createRemoteViews(
+                        context = context,
+                        appWidgetId = appWidgetId,
+                        width = spec.renderWidth,
+                        height = spec.renderHeight,
+                        mode = spec.mode,
+                        widgetSettings = widgetSettings,
+                        account = account,
+                        stats = stats,
+                        delta = delta,
+                        drawArtworkBackground = true,
+                    )
+                }
+                RemoteViews(responsiveViews)
+            } else {
+                createRemoteViews(
+                    context = context,
+                    appWidgetId = appWidgetId,
+                    width = artworkWidth,
+                    height = artworkHeight,
+                    mode = mode,
+                    widgetSettings = widgetSettings,
+                    account = account,
+                    stats = stats,
+                    delta = delta,
+                    drawArtworkBackground = !TwidgetFonts.hasSystemOneUiSans,
+                )
             }
-            val views = RemoteViews(context.packageName, layoutResource).apply {
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        private fun createRemoteViews(
+            context: Context,
+            appWidgetId: Int,
+            width: Int,
+            height: Int,
+            mode: Int,
+            widgetSettings: TwidgetWidgetSettings,
+            account: String,
+            stats: ProfileStats,
+            delta: Long,
+            drawArtworkBackground: Boolean,
+        ): RemoteViews {
+            // Launchers can replace RemoteViews font families—even Samsung's
+            // own `sec` family—so every size renders its text as artwork.
+            return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
                 val base = if (dark) 16 else 255
-                val primary = if (dark) Color.WHITE else Color.BLACK
-                setInt(android.R.id.background, "setBackgroundColor", Color.argb(widgetSettings.tintAlpha, base, base, base))
+                setInt(
+                    android.R.id.background,
+                    "setBackgroundColor",
+                    if (drawArtworkBackground) Color.TRANSPARENT else Color.argb(widgetSettings.tintAlpha, base, base, base),
+                )
                 // A full update must re-hide the spinner explicitly: the launcher
                 // keeps the VISIBLE state a tap-refresh partial update set, so
                 // relying on the layout's gone default leaves it stuck spinning.
                 setViewVisibility(R.id.widget_loading, View.GONE)
-                if (renderAsArtwork) {
-                    val artwork = WidgetArtworkRenderer.render(
+                setImageViewBitmap(
+                    R.id.widget_artwork,
+                    WidgetArtworkRenderer.render(
                         context = context,
-                        widthPx = dp(context, artworkWidth),
-                        heightPx = dp(context, artworkHeight),
+                        widthPx = dp(context, width),
+                        heightPx = dp(context, height),
                         stats = stats,
                         settings = widgetSettings,
                         mode = mode,
                         dark = dark,
                         delta = delta,
-                    )
-                    setImageViewBitmap(R.id.widget_artwork, artwork)
-                } else {
-                    setTextViewText(R.id.widget_followers_value, followersText)
-                    setTextViewText(R.id.widget_followers_label, context.getString(R.string.followers))
-                    setTextViewText(R.id.widget_delta, if (!widgetSettings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta))
-                    setTextColor(R.id.widget_followers_value, primary)
-                    setTextColor(R.id.widget_followers_label, primary)
-                    if (mode == LAYOUT_MODE_COMPACT_STRIP) {
-                        setImageViewResource(R.id.widget_logo_icon, logoIcon(widgetSettings.logo))
-                        setInt(R.id.widget_logo_icon, "setColorFilter", primary)
-                        setTextViewText(R.id.widget_handle, "@${stats.userName}")
-                        setTextColor(R.id.widget_handle, primary)
-                    }
-                    setTextColor(R.id.widget_delta, if (delta < 0) Color.rgb(229, 57, 53) else Color.rgb(46, 125, 50))
-                    setViewVisibility(
-                        R.id.widget_delta,
-                        if (widgetSettings.showDelta &&
-                            (mode == LAYOUT_MODE_COMPACT_2X1 || mode == LAYOUT_MODE_COMPACT_STRIP) &&
-                            delta != 0L
-                        ) View.VISIBLE else View.GONE
-                    )
-                    setTextViewTextSize(R.id.widget_followers_value, TypedValue.COMPLEX_UNIT_SP, valueTextSize(mode, minWidth, minHeight, followersText))
-                    setTextViewTextSize(R.id.widget_followers_label, TypedValue.COMPLEX_UNIT_SP, labelTextSize(mode, minWidth))
-                    setTextViewTextSize(R.id.widget_delta, TypedValue.COMPLEX_UNIT_SP, when (mode) {
-                        LAYOUT_MODE_COMPACT_SQUARE -> 14f
-                        else -> 15f
-                    })
-                }
+                        drawBackground = drawArtworkBackground,
+                    ),
+                )
                 setOnClickPendingIntent(android.R.id.background, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
             }
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        data class ResponsiveSpec(
+            val minWidth: Int,
+            val minHeight: Int,
+            val renderWidth: Int,
+            val renderHeight: Int,
+            val mode: Int,
+        )
+
+        fun responsiveSpecs(currentWidth: Int? = null, currentHeight: Int? = null): List<ResponsiveSpec> = listOf(
+            ResponsiveSpec(110, 40, 179, 72, LAYOUT_MODE_COMPACT_2X1),
+            ResponsiveSpec(231, 40, 360, 72, LAYOUT_MODE_COMPACT_STRIP),
+            ResponsiveSpec(110, 111, 179, 179, LAYOUT_MODE_LARGE),
+            ResponsiveSpec(231, 111, 360, 210, LAYOUT_MODE_LARGE),
+        ).map { spec ->
+            if (currentWidth != null && currentHeight != null &&
+                currentWidth >= spec.minWidth && currentHeight >= spec.minHeight &&
+                (spec.minWidth > 110 || currentWidth < 231) &&
+                (spec.minHeight > 40 || currentHeight < 111)
+            ) {
+                spec.copy(renderWidth = currentWidth, renderHeight = currentHeight)
+            } else {
+                spec
+            }
         }
 
         // Whichever layout a widget is currently showing — used for both the
@@ -220,40 +263,6 @@ class TwidgetWidget : AppWidgetProvider() {
                 )
             }
         }
-
-        private fun valueTextSize(mode: Int, minWidth: Int, minHeight: Int, text: String): Float = when (mode) {
-            LAYOUT_MODE_COMPACT_2X1 -> if (minWidth > 150) 24f else 22f
-            LAYOUT_MODE_COMPACT_STRIP -> when {
-                text.length >= 7 && minWidth < 250 -> 18f
-                text.length >= 7 -> 22f
-                minWidth >= 320 -> 30f
-                minWidth >= 250 -> 26f
-                else -> 22f
-            }
-            LAYOUT_MODE_COMPACT_SQUARE -> when {
-                minWidth >= 190 && minHeight >= 170 -> 19f
-                minWidth >= 160 && minHeight >= 140 -> 17f
-                else -> 15f
-            }
-            else -> when {
-                minWidth >= 520 && minHeight >= 250 -> 42f
-                minWidth >= 430 && minHeight >= 220 -> 38f
-                minWidth >= 340 && minHeight >= 180 -> 34f
-                minWidth >= 280 -> 30f
-                text.length > 32 -> 25f
-                else -> 27f
-            }
-        }
-
-        private fun labelTextSize(mode: Int, minWidth: Int): Float = when (mode) {
-            LAYOUT_MODE_COMPACT_2X1 -> 16f
-            LAYOUT_MODE_COMPACT_STRIP -> if (minWidth >= 250) 22f else 18f
-            LAYOUT_MODE_LARGE -> 13f
-            else -> 14f
-        }
-
-        private fun logoIcon(logo: String): Int =
-            if (logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x
 
         private fun isDark(context: Context, settings: TwidgetWidgetSettings): Boolean =
             when (settings.colorMode) {

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -22,14 +23,16 @@ object WidgetArtworkRenderer {
         mode: Int,
         dark: Boolean,
         delta: Long = 0,
+        drawBackground: Boolean = false,
     ): Bitmap {
         if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 || mode == TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP) {
-            return renderCompact(context, widthPx, heightPx, stats, settings, mode, dark, delta)
+            return renderCompact(context, widthPx, heightPx, stats, settings, mode, dark, delta, drawBackground)
         }
         val width = widthPx.coerceAtLeast(dp(context, 120))
         val height = heightPx.coerceAtLeast(dp(context, 120))
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val density = context.resources.displayMetrics.density
         val primary = if (dark) Color.WHITE else Color.BLACK
         val secondary = Color.argb(204, Color.red(primary), Color.green(primary), Color.blue(primary))
@@ -155,12 +158,14 @@ object WidgetArtworkRenderer {
         mode: Int,
         dark: Boolean,
         delta: Long,
+        drawBackground: Boolean,
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val primary = if (dark) Color.WHITE else Color.BLACK
         val value = java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(stats.followersCount)
         val label = context.getString(R.string.followers)
@@ -258,6 +263,26 @@ object WidgetArtworkRenderer {
             canvas.drawText(handle, x2, line2Top + logoSize * 0.82f, handlePaint)
         }
         return bitmap
+    }
+
+    private fun drawWidgetBackground(
+        context: Context,
+        canvas: Canvas,
+        width: Int,
+        height: Int,
+        settings: TwidgetWidgetSettings,
+        dark: Boolean,
+    ) {
+        val base = if (dark) 16 else 255
+        val radius = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.resources.getDimension(android.R.dimen.system_app_widget_background_radius)
+        } else {
+            dp(context, 24).toFloat()
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(settings.tintAlpha, base, base, base)
+        }
+        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, paint)
     }
 
     private fun shrinkToFit(paint: Paint, text: String, maxWidth: Float) {

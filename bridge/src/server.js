@@ -34,7 +34,7 @@ const historyInactiveAccountDays = envInteger("HISTORY_INACTIVE_ACCOUNT_DAYS", 0
 const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 * 1000;
 const historyClientBackfillEnabled = process.env.HISTORY_CLIENT_BACKFILL === "1";
 const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
-const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 1000, 20, 100000);
+const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 75000, 20, 100000);
 const bangerScoringVersion = 2;
 // Archive lookups fan one request out into many remote fetches, so self-hosters
 // must opt in deliberately. It is unsafe as a public-instance default.

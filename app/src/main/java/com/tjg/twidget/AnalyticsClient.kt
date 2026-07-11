@@ -34,6 +34,16 @@ object AnalyticsClient {
     fun isStale(analytics: PostAnalytics?): Boolean =
         analytics == null || System.currentTimeMillis() - analytics.cachedAt > STALE_MS
 
+    fun cacheBanger(context: Context, username: String, result: BangerResult) {
+        val existing = cached(context, username) ?: return
+        val updated = existing.copy(
+            banger = result.post ?: existing.banger,
+            bangerComplete = result.complete,
+            bangerPostsScanned = result.postsScanned,
+        )
+        prefs(context).edit().putString(key(context, username), serialize(updated).toString()).apply()
+    }
+
     fun refresh(context: Context, username: String): PostAnalytics {
         val clean = username.trim().trimStart('@')
         val previous = cached(context, clean)
@@ -53,6 +63,9 @@ object AnalyticsClient {
         val hallOfFame = runCatching {
             BangerClient.refresh(context, clean, settings, endpoint)
         }.getOrNull()
+        if (hallOfFame != null && !hallOfFame.complete && !hallOfFame.capped) {
+            BangerScanWorker.enqueue(context, clean)
+        }
         val analytics = weekly.copy(
             banger = hallOfFame?.post ?: previous?.banger,
             bangerComplete = hallOfFame?.complete ?: previous?.bangerComplete ?: false,

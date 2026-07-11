@@ -162,6 +162,7 @@ object TwidgetStore {
     }
 
     fun saveSettings(context: Context, settings: TwidgetSettings) {
+        val previous = this.settings(context)
         val username = normalizeUsername(settings.username)
         SecureCredentialStore.write(
             context,
@@ -182,6 +183,9 @@ object TwidgetStore {
             .putBoolean(KEY_SHARE_HISTORY, settings.shareHistory)
             .apply()
         if (username.isNotBlank()) addAccount(context, username)
+        if (previous.dataSource != settings.dataSource || previous.shareHistory != settings.shareHistory) {
+            accounts(context).forEach { BangerScanWorker.enqueue(context, it) }
+        }
     }
 
     // `bridgeUrl` holds only a user-entered self-hosted URL. Older builds
@@ -324,10 +328,13 @@ object TwidgetStore {
     fun addAccount(context: Context, username: String) {
         val cleanUsername = normalizeUsername(username)
         if (cleanUsername.isBlank()) return
-        val next = (accounts(context) + cleanUsername).distinctBy { it.lowercase(Locale.US) }
+        val existing = accounts(context)
+        val isNew = existing.none { it.equals(cleanUsername, ignoreCase = true) }
+        val next = (existing + cleanUsername).distinctBy { it.lowercase(Locale.US) }
         prefs(context).edit()
             .putString(KEY_ACCOUNTS, JSONArray(next).toString())
             .apply()
+        if (isNew) BangerScanWorker.enqueue(context, cleanUsername)
     }
 
     fun removeAccount(context: Context, username: String) {

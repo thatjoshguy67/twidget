@@ -64,6 +64,7 @@ object BangerClient {
         val seenCursors = mutableSetOf<String>()
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
         val requested = username.lowercase(Locale.US)
+        var fetchedAnyPage = false
 
         for (pageIndex in 0 until if (complete || capped) 1 else PAGES_PER_REFRESH) {
             val query = buildString {
@@ -76,6 +77,7 @@ object BangerClient {
                 break
             }
             if (root.optInt("code", 200) >= 400) error(root.optString("message", "FxTwitter banger scan failed"))
+            fetchedAnyPage = true
             val results = root.optJSONArray("results") ?: JSONArray()
             for (index in 0 until results.length()) {
                 val status = results.optJSONObject(index) ?: continue
@@ -106,6 +108,7 @@ object BangerClient {
             if (!seenCursors.add(next)) break
             cursor = next
         }
+        if (!fetchedAnyPage) error("FxTwitter banger scan unavailable")
         if (postsScanned >= MAX_POSTS) complete = false
         val stored = JSONObject()
             .put("score", winnerScore)

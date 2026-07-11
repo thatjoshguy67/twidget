@@ -893,17 +893,17 @@ class MainActivity : EdgeToEdgeActivity() {
                     },
                 )
             }
-            DashboardCardType.ENGAGEMENT_RATE -> analyticsSpec(
+            DashboardCardType.ENGAGEMENT_RATE -> blendedAnalyticsSpec(
                 getString(R.string.engagement_rate),
                 getColor(R.color.oneui_accent),
-                { percent(it.engagementRate) },
-                { getString(R.string.avg_per_post, TwidgetStore.compactNumber(it.avgEngagements.roundToLong())) },
+                { blend -> blend.engagementRate?.let(::percent) },
+                { blend -> blend.usesImportedRate },
             )
-            DashboardCardType.AVG_VIEWS -> analyticsSpec(
+            DashboardCardType.AVG_VIEWS -> blendedAnalyticsSpec(
                 getString(R.string.avg_views),
                 getColor(R.color.metric_green),
-                { TwidgetStore.compactNumber(it.avgViews.roundToLong()) },
-                { getString(R.string.median_value, TwidgetStore.compactNumber(it.medianViews.roundToLong())) },
+                { blend -> blend.avgViews?.roundToLong()?.let(TwidgetStore::compactNumber) },
+                { blend -> blend.usesImportedViews },
             )
             DashboardCardType.TOTAL_VIEWS -> analyticsSpec(
                 getString(R.string.total_views),
@@ -911,11 +911,11 @@ class MainActivity : EdgeToEdgeActivity() {
                 { TwidgetStore.compactNumber(it.totalViews) },
                 { analyticsCoverage(it) },
             )
-            DashboardCardType.AVG_ENGAGEMENTS -> analyticsSpec(
+            DashboardCardType.AVG_ENGAGEMENTS -> blendedAnalyticsSpec(
                 getString(R.string.avg_engagements),
                 getColor(R.color.metric_green),
-                { TwidgetStore.compactNumber(it.avgEngagements.roundToLong()) },
-                { getString(R.string.per_follower_pct, percent(it.avgEngagementsPerFollower)) },
+                { blend -> blend.avgEngagements?.roundToLong()?.let(TwidgetStore::compactNumber) },
+                { blend -> blend.usesImportedEngagements },
             )
             DashboardCardType.MEDIAN_ENGAGEMENTS -> analyticsSpec(
                 getString(R.string.median_engagements),
@@ -956,6 +956,29 @@ class MainActivity : EdgeToEdgeActivity() {
                 getString(R.string.import_x_analytics_hint)
             } else {
                 getString(R.string.x_analytics_days, values.size)
+            },
+            accent = accent,
+        )
+    }
+
+    private fun blendedAnalyticsSpec(
+        label: String,
+        accent: Int,
+        value: (BlendedAnalytics) -> String?,
+        usesImported: (BlendedAnalytics) -> Boolean,
+    ): InsightSpec {
+        val blend = AnalyticsBlendPolicy.blend(analytics, importedAnalytics)
+        return InsightSpec(
+            label = label,
+            value = value(blend) ?: "--",
+            detail = when {
+                usesImported(blend) -> getString(
+                    R.string.analytics_blended_coverage,
+                    blend.livePosts,
+                    blend.importedDays,
+                )
+                analytics != null -> analyticsCoverage(requireNotNull(analytics))
+                else -> getString(R.string.analytics_syncing)
             },
             accent = accent,
         )

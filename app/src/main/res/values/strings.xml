@@ -46,6 +46,7 @@
     <string name="median_value">%1$s median</string>
     <string name="across_posts">%1$d posts analyzed</string>
     <string name="posts_from_capped_status_sample">%1$d posts from a capped %2$d-status sample</string>
+    <string name="analytics_blended_coverage">Blended: %1$d live posts + %2$d CSV days</string>
     <string name="per_follower_pct">%1$s / follower</string>
     <string name="post_analytics">Recent posts</string>
     <string name="best_post">Best tweet this week</string>

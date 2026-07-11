@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -40,6 +41,7 @@ class MetricChartView @JvmOverloads constructor(
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val barRect = RectF()
+    private val barPath = Path()
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
     private val numberFormat = NumberFormat.getIntegerInstance(Locale.US)
@@ -101,11 +103,19 @@ class MetricChartView @JvmOverloads constructor(
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         val widthAvailable = width - left - right
-        val (scaleMin, scaleMax) = axisBounds(values)
+        val (scaleMin, scaleMax) = MetricChartScale.axisBounds(values)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
-        val labels = axisLabels(scaleMin, scaleMax)
+        val labels = MetricChartScale.axisLabels(scaleMin, scaleMax)
         val barSlot = widthAvailable / samples.size
         val barWidth = (barSlot * 0.56f).coerceIn(18f * density, 32f * density)
+        fun heightFor(value: Long): Float {
+            val normalized = (value - scaleMin).coerceAtLeast(0)
+            return if (value <= 0) {
+                4f * density
+            } else {
+                (chartHeight * normalized / scaleRange).coerceIn(14f * density, chartHeight)
+            }
+        }
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
         val maxLabelWidth = samples.maxOf { labelPaint.measureText(it.dayLabel) } + 6f * density
@@ -121,19 +131,21 @@ class MetricChartView @JvmOverloads constructor(
 
         samples.forEachIndexed { index, sample ->
             val value = values[index]
-            val normalized = (value - scaleMin).coerceAtLeast(0)
-            val barHeight = if (value <= 0) {
-                4f * density
-            } else {
-                (chartHeight * normalized / scaleRange).coerceIn(14f * density, chartHeight)
-            }
+            val barHeight = heightFor(value)
             val x = left + index * barSlot + (barSlot - barWidth) / 2f
             barRect.set(x, chartBottom - barHeight, x + barWidth, chartBottom)
             barHitBounds[index].set(left + index * barSlot, top, left + (index + 1) * barSlot, chartBottom)
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
             barPaint.alpha = if (sample.estimated) 80 else 255
-            canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
+            val corner = minOf(barWidth / 2f, barHeight / 2f)
+            barPath.reset()
+            barPath.addRoundRect(
+                barRect,
+                floatArrayOf(corner, corner, corner, corner, 0f, 0f, 0f, 0f),
+                Path.Direction.CW,
+            )
+            canvas.drawPath(barPath, barPaint)
             barPaint.alpha = 255
             if ((samples.lastIndex - index) % labelStep == 0) {
                 val labelWidth = labelPaint.measureText(sample.dayLabel)
@@ -142,20 +154,26 @@ class MetricChartView @JvmOverloads constructor(
                 canvas.drawText(sample.dayLabel, labelX, height - 7f * density, labelPaint)
             }
 
-            if (index == activeIndex) {
-                drawTooltip(
-                    canvas = canvas,
-                    label = "${sample.dayLabel}  ${if (sample.estimated) "~" else ""}${numberFormat.format(value)}",
-                    anchorX = x + barWidth / 2f,
-                    anchorY = chartBottom - barHeight,
-                    chartLeft = left,
-                    chartRight = width - right,
-                    chartTop = top,
-                    density = density,
-                )
-            }
         }
         barPaint.shader = null
+
+        // Tooltips are an overlay. Drawing one inside the bar loop lets later
+        // bars paint over it, which clips the bubble on selected early days.
+        if (activeIndex in samples.indices) {
+            val sample = samples[activeIndex]
+            val value = values[activeIndex]
+            val x = left + activeIndex * barSlot + (barSlot - barWidth) / 2f
+            drawTooltip(
+                canvas = canvas,
+                label = "${sample.dayLabel}  ${if (sample.estimated) "~" else ""}${numberFormat.format(value)}",
+                anchorX = x + barWidth / 2f,
+                anchorY = chartBottom - heightFor(value),
+                chartLeft = left,
+                chartRight = width - right,
+                chartTop = top,
+                density = density,
+            )
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -277,27 +295,30 @@ class MetricChartView @JvmOverloads constructor(
         )
     }
 
-    // Picks a [min, max] window for the y-axis. For large near-flat cumulative
-    // counts (e.g. 175,690..175,700 likes) it zooms into the active band so the
-    // day-to-day variation is visible, but always keeps a wide enough span that
-    // the four gridlines round to distinct labels. Otherwise it uses a
-    // zero-based nice axis.
-    private fun axisBounds(values: List<Long>): Pair<Long, Long> {
+    private companion object {
+        private const val TOUCH_TOOLTIP_TIMEOUT_MS = 1_500L
+    }
+}
+
+internal object MetricChartScale {
+    // Picks a [min, max] window for the y-axis. The highest observed value is
+    // always the top gridline, so the bars use all available vertical space.
+    // Near-flat cumulative counts keep a three-step zoomed window beneath it.
+    fun axisBounds(values: List<Long>): Pair<Long, Long> {
         val rawMax = (values.maxOrNull() ?: 0).coerceAtLeast(0)
         val rawMin = (values.minOrNull() ?: 0).coerceAtLeast(0)
         val spread = rawMax - rawMin
         val zoom = rawMin > 0 && spread > 0 && spread <= rawMax / 3
-        if (!zoom) return 0L to niceMax(rawMax).coerceAtLeast(4)
+        if (!zoom) return 0L to rawMax.coerceAtLeast(3)
 
-        // Pad the band and snap to a step that yields 3 equal, distinct gaps.
+        // Keep some context below the smallest value while anchoring the top
+        // exactly to the real maximum. Three equal steps give distinct labels.
         val step = niceStep((spread * 1.5 / 3).coerceAtLeast(1.0))
-        val min = (rawMin / step) * step
-        var max = ((rawMax / step) + 1) * step
-        if (max - min < step * 3) max = min + step * 3
-        return min to max
+        val min = (rawMax - step * 3).coerceAtLeast(0)
+        return min to rawMax
     }
 
-    private fun axisLabels(min: Long, max: Long): List<String> {
+    fun axisLabels(min: Long, max: Long): List<String> {
         val values = listOf(max, min + (max - min) * 2 / 3, min + (max - min) / 3, min)
         val compact = values.map { TwidgetStore.compactNumber(it) }
         // If compacting collapses distinct gridlines into the same label
@@ -322,21 +343,4 @@ class MetricChartView @JvmOverloads constructor(
         return (rounded * magnitude).toLong().coerceAtLeast(1)
     }
 
-    private fun niceMax(value: Long): Long {
-        if (value <= 10) return 10
-        val magnitude = Math.pow(10.0, (value.toString().length - 1).toDouble()).toLong()
-        val normalized = value.toDouble() / magnitude
-        val rounded = when {
-            normalized <= 1.5 -> 1.5
-            normalized <= 2.0 -> 2.0
-            normalized <= 3.0 -> 3.0
-            normalized <= 5.0 -> 5.0
-            else -> 10.0
-        }
-        return (rounded * magnitude).toLong()
-    }
-
-    private companion object {
-        private const val TOUCH_TOOLTIP_TIMEOUT_MS = 1_500L
-    }
 }

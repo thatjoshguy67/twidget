@@ -198,8 +198,14 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         val context = requireContext()
         val stats = TwidgetStore.currentStats(context, username)
         val isDefault = username.equals(settings.username, ignoreCase = true)
+        var popupAnchor: View? = null
+        val longClickListener = View.OnLongClickListener { anchor ->
+            showAccountPopup(popupAnchor ?: anchor, username, isDefault)
+            true
+        }
 
         return LinearLayout(context).apply {
+            popupAnchor = this
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             // Native SESL two-line preference rows measure 70dp tall with
@@ -213,10 +219,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 save(settings.copy(username = username))
                 buildScreen()
             }
-            setOnLongClickListener {
-                showAccountPopup(this, username, isDefault)
-                true
-            }
+            setOnLongClickListener(longClickListener)
 
             addView(ImageView(context).apply {
                 setBackgroundResource(R.drawable.avatar_twidget)
@@ -257,6 +260,17 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 setPadding(dp(8), dp(8), dp(8), dp(8))
             }, LinearLayout.LayoutParams(dp(42), dp(42)))
+
+            attachLongClickToChildren(this, longClickListener)
+        }
+    }
+
+    private fun attachLongClickToChildren(view: View, listener: View.OnLongClickListener) {
+        view.setOnLongClickListener(listener)
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                attachLongClickToChildren(view.getChildAt(index), listener)
+            }
         }
     }
 

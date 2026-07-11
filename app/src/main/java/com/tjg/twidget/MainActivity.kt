@@ -1198,7 +1198,20 @@ class MainActivity : EdgeToEdgeActivity() {
             contentDescription = getString(R.string.add_account)
         }
         drawerNav.refreshDrawerMenu()
-        drawerNav.post { applyDrawerIconTints(drawerNav) }
+        drawerNav.post {
+            applyDrawerIconTints(drawerNav)
+            attachDrawerAccountLongPresses(drawerNav)
+        }
+    }
+
+    private fun attachDrawerAccountLongPresses(drawerNav: DrawerNavigationView) {
+        drawerAccountItemIds.forEach { (itemId, account) ->
+            drawerNav.findViewById<View>(itemId)?.setOnLongClickListener {
+                closeDrawerOnCompactScreens()
+                openAnalyticsImport(account)
+                true
+            }
+        }
     }
 
     private fun drawerAccountIcon(stats: ProfileStats): Pair<Drawable, Boolean> {
@@ -1381,6 +1394,13 @@ class MainActivity : EdgeToEdgeActivity() {
 
     private fun openSettings() {
         startLeftSidePopOverActivity(Intent(this, SettingsActivity::class.java))
+    }
+
+    private fun openAnalyticsImport(username: String) {
+        startActivity(
+            Intent(this, AnalyticsImportActivity::class.java)
+                .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username)
+        )
     }
 
     private fun addAccount() {

@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
@@ -34,6 +35,7 @@ import kotlin.math.abs
 
 class AboutActivity : FoldablePopOverActivity() {
     private var versionTapCount = 0
+    private var headerIconTapCount = 0
     private var versionTapToast: Toast? = null
     private var updateCheckGeneration = 0
     private var availableRelease: AppRelease? = null
@@ -191,25 +193,38 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun setupHeaderIconBounce() {
-        findViewById<View>(R.id.about_header_icon).setOnClickListener { icon ->
-            icon.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            icon.animate().cancel()
-            icon.scaleX = 1f
-            icon.scaleY = 1f
-            icon.animate()
-                .scaleX(0.86f)
-                .scaleY(0.86f)
-                .setDuration(70L)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction {
-                    icon.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(320L)
-                        .setInterpolator(OvershootInterpolator(2.5f))
-                        .start()
+        findViewById<View>(R.id.about_header_icon).apply {
+            setOnTouchListener { icon, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        icon.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        icon.animate().cancel()
+                        icon.animate()
+                            .scaleX(0.86f)
+                            .scaleY(0.86f)
+                            .setDuration(70L)
+                            .setInterpolator(AccelerateDecelerateInterpolator())
+                            .start()
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        icon.animate().cancel()
+                        icon.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(320L)
+                            .setInterpolator(OvershootInterpolator(2.5f))
+                            .start()
+                    }
                 }
-                .start()
+                false
+            }
+            setOnClickListener {
+                headerIconTapCount += 1
+                if (headerIconTapCount == HEADER_ICON_EASTER_EGG_TAPS) {
+                    headerIconTapCount = 0
+                    openUrl(HEADER_ICON_EASTER_EGG_URL)
+                }
+            }
         }
     }
 
@@ -473,6 +488,8 @@ class AboutActivity : FoldablePopOverActivity() {
 
     companion object {
         private const val DEBUG_UNLOCK_TAPS = 7
+        private const val HEADER_ICON_EASTER_EGG_TAPS = 7
+        private const val HEADER_ICON_EASTER_EGG_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
         private const val PREF_BETA_RELEASES = "beta_releases"

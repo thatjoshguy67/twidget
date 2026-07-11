@@ -341,9 +341,13 @@ class MainActivity : EdgeToEdgeActivity() {
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
-            isClickable = post?.url?.isNotBlank() == true
-            isFocusable = post?.url?.isNotBlank() == true
+            val opensPost = post?.url?.isNotBlank() == true
+            background = AppCompatResources.getDrawable(
+                this@MainActivity,
+                if (opensPost) R.drawable.metric_card_clickable_bg else R.drawable.metric_card_bg,
+            )
+            isClickable = opensPost
+            isFocusable = opensPost
             contentDescription = if (post == null) label else getString(R.string.open_post)
             post?.url?.takeIf { it.isNotBlank() }?.let { postUrl ->
                 setOnClickListener {

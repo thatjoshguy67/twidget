@@ -25,6 +25,7 @@ npm test
 - `GET /health` — small unauthenticated readiness response; returns `503` if the configured history backend is unavailable.
 - `GET /user/:username` — normalized public profile data.
 - `GET /analytics/:username` — recent original-post analytics, cached for 45 minutes.
+- `GET /banger/:username` — opt-in, resumable Hall of Fame scan for the account's best balanced post.
 - `GET /history/:username` — opt-in pooled daily history registration/read.
 - `POST /history/:username/backfill` — disabled by default; accepts bounded client gap samples only when explicitly enabled.
 - `DELETE /admin/history/:username` — operator-only permanent deletion; hidden unless `HISTORY_ADMIN_TOKEN` is configured.
@@ -134,6 +135,7 @@ controls include:
 - `MAX_CACHE_ENTRIES`, `OAUTH_MAX_PENDING` — hard memory bounds for public-input maps.
 - `MAX_CONCURRENT_UPSTREAM` — process-wide upstream concurrency ceiling.
 - `HISTORY_MAX_ACCOUNTS`, `HISTORY_REGISTRATIONS_PER_HOUR` — persistent-work caps.
+- `BANGER_PAGES_PER_REQUEST`, `BANGER_MAX_POSTS` — bound each resumable historical scan and its total scope.
 - `HISTORY_STORE_PATH` — defaults to `/data/twidget-history.json` when `/data` exists.
 - `HISTORY_BACKEND=postgres` and `HISTORY_DATABASE_URL` — shared history for multiple replicas.
 - `HISTORY_SAMPLE_RETENTION_DAYS`, `HISTORY_INACTIVE_ACCOUNT_DAYS` — optional permanent deletion policies.

@@ -265,6 +265,9 @@ class MainActivity : EdgeToEdgeActivity() {
 
         val data = analytics
         val posts = listOfNotNull(
+            data?.banger?.let {
+                getString(if (data.bangerComplete) R.string.all_time_banger else R.string.best_banger_found) to it
+            },
             data?.best?.let {
                 getString(if (data.postsAnalyzed == 1) R.string.only_post else R.string.best_post) to it
             },

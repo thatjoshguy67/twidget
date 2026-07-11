@@ -346,6 +346,7 @@ object TwidgetStore {
         }
         edit.apply()
         clearCachedStats(context, cleanUsername)
+        BangerClient.clear(context, cleanUsername)
         val current = settings(context)
         if (current.username.equals(cleanUsername, ignoreCase = true)) {
             saveSettings(context, current.copy(username = remaining.firstOrNull().orEmpty()))

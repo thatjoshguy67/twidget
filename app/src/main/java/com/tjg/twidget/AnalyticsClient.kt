@@ -36,9 +36,10 @@ object AnalyticsClient {
 
     fun refresh(context: Context, username: String): PostAnalytics {
         val clean = username.trim().trimStart('@')
+        val previous = cached(context, clean)
         val settings = TwidgetStore.settings(context)
         val endpoint = TwidgetStore.bridgeEndpoint(settings)
-        val analytics = if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
+        val weekly = if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             ProviderFallback.directThenOptionalFallback(
                 direct = { fetchFxTwitter(clean) },
                 // Sharing history is the bridge opt-in: only then does the
@@ -48,7 +49,16 @@ object AnalyticsClient {
             )
         } else {
             fetchBridge(context, clean, endpoint)
-        }.copy(cachedAt = System.currentTimeMillis())
+        }
+        val hallOfFame = runCatching {
+            BangerClient.refresh(context, clean, weekly.followers, settings, endpoint)
+        }.getOrNull()
+        val analytics = weekly.copy(
+            banger = hallOfFame?.post ?: previous?.banger,
+            bangerComplete = hallOfFame?.complete ?: previous?.bangerComplete ?: false,
+            bangerPostsScanned = hallOfFame?.postsScanned ?: previous?.bangerPostsScanned ?: 0,
+            cachedAt = System.currentTimeMillis(),
+        )
         prefs(context).edit()
             .putString(key(context, clean), serialize(analytics).toString())
             .apply()
@@ -171,7 +181,7 @@ object AnalyticsClient {
             now,
         )
 
-    private fun parseFxPost(status: JSONObject): PostSummary {
+    internal fun parseFxPost(status: JSONObject): PostSummary {
         val author = status.optJSONObject("author") ?: JSONObject()
         val likes = status.optLong("likes")
         val replies = status.optLong("replies")
@@ -224,7 +234,7 @@ object AnalyticsClient {
             .take(4)
     }
 
-    private fun fxTimestamp(status: JSONObject): Long {
+    internal fun fxTimestamp(status: JSONObject): Long {
         val numeric = status.optLong("created_timestamp")
         if (numeric > 0) return if (numeric < 1_000_000_000_000L) numeric * 1000 else numeric
         return runCatching {
@@ -233,7 +243,7 @@ object AnalyticsClient {
         }.getOrDefault(0L)
     }
 
-    private fun hasValue(json: JSONObject, key: String): Boolean =
+    internal fun hasValue(json: JSONObject, key: String): Boolean =
         json.has(key) && !json.isNull(key) && when (val value = json.opt(key)) {
             is String -> value.isNotBlank()
             else -> value != null
@@ -271,6 +281,9 @@ object AnalyticsClient {
             engagementRate = engagement.optDouble("engagementRate", 0.0),
             best = parsePost(json.optJSONObject("best")),
             worst = parsePost(json.optJSONObject("worst")),
+            banger = parsePost(json.optJSONObject("banger")),
+            bangerComplete = json.optBoolean("bangerComplete", false),
+            bangerPostsScanned = json.optInt("bangerPostsScanned", 0),
             cachedAt = json.optLong("cachedAt", System.currentTimeMillis()),
         )
     }
@@ -353,6 +366,9 @@ object AnalyticsClient {
         .apply {
             a.best?.let { put("best", serializePost(it)) }
             a.worst?.let { put("worst", serializePost(it)) }
+            a.banger?.let { put("banger", serializePost(it)) }
+            put("bangerComplete", a.bangerComplete)
+            put("bangerPostsScanned", a.bangerPostsScanned)
         }
 
     private fun serializePost(p: PostSummary): JSONObject = JSONObject()
@@ -385,7 +401,7 @@ object AnalyticsClient {
 
     // `logContext` is only passed for bridge requests; direct FxTwitter calls
     // stay out of the debug bridge log.
-    private fun read(url: String, apiKey: String, logContext: Context? = null): String {
+    internal fun read(url: String, apiKey: String, logContext: Context? = null): String {
         val startedAt = System.currentTimeMillis()
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 12_000

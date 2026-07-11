@@ -5,6 +5,7 @@ import path from "node:path";
 import { Pool } from "pg";
 import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
+import { bangerScore } from "./banger-score.js";
 import {
   LocalFixedWindowLimiter,
   LocalHistoryRepository,
@@ -32,6 +33,9 @@ const historySampleRetentionDays = envInteger("HISTORY_SAMPLE_RETENTION_DAYS", 0
 const historyInactiveAccountDays = envInteger("HISTORY_INACTIVE_ACCOUNT_DAYS", 0, 0, 36500);
 const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 * 1000;
 const historyClientBackfillEnabled = process.env.HISTORY_CLIENT_BACKFILL === "1";
+const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
+const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 1000, 20, 10000);
+const bangerScoringVersion = 1;
 // Archive lookups fan one request out into many remote fetches, so self-hosters
 // must opt in deliberately. It is unsafe as a public-instance default.
 const waybackEnabled = process.env.WAYBACK_BACKFILL === "1";
@@ -62,6 +66,7 @@ const historyRepository = await createHistoryRepository();
 const oauthStates = new Map();
 const oauthSessions = new Map();
 const profileInFlight = new Map();
+const bangerInFlight = new Map();
 let upstreamActive = 0;
 
 // The follower-graph reconstruction feature is gone (removed 2026-07-08:
@@ -112,7 +117,7 @@ app.use((req, res, next) => {
 // get a smaller budget because they can trigger remote API work.
 app.use(rateLimit(requestLimiter, rateLimitMax));
 app.use((req, res, next) => {
-  if (/^\/(admin|analytics|history|official|oauth)\b/.test(req.path)) {
+  if (/^\/(admin|analytics|banger|history|official|oauth)\b/.test(req.path)) {
     return rateLimit(expensiveLimiter, expensiveRateLimitMax)(req, res, next);
   }
   next();
@@ -431,6 +436,35 @@ function acceptableClientSamples(existing, submitted) {
 // Reach + engagement over the recent timeline, plus the 7-day best/worst posts.
 // Timeline fetches are heavier than a profile lookup, so results are cached.
 
+app.get("/banger/:username", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) return res.status(400).json({ error: "invalid_username" });
+  const key = username.toLowerCase();
+  try {
+    let pending = bangerInFlight.get(key);
+    if (!pending) {
+      pending = withUpstreamSlot(() => refreshBanger(username))
+        .finally(() => bangerInFlight.delete(key));
+      bangerInFlight.set(key, pending);
+    }
+    const state = await pending;
+    res.json(publicBangerState(state));
+  } catch (error) {
+    console.error(`Banger scan failed for ${username}:`, error?.message ?? error);
+    try {
+      const stale = normalizeBangerState((await historyRepository.getMeta(key)).banger);
+      if (stale.post) {
+        res.setHeader("Warning", '110 - "Response is stale"');
+        res.json(publicBangerState(stale));
+        return;
+      }
+    } catch (storageError) {
+      console.warn(`Unable to read stale banger for ${username}:`, storageError?.message ?? storageError);
+    }
+    sendUpstreamFailure(res, "banger_failed", error);
+  }
+});
+
 const analyticsTtlMs = envInteger("ANALYTICS_TTL_SECONDS", 2700, 60, 86400) * 1000; // 45 min
 const analyticsPostCount = envInteger("ANALYTICS_POST_COUNT", 100, 1, 200);
 const analyticsInFlight = new Map();
@@ -503,6 +537,122 @@ async function computeAnalytics(username) {
     best: posts.length ? best : null,
     worst: posts.length >= 2 ? worst : null,
     cachedAt: Date.now(),
+  };
+}
+
+async function refreshBanger(username) {
+  const key = username.toLowerCase();
+  const profile = await fetchFxProfile(username);
+  if (profile.isPrivate === true) throw new Error("private_account_not_pooled");
+  if (!(await historyRepository.hasAccount(key))) {
+    if (await historyRepository.countAccounts() >= maxHistoryAccounts) throw new Error("history_capacity_reached");
+    if (!(await takeHistoryRegistrationSlot())) throw new Error("history_registration_limited");
+    const registered = await recordHistorySample(profile, { allowNew: true });
+    if (registered === null) throw new Error("history_capacity_reached");
+  }
+  const meta = await historyRepository.getMeta(key);
+  let state = normalizeBangerState(meta.banger);
+  if (state.version !== bangerScoringVersion) state = normalizeBangerState(null);
+  if (!state.baselineFollowers) state.baselineFollowers = Math.max(1, profile.followersCount);
+  let cursor = state.complete || state.capped ? "" : state.cursor;
+  const pages = state.complete || state.capped ? 1 : bangerPagesPerRequest;
+  const seenCursors = new Set();
+  for (let pageIndex = 0; pageIndex < pages; pageIndex += 1) {
+    let page;
+    try {
+      page = await fetchFxStatusPage(username, cursor);
+    } catch (error) {
+      if (!state.post) throw error;
+      break;
+    }
+    for (const status of page.results) {
+      if (!isOwnOriginalPost(status, key)) continue;
+      const post = normalizeFxStatus(status);
+      if (post.views <= 0) continue;
+      if (!state.complete && !state.capped) state.postsScanned += 1;
+      const score = bangerScore(post, state.baselineFollowers);
+      if (!state.post || score > state.score || post.url === state.post.url) {
+        state.post = post;
+        state.score = score;
+      }
+      if (state.postsScanned >= bangerMaxPosts) break;
+    }
+    if (state.postsScanned >= bangerMaxPosts) state.capped = true;
+    if (state.complete || state.capped) break;
+    if (!page.results.length) {
+      state.complete = true;
+      state.cursor = "";
+      break;
+    }
+    if (!page.cursor || seenCursors.has(page.cursor)) {
+      state.complete = !page.cursor;
+      state.cursor = "";
+      break;
+    }
+    seenCursors.add(page.cursor);
+    state.cursor = page.cursor;
+    cursor = page.cursor;
+  }
+  state.version = bangerScoringVersion;
+  state.updatedAt = Date.now();
+  meta.banger = state;
+  await historyRepository.setMeta(key, meta);
+  return state;
+}
+
+async function fetchFxStatusPage(username, cursor = "") {
+  const url = new URL(`https://api.fxtwitter.com/2/profile/${encodeURIComponent(username)}/statuses`);
+  url.searchParams.set("count", "100");
+  if (cursor) url.searchParams.set("cursor", cursor);
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", "User-Agent": "TwidgetBridge/0.1" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status === 204) return { results: [], cursor: "" };
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok || numberValue(json.code) >= 400) {
+    throw new Error(`FxTwitter statuses ${response.status}: ${stringValue(json.message) || "request failed"}`);
+  }
+  return {
+    results: Array.isArray(json.results) ? json.results : [],
+    cursor: stringValue(json.cursor?.bottom),
+  };
+}
+
+function isOwnOriginalPost(status, requestedUsername) {
+  if (!status || status.type !== "status") return false;
+  if (stringValue(status.author?.screen_name).toLowerCase() !== requestedUsername) return false;
+  if (status.reposted_by || status.replying_to || status.in_reply_to_status_id || status.in_reply_to_status_id_str) return false;
+  const id = stringValue(status.id);
+  if (status.conversation_id != null && id && stringValue(status.conversation_id) !== id) return false;
+  const ts = timestampForStatus(status);
+  return ts > 0 && ts <= Date.now() + 5 * 60 * 1000 &&
+    stringValue(status.url).toLowerCase().includes(`/${requestedUsername}/status/`);
+}
+
+function normalizeBangerState(value) {
+  const state = value && typeof value === "object" ? value : {};
+  return {
+    version: numberValue(state.version),
+    post: state.post && typeof state.post === "object" ? state.post : null,
+    score: Number.isFinite(Number(state.score)) ? Number(state.score) : 0,
+    complete: Boolean(state.complete),
+    capped: Boolean(state.capped),
+    postsScanned: numberValue(state.postsScanned),
+    cursor: stringValue(state.cursor),
+    updatedAt: numberValue(state.updatedAt),
+    baselineFollowers: numberValue(state.baselineFollowers),
+  };
+}
+
+function publicBangerState(state) {
+  return {
+    post: state.post,
+    score: state.score,
+    complete: state.complete,
+    capped: state.capped,
+    postsScanned: state.postsScanned,
+    updatedAt: state.updatedAt,
   };
 }
 

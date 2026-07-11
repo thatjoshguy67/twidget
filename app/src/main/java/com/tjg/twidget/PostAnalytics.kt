@@ -57,5 +57,8 @@ data class PostAnalytics(
     val engagementRate: Double,
     val best: PostSummary?,
     val worst: PostSummary?,
+    val banger: PostSummary? = null,
+    val bangerComplete: Boolean = false,
+    val bangerPostsScanned: Int = 0,
     val cachedAt: Long,
 )

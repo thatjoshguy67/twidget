@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
@@ -83,7 +84,7 @@ class TwidgetWidget : AppWidgetProvider() {
                         account = account,
                         stats = stats,
                         delta = delta,
-                        drawArtworkBackground = true,
+                        drawArtworkBackground = false,
                     )
                 }
                 RemoteViews(responsiveViews)
@@ -121,11 +122,24 @@ class TwidgetWidget : AppWidgetProvider() {
             return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
                 val base = if (dark) 16 else 255
-                setInt(
-                    android.R.id.background,
-                    "setBackgroundColor",
-                    if (drawArtworkBackground) Color.TRANSPARENT else Color.argb(widgetSettings.tintAlpha, base, base, base),
-                )
+                val backgroundColor = Color.argb(widgetSettings.tintAlpha, base, base, base)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
+                    // Tint the existing rounded shape instead of replacing it
+                    // with a rectangular ColorDrawable. Keeping the surface
+                    // separate also lets the text bitmap scale without being
+                    // distorted to fill unusual launcher cell ratios.
+                    setColorStateList(
+                        android.R.id.background,
+                        "setBackgroundTintList",
+                        ColorStateList.valueOf(backgroundColor),
+                    )
+                } else {
+                    setInt(
+                        android.R.id.background,
+                        "setBackgroundColor",
+                        if (drawArtworkBackground) Color.TRANSPARENT else backgroundColor,
+                    )
+                }
                 // A full update must re-hide the spinner explicitly: the launcher
                 // keeps the VISIBLE state a tap-refresh partial update set, so
                 // relying on the layout's gone default leaves it stuck spinning.

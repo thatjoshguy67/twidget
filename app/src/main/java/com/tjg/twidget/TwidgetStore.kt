@@ -142,6 +142,10 @@ object TwidgetStore {
         "total_views",
         "avg_engagements",
         "median_engagements",
+        "x_impressions",
+        "x_engagements",
+        "x_profile_visits",
+        "x_likes_received",
         "posts",
         "likes",
     )

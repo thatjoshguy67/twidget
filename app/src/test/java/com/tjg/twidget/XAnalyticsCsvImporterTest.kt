@@ -29,6 +29,7 @@ class XAnalyticsCsvImporterTest {
         assertEquals(LocalDate.of(2026, 7, 11), result.lastDate)
         assertEquals(listOf(994L, 997L, 1_000L), result.samples.map { it.followers })
         assertEquals(listOf(1L, 4L, 5L), result.movements.map { it.newFollows })
+        assertEquals(null, result.detectedFollowers)
         assertTrue(result.samples.all { it.imported && it.followersKnown })
         assertTrue(result.samples.all { !it.estimated })
         assertTrue(result.samples.all { !it.followingKnown && !it.postsKnown && !it.likesKnown })
@@ -63,6 +64,92 @@ class XAnalyticsCsvImporterTest {
         assertEquals("analytics_follower_mismatch", error.code)
         assertEquals(1_000L, error.expectedFollowers)
         assertEquals(1_050L, error.detectedFollowers)
+    }
+
+    @Test
+    fun `explicit follower total is detected and compared with cached count`() {
+        val csv = """
+            Date,New follows,Unfollows,Followers
+            "Sat, Jul 11, 2026",1,0,150
+        """.trimIndent()
+
+        val error = runCatching {
+            XAnalyticsCsvImporter.parse(
+                StringReader(csv),
+                anchorFollowers = 100,
+                today = LocalDate.of(2026, 7, 11),
+            )
+        }.exceptionOrNull() as AnalyticsValidationException
+
+        assertEquals(100L, error.expectedFollowers)
+        assertEquals(150L, error.detectedFollowers)
+    }
+
+    @Test
+    fun `impossible reconstruction reports cached count and missing detection`() {
+        val csv = """
+            Date,New follows,Unfollows
+            "Sat, Jul 11, 2026",6,0
+            "Fri, Jul 10, 2026",6,0
+        """.trimIndent()
+
+        val error = runCatching {
+            XAnalyticsCsvImporter.parse(
+                StringReader(csv),
+                anchorFollowers = 10,
+                today = LocalDate.of(2026, 7, 11),
+            )
+        }.exceptionOrNull() as AnalyticsCsvException
+
+        assertEquals(10L, error.cachedFollowers)
+        assertEquals(null, error.detectedFollowers)
+        assertTrue(error.message.orEmpty().contains("+12"))
+        assertTrue(error.message.orEmpty().contains("-2"))
+    }
+
+    @Test
+    fun `imports all available daily analytics metrics`() {
+        val csv = """
+            Date,Impressions,Likes,Engagements,Bookmarks,Shares,New follows,Unfollows,Replies,Reposts,Profile visits,Create Post,Video views,Media views
+            "Sat, Jul 11, 2026",156,3,6,0,0,1,0,1,0,2,1,4,5
+        """.trimIndent()
+
+        val result = XAnalyticsCsvImporter.parse(
+            StringReader(csv),
+            anchorFollowers = 100,
+            today = LocalDate.of(2026, 7, 11),
+        )
+        val day = result.movements.single()
+
+        assertEquals(156L, day.impressions)
+        assertEquals(3L, day.likes)
+        assertEquals(6L, day.engagements)
+        assertEquals(0L, day.bookmarks)
+        assertEquals(0L, day.shares)
+        assertEquals(1L, day.replies)
+        assertEquals(0L, day.reposts)
+        assertEquals(2L, day.profileVisits)
+        assertEquals(1L, day.postsCreated)
+        assertEquals(4L, day.videoViews)
+        assertEquals(5L, day.mediaViews)
+    }
+
+    @Test
+    fun `rejects engagement totals below their visible components`() {
+        val csv = """
+            Date,Likes,Engagements,Bookmarks,Shares,New follows,Unfollows,Replies,Reposts
+            "Sat, Jul 11, 2026",5,6,1,0,0,0,1,1
+        """.trimIndent()
+
+        val error = runCatching {
+            XAnalyticsCsvImporter.parse(
+                StringReader(csv),
+                anchorFollowers = 100,
+                today = LocalDate.of(2026, 7, 11),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error?.message.orEmpty().contains("visible interaction actions"))
     }
 
     private fun history(day: Long, followers: Long, imported: Boolean = false) = HistorySample(

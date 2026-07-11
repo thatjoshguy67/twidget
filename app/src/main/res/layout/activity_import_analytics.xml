@@ -241,6 +241,25 @@
                     android:fontFamily="sec"
                     android:textColor="@color/oneui_text_primary"
                     android:textSize="18sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:fontFamily="sec"
+                    android:text="@string/import_metrics_detected"
+                    android:textColor="@color/oneui_text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/import_metrics_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:fontFamily="sec"
+                    android:textColor="@color/oneui_text_primary"
+                    android:textSize="18sp" />
             </LinearLayout>
 
             <LinearLayout

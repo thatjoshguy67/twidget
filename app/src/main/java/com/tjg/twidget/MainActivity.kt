@@ -70,6 +70,7 @@ class MainActivity : EdgeToEdgeActivity() {
     private var accounts = emptyList<String>()
     private var selectedAccount: String = ""
     private var analytics: PostAnalytics? = null
+    private var importedAnalytics = emptyList<XAnalyticsMovement>()
     private val analyticsInFlight = mutableSetOf<String>()
     private var editMode = false
     private var draggedCardId: String? = null
@@ -222,6 +223,7 @@ class MainActivity : EdgeToEdgeActivity() {
         // weekly window — the old range chips are gone.
         val history = TwidgetStore.rangedHistory(this, account, HistoryRange.WEEK)
         val chartHistory = TwidgetStore.chartHistory(this, account, HistoryRange.WEEK)
+        importedAnalytics = ImportedAnalyticsStore.recent(this, account)
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
@@ -921,8 +923,42 @@ class MainActivity : EdgeToEdgeActivity() {
                 { TwidgetStore.compactNumber(it.medianEngagements.roundToLong()) },
                 { analyticsCoverage(it) },
             )
+            DashboardCardType.X_IMPRESSIONS -> importedAnalyticsSpec(
+                getString(R.string.x_impressions),
+                getColor(R.color.oneui_accent),
+            ) { it.impressions }
+            DashboardCardType.X_ENGAGEMENTS -> importedAnalyticsSpec(
+                getString(R.string.x_engagements),
+                getColor(R.color.metric_green),
+            ) { it.engagements }
+            DashboardCardType.X_PROFILE_VISITS -> importedAnalyticsSpec(
+                getString(R.string.x_profile_visits),
+                getColor(R.color.oneui_accent),
+            ) { it.profileVisits }
+            DashboardCardType.X_LIKES_RECEIVED -> importedAnalyticsSpec(
+                getString(R.string.x_likes_received),
+                getColor(R.color.metric_green),
+            ) { it.likes }
             else -> error("Chart cards do not have insight specs.")
         }
+    }
+
+    private fun importedAnalyticsSpec(
+        label: String,
+        accent: Int,
+        selector: (XAnalyticsMovement) -> Long?,
+    ): InsightSpec {
+        val values = importedAnalytics.mapNotNull(selector)
+        return InsightSpec(
+            label = label,
+            value = values.takeIf { it.isNotEmpty() }?.sum()?.let(TwidgetStore::compactNumber) ?: "--",
+            detail = if (values.isEmpty()) {
+                getString(R.string.import_x_analytics_hint)
+            } else {
+                getString(R.string.x_analytics_days, values.size)
+            },
+            accent = accent,
+        )
     }
 
     private fun analyticsCoverage(data: PostAnalytics): String =
@@ -1418,6 +1454,10 @@ class MainActivity : EdgeToEdgeActivity() {
         TOTAL_VIEWS("total_views", R.string.total_views, DashboardCardSize.HALF),
         AVG_ENGAGEMENTS("avg_engagements", R.string.avg_engagements, DashboardCardSize.HALF),
         MEDIAN_ENGAGEMENTS("median_engagements", R.string.median_engagements, DashboardCardSize.HALF),
+        X_IMPRESSIONS("x_impressions", R.string.x_impressions, DashboardCardSize.HALF),
+        X_ENGAGEMENTS("x_engagements", R.string.x_engagements, DashboardCardSize.HALF),
+        X_PROFILE_VISITS("x_profile_visits", R.string.x_profile_visits, DashboardCardSize.HALF),
+        X_LIKES_RECEIVED("x_likes_received", R.string.x_likes_received, DashboardCardSize.HALF),
         MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.FULL),
         GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.HALF),
         BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.HALF),

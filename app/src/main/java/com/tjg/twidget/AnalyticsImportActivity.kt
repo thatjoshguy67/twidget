@@ -143,7 +143,16 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
     private fun bindConfirmation(parsed: XAnalyticsImport) {
         findViewById<TextView>(R.id.import_account_title).text = getString(R.string.import_for_account, username)
         findViewById<TextView>(R.id.import_range_value).text = formatRange(parsed.firstDate, parsed.lastDate)
-        findViewById<TextView>(R.id.import_detected_value).text = formatCount(parsed.samples.last().followers)
+        findViewById<TextView>(R.id.import_detected_value).text = parsed.detectedFollowers
+            ?.let(::formatCount)
+            ?: getString(R.string.import_followers_not_detected)
+        val metrics = parsed.movements
+            .flatMap { it.analyticsValues() }
+            .filter { it.second != null }
+            .map { it.first }
+            .distinct()
+        findViewById<TextView>(R.id.import_metrics_value).text =
+            getString(R.string.import_metrics_detected_count, metrics.size)
         ProfileImageLoader.loadInto(this, findViewById(R.id.import_account_avatar), stats.profileImage)
     }
 
@@ -159,6 +168,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
             if (generation == asyncGeneration && !isFinishing) showFailure(IllegalStateException(getString(R.string.analytics_import_busy)))
         }) {
             val result = runCatching {
+                ImportedAnalyticsStore.validate(this, username, parsed.movements)
                 if (useBridge) {
                     val accepted = HistoryPool.importAnalytics(
                         this,
@@ -171,6 +181,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
                 } else {
                     TwidgetStore.importFollowerHistory(this, username, parsed.samples)
                 }
+                ImportedAnalyticsStore.saveVerified(this, username, parsed.movements)
                 TwidgetWidget.updateAll(this)
             }
             runOnUiThread {
@@ -184,19 +195,24 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
     private fun showFailure(error: Throwable) {
         val bridge = error as? BridgeImportException
         val local = error as? AnalyticsValidationException
+        val csv = error as? AnalyticsCsvException
         val code = bridge?.code ?: local?.code.orEmpty()
-        val expected = bridge?.expectedFollowers ?: local?.expectedFollowers
-        val detected = bridge?.detectedFollowers ?: local?.detectedFollowers
+        val expected = bridge?.expectedFollowers ?: local?.expectedFollowers ?: csv?.cachedFollowers
+            ?: stats.followersCount.takeIf { stats.followersKnown }
+        val detected = bridge?.detectedFollowers ?: local?.detectedFollowers ?: csv?.detectedFollowers
         findViewById<TextView>(R.id.import_failure_reason).text = when (code) {
             "analytics_follower_mismatch", "analytics_trend_mismatch" -> getString(R.string.import_failure_range)
             "insufficient_trusted_history" -> getString(R.string.analytics_import_not_enough_history)
             "private_account_not_pooled" -> getString(R.string.analytics_import_private)
             else -> error.message?.takeIf { it.isNotBlank() } ?: getString(R.string.import_failure_default)
         }
-        findViewById<View>(R.id.import_failure_counts).visibility =
-            if (expected != null && detected != null) View.VISIBLE else View.GONE
-        expected?.let { findViewById<TextView>(R.id.import_stored_value).text = formatCount(it) }
-        detected?.let { findViewById<TextView>(R.id.import_failure_detected_value).text = formatCount(it) }
+        findViewById<View>(R.id.import_failure_counts).visibility = View.VISIBLE
+        findViewById<TextView>(R.id.import_stored_value).text = expected
+            ?.let(::formatCount)
+            ?: getString(R.string.import_followers_not_cached)
+        findViewById<TextView>(R.id.import_failure_detected_value).text = detected
+            ?.let(::formatCount)
+            ?: getString(R.string.import_followers_not_detected)
         renderStep(STEP_FAILURE)
     }
 

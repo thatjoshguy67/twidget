@@ -30,6 +30,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.GridLayout
@@ -1342,15 +1343,12 @@ class MainActivity : EdgeToEdgeActivity() {
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
                 ?: return@forEach
             if (itemId in drawerAvatarItemIds) {
-                iconView.imageTintList = null
-                iconView.clearColorFilter()
-                iconView.drawable?.mutate()?.let { avatar ->
-                    DrawableCompat.setTintList(avatar, null)
-                    avatar.clearColorFilter()
-                    iconView.setImageDrawable(avatar)
-                }
+                applyDrawerAvatarAppearance(iconView)
+                ensureDrawerAvatarRenderGuard(iconView)
             } else {
+                removeDrawerAvatarRenderGuard(iconView)
                 iconView.imageTintList = normalTint
+                iconView.alpha = DRAWER_STANDARD_ICON_ALPHA
             }
         }
         listOf(
@@ -1359,7 +1357,84 @@ class MainActivity : EdgeToEdgeActivity() {
         ).forEach { itemId ->
             drawerNav.findViewById<View>(itemId)
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
-                ?.imageTintList = normalTint
+                ?.also { iconView ->
+                    removeDrawerAvatarRenderGuard(iconView)
+                    iconView.imageTintList = normalTint
+                    iconView.alpha = DRAWER_STANDARD_ICON_ALPHA
+                }
+        }
+    }
+
+    private fun applyDrawerAvatarAppearance(iconView: ImageView) {
+        iconView.alpha = 1f
+        iconView.imageTintList = null
+        iconView.clearColorFilter()
+        iconView.drawable?.mutate()?.let { avatar ->
+            DrawableCompat.setTintList(avatar, null)
+            avatar.clearColorFilter()
+            iconView.setImageDrawable(avatar)
+        }
+    }
+
+    private fun ensureDrawerAvatarRenderGuard(iconView: ImageView) {
+        if (iconView.getTag(R.id.drawer_avatar_render_guard) is DrawerAvatarRenderGuard) return
+        DrawerAvatarRenderGuard(iconView).also { guard ->
+            iconView.setTag(R.id.drawer_avatar_render_guard, guard)
+        }
+    }
+
+    private fun removeDrawerAvatarRenderGuard(iconView: ImageView) {
+        (iconView.getTag(R.id.drawer_avatar_render_guard) as? DrawerAvatarRenderGuard)?.dispose()
+        iconView.setTag(R.id.drawer_avatar_render_guard, null)
+    }
+
+    private class DrawerAvatarRenderGuard(
+        private val iconView: ImageView,
+    ) : ViewTreeObserver.OnPreDrawListener, View.OnAttachStateChangeListener {
+        private var observer: ViewTreeObserver? = null
+
+        init {
+            iconView.addOnAttachStateChangeListener(this)
+            if (iconView.isAttachedToWindow) attach()
+        }
+
+        override fun onPreDraw(): Boolean {
+            if (iconView.getTag(R.id.drawer_avatar_render_guard) !== this) {
+                dispose()
+                return true
+            }
+            if (iconView.alpha != 1f) iconView.alpha = 1f
+            if (iconView.imageTintList != null) iconView.imageTintList = null
+            if (iconView.colorFilter != null) iconView.clearColorFilter()
+            iconView.drawable?.let { avatar ->
+                if (avatar.colorFilter != null) {
+                    DrawableCompat.setTintList(avatar, null)
+                    avatar.clearColorFilter()
+                }
+            }
+            return true
+        }
+
+        override fun onViewAttachedToWindow(view: View) = attach()
+
+        override fun onViewDetachedFromWindow(view: View) = detach()
+
+        fun dispose() {
+            detach()
+            iconView.removeOnAttachStateChangeListener(this)
+        }
+
+        private fun attach() {
+            detach()
+            iconView.viewTreeObserver.takeIf(ViewTreeObserver::isAlive)?.let { currentObserver ->
+                currentObserver.addOnPreDrawListener(this)
+                observer = currentObserver
+            }
+        }
+
+        private fun detach() {
+            observer?.takeIf(ViewTreeObserver::isAlive)?.removeOnPreDrawListener(this)
+            observer = null
         }
     }
 
@@ -1632,6 +1707,7 @@ class MainActivity : EdgeToEdgeActivity() {
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
         private const val DRAWER_ITEM_SCHEDULE = 20_001
+        private const val DRAWER_STANDARD_ICON_ALPHA = 0.7f
         private const val DASHBOARD_GRID_COLUMNS = 2
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"

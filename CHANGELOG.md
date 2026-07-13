@@ -6,13 +6,17 @@ All notable changes to Twidget are documented here.
 
 ### Added
 
-- Detailed CSV analytics with 7-day, 30-day, 90-day, and one-year ranges, selectable metrics, summary cards, and gap-preserving charts.
-- A calendar view for scheduled posts with month navigation, daily post counts, selected-day agendas, and separate undated drafts.
-- An in-app Notices feed backed by GitHub Releases, with prerelease labels, offline caching, and links to the full release notes.
+- Imported X Analytics metrics surfaced as configurable dashboard cards.
+- A calendar view for scheduled tweets with month navigation, daily tweet counts, selected-day agendas, and separate undated drafts.
+- An in-app Notices feed backed by GitHub Releases, with prerelease labels, offline caching, changelog previews, and full in-app changelog pages.
+- Automatic update checks when the app launches, using the selected stable or beta channel.
 
 ### Changed
 
-- Added Schedule, Analytics, and Notices as first-class navigation drawer destinations.
+- Notices are a toolbar action with an orange dot when a new release note is available.
+- Analytics remain embedded in the dashboard; the separate Analytics page and its drawer entry were removed.
+- Redundant Notices entries were removed from the navigation drawer and About page.
+- GitHub release workflows now embed human-written changelogs before generated comparison links.
 
 ## [1.0.0] - 2026-07-10
 

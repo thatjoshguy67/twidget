@@ -21,13 +21,13 @@ object ScheduleDeepLink {
 
 object ScheduleNotificationHelper {
     const val CHANNEL_ID = "scheduled_post_reminders"
-    private const val CHANNEL_NAME = "Scheduled post reminders"
+    private const val CHANNEL_NAME = "Scheduled tweet reminders"
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Reminders to finish and publish locally scheduled posts"
+                description = "Reminders to finish and publish locally scheduled tweets"
                 enableLights(true)
                 lightColor = Color.BLUE
             },
@@ -78,7 +78,7 @@ object ScheduleNotificationHelper {
         )
         return Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Scheduled post is ready")
+            .setContentTitle("Scheduled tweet is ready")
             .setContentText(preview)
             .setStyle(Notification.BigTextStyle().bigText(preview))
             .setContentIntent(open)

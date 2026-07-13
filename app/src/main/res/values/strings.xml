@@ -115,9 +115,9 @@
     <string name="source_fxtwitter">FxTwitter</string>
     <string name="source_fxtwitter_summary">Free public FxTwitter API</string>
     <string name="share_history">Contribute to shared history</string>
-    <string name="share_history_summary">Share your public account stats with the community for deeper charts from day one, and let the Twidget Bridge run heavier work like the Hall of Fame scan. When disabled, Twidget does everything on-device via FxTwitter.</string>
-    <string name="share_history_onboarding_summary">Optional: share your public account stats with the community for deeper charts from day one. When disabled, Twidget defaults to FxTwitter.</string>
-    <string name="source_self_hosted">Self hosted Rettiwt</string>
+    <string name="share_history_summary">Share your public account stats with other Twidget users for better data for everyone. When enabled, heavier fetch tasks run through the Twidget bridge.</string>
+    <string name="share_history_onboarding_summary">Optional: share your public account stats with other Twidget users for better data for everyone. When enabled, heavier fetch tasks run through the Twidget bridge.</string>
+    <string name="source_self_hosted">Self-hosted bridge</string>
     <string name="source_self_hosted_summary">Use your own bridge</string>
     <string name="source_x_api">X API</string>
     <string name="source_x_api_summary">Requires your own paid X API access</string>
@@ -252,7 +252,7 @@
     <string name="about_tjg_title">That Josh Guy</string>
     <string name="about_tjg_summary">Created the app. Far too many red bulls consumed in the process.</string>
     <string name="about_kingowen_title">KingOwenFYI</string>
-    <string name="about_kingowen_summary">Gave ideas, feedback and motivation.</string>
+    <string name="about_kingowen_summary">Contributor, motivator and idea generator.</string>
     <string name="about_fxtwitter_title">FxTwitter / FxEmbed</string>
     <string name="about_fxtwitter_summary">Default data source. Public profile, status, media, and recent-post analytics data</string>
     <string name="about_oneui_summary">One UI interface components. The magic behind the app\'s design</string>
@@ -331,8 +331,8 @@
     <string name="bridge_log_request">Request body:</string>
     <string name="bridge_log_response">Response:</string>
     <string name="clear_log">Clear log</string>
-    <string name="schedule_title">Scheduling</string>
-    <string name="schedule_new">New scheduled post</string>
+    <string name="schedule_title">Scheduled tweets</string>
+    <string name="schedule_new">New scheduled tweet</string>
     <string name="schedule_queue_for">Schedule · %1$s</string>
     <string name="schedule_all_accounts">All accounts</string>
     <string name="schedule_filter_all">All</string>
@@ -343,8 +343,8 @@
     <string name="schedule_agenda_for">Agenda · %1$s</string>
     <string name="schedule_month_agenda">%1$s agenda</string>
     <string name="schedule_unscheduled_drafts">Drafts without a date</string>
-    <string name="schedule_calendar_empty">No posts on this date.</string>
-    <string name="schedule_day_description">%1$s, %2$d scheduled posts</string>
+    <string name="schedule_calendar_empty">No tweets on this date.</string>
+    <string name="schedule_day_description">%1$s, %2$d scheduled tweets</string>
     <string name="schedule_status_draft">Draft</string>
     <string name="schedule_status_scheduled">Scheduled</string>
     <string name="schedule_status_needs_action">Needs action</string>
@@ -358,9 +358,9 @@
     <string name="schedule_edit">Edit</string>
     <string name="schedule_duplicate">Duplicate</string>
     <string name="schedule_open_checklist_for">Open publish checklist for @%1$s</string>
-    <string name="schedule_cancel_title">Cancel scheduled post?</string>
+    <string name="schedule_cancel_title">Cancel scheduled tweet?</string>
     <string name="schedule_cancel_message">This also cancels the remote Postpone schedule when applicable.</string>
-    <string name="schedule_delete_title">Delete scheduled post?</string>
+    <string name="schedule_delete_title">Delete scheduled tweet?</string>
     <string name="schedule_delete_message">This cannot be undone. Active Postpone schedules will be cancelled remotely first.</string>
     <string name="schedule_compose">Compose schedule</string>
     <string name="schedule_compose_hint">What\'s happening?</string>
@@ -393,7 +393,7 @@
     <string name="schedule_provider">Provider</string>
     <string name="schedule_when">Date and time</string>
     <string name="schedule_timezone">Time zone: %1$s</string>
-    <string name="schedule_account_description">Account for this scheduled post</string>
+    <string name="schedule_account_description">Account for this scheduled tweet</string>
     <string name="schedule_provider_description">Scheduling provider</string>
     <string name="schedule_provider_local">Local reminder</string>
     <string name="schedule_provider_postpone">Postpone</string>
@@ -419,7 +419,7 @@
     <string name="schedule_postpone_account_required">Add an account in Twidget before scheduling with Postpone.</string>
     <string name="schedule_draft_saved">Draft saved.</string>
     <string name="schedule_unknown_error">Unknown scheduling error.</string>
-    <string name="schedule_not_found">That scheduled post could not be found.</string>
+    <string name="schedule_not_found">That scheduled tweet could not be found.</string>
     <string name="schedule_updated">Schedule updated.</string>
     <string name="schedule_error_title">Couldn’t update schedule</string>
     <string name="schedule_publish_checklist">Publish checklist</string>

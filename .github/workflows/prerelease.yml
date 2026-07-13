@@ -107,12 +107,32 @@ jobs:
             capture && /^## \[/ { capture = 0 }
             capture { print }
           ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            # Pre-releases usually share the upcoming stable version's notes.
+            BASE_VERSION="${VERSION%%-*}"
+            awk -v version="$BASE_VERSION" '
+              $0 ~ "^## \\[" version "\\]" { capture = 1; next }
+              capture && /^## / { capture = 0 }
+              capture { print }
+            ' CHANGELOG.md > release-notes.md
+          fi
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            # Until the stable section is prepared, publish Unreleased notes
+            # instead of a bare comparison URL.
+            awk '
+              /^## Unreleased$/ { capture = 1; next }
+              capture && /^## / { capture = 0 }
+              capture { print }
+            ' CHANGELOG.md > release-notes.md
+          fi
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no notes for $VERSION."
+            exit 1
+          fi
           # Auto-generated commit/PR changelog since the previous release.
+          printf '\n## Changes since the previous release\n\n' >> release-notes.md
           gh api "repos/${{ github.repository }}/releases/generate-notes" \
             -f tag_name="$TAG" --jq .body >> release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "See CHANGELOG.md for details." > release-notes.md
-          fi
 
       - name: Publish GitHub pre-release
         env:

@@ -89,12 +89,14 @@ jobs:
             capture && /^## \[/ { capture = 0 }
             capture { print }
           ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no section for [$VERSION]."
+            exit 1
+          fi
           # Auto-generated commit/PR changelog since the previous release.
+          printf '\n## Changes since the previous release\n\n' >> release-notes.md
           gh api "repos/${{ github.repository }}/releases/generate-notes" \
             -f tag_name="$TAG" --jq .body >> release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "See CHANGELOG.md for details." > release-notes.md
-          fi
 
       - name: Publish GitHub release
         env:

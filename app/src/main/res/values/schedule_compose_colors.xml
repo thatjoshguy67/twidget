@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="schedule_compose_accent">@color/oneui_accent</color>
-    <color name="schedule_compose_bg">@color/oneui_card_bg</color>
-    <color name="schedule_compose_divider">@color/oneui_divider</color>
-    <color name="schedule_compose_icon">@color/oneui_accent</color>
-    <color name="schedule_compose_post_disabled">@color/oneui_accent_translucent</color>
-</resources>

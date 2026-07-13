@@ -244,6 +244,7 @@ class MainActivity : EdgeToEdgeActivity() {
         bindContent()
         buildDrawer()
         renderHeader()
+        updateScheduleFabVisibility()
     }
 
     private fun bindContent() {
@@ -1109,7 +1110,7 @@ class MainActivity : EdgeToEdgeActivity() {
         if (editMode == enabled) return
         editMode = enabled
         exitEditModeOnBack.isEnabled = enabled
-        findViewById<View>(R.id.schedule_fab)?.visibility = if (enabled) View.GONE else View.VISIBLE
+        updateScheduleFabVisibility()
         if (!enabled) clearDragPreview()
         invalidateOptionsMenu()
         render()
@@ -1274,7 +1275,7 @@ class MainActivity : EdgeToEdgeActivity() {
             accounts.size + 1,
             getString(R.string.schedule_title),
         ).apply {
-            setIcon(R.drawable.ic_schedule_time)
+            setIcon(OneUiIconR.drawable.ic_oui_time_outline)
             contentDescription = getString(R.string.schedule_title)
         }
         drawerNav.refreshDrawerMenu()
@@ -1429,8 +1430,18 @@ class MainActivity : EdgeToEdgeActivity() {
 
     private fun setupScheduleAction() {
         findViewById<View>(R.id.schedule_fab).setOnClickListener {
-            openSchedule(selectedAccount)
+            startActivity(
+                Intent(this, ScheduleComposeActivity::class.java)
+                    .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, selectedAccount)
+            )
         }
+    }
+
+    private fun updateScheduleFabVisibility() {
+        val defaultAccount = TwidgetStore.settings(this).username
+        findViewById<View>(R.id.schedule_fab)?.visibility = if (
+            !editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
+        ) View.VISIBLE else View.GONE
     }
 
     private fun openSchedule(username: String) {

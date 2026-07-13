@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dev.oneuiproject.oneui.layout.ToolbarLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/schedule_compose_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg"
+    app:expandable="false"
+    app:expanded="false"
+    app:handleInsets="false"
+    app:showNavButtonAsBack="true"
+    app:title="@string/schedule_compose_title">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_location="main_content">
+
+        <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
+            android:id="@+id/schedule_compose_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingBottom="104dp"
+            app:roundedCorners="none">
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/schedule_compose_thread_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="16dp"
+                app:roundedCorners="none" />
+        </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
+
+        <dev.oneuiproject.oneui.widget.BottomFloatingLayout
+            android:id="@+id/schedule_compose_bottom_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
+            app:maxChildWidth="600dp">
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
+                android:background="@drawable/schedule_toolbar_floating_bg"
+                android:elevation="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:translationZ="2dp"
+                app:roundedCorners="none">
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/schedule_compose_attach_media"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/schedule_add_local_media"
+                    android:padding="10dp"
+                    app:srcCompat="@drawable/ic_oui_image_outline" />
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/schedule_compose_camera"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/schedule_take_photo"
+                    android:padding="10dp"
+                    app:srcCompat="@drawable/ic_oui_camera_outline" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/schedule_compose_time_summary"
+                    style="@style/OneUI.ButtonStyleTransparent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:drawableStart="@drawable/ic_oui_time_outline"
+                    android:drawablePadding="7dp"
+                    android:gravity="center_vertical"
+                    android:minWidth="0dp"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="9dp"
+                    android:textAllCaps="false"
+                    android:textColor="@color/oneui_text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:drawableTint="@color/oneui_text_primary" />
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/schedule_compose_add_thread"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/schedule_add_thread_item"
+                    android:padding="9dp"
+                    app:srcCompat="@drawable/ic_oui_add_filled" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+        </dev.oneuiproject.oneui.widget.BottomFloatingLayout>
+    </FrameLayout>
+</dev.oneuiproject.oneui.layout.ToolbarLayout>

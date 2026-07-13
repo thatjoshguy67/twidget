@@ -9,6 +9,9 @@
     <color name="oneui_text_secondary">#a3a3a7</color>
     <color name="oneui_accent">#4da2ff</color>
     <color name="oneui_accent_translucent">#334da2ff</color>
+    <color name="schedule_character_limit">#FF6B6B</color>
+    <color name="schedule_toolbar_floating">#E817171A</color>
+    <color name="schedule_toolbar_floating_stroke">#33FFFFFF</color>
     <color name="oneui_preview_bg">#333333</color>
     <!-- Static launcher widget previews mirror the dark widget card. -->
     <color name="widget_preview_surface">#17171A</color>

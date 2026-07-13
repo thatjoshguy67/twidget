@@ -34,7 +34,9 @@ class ScheduleCoordinator(
     }
 
     fun schedule(post: ScheduledPost, nowMillis: Long = System.currentTimeMillis()): ScheduleCoordinatorResult {
-        val issues = SchedulePolicy.validate(post, nowMillis)
+        val account = post.accountId?.takeIf(String::isNotBlank) ?: post.accountUsername
+        val maxTextLength = SchedulePolicy.textLimit(TwidgetStore.currentStats(appContext, account).isVerified)
+        val issues = SchedulePolicy.validate(post, nowMillis, maxTextLength)
         if (issues.isNotEmpty()) {
             store.get(post.id)?.takeIf {
                 it.provider == ScheduleProvider.LOCAL_REMINDER &&

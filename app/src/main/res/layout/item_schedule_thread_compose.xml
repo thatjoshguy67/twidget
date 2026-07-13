@@ -1,53 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<dev.oneuiproject.oneui.widget.RoundedLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:orientation="horizontal"
     android:paddingStart="16dp"
-    android:paddingTop="8dp"
     android:paddingEnd="16dp"
-    android:paddingBottom="8dp">
+    android:paddingBottom="18dp"
+    app:roundedCorners="none">
 
-    <View
-        android:layout_width="2dp"
-        android:layout_height="match_parent"
-        android:layout_marginStart="19dp"
-        android:layout_marginEnd="12dp"
-        android:background="@color/schedule_compose_divider" />
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="match_parent">
+
+        <View
+            android:id="@+id/schedule_thread_connector"
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="36dp"
+            android:background="@color/oneui_text_secondary" />
+
+        <ImageView
+            android:id="@+id/schedule_thread_avatar"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="top|center_horizontal"
+            android:background="@drawable/avatar_twidget"
+            android:contentDescription="@string/account"
+            android:scaleType="centerCrop" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
         android:layout_weight="1"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="vertical">
 
-        <EditText
+        <androidx.appcompat.widget.AppCompatEditText
             android:id="@+id/schedule_thread_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:gravity="top|start"
-            android:hint="@string/schedule_post_hint"
+            android:hint="@string/schedule_compose_hint"
             android:inputType="textCapSentences|textMultiLine"
-            android:maxLength="280"
-            android:minLines="2"
+            android:minHeight="48dp"
+            android:minLines="1"
+            android:padding="0dp"
             android:textColor="@color/oneui_text_primary"
             android:textColorHint="@color/oneui_text_secondary"
-            android:textSize="18sp" />
+            android:textSize="20sp" />
 
-        <HorizontalScrollView
+        <TextView
+            android:id="@+id/schedule_thread_limit_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/schedule_character_limit"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <dev.oneuiproject.oneui.widget.RoundedHorizontalScrollView
             android:id="@+id/schedule_thread_media_strip"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="4dp"
+            android:clipToPadding="false"
+            android:paddingTop="8dp"
+            android:paddingBottom="10dp"
             android:scrollbars="none"
-            android:visibility="gone">
+            android:visibility="gone"
+            app:roundedCorners="none">
 
             <LinearLayout
                 android:id="@+id/schedule_thread_media_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="horizontal" />
-        </HorizontalScrollView>
+        </dev.oneuiproject.oneui.widget.RoundedHorizontalScrollView>
     </LinearLayout>
-</LinearLayout>
+</dev.oneuiproject.oneui.widget.RoundedLinearLayout>

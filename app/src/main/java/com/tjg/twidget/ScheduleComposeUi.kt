@@ -1,143 +1,176 @@
 package com.tjg.twidget
 
 import android.text.Editable
-import android.text.InputFilter
+import android.text.Spanned
 import android.text.TextWatcher
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
+import dev.oneuiproject.oneui.R as OneUiIconR
 
 internal class ScheduleComposeUi(
-    private val activity: ScheduleActivity,
+    private val activity: ScheduleComposeActivity,
     root: View,
 ) {
-    private val closeButton: ImageButton = root.findViewById(R.id.schedule_compose_close)
-    private val draftsButton: TextView = root.findViewById(R.id.schedule_compose_drafts)
-    private val submitButton: TextView = root.findViewById(R.id.schedule_compose_submit)
-    private val avatarView: ImageView = root.findViewById(R.id.schedule_compose_avatar)
-    private val mainInput: EditText = root.findViewById(R.id.schedule_compose_input)
-    private val mediaStrip: HorizontalScrollView = root.findViewById(R.id.schedule_compose_media_strip)
-    private val mediaContainer: LinearLayout = root.findViewById(R.id.schedule_compose_media_container)
-    private val timeSummary: TextView = root.findViewById(R.id.schedule_compose_time_summary)
-    private val attachMediaButton: ImageButton = root.findViewById(R.id.schedule_compose_attach_media)
-    private val downloadMediaButton: ImageButton = root.findViewById(R.id.schedule_compose_download_media)
-    private val pickTimeButton: ImageButton = root.findViewById(R.id.schedule_compose_pick_time)
+    private val threadContainer: LinearLayout = root.findViewById(R.id.schedule_compose_thread_container)
+    private val timeSummary: AppCompatButton = root.findViewById(R.id.schedule_compose_time_summary)
+    private val attachMediaButton: AppCompatImageButton = root.findViewById(R.id.schedule_compose_attach_media)
+    private val cameraButton: AppCompatImageButton = root.findViewById(R.id.schedule_compose_camera)
+    private val addThreadButton: AppCompatImageButton = root.findViewById(R.id.schedule_compose_add_thread)
 
-    private var suppressTextEvents = false
+    private var activeItem = 0
 
     fun bind() {
-        loadAvatar()
-        closeButton.setOnClickListener { activity.onComposeCloseRequested() }
-        draftsButton.setOnClickListener { activity.onComposeSaveDraftRequested() }
-        submitButton.setOnClickListener { activity.onComposeSubmitRequested() }
-        attachMediaButton.setOnClickListener { activity.onComposeAttachMedia() }
-        downloadMediaButton.setOnClickListener { activity.onComposeDownloadMedia() }
-        pickTimeButton.setOnClickListener { activity.onComposePickTimeRequested() }
-
-        bindMainInput()
+        attachMediaButton.setOnClickListener { activity.onComposeAttachMedia(activeItem) }
+        cameraButton.setOnClickListener { activity.onComposeTakePhoto(activeItem) }
+        timeSummary.setOnClickListener { activity.onComposePickTimeRequested() }
+        addThreadButton.setOnClickListener { activity.onComposeAddThreadRequested() }
         refreshFromEditor()
     }
 
-    fun refreshFromEditor() {
-        suppressTextEvents = true
-        mainInput.setText(activity.composeItemText())
-        suppressTextEvents = false
-        refreshMediaStrip(scrollToMedia = false)
+    fun refreshFromEditor(focusLast: Boolean = false) {
+        threadContainer.removeAllViews()
+        val count = activity.composeItemCount()
+        if (focusLast) activeItem = count - 1 else activeItem = activeItem.coerceIn(0, count - 1)
+        repeat(count) { index -> addThreadItem(index) }
         refreshTimeSummary()
-        refreshDownloadButton()
         refreshSubmitState()
+        if (focusLast) {
+            threadContainer.getChildAt(count - 1)?.findViewById<EditText>(R.id.schedule_thread_input)?.apply {
+                requestFocus()
+                setSelection(text.length)
+            }
+        }
     }
 
     fun refreshTimeSummary() {
         timeSummary.text = activity.composeTimeSummaryText()
-        timeSummary.visibility = View.VISIBLE
     }
 
     fun refreshSubmitState() {
-        val enabled = !activity.composeIsBusy() && activity.composeHasContent()
-        submitButton.isEnabled = enabled
-        submitButton.alpha = if (enabled) 1f else 0.45f
+        activity.invalidateOptionsMenu()
     }
 
     fun setBusy(busy: Boolean) {
-        closeButton.isEnabled = !busy
-        draftsButton.isEnabled = !busy
         attachMediaButton.isEnabled = !busy
-        downloadMediaButton.isEnabled = !busy
-        pickTimeButton.isEnabled = !busy
+        cameraButton.isEnabled = !busy
+        timeSummary.isEnabled = !busy
+        addThreadButton.isEnabled = !busy
         refreshSubmitState()
     }
 
-    private fun loadAvatar() {
-        val username = activity.composeAvatarUsername()
-        val stats = if (username.isBlank()) {
-            TwidgetStore.currentStats(activity)
-        } else {
-            TwidgetStore.currentStats(activity, username)
-        }
-        ProfileImageLoader.loadInto(activity, avatarView, stats.profileImage)
+    fun refreshMediaForActiveItem() {
+        refreshFromEditor()
     }
 
-    private fun bindMainInput() {
-        mainInput.filters = arrayOf(InputFilter.LengthFilter(SchedulePolicy.MAX_TEXT_LENGTH))
-        mainInput.addTextChangedListener(object : TextWatcher {
+    private fun addThreadItem(index: Int) {
+        val row = LayoutInflater.from(activity)
+            .inflate(R.layout.item_schedule_thread_compose, threadContainer, false)
+        val input = row.findViewById<EditText>(R.id.schedule_thread_input)
+        val avatar = row.findViewById<ImageView>(R.id.schedule_thread_avatar)
+        val connector = row.findViewById<View>(R.id.schedule_thread_connector)
+        val limitNotice = row.findViewById<TextView>(R.id.schedule_thread_limit_notice)
+        val strip = row.findViewById<HorizontalScrollView>(R.id.schedule_thread_media_strip)
+        val mediaContainer = row.findViewById<LinearLayout>(R.id.schedule_thread_media_container)
+
+        loadAvatar(avatar)
+        avatar.visibility = if (index == 0) View.VISIBLE else View.INVISIBLE
+        connector.visibility = View.VISIBLE
+        (connector.layoutParams as FrameLayout.LayoutParams).apply {
+            topMargin = if (index == 0) activity.composeDp(36) else 0
+            connector.layoutParams = this
+        }
+        input.setText(activity.composeItemText(index))
+        updateCharacterLimit(input, limitNotice)
+        input.setOnFocusChangeListener { _, focused ->
+            if (focused) {
+                activeItem = index
+            }
+        }
+        input.setOnLongClickListener {
+            if (activity.composeItemCount() <= 1) return@setOnLongClickListener false
+            AlertDialog.Builder(activity)
+                .setMessage(R.string.schedule_remove_item)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.schedule_remove_item) { _, _ ->
+                    activity.onComposeRemoveThreadRequested(index)
+                }
+                .show()
+            true
+        }
+        input.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (suppressTextEvents) return
-                activity.composeUpdateItemText(s?.toString().orEmpty())
+                activity.composeUpdateItemText(index, s?.toString().orEmpty())
+                updateCharacterLimit(input, limitNotice)
                 refreshSubmitState()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
-    }
 
-    fun refreshMediaForActiveItem() {
-        refreshMediaStrip(scrollToMedia = activity.composeItemMedia().isNotEmpty())
-        refreshDownloadButton()
-    }
-
-    private fun refreshDownloadButton() {
-        downloadMediaButton.visibility = if (activity.composeItemMedia().isNotEmpty()) {
-            View.VISIBLE
-        } else {
-            View.GONE
-        }
-    }
-
-    private fun refreshMediaStrip(scrollToMedia: Boolean) {
-        mediaContainer.removeAllViews()
-        val media = activity.composeItemMedia()
-        if (media.isEmpty()) {
-            mediaStrip.visibility = View.GONE
-            return
-        }
-        mediaStrip.visibility = View.VISIBLE
+        val media = activity.composeItemMedia(index)
+        strip.visibility = if (media.isEmpty()) View.GONE else View.VISIBLE
         media.forEachIndexed { mediaIndex, source ->
             val preview = LayoutInflater.from(activity)
                 .inflate(R.layout.item_schedule_media_preview, mediaContainer, false)
-            val image = preview.findViewById<ImageView>(R.id.schedule_media_preview_image)
-            val remove = preview.findViewById<ImageButton>(R.id.schedule_media_preview_remove)
-            val download = preview.findViewById<ImageButton>(R.id.schedule_media_preview_download)
-            bindMediaPreview(image, source)
-            remove.setOnClickListener {
-                activity.composeRemoveMedia(mediaIndex)
-                refreshFromEditor()
-            }
-            download.setOnClickListener {
-                activity.onComposeDownloadMedia(mediaIndex)
+            bindMediaPreview(preview.findViewById(R.id.schedule_media_preview_image), source)
+            preview.setOnLongClickListener {
+                activeItem = index
+                AlertDialog.Builder(activity)
+                    .setItems(arrayOf(
+                        activity.getString(R.string.schedule_remove_item),
+                        activity.getString(R.string.schedule_download_media),
+                    )) { _, action ->
+                        if (action == 0) {
+                            activity.composeRemoveMedia(index, mediaIndex)
+                            refreshFromEditor()
+                        } else {
+                            activity.onComposeDownloadMedia(index, mediaIndex)
+                        }
+                    }
+                    .show()
+                true
             }
             mediaContainer.addView(preview)
         }
-        if (scrollToMedia) {
-            mediaStrip.post {
-                mediaStrip.requestRectangleOnScreen(android.graphics.Rect(), true)
-            }
+        threadContainer.addView(row)
+    }
+
+    private fun updateCharacterLimit(input: EditText, notice: TextView) {
+        val text = input.text ?: return
+        text.getSpans(0, text.length, ExcessCharacterSpan::class.java).forEach(text::removeSpan)
+        val limit = activity.composeCharacterLimit()
+        val length = SchedulePolicy.textLength(text.toString())
+        val excess = (length - limit).coerceAtLeast(0)
+        if (excess == 0) {
+            notice.visibility = View.GONE
+            return
         }
+        val excessStart = text.toString().offsetByCodePoints(0, limit)
+        text.setSpan(
+            ExcessCharacterSpan(activity.getColor(R.color.schedule_character_limit)),
+            excessStart,
+            text.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        notice.text = activity.getString(R.string.schedule_character_limit_over, excess)
+        notice.visibility = View.VISIBLE
+    }
+
+    private fun loadAvatar(view: ImageView) {
+        val username = activity.composeAvatarUsername()
+        val stats = if (username.isBlank()) TwidgetStore.currentStats(activity)
+        else TwidgetStore.currentStats(activity, username)
+        ProfileImageLoader.loadInto(activity, view, stats.profileImage)
     }
 
     private fun bindMediaPreview(image: ImageView, source: ScheduleMediaSource) {
@@ -146,17 +179,14 @@ internal class ScheduleComposeUi(
                 image.scaleType = ImageView.ScaleType.CENTER_CROP
                 image.setImageURI(android.net.Uri.parse(source.uri))
             }
-            is PublicUrlMedia -> {
-                ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
-            }
+            is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
             is PostponeLibraryMedia -> {
                 val url = source.url.orEmpty()
-                if (url.isBlank()) {
-                    image.setImageResource(R.drawable.ic_schedule_media)
-                } else {
-                    ProfileImageLoader.loadMediaInto(activity, image, url, activity.composeDp(12))
-                }
+                if (url.isBlank()) image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
+                else ProfileImageLoader.loadMediaInto(activity, image, url, activity.composeDp(12))
             }
         }
     }
+
+    private class ExcessCharacterSpan(color: Int) : ForegroundColorSpan(color)
 }

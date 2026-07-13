@@ -75,6 +75,12 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".ScheduleComposeActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".SettingsScheduleActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />

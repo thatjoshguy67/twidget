@@ -53,4 +53,24 @@ class SchedulePolicyTest {
         assertEquals(ScheduleValidationCode.EMPTY_THREAD, emptyThread.single().code)
         assertEquals(ScheduleValidationCode.EMPTY_ITEM, emptyItem.single().code)
     }
+
+    @Test
+    fun premiumLimitAllowsLongerPostsButStillRejectsStandardPosts() {
+        val text = "x".repeat(281)
+        val accepted = SchedulePolicy.validate(
+            listOf(ScheduleThreadItem(text = text)),
+            now + 1,
+            now,
+            SchedulePolicy.PREMIUM_TEXT_LENGTH,
+        )
+        val rejected = SchedulePolicy.validate(
+            listOf(ScheduleThreadItem(text = text)),
+            now + 1,
+            now,
+            SchedulePolicy.STANDARD_TEXT_LENGTH,
+        )
+
+        assertTrue(accepted.isEmpty())
+        assertEquals(ScheduleValidationCode.TEXT_TOO_LONG, rejected.single().code)
+    }
 }

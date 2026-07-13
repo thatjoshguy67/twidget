@@ -90,7 +90,11 @@ class PostponeClient(
     fun scheduleTweet(post: ScheduledPost): PostponeResult<PostponeMutation> =
         runCatching {
             require(post.provider == ScheduleProvider.POSTPONE) { "Post must use the Postpone provider" }
-            PostponeGraphQlCodec.tweetMutationRequest(post, update = false)
+            PostponeGraphQlCodec.tweetMutationRequest(
+                post,
+                update = false,
+                maxTextLength = accountTextLimit(post),
+            )
         }.fold(
             onSuccess = { executeAndParse(it) { raw -> PostponeGraphQlCodec.parseMutation(raw, "scheduleTweet") } },
             onFailure = { failure(it) },
@@ -100,13 +104,22 @@ class PostponeClient(
         runCatching {
             require(post.provider == ScheduleProvider.POSTPONE) { "Post must use the Postpone provider" }
             require(!post.remotePostId.isNullOrBlank()) { "A remote post ID is required for updates" }
-            PostponeGraphQlCodec.tweetMutationRequest(post, update = true)
+            PostponeGraphQlCodec.tweetMutationRequest(
+                post,
+                update = true,
+                maxTextLength = accountTextLimit(post),
+            )
         }.fold(
             onSuccess = {
                 executeAndParse(it) { raw -> PostponeGraphQlCodec.parseMutation(raw, "updateScheduledTweet") }
             },
             onFailure = { failure(it) },
         )
+
+    private fun accountTextLimit(post: ScheduledPost): Int {
+        val account = post.accountId?.takeIf(String::isNotBlank) ?: post.accountUsername
+        return SchedulePolicy.textLimit(TwidgetStore.currentStats(appContext, account).isVerified)
+    }
 
     /**
      * Postpone documents deletePlatformPost rather than a dedicated cancel
@@ -227,9 +240,13 @@ internal object PostponeGraphQlCodec {
         "Media",
     )
 
-    fun tweetMutationRequest(post: ScheduledPost, update: Boolean): String {
+    fun tweetMutationRequest(
+        post: ScheduledPost,
+        update: Boolean,
+        maxTextLength: Int = SchedulePolicy.STANDARD_TEXT_LENGTH,
+    ): String {
         val scheduledAt = requireNotNull(post.scheduledAt) { "A scheduled time is required" }
-        val issues = SchedulePolicy.validate(post)
+        val issues = SchedulePolicy.validate(post, maxTextLength = maxTextLength)
         require(issues.isEmpty()) { issues.joinToString(" ") { it.message } }
         val inputValues = linkedMapOf<String, JsonValue>(
             "username" to json(post.accountUsername.trim().trimStart('@')),

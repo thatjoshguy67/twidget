@@ -3,4 +3,7 @@
     <cache-path
         name="updates"
         path="updates/" />
+    <files-path
+        name="scheduled_media"
+        path="scheduled-media/" />
 </paths>

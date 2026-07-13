@@ -40,29 +40,19 @@
                     android:paddingBottom="24dp" />
             </androidx.core.widget.NestedScrollView>
 
-            <androidx.appcompat.widget.AppCompatButton
+            <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
                 android:id="@+id/schedule_primary_button"
-                style="@style/OneUI.ContainedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="52dp"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
                 android:layout_gravity="bottom|end"
                 android:layout_marginEnd="20dp"
                 android:layout_marginBottom="20dp"
-                android:minWidth="152dp"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
-                android:text="@string/schedule_new"
-                android:textAllCaps="false"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />
+                android:contentDescription="@string/schedule_new"
+                app:backgroundTint="@color/oneui_accent"
+                app:fabCustomSize="70dp"
+                app:srcCompat="@drawable/ic_oui_add"
+                app:tint="@android:color/white" />
         </FrameLayout>
     </dev.oneuiproject.oneui.layout.ToolbarLayout>
 
-    <include
-        android:id="@+id/schedule_compose_panel"
-        layout="@layout/view_schedule_compose"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone" />
 </FrameLayout>

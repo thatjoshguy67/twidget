@@ -106,16 +106,26 @@ data class ScheduleValidationIssue(
 )
 
 object SchedulePolicy {
-    const val MAX_TEXT_LENGTH = 280
+    const val STANDARD_TEXT_LENGTH = 280
+    const val PREMIUM_TEXT_LENGTH = 25_000
     const val MAX_MEDIA_PER_ITEM = 4
 
-    fun validate(post: ScheduledPost, nowMillis: Long = System.currentTimeMillis()): List<ScheduleValidationIssue> =
-        validate(post.thread, post.scheduledAt, nowMillis)
+    fun textLimit(isVerified: Boolean?): Int =
+        if (isVerified == true) PREMIUM_TEXT_LENGTH else STANDARD_TEXT_LENGTH
+
+    fun textLength(text: String): Int = text.codePointCount(0, text.length)
+
+    fun validate(
+        post: ScheduledPost,
+        nowMillis: Long = System.currentTimeMillis(),
+        maxTextLength: Int = STANDARD_TEXT_LENGTH,
+    ): List<ScheduleValidationIssue> = validate(post.thread, post.scheduledAt, nowMillis, maxTextLength)
 
     fun validate(
         thread: List<ScheduleThreadItem>,
         scheduledAt: Long?,
         nowMillis: Long = System.currentTimeMillis(),
+        maxTextLength: Int = STANDARD_TEXT_LENGTH,
     ): List<ScheduleValidationIssue> {
         val issues = mutableListOf<ScheduleValidationIssue>()
         if (thread.isEmpty()) {
@@ -132,11 +142,11 @@ object SchedulePolicy {
                     "A thread item must contain text or media.",
                 )
             }
-            if (item.text.length > MAX_TEXT_LENGTH) {
+            if (textLength(item.text) > maxTextLength) {
                 issues += ScheduleValidationIssue(
                     ScheduleValidationCode.TEXT_TOO_LONG,
                     index,
-                    "Text must be $MAX_TEXT_LENGTH characters or fewer.",
+                    "Text must be $maxTextLength characters or fewer.",
                 )
             }
             if (item.media.size > MAX_MEDIA_PER_ITEM) {

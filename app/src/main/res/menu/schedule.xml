@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item android:id="@+id/schedule_filter_all_menu" android:title="@string/schedule_filter_all" android:checkable="true" android:showAsAction="never" />
+        <item android:id="@+id/schedule_filter_scheduled_menu" android:title="@string/schedule_status_scheduled" android:checkable="true" android:showAsAction="never" />
+        <item android:id="@+id/schedule_filter_drafts_menu" android:title="@string/schedule_status_draft" android:checkable="true" android:showAsAction="never" />
+        <item android:id="@+id/schedule_filter_action_menu" android:title="@string/schedule_status_needs_action" android:checkable="true" android:showAsAction="never" />
+        <item android:id="@+id/schedule_filter_failed_menu" android:title="@string/schedule_status_failed" android:checkable="true" android:showAsAction="never" />
+    </group>
+</menu>

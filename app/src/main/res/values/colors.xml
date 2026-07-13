@@ -9,6 +9,14 @@
     <color name="oneui_text_secondary">#848487</color>
     <color name="oneui_accent">#387aff</color>
     <color name="oneui_accent_translucent">#22387aff</color>
+    <color name="schedule_ready">#E65B17</color>
+    <color name="schedule_calendar_cell">#F9F9FB</color>
+    <color name="schedule_calendar_post">#EAEAEA</color>
+    <color name="schedule_swipe_delete">#E94B4B</color>
+    <color name="schedule_swipe_duplicate">#43A865</color>
+    <color name="schedule_character_limit">#D92D2D</color>
+    <color name="schedule_toolbar_floating">#E8FCFCFF</color>
+    <color name="schedule_toolbar_floating_stroke">#66FFFFFF</color>
     <color name="oneui_preview_bg">#667788</color>
     <color name="metric_green">#3b9b55</color>
     <color name="metric_red">#E53935</color>

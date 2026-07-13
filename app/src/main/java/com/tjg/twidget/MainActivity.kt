@@ -105,7 +105,10 @@ class MainActivity : EdgeToEdgeActivity() {
             return
         }
         setContentView(R.layout.activity_main)
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout))
+        val scheduleFab = findViewById<View>(R.id.schedule_fab)
+        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { navigationBarInset ->
+            scheduleFab.updateBottomMarginForNavigationBar(dp(20), navigationBarInset)
+        }
         onBackPressedDispatcher.addCallback(this, exitEditModeOnBack)
         RefreshWorker.schedule(this)
         TwidgetStore.migrateStoredHistories(this)

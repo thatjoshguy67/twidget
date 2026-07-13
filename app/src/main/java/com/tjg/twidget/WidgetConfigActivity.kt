@@ -59,10 +59,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         val buttonBar = findViewById<View>(R.id.config_button_bar)
         val baseButtonMargin = (16 * resources.displayMetrics.density).toInt()
         applyEdgeToEdgeInsets(findViewById(R.id.widget_config_root)) { navigationBarInset ->
-            (buttonBar.layoutParams as FrameLayout.LayoutParams).apply {
-                bottomMargin = baseButtonMargin + navigationBarInset
-                buttonBar.layoutParams = this
-            }
+            buttonBar.updateBottomMarginForNavigationBar(baseButtonMargin, navigationBarInset)
         }
         if (isLockWidget) {
             // Lock screen artwork is monotone white — opacity, tint, font, and

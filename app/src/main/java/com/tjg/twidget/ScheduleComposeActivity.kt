@@ -129,10 +129,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         val bottomBar = findViewById<View>(R.id.schedule_compose_bottom_bar)
         root.setNavigationButtonOnClickListener { requestClose() }
         applyEdgeToEdgeInsets(root) { navigationBarInset ->
-            (bottomBar.layoutParams as? ViewGroup.MarginLayoutParams)?.let { params ->
-                params.bottomMargin = navigationBarInset
-                bottomBar.layoutParams = params
-            }
+            bottomBar.updateBottomMarginForNavigationBar(0, navigationBarInset)
         }
         onBackPressedDispatcher.addCallback(this, closeCallback)
 

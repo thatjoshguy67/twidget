@@ -57,10 +57,25 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
                     WindowInsetsCompat.Type.displayCutout()
             )
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime()) && ime.bottom > 0
             view.setPadding(safe.left, safe.top, safe.right, ime.bottom)
-            onNavigationBarInset(safe.bottom)
+            // IME insets already include the navigation region on Samsung and
+            // several other OEM keyboards. Do not add it to floating chrome twice.
+            onNavigationBarInset(if (imeVisible) 0 else safe.bottom)
             insets
         }
         ViewCompat.requestApplyInsets(root)
+    }
+
+    /** Keeps bottom-floating chrome above gesture and button navigation bars. */
+    protected fun View.updateBottomMarginForNavigationBar(
+        baseMargin: Int,
+        navigationBarInset: Int,
+    ) {
+        val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        val targetMargin = baseMargin + navigationBarInset
+        if (params.bottomMargin == targetMargin) return
+        params.bottomMargin = targetMargin
+        layoutParams = params
     }
 }

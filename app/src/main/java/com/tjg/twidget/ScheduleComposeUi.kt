@@ -100,6 +100,7 @@ internal class ScheduleComposeUi(
             connector.layoutParams = this
         }
         input.setText(activity.composeItemText(index))
+        updateComposerTokenHighlights(input)
         updateCharacterLimit(input, limitNotice)
         updateRemoveThreadButton(index, input, removeThread, media.isEmpty())
         removeThread.setOnClickListener { activity.onComposeRemoveThreadRequested(index) }
@@ -123,6 +124,7 @@ internal class ScheduleComposeUi(
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 activity.composeUpdateItemText(index, s?.toString().orEmpty())
+                updateComposerTokenHighlights(input)
                 updateCharacterLimit(input, limitNotice)
                 updateRemoveThreadButton(index, input, removeThread, media.isEmpty())
                 refreshSubmitState()
@@ -232,6 +234,19 @@ internal class ScheduleComposeUi(
         notice.visibility = View.VISIBLE
     }
 
+    private fun updateComposerTokenHighlights(input: EditText) {
+        val text = input.text ?: return
+        text.getSpans(0, text.length, ComposerTokenSpan::class.java).forEach(text::removeSpan)
+        COMPOSER_TOKEN_PATTERN.findAll(text).forEach { match ->
+            text.setSpan(
+                ComposerTokenSpan(activity.getColor(R.color.oneui_accent)),
+                match.range.first,
+                match.range.last + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
+    }
+
     private fun loadAvatar(view: ImageView) {
         val username = activity.composeAvatarUsername()
         val stats = if (username.isBlank()) TwidgetStore.currentStats(activity)
@@ -308,5 +323,12 @@ internal class ScheduleComposeUi(
         image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
     }
 
+    private class ComposerTokenSpan(color: Int) : ForegroundColorSpan(color)
     private class ExcessCharacterSpan(color: Int) : ForegroundColorSpan(color)
+
+    private companion object {
+        val COMPOSER_TOKEN_PATTERN = Regex(
+            "(?<![A-Za-z0-9_])@[A-Za-z0-9_]{1,15}|(?<![\\p{L}\\p{N}_])#[\\p{L}\\p{N}_]+"
+        )
+    }
 }

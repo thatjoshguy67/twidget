@@ -73,7 +73,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
         findViewById<ToolbarLayout>(R.id.schedule_root)
             .setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         applyEdgeToEdgeInsets(findViewById(R.id.schedule_root)) { inset ->
-            primaryButton.updateBottomMargin(dp(20) + inset)
+            primaryButton.updateBottomMarginForNavigationBar(dp(20), inset)
         }
 
         val scheduleId = intent.getStringExtra(ScheduleDeepLink.EXTRA_SCHEDULE_ID)
@@ -940,13 +940,6 @@ class ScheduleActivity : FoldablePopOverActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-
-    private fun View.updateBottomMargin(value: Int) {
-        (layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-            it.bottomMargin = value
-            layoutParams = it
-        }
-    }
 
     private fun <T> MutableList<T>.swap(first: Int, second: Int) {
         val value = this[first]

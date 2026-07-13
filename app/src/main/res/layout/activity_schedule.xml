@@ -9,9 +9,10 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/oneui_bg"
-        app:expandable="false"
+        app:expandable="true"
         app:expanded="false"
         app:handleInsets="false"
+        app:mainRoundedCorners="top"
         app:showNavButtonAsBack="true"
         app:title="@string/schedule_title">
 

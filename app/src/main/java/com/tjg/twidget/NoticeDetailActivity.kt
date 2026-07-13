@@ -11,6 +11,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import dev.oneuiproject.oneui.widget.RoundedNestedScrollView
 import dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+import dev.oneuiproject.oneui.ktx.semSetBackgroundBlurEnabled
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -24,6 +25,7 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
         val scroll = findViewById<RoundedNestedScrollView>(R.id.notice_detail_scroll)
         val back = findViewById<ScrollAwareFloatingActionButton>(R.id.notice_detail_back)
         back.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        back.post { back.semSetBackgroundBlurEnabled() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val safe = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()

@@ -1,5 +1,9 @@
 package com.tjg.twidget
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Build
 import android.text.Editable
 import android.text.Spanned
 import android.text.TextWatcher
@@ -8,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.util.Size
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -18,6 +23,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import dev.oneuiproject.oneui.R as OneUiIconR
+import kotlin.math.roundToInt
 
 internal class ScheduleComposeUi(
     private val activity: ScheduleComposeActivity,
@@ -185,11 +191,24 @@ internal class ScheduleComposeUi(
                     val dy = kotlin.math.abs(event.y - downY)
                     if (dx > touchSlop && dx > dy) view.parent.requestDisallowInterceptTouchEvent(true)
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     view.parent.requestDisallowInterceptTouchEvent(false)
+                    strip.post { snapMediaStrip(strip) }
+                }
             }
             false
         }
+    }
+
+    private fun snapMediaStrip(strip: HorizontalScrollView) {
+        val content = strip.getChildAt(0) as? LinearLayout ?: return
+        val first = content.getChildAt(0) ?: return
+        val params = first.layoutParams as? LinearLayout.LayoutParams ?: return
+        val stride = first.width + params.marginStart + params.marginEnd
+        if (stride <= 0) return
+        val maxScroll = (content.width - strip.width).coerceAtLeast(0)
+        val target = (strip.scrollX.toFloat() / stride).roundToInt() * stride
+        strip.smoothScrollTo(target.coerceIn(0, maxScroll), 0)
     }
 
     private fun updateCharacterLimit(input: EditText, notice: TextView) {
@@ -224,11 +243,15 @@ internal class ScheduleComposeUi(
         when (source) {
             is LocalUriMedia -> {
                 image.scaleType = ImageView.ScaleType.CENTER_CROP
-                runCatching { image.setImageURI(android.net.Uri.parse(source.uri)) }
-                    .onFailure {
-                        image.scaleType = ImageView.ScaleType.CENTER_INSIDE
-                        image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
-                    }
+                val uri = Uri.parse(source.uri)
+                val mimeType = source.mimeType
+                    ?: runCatching { activity.contentResolver.getType(uri) }.getOrNull()
+                if (mimeType?.startsWith("video/") == true) {
+                    bindLocalVideoThumbnail(image, source)
+                } else {
+                    runCatching { image.setImageURI(uri) }
+                        .onFailure { showMediaPlaceholder(image) }
+                }
             }
             is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
             is PostponeLibraryMedia -> {
@@ -237,6 +260,52 @@ internal class ScheduleComposeUi(
                 else ProfileImageLoader.loadMediaInto(activity, image, url, activity.composeDp(12))
             }
         }
+    }
+
+    private fun bindLocalVideoThumbnail(image: ImageView, source: LocalUriMedia) {
+        val uri = Uri.parse(source.uri)
+        image.tag = source.uri
+        showMediaPlaceholder(image)
+        AppExecutors.execute {
+            val thumbnail = loadVideoThumbnail(uri)
+            activity.runOnUiThread {
+                if (activity.isFinishing || activity.isDestroyed || image.tag != source.uri) {
+                    return@runOnUiThread
+                }
+                if (thumbnail == null) {
+                    showMediaPlaceholder(image)
+                } else {
+                    image.scaleType = ImageView.ScaleType.CENTER_CROP
+                    image.setImageBitmap(thumbnail)
+                }
+            }
+        }
+    }
+
+    private fun loadVideoThumbnail(uri: Uri): Bitmap? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                activity.contentResolver.loadThumbnail(
+                    uri,
+                    Size(activity.composeDp(440), activity.composeDp(438)),
+                    null,
+                )
+            }.getOrNull()?.let { return it }
+        }
+        return runCatching {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(activity, uri)
+                retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            } finally {
+                retriever.release()
+            }
+        }.getOrNull()
+    }
+
+    private fun showMediaPlaceholder(image: ImageView) {
+        image.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
     }
 
     private class ExcessCharacterSpan(color: Int) : ForegroundColorSpan(color)

@@ -12,6 +12,8 @@ import android.provider.Settings
 import android.text.InputType
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.MimeTypeMap
 import android.widget.EditText
 import android.widget.Toast
@@ -124,8 +126,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_schedule_compose)
         val root = findViewById<ToolbarLayout>(R.id.schedule_compose_root)
+        val bottomBar = findViewById<View>(R.id.schedule_compose_bottom_bar)
         root.setNavigationButtonOnClickListener { requestClose() }
-        applyEdgeToEdgeInsets(root)
+        applyEdgeToEdgeInsets(root) { navigationBarInset ->
+            (bottomBar.layoutParams as? ViewGroup.MarginLayoutParams)?.let { params ->
+                params.bottomMargin = navigationBarInset
+                bottomBar.layoutParams = params
+            }
+        }
         onBackPressedDispatcher.addCallback(this, closeCallback)
 
         editorPost = intent.getStringExtra(EXTRA_SCHEDULE_ID)?.let(store::get)

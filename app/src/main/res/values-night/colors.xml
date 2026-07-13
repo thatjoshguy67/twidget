@@ -12,6 +12,7 @@
     <color name="schedule_character_limit">#FF6B6B</color>
     <color name="schedule_toolbar_floating">#E817171A</color>
     <color name="schedule_toolbar_floating_stroke">#33FFFFFF</color>
+    <color name="notice_detail_back_surface">#B826272A</color>
     <color name="oneui_preview_bg">#333333</color>
     <!-- Static launcher widget previews mirror the dark widget card. -->
     <color name="widget_preview_surface">#17171A</color>

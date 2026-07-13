@@ -2,7 +2,6 @@ package com.tjg.twidget
 
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -12,6 +11,7 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -175,17 +175,21 @@ class ScheduleActivity : FoldablePopOverActivity() {
 
     private fun setupQueueViewSwitcher() {
         queueSwitcher = FloatingActionBar(this).apply {
+            elevation = 0f
+            translationZ = 0f
             setButtonLabel(0, getString(R.string.schedule_view_list))
             setButtonLabel(1, getString(R.string.schedule_view_calendar))
             setButtonIcon(0, ContextCompat.getDrawable(context, OneUiIconR.drawable.ic_oui_list))
             setButtonIcon(1, ContextCompat.getDrawable(context, OneUiIconR.drawable.ic_oui_calendar))
             post {
                 if (selectedQueueView == ScheduleQueueView.CALENDAR) setSelectedButton(1)
+                updateQueueSwitcherBackingLabels()
                 setOnButtonSelectedListener { index ->
                     val next = if (index == 0) ScheduleQueueView.LIST else ScheduleQueueView.CALENDAR
                     if (next == selectedQueueView) return@setOnButtonSelectedListener
                     selectedQueueView = next
                     selectedCalendarDate = null
+                    updateQueueSwitcherBackingLabels()
                     animateQueueModeChange(if (index == 0) -1 else 1)
                 }
             }
@@ -195,6 +199,13 @@ class ScheduleActivity : FoldablePopOverActivity() {
             )
         }
         switcherHost.addView(queueSwitcher)
+    }
+
+    private fun updateQueueSwitcherBackingLabels() {
+        queueSwitcher.findViewById<View>(OneUiDesignR.id.text1).alpha =
+            if (queueSwitcher.selectedIndex == 0) 0f else 1f
+        queueSwitcher.findViewById<View>(OneUiDesignR.id.text2).alpha =
+            if (queueSwitcher.selectedIndex == 1) 0f else 1f
     }
 
     private fun animateQueueModeChange(direction: Int) {
@@ -358,10 +369,20 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 return true
             }
         })
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
+        var downX = 0f
+        var downY = 0f
         cell.isClickable = true
         cell.setOnTouchListener { view, event ->
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                view.parent.requestDisallowInterceptTouchEvent(true)
+                downX = event.x
+                downY = event.y
+            } else if (event.actionMasked == MotionEvent.ACTION_MOVE) {
+                val dx = abs(event.x - downX)
+                val dy = abs(event.y - downY)
+                if (dx > touchSlop && dx > dy) {
+                    view.parent.requestDisallowInterceptTouchEvent(true)
+                }
             }
             val handled = detector.onTouchEvent(event)
             if (
@@ -406,10 +427,9 @@ class ScheduleActivity : FoldablePopOverActivity() {
         addView(metaText(getString(R.string.schedule_calendar_empty)).apply { gravity = Gravity.CENTER })
     }
 
-    private fun queueCard(post: ScheduledPost): View {
-        val foreground = card().apply {
+    private fun queueCard(post: ScheduledPost): View = card().apply {
             setPadding(0, 0, 0, 0)
-            layoutParams = FrameLayout.LayoutParams(
+            layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { setMargins(dp(6), dp(4), dp(6), dp(12)) }
@@ -447,6 +467,11 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 setOnClickListener { openEditor(post) }
             }
             addView(cardItem)
+            cardItem.findViewById<View>(OneUiDesignR.id.cardview_container)
+                .setOnLongClickListener { anchor ->
+                    showQueueMenu(anchor, post)
+                    true
+                }
             if (ready) addView(actionRow().apply {
                 setPadding(dp(16), 0, dp(16), dp(14))
                 addView(actionButton(getString(R.string.schedule_post_now)) { postReady(post) })
@@ -467,90 +492,6 @@ class ScheduleActivity : FoldablePopOverActivity() {
                     setTextColor(ContextCompat.getColor(context, R.color.metric_red))
                 })
             }
-            bindQueueCardGestures(
-                cardItem.findViewById(OneUiDesignR.id.cardview_container),
-                this,
-                post,
-            )
-        }
-
-        return FrameLayout(this).apply {
-            clipChildren = true
-            addView(LinearLayout(this@ScheduleActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                addView(swipeActionLabel(getString(R.string.schedule_duplicate), R.color.schedule_swipe_duplicate, Gravity.START))
-                addView(swipeActionLabel(getString(R.string.delete), R.color.schedule_swipe_delete, Gravity.END))
-            }, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT).apply {
-                setMargins(dp(6), dp(4), dp(6), dp(12))
-            })
-            addView(foreground)
-        }
-    }
-
-    private fun swipeActionLabel(label: String, color: Int, gravity: Int): TextView = AppCompatButton(this).apply {
-        text = label
-        textSize = 14f
-        typeface = TwidgetFonts.oneUiSans(context, 600)
-        setTextColor(Color.WHITE)
-        this.gravity = Gravity.CENTER_VERTICAL or gravity
-        setPadding(dp(18), 0, dp(18), 0)
-        backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, color))
-        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)
-    }
-
-    private fun bindQueueCardGestures(gestureSurface: View, movingCard: View, post: ScheduledPost) {
-        var downX = 0f
-        var downY = 0f
-        var dragging = false
-        var longPressed = false
-        val longPressAction = Runnable {
-            if (!dragging) {
-                longPressed = true
-                showQueueMenu(gestureSurface, post)
-            }
-        }
-        gestureSurface.setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX
-                    downY = event.rawY
-                    dragging = false
-                    longPressed = false
-                    view.postDelayed(longPressAction, 500)
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.rawX - downX
-                    if (!dragging && abs(dx) > dp(8) && abs(dx) > abs(event.rawY - downY)) {
-                        dragging = true
-                        view.removeCallbacks(longPressAction)
-                        view.parent.requestDisallowInterceptTouchEvent(true)
-                    }
-                    if (dragging) {
-                        movingCard.translationX = dx.coerceIn(-dp(132).toFloat(), dp(132).toFloat())
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    view.removeCallbacks(longPressAction)
-                    val dx = event.rawX - downX
-                    when {
-                        dragging && event.actionMasked == MotionEvent.ACTION_UP && dx > dp(84) -> {
-                            movingCard.animate().translationX(0f).setDuration(160).start()
-                            duplicate(post)
-                        }
-                        dragging && event.actionMasked == MotionEvent.ACTION_UP && dx < -dp(84) -> {
-                            movingCard.animate().translationX(0f).setDuration(160).start()
-                            deletePost(post)
-                        }
-                        !dragging && !longPressed && event.actionMasked == MotionEvent.ACTION_UP -> view.performClick()
-                        else -> movingCard.animate().translationX(0f).setDuration(160).start()
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
     }
 
     private fun postReady(post: ScheduledPost) {

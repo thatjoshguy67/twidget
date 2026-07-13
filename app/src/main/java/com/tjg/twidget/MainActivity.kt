@@ -43,6 +43,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.widget.TextViewCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.oneuiproject.oneui.layout.Badge
@@ -1298,7 +1299,10 @@ class MainActivity : EdgeToEdgeActivity() {
     private fun drawerAccountIcon(stats: ProfileStats): Pair<Drawable, Boolean> {
         val iconSize = resources.getDimensionPixelSize(OneUiDesignR.dimen.oui_des_drawer_menu_item_icon_size)
         ProfileImageLoader.cachedCircularBitmap(this, stats.profileImage, iconSize)?.let { bitmap ->
-            return BitmapDrawable(resources, bitmap) to true
+            return BitmapDrawable(resources, bitmap).apply {
+                setTintList(null)
+                clearColorFilter()
+            } to true
         }
 
         queueDrawerAvatarDownload(stats.profileImage)
@@ -1331,9 +1335,20 @@ class MainActivity : EdgeToEdgeActivity() {
             OneUiDesignR.color.oui_des_drawer_menu_item_text_color_selector,
         )
         drawerAccountItemIds.keys.forEach { itemId ->
-            drawerNav.findViewById<View>(itemId)
+            val iconView = drawerNav.findViewById<View>(itemId)
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
-                ?.imageTintList = if (itemId in drawerAvatarItemIds) null else normalTint
+                ?: return@forEach
+            if (itemId in drawerAvatarItemIds) {
+                iconView.imageTintList = null
+                iconView.clearColorFilter()
+                iconView.drawable?.mutate()?.let { avatar ->
+                    DrawableCompat.setTintList(avatar, null)
+                    avatar.clearColorFilter()
+                    iconView.setImageDrawable(avatar)
+                }
+            } else {
+                iconView.imageTintList = normalTint
+            }
         }
         listOf(
             DRAWER_ITEM_ADD_ACCOUNT,

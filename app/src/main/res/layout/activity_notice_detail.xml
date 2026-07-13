@@ -134,7 +134,7 @@
         android:layout_marginTop="18dp"
         android:contentDescription="@string/notices_back"
         android:elevation="8dp"
-        app:backgroundTint="#D926272A"
+        app:backgroundTint="@color/notice_detail_back_surface"
         app:fabCustomSize="56dp"
         app:srcCompat="@drawable/ic_oui_back"
         app:tint="@android:color/white" />

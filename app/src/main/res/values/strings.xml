@@ -374,8 +374,6 @@
     <string name="schedule_postpone_auto_summary">Posts automatically at the scheduled time via Postpone</string>
     <string name="schedule_one_image_attached">1 image attached</string>
     <string name="schedule_images_attached">%1$d images attached</string>
-    <string name="schedule_swipe_duplicate_hint">Swipe right to duplicate</string>
-    <string name="schedule_swipe_delete_hint">Swipe left to delete</string>
     <string name="schedule_more_actions">More actions</string>
     <string name="schedule_take_photo">Add photo or video</string>
     <string name="schedule_camera_local_only">Camera attachments are available for local reminders</string>

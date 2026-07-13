@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:paddingEnd="12dp">
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/schedule_compose_draft_button"
+        style="@style/OneUI.ButtonStyleTransparent"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:minWidth="0dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="@string/schedule_compose_draft"
+        android:textAllCaps="false"
+        android:textColor="@color/oneui_text_primary"
+        android:textSize="16sp" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/schedule_compose_save_button"
@@ -17,4 +33,4 @@
         android:textSize="16sp"
         android:textStyle="bold"
         android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />
-</FrameLayout>
+</LinearLayout>

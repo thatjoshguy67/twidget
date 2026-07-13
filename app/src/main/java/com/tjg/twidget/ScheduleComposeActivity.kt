@@ -38,6 +38,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     private val postponeClient by lazy { PostponeClient(this) }
 
     private lateinit var composeUi: ScheduleComposeUi
+    private var draftButton: AppCompatButton? = null
     private var saveButton: AppCompatButton? = null
     private var editorPost: ScheduledPost? = null
     private var editorProvider = ScheduleProvider.LOCAL_REMINDER
@@ -159,16 +160,22 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.schedule_compose, menu)
-        saveButton = menu.findItem(R.id.schedule_compose_save)?.actionView
-            ?.findViewById(R.id.schedule_compose_save_button)
+        val actionView = menu.findItem(R.id.schedule_compose_save)?.actionView
+        draftButton = actionView?.findViewById(R.id.schedule_compose_draft_button)
+        saveButton = actionView?.findViewById(R.id.schedule_compose_save_button)
+        draftButton?.setOnClickListener { saveDraft() }
         saveButton?.setOnClickListener { submitSchedule() }
         return true
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        val enabled = !busy && composeHasContent() && !composeHasInvalidLength()
-        saveButton?.isEnabled = enabled
-        saveButton?.alpha = if (enabled) 1f else 0.45f
+        val hasContent = composeHasContent()
+        val draftEnabled = !busy && hasContent
+        val saveEnabled = draftEnabled && !composeHasInvalidLength()
+        draftButton?.isEnabled = draftEnabled
+        draftButton?.alpha = if (draftEnabled) 1f else 0.45f
+        saveButton?.isEnabled = saveEnabled
+        saveButton?.alpha = if (saveEnabled) 1f else 0.45f
         return super.onPrepareOptionsMenu(menu)
     }
 

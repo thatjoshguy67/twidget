@@ -367,8 +367,9 @@
     <string name="schedule_compose_everyone">Everyone</string>
     <string name="schedule_compose_reply_setting">Everyone can reply</string>
     <string name="schedule_compose_post">Schedule</string>
+    <string name="schedule_compose_draft">Draft</string>
     <string name="schedule_compose_save">Save</string>
-    <string name="schedule_compose_title">Compose tweet</string>
+    <string name="schedule_compose_title">Compose</string>
     <string name="schedule_ready_now">Ready to post now</string>
     <string name="schedule_post_now">Post</string>
     <string name="schedule_postpone_auto_summary">Posts automatically at the scheduled time via Postpone</string>

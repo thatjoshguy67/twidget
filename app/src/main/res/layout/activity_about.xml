@@ -185,28 +185,6 @@
             <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/notices_section" />
-
-            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/oneui_card_bg"
-                android:orientation="vertical">
-
-                <dev.oneuiproject.oneui.widget.CardItemView
-                    android:id="@+id/about_notices"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:clickable="true"
-                    app:showTopDivider="false"
-                    app:summary="@string/notices_about_summary"
-                    app:summaryMaxLines="3"
-                    app:title="@string/notices_title" />
-            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
-
-            <dev.oneuiproject.oneui.widget.Separator
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:text="@string/about_developer_section" />
 
             <dev.oneuiproject.oneui.widget.RoundedLinearLayout

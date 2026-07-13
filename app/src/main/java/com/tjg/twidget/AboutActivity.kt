@@ -63,10 +63,6 @@ class AboutActivity : FoldablePopOverActivity() {
         setupCreditAvatars()
         setupUpdates()
 
-        findViewById<View>(R.id.about_notices).setOnClickListener {
-            startLeftSidePopOverActivity(Intent(this, NoticesActivity::class.java))
-        }
-
         findViewById<View>(R.id.about_tjg_credit).setOnClickListener {
             openUrl(getString(R.string.link_tjg))
         }

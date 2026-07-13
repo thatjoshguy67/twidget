@@ -183,8 +183,6 @@
     <string name="analytics_trend">Trend</string>
     <string name="analytics_all_metrics">All imported metrics</string>
     <string name="notices_title">Notices</string>
-    <string name="notices_section">Updates</string>
-    <string name="notices_about_summary">Changelogs, release notes, and important project updates from GitHub</string>
     <string name="notices_github_releases">GitHub release notes</string>
     <string name="notices_last_updated">Updated %1$s</string>
     <string name="notices_load_failed">Couldn’t refresh release notes.</string>

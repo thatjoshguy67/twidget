@@ -1,6 +1,8 @@
 package com.tjg.twidget
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReleaseNoticeTextTest {
@@ -16,5 +18,13 @@ class ReleaseNoticeTextTest {
             "Highlights\n• Better analytics with range filters\n• Calendar view",
             ReleaseNoticeText.plainText(markdown),
         )
+    }
+
+    @Test
+    fun latestNoticeIsUnseenUntilItsTagHasBeenRecorded() {
+        assertTrue(ReleaseNoticesStore.hasUnseen("v1.1.0", null))
+        assertTrue(ReleaseNoticesStore.hasUnseen("v1.1.0", "v1.0.0"))
+        assertFalse(ReleaseNoticesStore.hasUnseen("v1.1.0", "v1.1.0"))
+        assertFalse(ReleaseNoticesStore.hasUnseen(null, "v1.0.0"))
     }
 }

@@ -5,6 +5,13 @@
     tools:ignore="AppCompatResource">
 
     <item
+        android:id="@+id/menu_notices"
+        android:icon="@drawable/ic_oui_notice_outline"
+        android:title="@string/notices_title"
+        app:iconTint="?actionMenuTextColor"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_add_widget"
         android:icon="@drawable/ic_oui_add"
         android:title="@string/add_widget_to_home"

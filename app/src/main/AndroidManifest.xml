@@ -64,11 +64,6 @@
             android:exported="false" />
 
         <activity
-            android:name=".AnalyticsDetailsActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:exported="false" />
-
-        <activity
             android:name=".NoticesActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />

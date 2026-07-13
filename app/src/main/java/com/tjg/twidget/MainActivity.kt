@@ -112,6 +112,7 @@ class MainActivity : EdgeToEdgeActivity() {
         setupDrawerChrome()
         setupScheduleAction()
         render()
+        if (savedInstanceState == null) checkReleasesOnLaunch()
         if (TwidgetStore.settings(this).refreshOnLaunch) {
             sync()
         }
@@ -121,6 +122,7 @@ class MainActivity : EdgeToEdgeActivity() {
         super.onResume()
         render()
         updateSettingsBadge()
+        invalidateOptionsMenu()
     }
 
     override fun onStart() {
@@ -146,6 +148,36 @@ class MainActivity : EdgeToEdgeActivity() {
         )
     }
 
+    private fun checkReleasesOnLaunch() {
+        val appContext = applicationContext
+        val installedVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: return
+        val channel = AboutActivity.savedUpdateChannel(this)
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute {
+            val result = runCatching {
+                AppUpdateManager.checkReleases(installedVersion, channel)
+            }
+            result.onSuccess { check ->
+                TwidgetStore.setUpdateAvailable(appContext, check.update != null)
+                ReleaseNoticesStore.save(appContext, check.notices)
+            }
+            postUiIfCurrent(lifecycleToken) {
+                updateSettingsBadge()
+                invalidateOptionsMenu()
+            }
+        }
+    }
+
+    private fun updateNoticesMenuIcon(menu: Menu) {
+        val item = menu.findItem(R.id.menu_notices) ?: return
+        val base = AppCompatResources.getDrawable(this, OneUiIconR.drawable.ic_oui_notice_outline) ?: return
+        item.icon = if (ReleaseNoticesStore.hasUnseen(this)) {
+            NoticeBadgeDrawable(base, getColor(R.color.notice_badge_orange), resources.displayMetrics.density)
+        } else {
+            base
+        }
+    }
+
     override fun onDestroy() {
         // Invalidates every queued UI delivery owned by this Activity. The
         // background result may still populate application caches, but can no
@@ -156,10 +188,13 @@ class MainActivity : EdgeToEdgeActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
+        updateNoticesMenuIcon(menu)
         return true
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.menu_notices)?.isVisible = !editMode
+        updateNoticesMenuIcon(menu)
         menu.findItem(R.id.menu_add_widget)?.isVisible = !editMode
         menu.findItem(R.id.menu_open_profile)?.isVisible = !editMode
         menu.findItem(R.id.menu_edit_layout)?.isVisible = !editMode
@@ -171,6 +206,11 @@ class MainActivity : EdgeToEdgeActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.menu_notices -> {
+                ReleaseNoticesStore.markCurrentAsSeen(this)
+                invalidateOptionsMenu()
+                startLeftSidePopOverActivity(Intent(this, NoticesActivity::class.java))
+            }
             R.id.menu_add_widget -> requestWidgetPin()
             R.id.menu_open_profile -> openActiveProfile()
             R.id.menu_edit_layout -> setEditMode(true)
@@ -520,19 +560,7 @@ class MainActivity : EdgeToEdgeActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            val opensImportedAnalytics = card in IMPORTED_ANALYTICS_CARDS
-            background = AppCompatResources.getDrawable(
-                this@MainActivity,
-                if (opensImportedAnalytics) R.drawable.metric_card_clickable_bg else R.drawable.metric_card_bg,
-            )
-            isClickable = opensImportedAnalytics
-            isFocusable = opensImportedAnalytics
-            if (opensImportedAnalytics) {
-                contentDescription = getString(R.string.analytics_open_details, spec.label)
-                setOnClickListener {
-                    if (!editMode) openAnalyticsDetails(selectedAccount)
-                }
-            }
+            background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
 
             val labelRow = LinearLayout(this@MainActivity).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -1249,24 +1277,6 @@ class MainActivity : EdgeToEdgeActivity() {
             setIcon(R.drawable.ic_schedule_time)
             contentDescription = getString(R.string.schedule_title)
         }
-        menu.add(
-            DRAWER_GROUP_ACTIONS,
-            DRAWER_ITEM_ANALYTICS,
-            accounts.size + 2,
-            getString(R.string.analytics_details_title),
-        ).apply {
-            setIcon(R.drawable.ic_import_analytics)
-            contentDescription = getString(R.string.analytics_details_title)
-        }
-        menu.add(
-            DRAWER_GROUP_ACTIONS,
-            DRAWER_ITEM_NOTICES,
-            accounts.size + 3,
-            getString(R.string.notices_title),
-        ).apply {
-            setIcon(R.drawable.ic_github_24)
-            contentDescription = getString(R.string.notices_title)
-        }
         drawerNav.refreshDrawerMenu()
         drawerNav.post {
             applyDrawerIconTints(drawerNav)
@@ -1327,8 +1337,6 @@ class MainActivity : EdgeToEdgeActivity() {
         listOf(
             DRAWER_ITEM_ADD_ACCOUNT,
             DRAWER_ITEM_SCHEDULE,
-            DRAWER_ITEM_ANALYTICS,
-            DRAWER_ITEM_NOTICES,
         ).forEach { itemId ->
             drawerNav.findViewById<View>(itemId)
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
@@ -1354,16 +1362,6 @@ class MainActivity : EdgeToEdgeActivity() {
         if (item.itemId == DRAWER_ITEM_SCHEDULE) {
             closeDrawerOnCompactScreens()
             openSchedule(selectedAccount)
-            return true
-        }
-        if (item.itemId == DRAWER_ITEM_ANALYTICS) {
-            closeDrawerOnCompactScreens()
-            openAnalyticsDetails(selectedAccount)
-            return true
-        }
-        if (item.itemId == DRAWER_ITEM_NOTICES) {
-            closeDrawerOnCompactScreens()
-            startLeftSidePopOverActivity(Intent(this, NoticesActivity::class.java))
             return true
         }
         return false
@@ -1508,13 +1506,6 @@ class MainActivity : EdgeToEdgeActivity() {
         )
     }
 
-    private fun openAnalyticsDetails(username: String) {
-        startLeftSidePopOverActivity(
-            Intent(this, AnalyticsDetailsActivity::class.java)
-                .putExtra(AnalyticsDetailsActivity.EXTRA_USERNAME, username)
-        )
-    }
-
     private fun addAccount() {
         startAddAccountActivity()
     }
@@ -1612,16 +1603,8 @@ class MainActivity : EdgeToEdgeActivity() {
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
         private const val DRAWER_ITEM_SCHEDULE = 20_001
-        private const val DRAWER_ITEM_ANALYTICS = 20_002
-        private const val DRAWER_ITEM_NOTICES = 20_003
         private const val DASHBOARD_GRID_COLUMNS = 2
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
-        private val IMPORTED_ANALYTICS_CARDS = setOf(
-            DashboardCardType.X_IMPRESSIONS,
-            DashboardCardType.X_ENGAGEMENTS,
-            DashboardCardType.X_PROFILE_VISITS,
-            DashboardCardType.X_LIKES_RECEIVED,
-        )
     }
 }

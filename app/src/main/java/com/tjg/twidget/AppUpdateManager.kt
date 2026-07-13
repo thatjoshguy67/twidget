@@ -17,6 +17,11 @@ data class AppRelease(
     val prerelease: Boolean,
 )
 
+data class AppReleaseCheck(
+    val update: AppRelease?,
+    val notices: List<ReleaseNotice>,
+)
+
 data class ReleaseNotice(
     val tag: String,
     val title: String,
@@ -78,7 +83,11 @@ object AppUpdateManager {
     private const val MAX_APK_BYTES = 250L * 1024L * 1024L
 
     fun findUpdate(installedVersion: String, channel: UpdateChannel): AppRelease? {
-        val current = AppVersion.parse(installedVersion) ?: return null
+        return checkReleases(installedVersion, channel).update
+    }
+
+    fun checkReleases(installedVersion: String, channel: UpdateChannel): AppReleaseCheck {
+        val current = AppVersion.parse(installedVersion)
         val connection = request(RELEASES_URL)
         val releases = try {
             if (connection.responseCode !in 200..299) {
@@ -89,9 +98,12 @@ object AppUpdateManager {
             connection.disconnect()
         }
 
-        return eligibleReleases(parseReleases(releases), channel)
-            .filter { it.version > current }
-            .maxByOrNull(AppRelease::version)
+        val update = current?.let {
+            eligibleReleases(parseReleases(releases), channel)
+                .filter { release -> release.version > current }
+                .maxByOrNull(AppRelease::version)
+        }
+        return AppReleaseCheck(update, parseReleaseNotices(releases))
     }
 
     fun fetchReleaseNotices(): List<ReleaseNotice> {

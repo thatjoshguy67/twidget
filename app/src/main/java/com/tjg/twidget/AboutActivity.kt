@@ -1,6 +1,7 @@
 package com.tjg.twidget
 
 import android.content.Intent
+import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
@@ -491,6 +492,15 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     companion object {
+        internal fun savedUpdateChannel(context: Context): UpdateChannel =
+            if (context.getSharedPreferences("AboutActivity", MODE_PRIVATE)
+                    .getBoolean(PREF_BETA_RELEASES, false)
+            ) {
+                UpdateChannel.BETA
+            } else {
+                UpdateChannel.STABLE
+            }
+
         private const val DEBUG_UNLOCK_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"

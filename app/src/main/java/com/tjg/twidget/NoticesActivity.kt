@@ -41,6 +41,7 @@ class NoticesActivity : FoldablePopOverActivity() {
             notices = it.notices
             cachedAt = it.cachedAt
         }
+        ReleaseNoticesStore.markCurrentAsSeen(this)
         render()
         refreshNotices()
     }
@@ -63,7 +64,10 @@ class NoticesActivity : FoldablePopOverActivity() {
             }
         }) {
             val result = runCatching { AppUpdateManager.fetchReleaseNotices() }
-            result.getOrNull()?.let { ReleaseNoticesStore.save(applicationContext, it) }
+            result.getOrNull()?.let {
+                ReleaseNoticesStore.save(applicationContext, it)
+                ReleaseNoticesStore.markCurrentAsSeen(applicationContext)
+            }
             runOnUiThread {
                 if (token != generation || isFinishing || isDestroyed) return@runOnUiThread
                 refresh.isRefreshing = false

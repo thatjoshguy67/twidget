@@ -13,6 +13,7 @@ object ReleaseNoticesStore {
     private const val PREFS = "twidget_release_notices"
     private const val KEY_NOTICES = "notices"
     private const val KEY_CACHED_AT = "cached_at"
+    private const val KEY_LAST_SEEN_TAG = "last_seen_tag"
 
     fun cached(context: Context): CachedReleaseNotices {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -49,6 +50,23 @@ object ReleaseNoticesStore {
             .putLong(KEY_CACHED_AT, now)
             .apply()
     }
+
+    fun hasUnseen(context: Context): Boolean {
+        val latestTag = cached(context).notices.firstOrNull()?.tag
+        val lastSeenTag = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_SEEN_TAG, null)
+        return hasUnseen(latestTag, lastSeenTag)
+    }
+
+    fun markCurrentAsSeen(context: Context) {
+        val latestTag = cached(context).notices.firstOrNull()?.tag ?: return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_LAST_SEEN_TAG, latestTag)
+            .apply()
+    }
+
+    internal fun hasUnseen(latestTag: String?, lastSeenTag: String?): Boolean =
+        !latestTag.isNullOrBlank() && latestTag != lastSeenTag
 }
 
 object ReleaseNoticeText {

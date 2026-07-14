@@ -212,7 +212,11 @@ class MainActivity : ScheduleQueueHostActivity() {
                 AppUpdateManager.checkReleases(installedVersion, channel)
             }
             result.onSuccess { check ->
-                TwidgetStore.setUpdateAvailable(appContext, check.update != null)
+                TwidgetStore.setUpdateAvailable(
+                    appContext,
+                    check.update != null,
+                    check.update?.version?.toString(),
+                )
                 // The debug channel uses a quota-free release sidecar and does
                 // not refresh notices through the rate-limited GitHub API.
                 if (check.notices.isNotEmpty()) ReleaseNoticesStore.save(appContext, check.notices)

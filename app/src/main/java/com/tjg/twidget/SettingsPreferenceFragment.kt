@@ -26,6 +26,7 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import dev.oneuiproject.oneui.preference.LayoutPreference
+import dev.oneuiproject.oneui.preference.SuggestionCardPreference
 import dev.oneuiproject.oneui.R as IconR
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
@@ -46,6 +47,21 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private fun buildScreen() {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
+
+        TwidgetStore.updateSuggestionVersion(context)?.let { version ->
+            screen.addPreference(SuggestionCardPreference(context).apply {
+                key = "update_suggestion"
+                title = getString(R.string.update_suggestion_title)
+                summary = getString(R.string.update_suggestion_summary, version)
+                setActionButtonText(getString(R.string.update))
+                setActionButtonOnClickListener {
+                    requireActivity().startSettingsSubActivity(Intent(context, AboutActivity::class.java))
+                }
+                setOnClosedClickedListener {
+                    TwidgetStore.dismissUpdateSuggestion(context)
+                }
+            })
+        }
 
         screen.addPreference(category(R.string.accounts))
         screen.addPreference(LayoutPreference(context, accountsCard()).apply {

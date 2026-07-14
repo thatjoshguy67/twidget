@@ -19,6 +19,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
@@ -77,10 +78,18 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private var selectedCalendarDate: LocalDate? = null
     private var busy = false
     private var syncing = false
+    private var navigationBarInset = 0
     private var queueSelectionMode = false
     private val selectedQueueIds = linkedSetOf<String>()
     private var activeQueueMenu: PopupMenu? = null
     private var viewingTrash = false
+    private val bottomNavigationAnchor = ViewTreeObserver.OnPreDrawListener {
+        if (::selectionBottomNav.isInitialized) {
+            anchorBottomNavigation(selectionBottomNav)
+            anchorBottomNavigation(trashBottomNav)
+        }
+        true
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,6 +159,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         }
         selectionBottomNav = findViewById(R.id.schedule_selection_bottom_nav)
         trashBottomNav = findViewById(R.id.schedule_trash_bottom_nav)
+        queueRoot.viewTreeObserver.addOnPreDrawListener(bottomNavigationAnchor)
         setupBottomNavigation()
         setupQueueViewSwitcher()
         queueRoot.visibility = if (initiallyVisible) View.VISIBLE else View.GONE
@@ -157,9 +167,35 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     protected fun updateScheduleBottomInsets(inset: Int) {
         if (!::primaryButton.isInitialized) return
+        navigationBarInset = inset
         primaryButton.updateBottomMarginForNavigationBar(scheduleDp(20), inset)
         selectionBottomNav.updateBottomMarginForNavigationBar(0, inset)
         trashBottomNav.updateBottomMarginForNavigationBar(0, inset)
+    }
+
+    private fun anchorBottomNavigation(navigation: BottomNavigationView) {
+        if (navigation.visibility != View.VISIBLE || navigation.height == 0) {
+            navigation.translationY = 0f
+            return
+        }
+        val windowRoot = findViewById<View>(android.R.id.content) ?: return
+        val rootLocation = IntArray(2)
+        val navigationLocation = IntArray(2)
+        windowRoot.getLocationOnScreen(rootLocation)
+        navigation.getLocationOnScreen(navigationLocation)
+        val targetBottom = rootLocation[1] + windowRoot.height - navigationBarInset
+        val currentBottom = navigationLocation[1] + navigation.height
+        val adjustment = targetBottom - currentBottom
+        if (kotlin.math.abs(adjustment) >= 1) {
+            navigation.translationY += adjustment.toFloat()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::queueRoot.isInitialized && queueRoot.viewTreeObserver.isAlive) {
+            queueRoot.viewTreeObserver.removeOnPreDrawListener(bottomNavigationAnchor)
+        }
+        super.onDestroy()
     }
 
     protected fun showEmbeddedScheduleQueue() {

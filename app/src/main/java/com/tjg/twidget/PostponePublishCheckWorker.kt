@@ -27,9 +27,18 @@ class PostponePublishCheckWorker(
         val sync = PostponeScheduleSync(applicationContext).sync()
         if (!sync.isSuccess) return Result.retry()
         val post = store.get(id) ?: return Result.success()
-        if (post.status != ScheduleStatus.NEEDS_ACTION) return Result.success()
-        ScheduleNotificationHelper.showReminder(applicationContext, post)
-        return Result.success()
+        return when (post.status) {
+            ScheduleStatus.PUBLISHED -> {
+                ScheduleNotificationHelper.showPostponePublished(applicationContext, post)
+                Result.success()
+            }
+            ScheduleStatus.NEEDS_ACTION -> {
+                ScheduleNotificationHelper.showReminder(applicationContext, post)
+                Result.success()
+            }
+            ScheduleStatus.SCHEDULED -> Result.retry()
+            else -> Result.success()
+        }
     }
 
     companion object {

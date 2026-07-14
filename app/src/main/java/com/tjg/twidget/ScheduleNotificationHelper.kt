@@ -21,7 +21,9 @@ object ScheduleDeepLink {
 
 object ScheduleNotificationHelper {
     const val CHANNEL_ID = "scheduled_post_reminders"
+    const val POSTPONE_STATUS_CHANNEL_ID = "postpone_post_status"
     private const val CHANNEL_NAME = "Scheduled tweet reminders"
+    private const val POSTPONE_STATUS_CHANNEL_NAME = "Postpone publishing"
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -30,6 +32,15 @@ object ScheduleNotificationHelper {
                 description = "Reminders to finish and publish locally scheduled tweets"
                 enableLights(true)
                 lightColor = Color.BLUE
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                POSTPONE_STATUS_CHANNEL_ID,
+                POSTPONE_STATUS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Confirms when Postpone publishes a scheduled tweet"
             },
         )
     }
@@ -59,6 +70,36 @@ object ScheduleNotificationHelper {
     fun cancel(context: Context, scheduleId: String) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(notificationId(scheduleId))
+    }
+
+    fun showPostponePublished(context: Context, post: ScheduledPost): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        ensureChannel(context)
+        val preview = post.thread.firstOrNull()?.text?.takeIf(String::isNotBlank)
+            ?: context.getString(R.string.schedule_media_post)
+        val open = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_SCHEDULE, 2)
+        val notification = Notification.Builder(context, POSTPONE_STATUS_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_send)
+            .setContentTitle(context.getString(R.string.schedule_postpone_published_title))
+            .setContentText(preview)
+            .setStyle(Notification.BigTextStyle().bigText(preview))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_STATUS)
+            .build()
+        return try {
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(notificationId(post.id), notification)
+            true
+        } catch (_: SecurityException) {
+            false
+        } catch (_: RuntimeException) {
+            false
+        }
     }
 
     private fun buildNotification(context: Context, post: ScheduledPost): Notification {

@@ -332,7 +332,9 @@ class AboutActivity : FoldablePopOverActivity() {
                 if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
                 // Only a completed check may flip the persisted badge state;
                 // a network failure keeps whatever the last check concluded.
-                result.onSuccess { TwidgetStore.setUpdateAvailable(this, it != null) }
+                result.onSuccess { release ->
+                    TwidgetStore.setUpdateAvailable(this, release != null, release?.version?.toString())
+                }
                 val release = result.getOrNull()
                 availableRelease = release
                 if (release == null) hideUpdateUi() else showUpdateAvailable(release)

@@ -63,12 +63,14 @@ enum class PostponeSubmissionType {
     ALL,
     SCHEDULED,
     FAILED,
+    SUBMITTED,
 }
 
 data class PostponeSubmission(
     val id: String,
     val text: String,
     val postAt: Long?,
+    val submittedAt: Long?,
     val errorMessage: String?,
 )
 
@@ -116,6 +118,7 @@ class PostponeClient(
         },
         page: Int = 1,
         limit: Int = 100,
+        startDateMillis: Long? = null,
     ): PostponeResult<PostponeSubmissionPage> {
         require(socialAccountId.isNotBlank()) { "A Postpone social account ID is required" }
         require(page > 0) { "Page must be positive" }
@@ -127,6 +130,7 @@ class PostponeClient(
                 submissionType,
                 page,
                 limit,
+                startDateMillis,
             ),
             PostponeGraphQlCodec::parseSubmissions,
         )
@@ -294,6 +298,7 @@ internal object PostponeGraphQlCodec {
         submissionType: PostponeSubmissionType,
         page: Int,
         limit: Int,
+        startDateMillis: Long? = null,
     ): String = request(
         """
         query TwitterSubmissions(
@@ -301,7 +306,8 @@ internal object PostponeGraphQlCodec {
           ${'$'}page: Int,
           ${'$'}limit: Int,
           ${'$'}submissionType: SubmissionType,
-          ${'$'}publishingStatus: PublishingStatusType
+          ${'$'}publishingStatus: PublishingStatusType,
+          ${'$'}startDate: DateTime
         ) {
           twitterSubmissions(
             socialAccountIds: ${'$'}socialAccountIds,
@@ -309,11 +315,13 @@ internal object PostponeGraphQlCodec {
             limit: ${'$'}limit,
             submissionType: ${'$'}submissionType,
             publishingStatus: ${'$'}publishingStatus,
+            startDate: ${'$'}startDate,
             rootsOnly: true
           ) {
             total
             objects {
               id text postAt
+              result { dateSubmitted }
               error { errorCode message }
             }
           }
@@ -325,6 +333,7 @@ internal object PostponeGraphQlCodec {
             "limit" to json(limit),
             "submissionType" to json(submissionType.name),
             "publishingStatus" to json(publishingStatus.name),
+            "startDate" to json(startDateMillis?.let { Instant.ofEpochMilli(it).toString() }),
         ),
         "TwitterSubmissions",
     )
@@ -459,6 +468,9 @@ internal object PostponeGraphQlCodec {
                         id = item.string("id"),
                         text = item.optionalString("text").orEmpty(),
                         postAt = item.optionalString("postAt")?.let { Instant.parse(it).toEpochMilli() },
+                        submittedAt = item.optionalObject("result")
+                            ?.optionalString("dateSubmitted")
+                            ?.let { Instant.parse(it).toEpochMilli() },
                         errorMessage = item.optionalObject("error")?.optionalString("message"),
                     )
                 },

@@ -125,17 +125,20 @@ class PostponeGraphQlCodecTest {
                 PostponeSubmissionType.ALL,
                 page = 2,
                 limit = 100,
+                startDateMillis = 1_893_456_000_000L,
             )
         ).asObject()
         val variables = request.objectValue("variables")
         assertEquals("DRAFT", variables.string("publishingStatus"))
         assertEquals("ALL", variables.string("submissionType"))
         assertEquals(2L, variables.long("page"))
+        assertEquals("2030-01-01T00:00:00Z", variables.string("startDate"))
 
         val result = PostponeGraphQlCodec.parseSubmissions(
             """
             {"data":{"twitterSubmissions":{"total":1,"objects":[{
               "id":"submission-1","text":"Remote draft","postAt":"2030-01-02T03:04:05Z",
+              "result":{"dateSubmitted":"2030-01-02T03:05:06Z"},
               "error":null
             }]}}}
             """.trimIndent()
@@ -144,5 +147,6 @@ class PostponeGraphQlCodecTest {
         assertTrue(result.isSuccess)
         assertEquals("submission-1", result.value?.submissions?.single()?.id)
         assertEquals(1893553445000L, result.value?.submissions?.single()?.postAt)
+        assertEquals(1893553506000L, result.value?.submissions?.single()?.submittedAt)
     }
 }

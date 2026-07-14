@@ -40,16 +40,48 @@ class PostponeScheduleSync(
             ScheduleSettingsStore.setPostponeAccount(appContext, trackedUsername, account.username)
         }
 
+        val existing = store.listForAccount(trackedUsername).filter { it.provider == ScheduleProvider.POSTPONE }
         data class FetchSpec(
             val publishingStatus: PostponePublishingStatus,
             val submissionType: PostponeSubmissionType,
             val localStatus: ScheduleStatus,
+            val importNew: Boolean = true,
+            val startDateMillis: Long? = null,
         )
-        val specs = listOf(
-            FetchSpec(PostponePublishingStatus.READY_TO_PUBLISH, PostponeSubmissionType.SCHEDULED, ScheduleStatus.SCHEDULED),
-            FetchSpec(PostponePublishingStatus.DRAFT, PostponeSubmissionType.ALL, ScheduleStatus.DRAFT),
-            FetchSpec(PostponePublishingStatus.READY_TO_PUBLISH, PostponeSubmissionType.FAILED, ScheduleStatus.NEEDS_ACTION),
-        )
+        val confirmationStart = existing
+            .filter { it.status == ScheduleStatus.SCHEDULED && it.remoteSubmissionId != null }
+            .mapNotNull(ScheduledPost::scheduledAt)
+            .minOrNull()
+            ?.minus(24 * 60 * 60 * 1000L)
+        val specs = buildList {
+            add(FetchSpec(
+                PostponePublishingStatus.READY_TO_PUBLISH,
+                PostponeSubmissionType.SCHEDULED,
+                ScheduleStatus.SCHEDULED,
+            ))
+            add(FetchSpec(
+                PostponePublishingStatus.DRAFT,
+                PostponeSubmissionType.ALL,
+                ScheduleStatus.DRAFT,
+            ))
+        }.toMutableList().apply {
+            if (confirmationStart != null) {
+                add(FetchSpec(
+                    PostponePublishingStatus.READY_TO_PUBLISH,
+                    PostponeSubmissionType.FAILED,
+                    ScheduleStatus.NEEDS_ACTION,
+                    importNew = false,
+                    startDateMillis = confirmationStart,
+                ))
+                add(FetchSpec(
+                    PostponePublishingStatus.READY_TO_PUBLISH,
+                    PostponeSubmissionType.SUBMITTED,
+                    ScheduleStatus.PUBLISHED,
+                    importNew = false,
+                    startDateMillis = confirmationStart,
+                ))
+            }
+        }
         val fetched = mutableListOf<Pair<FetchSpec, PostponeSubmission>>()
         for (spec in specs) {
             var page = 1
@@ -60,6 +92,7 @@ class PostponeScheduleSync(
                     spec.publishingStatus,
                     spec.submissionType,
                     page,
+                    startDateMillis = spec.startDateMillis,
                 )
                 if (!result.isSuccess) return PostponeSyncResult(errors = result.errors.map { it.message })
                 val value = result.value ?: break
@@ -71,7 +104,6 @@ class PostponeScheduleSync(
         }
 
         val now = System.currentTimeMillis()
-        val existing = store.listForAccount(trackedUsername).filter { it.provider == ScheduleProvider.POSTPONE }
         var imported = 0
         var updated = 0
         val seenSubmissionIds = mutableSetOf<String>()
@@ -79,6 +111,7 @@ class PostponeScheduleSync(
             seenSubmissionIds += submission.id
             val current = existing.firstOrNull { it.remoteSubmissionId == submission.id }
                 ?: existing.firstOrNull { it.matches(submission, account.username) }
+            if (current == null && !spec.importNew) return@forEach
             val status = spec.localStatus
             val local = ScheduledPost(
                 id = current?.id ?: remoteLocalId(submission.id),
@@ -94,7 +127,7 @@ class PostponeScheduleSync(
                 errorMessage = submission.errorMessage,
                 createdAt = current?.createdAt ?: now,
                 updatedAt = now,
-                publishedAt = current?.publishedAt,
+                publishedAt = submission.submittedAt ?: current?.publishedAt,
                 pinned = current?.pinned ?: false,
                 deletedAt = current?.deletedAt,
             )
@@ -107,18 +140,10 @@ class PostponeScheduleSync(
         existing.filter {
             it.remoteSubmissionId != null &&
                 it.remotePostId == null &&
+                it.status != ScheduleStatus.NEEDS_ACTION &&
                 it.remoteSubmissionId !in seenSubmissionIds
         }.forEach {
             if (store.remove(it.id)) removed++
-        }
-        existing.filter {
-            it.remotePostId != null &&
-                it.remoteSubmissionId != null &&
-                it.remoteSubmissionId !in seenSubmissionIds &&
-                it.status == ScheduleStatus.SCHEDULED &&
-                (it.scheduledAt ?: Long.MAX_VALUE) < now
-        }.forEach {
-            store.upsert(it.copy(status = ScheduleStatus.PUBLISHED, publishedAt = now, updatedAt = now))
         }
         return PostponeSyncResult(imported, updated, removed)
     }

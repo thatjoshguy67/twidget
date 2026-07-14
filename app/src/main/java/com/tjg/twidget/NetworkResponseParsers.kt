@@ -156,7 +156,7 @@ internal object NetworkResponseParsers {
     private fun parseBridgePost(json: JSONObject?): PostSummary? {
         json ?: return null
         return PostSummary(
-            url = json.optString("url"),
+            url = safeWebUrl(json.optString("url")),
             text = json.optString("text"),
             views = json.optLong("views"),
             likes = json.optLong("likes"),
@@ -168,8 +168,39 @@ internal object NetworkResponseParsers {
             createdAt = json.optString("createdAt"),
             authorName = json.optString("authorName"),
             authorUserName = json.optString("authorUserName"),
-            authorAvatar = json.optString("authorAvatar"),
+            authorAvatar = safeWebUrl(json.optString("authorAvatar")),
+            links = parseBridgeLinks(json.optJSONArray("links")),
+            media = parseBridgeMedia(json.optJSONArray("media")),
         )
+    }
+
+    private fun parseBridgeLinks(array: JSONArray?): List<PostLink> {
+        array ?: return emptyList()
+        return List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { item ->
+                item ?: return@mapNotNull null
+                PostLink(
+                    display = item.optString("display"),
+                    url = safeWebUrl(item.optString("url")),
+                )
+            }
+            .filter { it.display.isNotBlank() && it.url.isNotBlank() }
+    }
+
+    private fun parseBridgeMedia(array: JSONArray?): List<PostMedia> {
+        array ?: return emptyList()
+        return List(array.length()) { index -> array.optJSONObject(index) }
+            .mapNotNull { item ->
+                item ?: return@mapNotNull null
+                PostMedia(
+                    type = item.optString("type"),
+                    url = safeWebUrl(item.optString("url")),
+                    alt = item.optString("alt"),
+                    width = item.optLong("width"),
+                    height = item.optLong("height"),
+                )
+            }
+            .filter { it.url.isNotBlank() }
     }
 
     private fun bridgeProfileImageUrl(user: JSONObject): String =
@@ -193,6 +224,10 @@ internal object NetworkResponseParsers {
         url.trim()
             .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
             .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
+
+    private fun safeWebUrl(value: String): String = runCatching {
+        java.net.URI(value.trim()).takeIf { it.scheme == "https" || it.scheme == "http" }?.toString().orEmpty()
+    }.getOrDefault("")
 
     private fun bridgeUserObject(json: JSONObject): JSONObject =
         json.optJSONObject("user")

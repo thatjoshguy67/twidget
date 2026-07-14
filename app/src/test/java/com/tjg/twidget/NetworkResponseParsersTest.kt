@@ -147,7 +147,29 @@ class NetworkResponseParsersTest {
               "postsAnalyzed": 3,
               "reach": { "totalViews": 9000, "avgViews": 3000.0, "medianViews": 2500.0, "avgViewsPerFollower": 3.0 },
               "engagement": { "totalEngagements": 450, "avgEngagements": 150.0, "medianEngagements": 120.0, "avgEngagementsPerFollower": 0.15, "engagementRate": 0.05 },
-              "best": { "url": "https://x.com/example/status/1", "text": "Best", "views": 5000, "likes": 10, "replies": 1, "reposts": 2, "quotes": 0, "engagements": 13, "ts": 1, "createdAt": "", "authorName": "", "authorUserName": "example", "authorAvatar": "" }
+              "best": {
+                "url": "https://x.com/example/status/1",
+                "text": "Best https://t.co/link",
+                "views": 5000,
+                "likes": 10,
+                "replies": 1,
+                "reposts": 2,
+                "quotes": 0,
+                "engagements": 13,
+                "ts": 1,
+                "createdAt": "",
+                "authorName": "",
+                "authorUserName": "example",
+                "authorAvatar": "javascript:alert(1)",
+                "links": [
+                  { "display": "https://t.co/link", "url": "https://example.com/story" },
+                  { "display": "unsafe", "url": "intent://settings" }
+                ],
+                "media": [
+                  { "type": "photo", "url": "https://cdn.example/photo.jpg", "alt": "Photo", "width": 1200, "height": 800 },
+                  { "type": "photo", "url": "file:///data/local/private.jpg" }
+                ]
+              }
             }
             """.trimIndent(),
         )
@@ -158,7 +180,10 @@ class NetworkResponseParsersTest {
         assertEquals(9000L, analytics.totalViews)
         assertEquals(450L, analytics.totalEngagements)
         assertEquals(0.05, analytics.engagementRate, 0.0001)
-        assertEquals("Best", analytics.best?.text)
+        assertEquals("Best https://t.co/link", analytics.best?.text)
+        assertEquals("", analytics.best?.authorAvatar)
+        assertEquals(listOf("https://example.com/story"), analytics.best?.links?.map(PostLink::url))
+        assertEquals(listOf("https://cdn.example/photo.jpg"), analytics.best?.media?.map(PostMedia::url))
     }
 
     @Test

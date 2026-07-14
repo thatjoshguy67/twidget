@@ -72,8 +72,9 @@ Pull requests opened from a fork run **bridge checks only** in GitHub Actions.
 The Android build job is skipped because Tribalfs GitHub Packages credentials
 cannot be given to untrusted contributor code. Before requesting review from a
 fork, run the Android Gradle checks locally with your own
-`github.properties`. Maintainers can manually trigger Android CI for a specific
-pull request using the **Debug Build** workflow's `pr_number` input.
+`github.properties`. Maintainers must not dispatch a secret-bearing workflow
+against a fork ref. After reviewing the contributor diff, reproduce the change
+on a trusted same-repository branch before using repository-backed Android CI.
 
 Maintainers may decline changes that expand hosted-service cost, data
 collection, or operational risk even when the change is otherwise valid.

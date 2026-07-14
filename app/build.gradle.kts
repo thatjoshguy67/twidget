@@ -158,6 +158,7 @@ dependencies {
     implementation("io.github.oneuiproject:icons:1.1.0")
     implementation("sesl.androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01+1.0.0-sesl8+rev0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20251224")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
 }

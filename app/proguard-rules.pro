@@ -21,7 +21,11 @@
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
 
-# One UI / SESL libraries ship consumer rules; keep app entry points above.
+# MainDrawerController refreshes the One UI drawer presenter reflectively. R8
+# cannot infer this member because the receiver class is only known at runtime.
+-keepclassmembers class dev.oneuiproject.oneui.navigation.menu.DrawerMenuPresenter {
+    void updateMenuView(boolean);
+}
 
 # JSON models are parsed explicitly via org.json; no reflection keep rules needed.
 

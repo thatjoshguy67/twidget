@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/schedule_trash_menu"
         android:icon="@drawable/ic_oui_delete_outline"
         android:title="@string/schedule_trash"
-        app:showAsAction="always" />
+        android:showAsAction="always" />
     <group android:checkableBehavior="single">
         <item android:id="@+id/schedule_filter_all_menu" android:title="@string/schedule_filter_all" android:checkable="true" android:showAsAction="never" />
         <item android:id="@+id/schedule_filter_scheduled_menu" android:title="@string/schedule_status_scheduled" android:checkable="true" android:showAsAction="never" />

@@ -149,7 +149,6 @@ Several operational and contributor gaps:
 - Self-hosted bridge operators had no ``publicMode`` signal when ``BRIDGE_API_TOKEN`` was unset
 - ``CONTRIBUTING.md`` assumed macOS-only ``JAVA_HOME`` paths
 - Fork PRs run bridge CI only (Android job skipped) but this was undocumented
-- Maintainers had no workflow path to run Android CI against a fork PR
 - ``ScheduleBootReceiver`` used a raw ``Thread`` instead of ``AppExecutors``
 - ``bridge/package.json`` version ``0.1.0`` did not align with app semver
 
@@ -158,7 +157,7 @@ Several operational and contributor gaps:
 - ``GET /health`` now includes ``publicMode: true`` when no bearer token is configured
 - Production/Railway startup logs a warning when ``BRIDGE_API_TOKEN`` is unset
 - Updated ``SECURITY.md``, ``bridge/README.md``, ``README.md``, and ``CONTRIBUTING.md``
-- Debug workflow: ``pr_number`` input for maintainer Android CI on fork PRs
+- Documented local Android validation for fork PRs without exposing repository secrets to contributor code
 - ``ScheduleBootReceiver`` uses ``AppExecutors.execute``
 - Bridge package version aligned to ``1.1.0`` with description noting app tracking
 

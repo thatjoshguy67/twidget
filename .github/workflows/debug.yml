@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: "Optional fork PR number for maintainer Android CI (leave empty for normal run)"
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -43,8 +38,7 @@ jobs:
     # Forked pull requests cannot receive the read:packages credential needed
     # by the Tribalfs registry. Never switch this to pull_request_target: that
     # would run untrusted contributor code with repository secrets.
-    # Maintainers may pass pr_number on workflow_dispatch to run Android CI for a fork PR.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || (github.event_name == 'workflow_dispatch' && inputs.pr_number != '')
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -52,7 +46,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number != '' && format('refs/pull/{0}/head', inputs.pr_number) || github.ref }}
           fetch-depth: 0 # prerelease number is the distance from the base-version commit
 
       - name: Set up JDK 21

@@ -46,6 +46,14 @@ class MainActivity : ScheduleQueueHostActivity() {
         }
     }
 
+    private val topFollowersUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val username = intent?.getStringExtra(TopFollowersScanWorker.EXTRA_USERNAME) ?: return
+            if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            dashboardBinder.bindContent()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!TwidgetStore.isOnboarded(this)) {
@@ -125,10 +133,17 @@ class MainActivity : ScheduleQueueHostActivity() {
             IntentFilter(BangerScanWorker.ACTION_UPDATED),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        ContextCompat.registerReceiver(
+            this,
+            topFollowersUpdateReceiver,
+            IntentFilter(TopFollowersScanWorker.ACTION_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onStop() {
         runCatching { unregisterReceiver(bangerUpdateReceiver) }
+        runCatching { unregisterReceiver(topFollowersUpdateReceiver) }
         super.onStop()
     }
 

@@ -23,6 +23,7 @@ object SecureCredentialStore {
     const val X_API_SECRET = "x_api_secret"
     const val X_API_BEARER = "x_api_bearer"
     const val POSTPONE_API_KEY = "postpone_api_key"
+    const val TWITTERAPIS_API_KEY = "twitterapis_api_key"
 
     private const val KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "com.tjg.twidget.credentials.v1"
@@ -35,6 +36,7 @@ object SecureCredentialStore {
         X_API_SECRET,
         X_API_BEARER,
         POSTPONE_API_KEY,
+        TWITTERAPIS_API_KEY,
     )
     private val lock = Any()
 

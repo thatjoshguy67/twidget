@@ -516,4 +516,17 @@
     <string name="schedule_postpone_explainer">Postpone schedules and publishes remotely. Twidget sends only posts you explicitly schedule with Postpone. Local reminder drafts remain on this device.</string>
     <string name="schedule_api_key_hint">Paste your personal Postpone API key</string>
     <string name="schedule_disconnect_confirm">Remove the Postpone API key and all saved mappings?</string>
+    <string name="top_followers">Your Top Followers</string>
+    <string name="top_follower_row">%1$d. @%2$s · %3$s followers</string>
+    <string name="top_followers_ready">Ready to find your biggest followers</string>
+    <string name="top_followers_setup">Add a TwitterAPIs key to begin</string>
+    <string name="top_followers_tap">Tap to scan · TwitterAPIs charges per page</string>
+    <string name="top_followers_scanning">Scanning %1$d followers across %2$d pages…</string>
+    <string name="top_followers_complete">Scanned %1$d followers across %2$d paid pages</string>
+    <string name="top_followers_scan_title">Scan all followers?</string>
+    <string name="top_followers_scan_message">This starts a fresh paid TwitterAPIs scan. Twidget stops automatically at 6,250 pages (the documented $5 maximum) and saves progress after every page.</string>
+    <string name="scan">Scan</string>
+    <string name="twitterapis_title">TwitterAPIs · Top followers</string>
+    <string name="twitterapis_api_key">TwitterAPIs API key</string>
+    <string name="twitterapis_explainer">Optional bring-your-own-key integration for the Your Top Followers card. The key is encrypted on this device and never sent through the Twidget bridge.</string>
 </resources>

@@ -135,6 +135,7 @@ object TwidgetStore {
     private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "followers",
+        "top_followers",
         "follower_ratio",
         "engagement_rate",
         "post_rate",

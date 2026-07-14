@@ -54,6 +54,7 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     MOMENTUM("momentum", R.string.momentum, DashboardCardSize.HALF),
     AUDIENCE_BALANCE("audience_balance", R.string.audience_balance, DashboardCardSize.HALF),
     ACCOUNT_HEALTH("account_health", R.string.account_health, DashboardCardSize.HALF),
+    TOP_FOLLOWERS("top_followers", R.string.top_followers, DashboardCardSize.FULL),
     FOLLOWERS("followers", R.string.followers, DashboardCardSize.CHART),
     FOLLOWING("following", R.string.following, DashboardCardSize.CHART),
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
@@ -141,7 +142,9 @@ internal class MainDashboardBinder(
         TwidgetStore.dashboardCards(activity)
             .mapNotNull(DashboardCardType::fromId)
             .forEach { card ->
-                val content = if (card.size == DashboardCardSize.CHART) {
+                val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
+                    createTopFollowersCard(account)
+                } else if (card.size == DashboardCardSize.CHART) {
                     createChartCard(card, stats, chartHistory, history)
                 } else {
                     createInsightCard(card, stats, history)
@@ -261,6 +264,106 @@ internal class MainDashboardBinder(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
         }
+    }
+
+    private fun createTopFollowersCard(account: String): View {
+        val state = TopFollowersStore.read(activity, account)
+        val keyConfigured = SecureCredentialStore.read(
+            activity,
+            SecureCredentialStore.TWITTERAPIS_API_KEY,
+        ).isNotBlank()
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(activity.dp(16), activity.dp(12), activity.dp(16), activity.dp(12))
+            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
+            isClickable = true
+            isFocusable = true
+
+            addView(TextView(activity).apply {
+                text = activity.getString(R.string.top_followers)
+                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                textSize = 13f
+                typeface = Typeface.create("sec", Typeface.BOLD)
+                includeFontPadding = false
+            })
+
+            when {
+                state.top.isNotEmpty() -> {
+                    state.top.take(3).forEachIndexed { index, follower ->
+                        addView(TextView(activity).apply {
+                            text = activity.getString(
+                                R.string.top_follower_row,
+                                index + 1,
+                                follower.username,
+                                TwidgetStore.compactNumber(follower.followers),
+                            )
+                            setTextColor(activity.getColor(R.color.oneui_text_primary))
+                            textSize = 15f
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                            includeFontPadding = false
+                            setPadding(0, activity.dp(7), 0, 0)
+                        })
+                    }
+                }
+                else -> addView(TextView(activity).apply {
+                    text = activity.getString(
+                        if (keyConfigured) R.string.top_followers_ready else R.string.top_followers_setup,
+                    )
+                    setTextColor(activity.getColor(R.color.oneui_text_primary))
+                    textSize = 17f
+                    setPadding(0, activity.dp(18), 0, 0)
+                })
+            }
+
+            addView(TextView(activity).apply {
+                text = when {
+                    state.scanning -> activity.getString(R.string.top_followers_scanning, state.scanned, state.pages)
+                    state.error.isNotBlank() -> state.error
+                    state.complete -> activity.getString(R.string.top_followers_complete, state.scanned, state.pages)
+                    else -> activity.getString(R.string.top_followers_tap)
+                }
+                setTextColor(activity.getColor(
+                    if (state.error.isNotBlank()) R.color.metric_red else R.color.oneui_text_secondary,
+                ))
+                textSize = 12f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, activity.dp(8), 0, 0)
+            })
+
+            setOnClickListener {
+                if (!keyConfigured) {
+                    activity.startActivity(android.content.Intent(activity, SettingsAdvancedActivity::class.java))
+                } else if (!state.scanning) {
+                    if (state.top.isNotEmpty()) {
+                        val results = state.top.joinToString("\n") { follower ->
+                            "@${follower.username} · ${TwidgetStore.compactNumber(follower.followers)} followers"
+                        }
+                        androidx.appcompat.app.AlertDialog.Builder(activity)
+                            .setTitle(R.string.top_followers)
+                            .setMessage(results)
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .setPositiveButton(R.string.refresh) { _, _ -> confirmTopFollowersScan(account) }
+                            .show()
+                        return@setOnClickListener
+                    }
+                    confirmTopFollowersScan(account)
+                }
+            }
+        }
+    }
+
+    private fun confirmTopFollowersScan(account: String) {
+        androidx.appcompat.app.AlertDialog.Builder(activity)
+            .setTitle(R.string.top_followers_scan_title)
+            .setMessage(R.string.top_followers_scan_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.scan) { _, _ ->
+                TopFollowersScanWorker.enqueue(activity, account, restart = true)
+                activity.dashboardBinder.bindContent()
+            }
+            .show()
     }
 
     private fun createChartCard(card: DashboardCardType, stats: ProfileStats, chartHistory: List<HistorySample>, history: List<HistorySample>): View {

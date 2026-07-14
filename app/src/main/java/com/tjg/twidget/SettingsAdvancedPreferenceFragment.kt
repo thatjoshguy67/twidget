@@ -185,6 +185,38 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
+        screen.addPreference(category(R.string.twitterapis_title))
+        screen.addPreference(EditTextPreference(context).apply {
+            key = "twitterapis_api_key_pref"
+            title = getString(R.string.twitterapis_api_key)
+            val current = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
+            text = current
+            summary = maskedToken(current)
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                it.setSelectAllOnFocus(true)
+            }
+            setOnPreferenceChangeListener { pref, value ->
+                val key = (value as String).trim()
+                SecureCredentialStore.write(
+                    context,
+                    mapOf(SecureCredentialStore.TWITTERAPIS_API_KEY to key),
+                )
+                pref.summary = maskedToken(key)
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            key = "twitterapis_configure_pref"
+            title = getString(R.string.configure)
+            summary = getString(R.string.twitterapis_explainer)
+            widgetLayoutResource = R.layout.preference_widget_open_link
+            setOnPreferenceClickListener {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TwitterApisClient.WEBSITE_URL)))
+                true
+            }
+        })
+
         screen.addBottomInset()
         preferenceScreen = screen
         refreshConnectorStatuses(bridgeStatus, selfHostedStatus, xApiStatus, fxTwitterStatus)

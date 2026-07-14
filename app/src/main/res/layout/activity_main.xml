@@ -35,6 +35,15 @@
                 android:layout_height="match_parent" />
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+        <FrameLayout
+            android:id="@+id/main_schedule_host"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <include layout="@layout/schedule_page" />
+        </FrameLayout>
+
         <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
             android:id="@+id/schedule_fab"
             android:layout_width="70dp"

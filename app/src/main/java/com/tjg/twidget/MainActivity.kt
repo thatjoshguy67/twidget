@@ -15,11 +15,17 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import dev.oneuiproject.oneui.layout.Badge
 import dev.oneuiproject.oneui.layout.DrawerLayout
+import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.R as OneUiIconR
 
-class MainActivity : EdgeToEdgeActivity() {
+class MainActivity : ScheduleQueueHostActivity() {
+    override val embedsScheduleQueue: Boolean = true
+
+    private var destination = MainDestination.DASHBOARD
+    private lateinit var scheduleBackCallback: androidx.activity.OnBackPressedCallback
     internal var accounts = emptyList<String>()
     internal var selectedAccount: String = ""
     internal var analytics: PostAnalytics? = null
@@ -56,22 +62,42 @@ class MainActivity : EdgeToEdgeActivity() {
             accounts = { accounts },
             selectedAccount = { selectedAccount },
             onAccountSelected = { account ->
+                destination = MainDestination.DASHBOARD
                 selectedAccount = account
                 render()
             },
             isEditMode = { editModeController.editMode },
-            openSchedule = { openSchedule(selectedAccount) },
-            openScheduleTrash = { openScheduleTrash(selectedAccount) },
+            isSchedulePage = { destination == MainDestination.SCHEDULING },
+            openSchedule = ::showScheduling,
+            openScheduleTrash = ::openScheduleTrash,
         )
         syncController = MainSyncController(this)
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
+        attachEmbeddedScheduleQueue(
+            toolbar = findViewById<ToolbarLayout>(R.id.main_toolbar_layout),
+            root = findViewById(R.id.schedule_queue_container),
+        )
+        destination = savedInstanceState?.getString(STATE_DESTINATION)
+            ?.let(MainDestination::valueOf)
+            ?: MainDestination.DASHBOARD
         val scheduleFab = findViewById<View>(R.id.schedule_fab)
         applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { navigationBarInset ->
             scheduleFab.updateBottomMarginForNavigationBar(dp(20), navigationBarInset)
+            updateScheduleBottomInsets(navigationBarInset)
         }
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
+        scheduleBackCallback = object : androidx.activity.OnBackPressedCallback(
+            destination == MainDestination.SCHEDULING,
+        ) {
+            override fun handleOnBackPressed() {
+                if (handleEmbeddedScheduleBack()) return
+                showDashboard()
+                isEnabled = false
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, scheduleBackCallback)
         RefreshWorker.schedule(this)
         TwidgetStore.migrateStoredHistories(this)
         syncController.setupRefresh()
@@ -118,11 +144,19 @@ class MainActivity : EdgeToEdgeActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
+        menuInflater.inflate(R.menu.schedule, menu)
         updateNoticesMenuIcon(menu)
         return true
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        if (destination == MainDestination.SCHEDULING) {
+            setDashboardMenuVisible(menu, false)
+            return super.onPrepareOptionsMenu(menu)
+        }
+        menu.findItem(R.id.schedule_trash_menu)?.isVisible = false
+        menu.setGroupVisible(R.id.schedule_filter_group, false)
+        setDashboardMenuVisible(menu, true)
         menu.findItem(R.id.menu_notices)?.isVisible = !editModeController.editMode
         updateNoticesMenuIcon(menu)
         menu.findItem(R.id.menu_add_widget)?.isVisible = !editModeController.editMode
@@ -131,10 +165,13 @@ class MainActivity : EdgeToEdgeActivity() {
         menu.findItem(R.id.menu_reset_layout)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_add_card)?.isVisible = editModeController.editMode
         menu.findItem(R.id.menu_done_editing)?.isVisible = editModeController.editMode
-        return super.onPrepareOptionsMenu(menu)
+        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (destination == MainDestination.SCHEDULING) {
+            return super.onOptionsItemSelected(item)
+        }
         when (item.itemId) {
             R.id.menu_notices -> {
                 ReleaseNoticesStore.markCurrentAsSeen(this)
@@ -150,6 +187,11 @@ class MainActivity : EdgeToEdgeActivity() {
             else -> return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_DESTINATION, destination.name)
+        super.onSaveInstanceState(outState)
     }
 
     // Orange dot on the drawer's settings cog while an app update is
@@ -200,17 +242,38 @@ class MainActivity : EdgeToEdgeActivity() {
         if (selectedAccount.isBlank() || accounts.none { it.equals(selectedAccount, ignoreCase = true) }) {
             selectedAccount = accounts.first()
         }
-        dashboardBinder.bindContent()
+        val dashboard = findViewById<SwipeRefreshLayout>(R.id.main_refresh)
+        val schedule = findViewById<View>(R.id.main_schedule_host)
+        if (destination == MainDestination.SCHEDULING) {
+            dashboard.visibility = View.GONE
+            dashboard.isEnabled = false
+            schedule.visibility = View.VISIBLE
+            showEmbeddedScheduleQueue()
+        } else {
+            hideEmbeddedScheduleQueue()
+            schedule.visibility = View.GONE
+            dashboard.visibility = View.VISIBLE
+            dashboard.isEnabled = true
+            dashboardBinder.bindContent()
+        }
+        if (::scheduleBackCallback.isInitialized) {
+            scheduleBackCallback.isEnabled = destination == MainDestination.SCHEDULING
+        }
         drawerController.buildDrawer()
-        drawerController.renderHeader()
+        if (destination == MainDestination.SCHEDULING) {
+            findViewById<ToolbarLayout>(R.id.main_toolbar_layout).setTitle(getString(R.string.schedule_title))
+        } else {
+            drawerController.renderHeader()
+        }
         updateScheduleFabVisibility()
     }
 
     private fun setupScheduleAction() {
         findViewById<View>(R.id.schedule_fab).setOnClickListener {
+            val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')
             startRightSidePopOverActivity(
                 Intent(this, ScheduleComposeActivity::class.java)
-                    .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, selectedAccount)
+                    .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, defaultAccount)
             )
         }
     }
@@ -218,23 +281,41 @@ class MainActivity : EdgeToEdgeActivity() {
     internal fun updateScheduleFabVisibility() {
         val defaultAccount = TwidgetStore.settings(this).username
         findViewById<View>(R.id.schedule_fab)?.visibility = if (
-            !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
+            destination == MainDestination.DASHBOARD &&
+                !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
         ) View.VISIBLE else View.GONE
     }
 
-    internal fun openSchedule(username: String) {
-        startActivity(
+    private fun showScheduling() {
+        editModeController.setEditMode(false)
+        destination = MainDestination.SCHEDULING
+        render()
+        invalidateOptionsMenu()
+    }
+
+    private fun showDashboard() {
+        destination = MainDestination.DASHBOARD
+        render()
+        invalidateOptionsMenu()
+    }
+
+    private fun openScheduleTrash() {
+        startLeftSidePopOverActivity(
             Intent(this, ScheduleActivity::class.java)
-                .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
+                .putExtra(ScheduleActivity.EXTRA_OPEN_TRASH, true)
         )
     }
 
-    internal fun openScheduleTrash(username: String) {
-        startLeftSidePopOverActivity(
-            Intent(this, ScheduleActivity::class.java)
-                .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
-                .putExtra(ScheduleActivity.EXTRA_OPEN_TRASH, true)
-        )
+    private fun setDashboardMenuVisible(menu: Menu, visible: Boolean) {
+        listOf(
+            R.id.menu_notices,
+            R.id.menu_add_widget,
+            R.id.menu_open_profile,
+            R.id.menu_edit_layout,
+            R.id.menu_reset_layout,
+            R.id.menu_add_card,
+            R.id.menu_done_editing,
+        ).forEach { menu.findItem(it)?.isVisible = visible }
     }
 
     private fun openActiveProfile() {
@@ -268,4 +349,13 @@ class MainActivity : EdgeToEdgeActivity() {
     }
 
     internal fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private enum class MainDestination {
+        DASHBOARD,
+        SCHEDULING,
+    }
+
+    private companion object {
+        const val STATE_DESTINATION = "main_destination"
+    }
 }

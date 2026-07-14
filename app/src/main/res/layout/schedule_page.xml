@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/schedule_queue_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <dev.oneuiproject.oneui.widget.RoundedTabLayout
+            android:id="@+id/schedule_tabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="10dp" />
+
+        <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
+            android:id="@+id/schedule_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="104dp"
+            app:roundedCorners="none">
+
+            <LinearLayout
+                android:id="@+id/schedule_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="4dp"
+                android:paddingBottom="24dp" />
+        </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
+    </LinearLayout>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/schedule_selection_bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone"
+        app:itemHorizontalTranslationEnabled="false"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/schedule_selection" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/schedule_trash_bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone"
+        app:itemHorizontalTranslationEnabled="false"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/schedule_trash_selection" />
+
+    <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+        android:id="@+id/schedule_primary_button"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:contentDescription="@string/schedule_new"
+        app:backgroundTint="@color/oneui_accent"
+        app:fabCustomSize="70dp"
+        app:srcCompat="@drawable/ic_oui_add"
+        app:tint="@android:color/white" />
+
+</FrameLayout>

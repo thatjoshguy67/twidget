@@ -286,9 +286,7 @@ internal class MainDrawerController(
 
     private fun handleDrawerItemSelected(item: MenuItem): Boolean {
         drawerAccountItemIds[item.itemId]?.let { account ->
-            if (!account.equals(selectedAccount(), ignoreCase = true)) {
-                onAccountSelected(account)
-            }
+            onAccountSelected(account)
             closeDrawerOnCompactScreens()
             return true
         }

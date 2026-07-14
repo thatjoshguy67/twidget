@@ -548,12 +548,11 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     private fun resolveEditorAccount(post: ScheduledPost?): String {
         post?.accountId?.takeIf(String::isNotBlank)?.let { return it }
         post?.accountUsername?.takeIf(String::isNotBlank)?.let { return it }
-        requestedUsername().takeIf(String::isNotBlank)?.let { return it }
-        return TwidgetStore.accounts(this).firstOrNull().orEmpty()
+        return requestedUsername()
     }
 
     private fun requestedUsername(): String =
-        intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
+        TwidgetStore.settings(this).username.trim().trimStart('@')
 
     private fun setBusy(value: Boolean) {
         busy = value

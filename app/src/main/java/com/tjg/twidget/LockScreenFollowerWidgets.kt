@@ -17,6 +17,8 @@ import android.widget.RemoteViews
 class LockScreenFollowerSmallWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         LockScreenFollowerViews.update(context, manager, appWidgetIds, R.layout.lockscreen_message_1x1)
+        RefreshWorker.schedule(context)
+        RefreshWorker.requestRefresh(context)
     }
 
     override fun onEnabled(context: Context) {
@@ -27,6 +29,8 @@ class LockScreenFollowerSmallWidget : AppWidgetProvider() {
 class LockScreenFollowerWideWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, appWidgetIds: IntArray) {
         LockScreenFollowerViews.update(context, manager, appWidgetIds, R.layout.lockscreen_message_2x1)
+        RefreshWorker.schedule(context)
+        RefreshWorker.requestRefresh(context)
     }
 
     override fun onEnabled(context: Context) {

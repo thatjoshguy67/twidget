@@ -22,6 +22,8 @@ class TwidgetWidget : AppWidgetProvider() {
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
         }
+        RefreshWorker.schedule(context)
+        RefreshWorker.requestRefresh(context)
     }
 
     // Covers widgets added straight from the picker without opening the app.

@@ -5,7 +5,9 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -56,6 +58,24 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
 
     companion object {
         private const val WORK_NAME = "twidget_periodic_refresh"
+        private const val IMMEDIATE_WORK_NAME = "twidget_widget_refresh"
+
+        /**
+         * AppWidgetProvider's update callback is an independent fallback for
+         * OEMs that defer or drop periodic WorkManager jobs. Deduplicate these
+         * requests because all enabled widget providers may be updated in the
+         * same system tick.
+         */
+        fun requestRefresh(context: Context) {
+            val request = OneTimeWorkRequest.Builder(RefreshWorker::class.java)
+                .setConstraints(networkConstraints())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                IMMEDIATE_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                request,
+            )
+        }
 
         /** Idempotent; call whenever the interval setting may have changed. */
         fun schedule(context: Context) {
@@ -63,11 +83,7 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
                 .coerceAtLeast(15) // WorkManager's minimum periodic interval
                 .toLong()
             val request = PeriodicWorkRequest.Builder(RefreshWorker::class.java, minutes, TimeUnit.MINUTES)
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-                )
+                .setConstraints(networkConstraints())
                 .build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
@@ -75,5 +91,9 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
                 request,
             )
         }
+
+        private fun networkConstraints(): Constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
     }
 }

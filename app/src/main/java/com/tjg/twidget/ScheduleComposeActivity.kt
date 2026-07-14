@@ -437,6 +437,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             createdAt = old?.createdAt ?: System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis(),
             publishedAt = old?.publishedAt,
+            pinned = old?.pinned ?: false,
         )
     }
 

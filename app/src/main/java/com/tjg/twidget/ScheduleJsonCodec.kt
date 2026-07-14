@@ -26,6 +26,8 @@ internal object ScheduleJsonCodec {
         "createdAt" to json(createdAt),
         "updatedAt" to json(updatedAt),
         "publishedAt" to json(publishedAt),
+        "pinned" to json(pinned),
+        "deletedAt" to json(deletedAt),
     )
 
     private fun ScheduleThreadItem.toJsonValue() = jsonObject(
@@ -70,6 +72,8 @@ internal object ScheduleJsonCodec {
             createdAt = createdAt,
             updatedAt = value.long("updatedAt"),
             publishedAt = value.optionalLong("publishedAt"),
+            pinned = value.optionalBoolean("pinned"),
+            deletedAt = value.optionalLong("deletedAt"),
         )
     }
 
@@ -113,6 +117,11 @@ internal sealed class JsonValue {
         fun optionalLong(name: String): Long? = when (val value = values[name]) {
             null, NullValue -> null
             is NumberValue -> value.value.toLongOrNull() ?: error("Invalid '$name'")
+            else -> error("Invalid '$name'")
+        }
+        fun optionalBoolean(name: String): Boolean = when (val value = values[name]) {
+            null, NullValue -> false
+            is BooleanValue -> value.value
             else -> error("Invalid '$name'")
         }
         fun boolean(name: String): Boolean = (values[name] as? BooleanValue)?.value

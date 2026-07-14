@@ -22,7 +22,7 @@ npm test
 
 ## Routes
 
-- `GET /health` — small unauthenticated readiness response; returns `503` if the configured history backend is unavailable.
+- `GET /health` — small unauthenticated readiness response; returns `503` if the configured history backend is unavailable. Includes `publicMode: true` when `BRIDGE_API_TOKEN` is unset.
 - `GET /user/:username` — normalized public profile data.
 - `GET /analytics/:username` — recent original-post analytics, cached for 45 minutes.
 - `GET /banger/:username` — opt-in, resumable Hall of Fame scan for the account's best balanced post.
@@ -46,6 +46,9 @@ can amplify work or weaken data trust and should stay off on a public instance
 unless there is a concrete operational reason to enable them.
 
 `BRIDGE_API_TOKEN` protects all data routes for private/self-hosted instances.
+Self-hosted deployments should always set this token. The maintainer-operated
+shared bridge intentionally remains token-free; check `/health` for
+`publicMode: true` when evaluating exposure.
 Android sends the configured bridge token as both a Bearer token and the legacy
 `X-Rettiwt-Api-Key` header. Do not ship a private token inside a publicly
 distributed APK.

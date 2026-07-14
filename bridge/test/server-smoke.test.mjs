@@ -26,6 +26,7 @@ test("bridge security and health defaults", async (t) => {
       HISTORY_ADMIN_TOKEN: "admin-token",
       HISTORY_STORE_PATH: path.join(temp, "history.json"),
       WAYBACK_BACKFILL: "0",
+      TEST_MOCK_UPSTREAM: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -55,7 +56,26 @@ test("bridge security and health defaults", async (t) => {
   assert.equal(health.headers.get("x-content-type-options"), "nosniff");
   const healthBody = await health.json();
   assert.equal(healthBody.authMode, "bearer");
+  assert.equal(healthBody.publicMode, false);
   assert.equal(healthBody.history.analyticsImport, true);
+
+  const unauthorizedUser = await fetch(`${base}/user/example`);
+  assert.equal(unauthorizedUser.status, 401);
+
+  const authorizedUser = await fetch(`${base}/user/example`, {
+    headers: { Authorization: "Bearer test-token" },
+  });
+  assert.equal(authorizedUser.status, 200);
+  const userBody = await authorizedUser.json();
+  assert.equal(userBody.userName, "example");
+  assert.equal(userBody.followersCount, 1234);
+  assert.equal(authorizedUser.headers.get("x-twidget-cache"), "miss");
+
+  const analytics = await fetch(`${base}/analytics/example`, {
+    headers: { Authorization: "Bearer test-token" },
+  });
+  assert.equal(analytics.status, 200);
+  assert.match(analytics.headers.get("ratelimit-limit") ?? "", /^\d+$/);
 
   const unauthorized = await fetch(`${base}/official/user/example`);
   assert.equal(unauthorized.status, 401);

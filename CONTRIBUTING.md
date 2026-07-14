@@ -14,15 +14,31 @@ documentation improvements are welcome.
 
 ## Development setup
 
-The Android app requires JDK 17 or newer and an Android SDK. Dependencies from
-the Tribalfs GitHub Packages registry require a GitHub token with
-`read:packages`; copy `github.properties.example` to
-`~/.config/twidget/github.properties`, populate it, and run `chmod 600` on the
-result.
+The Android app requires JDK 17 or newer and an Android SDK. GitHub Actions
+uses JDK 21; the app bytecode target remains JVM 17. Dependencies from the
+Tribalfs GitHub Packages registry require a GitHub token with `read:packages`;
+copy `github.properties.example` to `~/.config/twidget/github.properties`,
+populate it, and run `chmod 600` on the result (on Windows, restrict file
+permissions through your account settings).
+
+**macOS (Android Studio bundled JBR):**
 
 ```bash
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
   ./gradlew testDebugUnitTest assembleDebug lintDebug
+```
+
+**Windows (PowerShell, Android Studio JBR):**
+
+```powershell
+$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\Android Studio\jbr"
+.\gradlew testDebugUnitTest assembleDebug lintDebug
+```
+
+**Linux (system JDK 17+):**
+
+```bash
+./gradlew testDebugUnitTest assembleDebug lintDebug
 ```
 
 The bridge uses the Node version in `bridge/.nvmrc`:
@@ -49,6 +65,15 @@ populated environment file.
 - Do not weaken rate limits, authentication, retention controls, or secret
   boundaries merely to simplify local development.
 - Confirm the Android and bridge checks above pass before requesting review.
+
+### CI on fork pull requests
+
+Pull requests opened from a fork run **bridge checks only** in GitHub Actions.
+The Android build job is skipped because Tribalfs GitHub Packages credentials
+cannot be given to untrusted contributor code. Before requesting review from a
+fork, run the Android Gradle checks locally with your own
+`github.properties`. Maintainers can manually trigger Android CI for a specific
+pull request using the **Debug Build** workflow's `pr_number` input.
 
 Maintainers may decline changes that expand hosted-service cost, data
 collection, or operational risk even when the change is otherwise valid.

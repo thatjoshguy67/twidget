@@ -3,11 +3,8 @@ package com.tjg.twidget
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
+import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -28,7 +25,7 @@ object AnalyticsClient {
 
     fun cached(context: Context, username: String): PostAnalytics? {
         val raw = prefs(context).getString(key(context, username), null) ?: return null
-        val parsed = runCatching { parse(JSONObject(raw)) }.getOrNull() ?: return null
+        val parsed = runCatching { NetworkResponseParsers.parseBridgeAnalytics(JSONObject(raw)) }.getOrNull() ?: return null
         val latest = BangerClient.cached(context, username) ?: return parsed
         return parsed.copy(
             banger = latest.post ?: parsed.banger,
@@ -87,7 +84,7 @@ object AnalyticsClient {
     private fun fetchBridge(context: Context, username: String, endpoint: BridgeEndpoint): PostAnalytics {
         val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
         val body = read("${endpoint.url}/analytics/$encoded", endpoint.token, logContext = context)
-        return parse(JSONObject(body))
+        return NetworkResponseParsers.parseBridgeAnalytics(JSONObject(body))
     }
 
     private fun fetchFxTwitter(username: String): PostAnalytics {
@@ -279,84 +276,6 @@ object AnalyticsClient {
         else (sorted[middle - 1].toDouble() + sorted[middle]) / 2.0
     }
 
-    private fun parse(json: JSONObject): PostAnalytics {
-        val reach = json.optJSONObject("reach") ?: JSONObject()
-        val engagement = json.optJSONObject("engagement") ?: JSONObject()
-        return PostAnalytics(
-            userName = json.optString("userName"),
-            followers = json.optLong("followers"),
-            postsAnalyzed = json.optInt("postsAnalyzed"),
-            statusesInspected = json.optInt("statusesInspected", json.optInt("postsAnalyzed")),
-            isSampled = json.optBoolean("isSampled", false),
-            windowDays = json.optInt("windowDays", 7),
-            totalViews = reach.optLong("totalViews"),
-            avgViews = reach.optDouble("avgViews", 0.0),
-            medianViews = reach.optDouble("medianViews", 0.0),
-            avgViewsPerFollower = reach.optDouble("avgViewsPerFollower", 0.0),
-            totalEngagements = engagement.optLong("totalEngagements"),
-            avgEngagements = engagement.optDouble("avgEngagements", 0.0),
-            medianEngagements = engagement.optDouble("medianEngagements", 0.0),
-            avgEngagementsPerFollower = engagement.optDouble("avgEngagementsPerFollower", 0.0),
-            engagementRate = engagement.optDouble("engagementRate", 0.0),
-            best = parsePost(json.optJSONObject("best")),
-            worst = parsePost(json.optJSONObject("worst")),
-            banger = parsePost(json.optJSONObject("banger")),
-            bangerComplete = json.optBoolean("bangerComplete", false),
-            bangerPostsScanned = json.optInt("bangerPostsScanned", 0),
-            cachedAt = json.optLong("cachedAt", System.currentTimeMillis()),
-        )
-    }
-
-    private fun parsePost(json: JSONObject?): PostSummary? {
-        json ?: return null
-        return PostSummary(
-            url = safeWebUrl(json.optString("url")),
-            text = json.optString("text"),
-            views = json.optLong("views"),
-            likes = json.optLong("likes"),
-            replies = json.optLong("replies"),
-            reposts = json.optLong("reposts"),
-            quotes = json.optLong("quotes"),
-            engagements = json.optLong("engagements"),
-            timestamp = json.optLong("ts"),
-            createdAt = json.optString("createdAt"),
-            authorName = json.optString("authorName"),
-            authorUserName = json.optString("authorUserName"),
-            authorAvatar = safeWebUrl(json.optString("authorAvatar")),
-            links = parseLinks(json.optJSONArray("links")),
-            media = parseMedia(json.optJSONArray("media")),
-        )
-    }
-
-    private fun parseLinks(array: JSONArray?): List<PostLink> {
-        array ?: return emptyList()
-        return List(array.length()) { index -> array.optJSONObject(index) }
-            .mapNotNull { item ->
-                item ?: return@mapNotNull null
-                PostLink(
-                    display = item.optString("display"),
-                    url = safeWebUrl(item.optString("url")),
-                )
-            }
-            .filter { it.display.isNotBlank() && it.url.isNotBlank() }
-    }
-
-    private fun parseMedia(array: JSONArray?): List<PostMedia> {
-        array ?: return emptyList()
-        return List(array.length()) { index -> array.optJSONObject(index) }
-            .mapNotNull { item ->
-                item ?: return@mapNotNull null
-                PostMedia(
-                    type = item.optString("type"),
-                    url = safeWebUrl(item.optString("url")),
-                    alt = item.optString("alt"),
-                    width = item.optLong("width"),
-                    height = item.optLong("height"),
-                )
-            }
-            .filter { it.url.isNotBlank() }
-    }
-
     private fun serialize(a: PostAnalytics): JSONObject = JSONObject()
         .put("userName", a.userName)
         .put("followers", a.followers)
@@ -422,29 +341,21 @@ object AnalyticsClient {
     // stay out of the debug bridge log.
     internal fun read(url: String, apiKey: String, logContext: Context? = null): String {
         val startedAt = System.currentTimeMillis()
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 12_000
-        connection.readTimeout = 20_000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/json")
-        connection.setRequestProperty("User-Agent", "Twidget (Android)")
-        if (apiKey.isNotBlank()) {
-            connection.setRequestProperty("X-Rettiwt-Api-Key", apiKey)
-            connection.setRequestProperty("Authorization", "Bearer $apiKey")
+        val headers = buildMap {
+            put("User-Agent", "Twidget (Android)")
+            if (apiKey.isNotBlank()) {
+                put("X-Rettiwt-Api-Key", apiKey)
+                put("Authorization", "Bearer $apiKey")
+            }
         }
-        val code: Int
-        val text: String
         try {
-            code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+            val response = HttpTransport.get(url, headers, connectTimeoutMs = 12_000, readTimeoutMs = 20_000)
+            BridgeLog.record(logContext, "GET", url, response.code, response.body, System.currentTimeMillis() - startedAt)
+            return HttpTransport.requireSuccess(response, "Analytics")
         } catch (error: Exception) {
             BridgeLog.record(logContext, "GET", url, null, null, System.currentTimeMillis() - startedAt, error = error.message)
             throw error
         }
-        BridgeLog.record(logContext, "GET", url, code, text, System.currentTimeMillis() - startedAt)
-        if (code !in 200..299) throw IllegalStateException("Analytics HTTP $code: ${text.take(200)}")
-        return text
     }
 
     private fun highResolutionProfileImageUrl(url: String): String =

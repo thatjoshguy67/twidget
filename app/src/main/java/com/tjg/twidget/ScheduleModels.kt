@@ -89,7 +89,14 @@ data class ScheduledPost(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = createdAt,
     val publishedAt: Long? = null,
+    val pinned: Boolean = false,
+    val deletedAt: Long? = null,
 )
+
+object ScheduleTrashPolicy {
+    const val RETENTION_DAYS = 30
+    const val RETENTION_MS = RETENTION_DAYS * 24L * 60L * 60L * 1000L
+}
 
 enum class ScheduleValidationCode {
     EMPTY_THREAD,

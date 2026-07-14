@@ -13,12 +13,12 @@ class ScheduleBootReceiver : BroadcastReceiver() {
             return
         }
         val pendingResult = goAsync()
-        Thread {
+        AppExecutors.execute(onRejected = { pendingResult.finish() }) {
             try {
                 LocalReminderScheduler(context).rescheduleAll()
             } finally {
                 pendingResult.finish()
             }
-        }.start()
+        }
     }
 }

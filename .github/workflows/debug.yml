@@ -78,9 +78,9 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./gradlew testDebugUnitTest assembleDebug lintDebug --no-daemon --stacktrace
+            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug lintDebug --no-daemon --stacktrace
           else
-            ./gradlew testDebugUnitTest assembleDebug lintDebug \
+            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug lintDebug \
               -PsignDebugWithRelease=true --no-daemon --stacktrace
           fi
 

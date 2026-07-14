@@ -58,6 +58,10 @@
                 </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
             </LinearLayout>
 
+            <include layout="@layout/schedule_selection_bar" />
+
+            <include layout="@layout/schedule_trash_bar" />
+
             <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
                 android:id="@+id/schedule_primary_button"
                 android:layout_width="70dp"

@@ -2,11 +2,6 @@ package com.tjg.twidget
 
 import android.content.Context
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 data class PostponeError(
@@ -152,39 +147,25 @@ class PostponeClient(
     private fun execute(requestBody: String): String {
         val key = apiKeyOverride?.trim().orEmpty().ifBlank { readApiKey() }
         if (key.isBlank()) error("Postpone API key is not configured")
-        val connection = URL(endpoint).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 20_000
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connection.setRequestProperty("Authorization", "Bearer $key")
-            // JSONObject validates the generated GraphQL envelope before it is sent.
-            val validatedBody = JSONObject(requestBody).toString()
-            connection.outputStream.use {
-                it.write(validatedBody.toByteArray(StandardCharsets.UTF_8))
-            }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.let {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).use { reader ->
-                    reader.readText()
-                }
-            }.orEmpty()
-            if (status !in 200..299) {
-                val detail = PostponeGraphQlCodec.firstErrorMessage(response)
-                    ?: response.take(400).takeIf(String::isNotBlank)
-                    ?: "empty response"
-                throw PostponeHttpError(status, "Postpone HTTP $status: $detail")
-            }
-            // Validate server JSON here; pure parsers below remain JVM-testable.
-            JSONObject(response)
-            return response
-        } finally {
-            connection.disconnect()
+        val validatedBody = JSONObject(requestBody).toString()
+        val response = HttpTransport.post(
+            endpoint,
+            validatedBody,
+            mapOf(
+                "Content-Type" to "application/json; charset=utf-8",
+                "Authorization" to "Bearer $key",
+            ),
+            connectTimeoutMs = 15_000,
+            readTimeoutMs = 20_000,
+        )
+        if (response.code !in 200..299) {
+            val detail = PostponeGraphQlCodec.firstErrorMessage(response.body)
+                ?: response.body.take(400).takeIf(String::isNotBlank)
+                ?: "empty response"
+            throw PostponeHttpError(response.code, "Postpone HTTP ${response.code}: $detail")
         }
+        JSONObject(response.body)
+        return response.body
     }
 
     private fun readApiKey(): String {

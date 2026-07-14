@@ -13,10 +13,6 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceViewHolder
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
 
 class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
@@ -261,19 +257,12 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun bridgeHealthSummary(baseUrl: String, token: String): String {
-        val connection = URL("$baseUrl/health").openConnection() as HttpURLConnection
-        connection.connectTimeout = 5_000
-        connection.readTimeout = 5_000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/json")
-        if (token.isNotBlank()) {
-            connection.setRequestProperty("Authorization", "Bearer $token")
+        val headers = buildMap {
+            if (token.isNotBlank()) put("Authorization", "Bearer $token")
         }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
-        if (code !in 200..299) return getString(R.string.status_http_error, code)
-        val json = runCatching { JSONObject(body) }.getOrNull()
+        val response = HttpTransport.get("$baseUrl/health", headers, connectTimeoutMs = 5_000, readTimeoutMs = 5_000)
+        if (response.code !in 200..299) return getString(R.string.status_http_error, response.code)
+        val json = runCatching { JSONObject(response.body) }.getOrNull()
         val authMode = json?.optString("authMode").orEmpty()
         return if (json?.optBoolean("ok") == true) {
             if (authMode.isBlank()) getString(R.string.status_connected) else getString(R.string.status_connected_detail, authMode)

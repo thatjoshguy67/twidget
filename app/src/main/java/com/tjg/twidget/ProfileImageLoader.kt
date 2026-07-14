@@ -142,13 +142,15 @@ object ProfileImageLoader {
     }.getOrNull()
 
     private fun downloadFile(url: String, file: File) {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8_000
-            readTimeout = 12_000
-            instanceFollowRedirects = true
-            setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Android) Twidget/0.1")
-        }
+        val connection = HttpTransport.openConnection(
+            url,
+            headers = mapOf(
+                "Accept" to "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "User-Agent" to "Mozilla/5.0 (Android) Twidget/0.1",
+            ),
+            connectTimeoutMs = 8_000,
+            readTimeoutMs = 12_000,
+        ).apply { instanceFollowRedirects = true }
         val code = connection.responseCode
         if (code !in 200..299) {
             connection.disconnect()

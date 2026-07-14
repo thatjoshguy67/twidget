@@ -93,6 +93,7 @@ class ScheduleCoordinator(
         val scheduled = post.copy(
             status = ScheduleStatus.SCHEDULED,
             errorMessage = null,
+            pinned = false,
             updatedAt = nowMillis,
         )
         store.upsert(scheduled)
@@ -121,6 +122,7 @@ class ScheduleCoordinator(
             status = ScheduleStatus.SCHEDULED,
             remotePostId = result.value?.remotePostId ?: post.remotePostId,
             errorMessage = null,
+            pinned = false,
             updatedAt = nowMillis,
         )
         store.upsert(scheduled)
@@ -136,6 +138,7 @@ class ScheduleCoordinator(
         val failed = post.copy(
             status = ScheduleStatus.FAILED,
             errorMessage = messages.joinToString("\n"),
+            pinned = false,
             updatedAt = nowMillis,
         )
         store.upsert(failed)

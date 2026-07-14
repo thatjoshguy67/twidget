@@ -124,12 +124,13 @@ internal class ScheduleComposeUi(
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 activity.composeUpdateItemText(index, s?.toString().orEmpty())
-                updateComposerTokenHighlights(input)
-                updateCharacterLimit(input, limitNotice)
                 updateRemoveThreadButton(index, input, removeThread, media.isEmpty())
                 refreshSubmitState()
             }
-            override fun afterTextChanged(s: Editable?) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                updateComposerTokenHighlights(input)
+                updateCharacterLimit(input, limitNotice)
+            }
         })
 
         strip.visibility = if (media.isEmpty()) View.GONE else View.VISIBLE

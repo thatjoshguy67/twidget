@@ -3,10 +3,6 @@ package com.tjg.twidget
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Calendar
@@ -58,11 +54,7 @@ object HistoryPool {
             endpoint.token,
         )
         val root = JSONObject(body)
-        return BridgeAnalyticsImport(
-            accepted = root.optInt("accepted", 0),
-            checkedAnchors = root.optInt("checkedAnchors", 0),
-            history = parseHistory(root.optJSONArray("history") ?: JSONArray()),
-        )
+        return NetworkResponseParsers.parseBridgeAnalyticsImport(root)
     }
 
     // Registers the account when unknown and returns the pooled history.
@@ -73,29 +65,7 @@ object HistoryPool {
     }
 
     private fun parseHistory(array: JSONArray): List<HistorySample> =
-        List(array.length()) { index -> array.optJSONObject(index) }
-            .mapNotNull { sample ->
-                sample ?: return@mapNotNull null
-                val timestamp = sample.optLong("ts", sample.optLong("timestamp", 0L))
-                if (timestamp <= 0L) return@mapNotNull null
-                val dayLabel = sample.optString("dayLabel", "")
-                HistorySample(
-                    dayLabel = dayLabel,
-                    followers = sample.optLong("followers", 0L),
-                    following = sample.optLong("following", sample.optLong("followings", 0L)),
-                    posts = sample.optLong("posts", 0L),
-                    likes = sample.optLong("likes", 0L),
-                    timestamp = localDayFromServer(timestamp, dayLabel),
-                    estimated = sample.optBoolean("est", false),
-                    followersKnown = sample.has("followers") && !sample.isNull("followers"),
-                    followingKnown = (sample.has("following") && !sample.isNull("following")) ||
-                        (sample.has("followings") && !sample.isNull("followings")),
-                    postsKnown = sample.has("posts") && !sample.isNull("posts"),
-                    likesKnown = sample.has("likes") && !sample.isNull("likes"),
-                    imported = sample.optString("src") == "x_analytics",
-                    sharedImport = sample.optString("src") == "x_analytics",
-                )
-            }
+        NetworkResponseParsers.parseBridgeHistoryArray(array)
 
     private fun needsSync(context: Context, username: String): Boolean =
         poolPrefs(context).getLong("synced_${username.lowercase()}", 0L) < startOfToday() &&
@@ -129,47 +99,37 @@ object HistoryPool {
 
     private fun request(context: Context, method: String, url: String, body: String?, apiKey: String): String {
         val startedAt = System.currentTimeMillis()
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
-        connection.requestMethod = method
-        connection.setRequestProperty("Accept", "application/json")
-        if (apiKey.isNotBlank()) {
-            connection.setRequestProperty("X-Rettiwt-Api-Key", apiKey)
-            connection.setRequestProperty("Authorization", "Bearer $apiKey")
+        val headers = buildMap {
+            if (apiKey.isNotBlank()) {
+                put("X-Rettiwt-Api-Key", apiKey)
+                put("Authorization", "Bearer $apiKey")
+            }
+            if (body != null) put("Content-Type", "application/json")
         }
-        if (body != null) {
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.doOutput = true
-            connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
-        }
-        val code: Int
-        val text: String
         try {
-            code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+            val response = if (method == "GET") {
+                HttpTransport.get(url, headers)
+            } else {
+                HttpTransport.post(url, body.orEmpty(), headers)
+            }
+            BridgeLog.record(context, method, url, response.code, response.body, System.currentTimeMillis() - startedAt, requestBody = body)
+            if (response.code !in 200..299) {
+                val error = runCatching { JSONObject(response.body) }.getOrNull()
+                val detail = error?.optJSONObject("detail")
+                throw BridgeImportException(
+                    status = response.code,
+                    code = error?.optString("error").orEmpty().ifBlank { "pool_http_error" },
+                    expectedFollowers = detail?.optLong("expected")?.takeIf { detail.has("expected") },
+                    detectedFollowers = detail?.optLong("reconstructed")?.takeIf { detail.has("reconstructed") },
+                    message = "Pool HTTP ${response.code}: ${response.body.take(200)}",
+                )
+            }
+            return response.body
         } catch (error: Exception) {
             BridgeLog.record(context, method, url, null, null, System.currentTimeMillis() - startedAt, requestBody = body, error = error.message)
             throw error
         }
-        BridgeLog.record(context, method, url, code, text, System.currentTimeMillis() - startedAt, requestBody = body)
-        if (code !in 200..299) {
-            val error = runCatching { JSONObject(text) }.getOrNull()
-            val detail = error?.optJSONObject("detail")
-            throw BridgeImportException(
-                status = code,
-                code = error?.optString("error").orEmpty().ifBlank { "pool_http_error" },
-                expectedFollowers = detail?.optLong("expected")?.takeIf { detail.has("expected") },
-                detectedFollowers = detail?.optLong("reconstructed")?.takeIf { detail.has("reconstructed") },
-                message = "Pool HTTP $code: ${text.take(200)}",
-            )
-        }
-        return text
     }
-
-    private fun localDayFromServer(timestamp: Long, dayLabel: String): Long =
-        HistoryDates.localDayFromServer(timestamp, dayLabel)
 }
 
 data class BridgeAnalyticsImport(

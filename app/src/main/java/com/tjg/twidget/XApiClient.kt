@@ -3,10 +3,6 @@ package com.tjg.twidget
 import android.content.Context
 import android.util.Base64
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
@@ -38,7 +34,7 @@ object XApiClient {
         if (cached.isNotBlank()) {
             try {
                 return fetchUser(username, cached)
-            } catch (error: HttpError) {
+            } catch (error: HttpTransport.HttpException) {
                 if (error.code != 401) throw error
             }
         }
@@ -76,37 +72,7 @@ object XApiClient {
             "https://api.x.com/2/users/by/username/$encoded?user.fields=$USER_FIELDS",
             mapOf("Authorization" to "Bearer ${bearer.trim().removePrefix("Bearer ")}"),
         )
-        val json = JSONObject(body)
-        val user = json.optJSONObject("data")
-            ?: throw IllegalStateException(
-                json.optJSONArray("errors")?.optJSONObject(0)?.optString("detail")
-                    ?.takeIf { it.isNotBlank() } ?: "X API returned no user for @$username"
-            )
-        val metrics = user.optJSONObject("public_metrics") ?: JSONObject()
-        return ProfileStats(
-            fullName = user.optString("name").ifBlank { username },
-            userName = user.optString("username").ifBlank { username }.trimStart('@'),
-            followersCount = metrics.optLong("followers_count"),
-            followingsCount = metrics.optLong("following_count"),
-            statusesCount = metrics.optLong("tweet_count"),
-            // X user public_metrics does not expose profile-wide likes. The
-            // provider coordinator fills this from FxTwitter or cached data.
-            likeCount = 0,
-            profileImage = highResolutionProfileImageUrl(user.optString("profile_image_url")),
-            // Absent fields stay unknown (null) instead of claiming false.
-            isVerified = if (user.has("verified") || user.has("verified_type")) {
-                user.optBoolean("verified", false) ||
-                    user.optString("verified_type").let { it.isNotBlank() && it != "none" }
-            } else {
-                null
-            },
-            isPrivate = if (user.has("protected")) user.optBoolean("protected") else null,
-            syncedAt = System.currentTimeMillis(),
-            followersKnown = metrics.has("followers_count"),
-            followingKnown = metrics.has("following_count"),
-            postsKnown = metrics.has("tweet_count"),
-            likesKnown = false,
-        )
+        return NetworkResponseParsers.parseXApiUser(JSONObject(body), username)
     }
 
     private fun get(url: String, headers: Map<String, String>): String =
@@ -116,27 +82,11 @@ object XApiClient {
         request("POST", url, body, headers)
 
     private fun request(method: String, url: String, body: String?, headers: Map<String, String>): String {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
-        connection.requestMethod = method
-        connection.setRequestProperty("Accept", "application/json")
-        headers.forEach { (key, value) -> connection.setRequestProperty(key, value) }
-        if (body != null) {
-            connection.doOutput = true
-            connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
+        val response = if (method == "GET") {
+            HttpTransport.get(url, headers)
+        } else {
+            HttpTransport.post(url, body.orEmpty(), headers)
         }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
-        if (code !in 200..299) throw HttpError(code, "X API HTTP $code: ${text.take(300)}")
-        return text
+        return HttpTransport.requireSuccess(response, "X API")
     }
-
-    private fun highResolutionProfileImageUrl(url: String): String =
-        url.trim()
-            .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
-            .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
-
-    class HttpError(val code: Int, message: String) : IllegalStateException(message)
 }

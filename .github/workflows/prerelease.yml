@@ -7,7 +7,31 @@ permissions:
   contents: write # create the tag and the GitHub Release
 
 jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: bridge/.nvmrc
+          cache: npm
+          cache-dependency-path: bridge/package-lock.json
+
+      - name: Install and verify bridge
+        run: |
+          npm ci
+          npm run check
+          npm test
+          npm audit --omit=dev
+
   prerelease:
+    needs: bridge
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

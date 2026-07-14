@@ -6,13 +6,46 @@ All notable changes to Twidget are documented here.
 
 ### Added
 
-- Added pull-to-refresh on the About page to immediately recheck the selected update channel.
+- The native composer now uses Android's active keyboard for spell checking, autocorrection, and word suggestions.
+- Drafts can be pinned with quick actions, a long-press context menu, and bulk pin/unpin/delete selection mode.
+
+## [1.1.0] - 2026-07-14
+
+Stable release of Twidget 1.1, bringing scheduled publishing, richer analytics, release notices, and more reliable widgets across launchers.
+
+### Added
+
+- A complete scheduling workspace with calendar and agenda views, local reminder notifications, Postpone integration, drafts, account mapping, and recovery after reboot.
+- A native One UI composer for single tweets and threads, including media attachments, camera capture, date and time selection, character limits, a dedicated Draft action, and publish checklists.
+- Detailed X Analytics CSV imports covering followers, impressions, engagements, likes, bookmarks, shares, replies, reposts, profile visits, posts, video views, and media views.
+- Import validation against trusted snapshots, honest gaps for unavailable data, diagnostic rejection messages, and blending of verified imports into dashboard cards and averages.
+- Configurable analytics cards and range-aware insights surfaced directly on the dashboard.
+- An in-app Notices feed backed by GitHub Releases, with prerelease labels, offline caching, unread indicators, changelog previews, and full in-app release notes.
+- Automatic update checks when the app launches, respecting the selected stable or beta release channel.
+- Pull-to-refresh on the About page to immediately recheck the selected update channel.
 - Debug builds now expose a debug-only update channel backed by the latest successful, production-signed CI build, using public sidecar metadata that does not consume the GitHub API quota.
+
+### Changed
+
+- Scheduling now uses native One UI calendar, card, switcher, pop-over, floating-toolbar, and composer patterns throughout.
+- The composer header is shorter, with a plain Draft action beside the contained Save action.
+- Analytics remain embedded in the dashboard; the redundant standalone Analytics page and drawer entry were removed.
+- Notices are now a toolbar action with an orange unread dot; redundant drawer and About-page entries were removed.
+- Home-screen widgets render to the exact launcher-provided size while preserving artwork proportions, including on non-One UI launchers.
+- Private-account analytics now explain their limited availability instead of presenting incomplete data without context.
+- GitHub release workflows now place these human-written notes before generated commit and pull-request links.
 
 ### Fixed
 
+- Fixed blank or incorrectly sized widgets on non-One UI launchers and prevented artwork from stretching or cropping at unusual launcher dimensions.
+- Fixed analytics imports that contain untracked follower removals while continuing to reject genuinely inconsistent histories.
+- Restored analytics-import shortcuts and kept the import action available from the account menu.
+- Fixed dashboard card touch feedback, chart interactions, and drawer avatar tint persistence.
+- Fixed scheduling switcher expansion, composer token highlighting, floating chrome insets, and several light-theme notice/composer surface artifacts.
 - Prevented the expanded About-page update control from being clipped on tablets, foldables, and other large-screen layouts.
 - Debug builds can now move to beta or stable builds of the same base version, so testers are not stranded on older builds.
+
+[1.1.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.0-beta.1...twidget-v1.1.0
 
 ## [1.1.0-beta.1] - 2026-07-13
 
@@ -64,7 +97,7 @@ First public release of Twidget, an X/Twitter follower dashboard and Samsung One
 - Background refresh on a configurable interval (15–240 minutes) via WorkManager, plus refresh-on-launch.
 - Included the optional FxTwitter/Rettiwt `bridge/` Node service for self-hosting and pooled history.
 - Bridge smoke tests and CI checks for security defaults, authentication, syntax, and dependency vulnerabilities.
-- Eighteen deterministic Android tests for provider fallback, analytics filtering/pagination, history migration, metric provenance, official-X likes handling, encrypted credential envelopes, and update-channel version selection.
+- Deterministic unit tests for provider fallback, analytics filtering/pagination, history migration, metric provenance, official-X likes handling, encrypted credential envelopes, and update-channel version selection.
 - Hidden debug menu, unlocked by tapping the version in About seven times: rerun onboarding, a dummy profile with an editable follower count for widget testing, and a log of bridge traffic.
 
 ### Changed

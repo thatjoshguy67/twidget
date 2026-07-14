@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/schedule_selection_pin"
+        android:icon="@drawable/ic_oui_pin_outline"
+        android:title="@string/schedule_pin"
+        android:showAsAction="always" />
+    <item
+        android:id="@+id/schedule_selection_duplicate"
+        android:icon="@drawable/ic_oui_copy_outline"
+        android:title="@string/schedule_duplicate"
+        android:showAsAction="always" />
+    <item
+        android:id="@+id/schedule_selection_delete"
+        android:icon="@drawable/ic_oui_delete_outline"
+        android:title="@string/delete"
+        android:showAsAction="always" />
+    <item
+        android:id="@+id/schedule_selection_more"
+        android:icon="@drawable/ic_oui_more"
+        android:title="@string/schedule_more"
+        android:showAsAction="always" />
+</menu>

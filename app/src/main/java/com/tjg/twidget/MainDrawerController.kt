@@ -18,37 +18,48 @@ import dev.oneuiproject.oneui.design.R as OneUiDesignR
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 internal class MainDrawerController(
-    private val activity: MainActivity,
+    private val activity: EdgeToEdgeActivity,
+    private val drawerLayoutId: Int,
+    private val drawerNavigationId: Int,
+    private val accounts: () -> List<String>,
+    private val selectedAccount: () -> String,
+    private val onAccountSelected: (String) -> Unit,
+    private val isEditMode: () -> Boolean = { false },
+    private val isSchedulePage: () -> Boolean = { false },
+    private val isTrashPage: () -> Boolean = { false },
+    private val openSchedule: () -> Unit,
+    private val openScheduleTrash: () -> Unit,
 ) {
     private val drawerAccountItemIds = mutableMapOf<Int, String>()
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
 
     fun setupDrawerChrome() {
-        activity.findViewById<NavDrawerLayout>(R.id.main_toolbar_layout).apply {
+        activity.findViewById<NavDrawerLayout>(drawerLayoutId).apply {
             closeNavRailOnBack = true
             setHideNavRailDrawerOnCollapse(false)
         }
-        activity.findViewById<DrawerNavigationView>(R.id.drawer_nav)
+        activity.findViewById<DrawerNavigationView>(drawerNavigationId)
             .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
-        activity.findViewById<DrawerLayout>(R.id.main_toolbar_layout).setupHeaderButton(
+        activity.findViewById<DrawerLayout>(drawerLayoutId).setupHeaderButton(
             requireNotNull(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_settings_outline)),
             activity.getColor(R.color.oneui_text_secondary),
             activity.getString(R.string.settings),
         ) {
             closeDrawerOnCompactScreens()
-            activity.openSettings()
+            activity.startLeftSidePopOverActivity(Intent(activity, SettingsActivity::class.java))
         }
     }
 
     fun buildDrawer() {
-        val drawerNav = activity.findViewById<DrawerNavigationView>(R.id.drawer_nav)
+        val drawerNav = activity.findViewById<DrawerNavigationView>(drawerNavigationId)
         val menu = drawerNav.drawerMenu()
+        val drawerAccounts = accounts()
 
         drawerAccountItemIds.clear()
         drawerAvatarItemIds.clear()
         menu.clear()
-        activity.accounts.forEachIndexed { index, account ->
+        drawerAccounts.forEachIndexed { index, account ->
             val stats = TwidgetStore.currentStats(activity, account)
             val itemId = DRAWER_ACCOUNT_ITEM_BASE + index
             drawerAccountItemIds[itemId] = account
@@ -56,13 +67,13 @@ internal class MainDrawerController(
                 DRAWER_GROUP_ACCOUNTS,
                 itemId,
                 index,
-                VerifiedBadge.decorate(activity, stats.fullName.ifBlank { account }, stats.isVerified, stats.isPrivate, activity.dp(17)),
+                VerifiedBadge.decorate(activity, stats.fullName.ifBlank { account }, stats.isVerified, stats.isPrivate, dp(17)),
             ).apply {
                 val (icon, isAvatar) = drawerAccountIcon(stats)
                 setIcon(icon)
                 if (isAvatar) drawerAvatarItemIds += itemId
                 isCheckable = true
-                isChecked = account.equals(activity.selectedAccount, ignoreCase = true)
+                isChecked = account.equals(selectedAccount(), ignoreCase = true)
                 contentDescription = stats.fullName.ifBlank { account }
             }
         }
@@ -71,7 +82,7 @@ internal class MainDrawerController(
         menu.add(
             DRAWER_GROUP_ACTIONS,
             DRAWER_ITEM_ADD_ACCOUNT,
-            activity.accounts.size,
+            drawerAccounts.size,
             activity.getString(R.string.add_account),
         ).apply {
             setIcon(OneUiIconR.drawable.ic_oui_add)
@@ -80,19 +91,23 @@ internal class MainDrawerController(
         menu.add(
             DRAWER_GROUP_ACTIONS,
             DRAWER_ITEM_SCHEDULE,
-            activity.accounts.size + 1,
+            drawerAccounts.size + 1,
             activity.getString(R.string.schedule_title),
         ).apply {
             setIcon(OneUiIconR.drawable.ic_oui_time_outline)
+            isCheckable = true
+            isChecked = isSchedulePage() && !isTrashPage()
             contentDescription = activity.getString(R.string.schedule_title)
         }
         menu.add(
             DRAWER_GROUP_ACTIONS,
             DRAWER_ITEM_SCHEDULE_TRASH,
-            activity.accounts.size + 2,
+            drawerAccounts.size + 2,
             activity.getString(R.string.schedule_trash),
         ).apply {
             setIcon(OneUiIconR.drawable.ic_oui_delete_outline)
+            isCheckable = true
+            isChecked = isTrashPage()
             contentDescription = activity.getString(R.string.schedule_trash)
         }
         drawerNav.refreshDrawerMenu()
@@ -103,14 +118,14 @@ internal class MainDrawerController(
     }
 
     fun renderHeader() {
-        val stats = TwidgetStore.currentStats(activity, activity.selectedAccount)
-        activity.findViewById<DrawerLayout>(R.id.main_toolbar_layout).apply {
-            if (activity.editModeController.editMode) {
+        val stats = TwidgetStore.currentStats(activity, selectedAccount())
+        activity.findViewById<DrawerLayout>(drawerLayoutId).apply {
+            if (isEditMode()) {
                 setTitle(activity.getString(R.string.edit_home))
                 setSubtitle("")
             } else {
                 val name = stats.fullName.ifBlank { "@${stats.userName}" }
-                setTitle(VerifiedBadge.decorate(activity, name, stats.isVerified, stats.isPrivate, activity.dp(26)))
+                setTitle(VerifiedBadge.decorate(activity, name, stats.isVerified, stats.isPrivate, dp(26)))
                 setSubtitle("@${stats.userName} · ${TwidgetStore.lastSyncedText(activity, stats)}")
             }
         }
@@ -120,7 +135,10 @@ internal class MainDrawerController(
         drawerAccountItemIds.forEach { (itemId, account) ->
             drawerNav.findViewById<View>(itemId)?.setOnLongClickListener {
                 closeDrawerOnCompactScreens()
-                activity.openAnalyticsImport(account)
+                activity.startActivity(
+                    Intent(activity, AnalyticsImportActivity::class.java)
+                        .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, account),
+                )
                 true
             }
         }
@@ -145,7 +163,6 @@ internal class MainDrawerController(
         synchronized(downloadingDrawerAvatarUrls) {
             if (!downloadingDrawerAvatarUrls.add(url)) return
         }
-        val lifecycleToken = activity.syncController.lifecycleGeneration
         AppExecutors.execute(onRejected = {
             synchronized(downloadingDrawerAvatarUrls) {
                 downloadingDrawerAvatarUrls.remove(url)
@@ -155,7 +172,9 @@ internal class MainDrawerController(
             synchronized(downloadingDrawerAvatarUrls) {
                 downloadingDrawerAvatarUrls.remove(url)
             }
-            if (loaded) activity.syncController.postUiIfCurrent(lifecycleToken, ::buildDrawer)
+            if (loaded) activity.runOnUiThread {
+                if (!activity.isFinishing && !activity.isDestroyed) buildDrawer()
+            }
         }
     }
 
@@ -267,9 +286,8 @@ internal class MainDrawerController(
 
     private fun handleDrawerItemSelected(item: MenuItem): Boolean {
         drawerAccountItemIds[item.itemId]?.let { account ->
-            if (!account.equals(activity.selectedAccount, ignoreCase = true)) {
-                activity.selectedAccount = account
-                activity.render()
+            if (!account.equals(selectedAccount(), ignoreCase = true)) {
+                onAccountSelected(account)
             }
             closeDrawerOnCompactScreens()
             return true
@@ -277,28 +295,31 @@ internal class MainDrawerController(
 
         if (item.itemId == DRAWER_ITEM_ADD_ACCOUNT) {
             closeDrawerOnCompactScreens()
-            activity.addAccount()
+            activity.startAddAccountActivity()
             return true
         }
         if (item.itemId == DRAWER_ITEM_SCHEDULE) {
             closeDrawerOnCompactScreens()
-            activity.openSchedule(activity.selectedAccount)
+            openSchedule()
             return true
         }
         if (item.itemId == DRAWER_ITEM_SCHEDULE_TRASH) {
             closeDrawerOnCompactScreens()
-            activity.openScheduleTrash(activity.selectedAccount)
+            openScheduleTrash()
             return true
         }
         return false
     }
 
     private fun closeDrawerOnCompactScreens() {
-        val drawer = activity.findViewById<NavDrawerLayout>(R.id.main_toolbar_layout)
+        val drawer = activity.findViewById<NavDrawerLayout>(drawerLayoutId)
         if (!drawer.isLargeScreenMode) {
             drawer.setDrawerOpen(false, animate = true)
         }
     }
+
+    private fun dp(value: Int): Int =
+        (value * activity.resources.displayMetrics.density).toInt()
 
     private fun DrawerNavigationView.drawerMenu(): Menu {
         val field = DrawerNavigationView::class.java.getDeclaredField("navDrawerMenu")

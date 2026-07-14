@@ -12,7 +12,7 @@
     app:title="@string/schedule_title">
 
     <dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
-        android:id="@+id/schedule_drawer_nav"
+        android:id="@+id/drawer_nav"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_location="drawer_panel" />
@@ -58,8 +58,6 @@
                         android:paddingBottom="24dp" />
                 </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
             </LinearLayout>
-
-            <include layout="@layout/schedule_selection_bar" />
 
             <include layout="@layout/schedule_trash_bar" />
 

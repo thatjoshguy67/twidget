@@ -49,7 +49,20 @@ class MainActivity : EdgeToEdgeActivity() {
         }
         editModeController = MainEditModeController(this)
         dashboardBinder = MainDashboardBinder(this)
-        drawerController = MainDrawerController(this)
+        drawerController = MainDrawerController(
+            activity = this,
+            drawerLayoutId = R.id.main_toolbar_layout,
+            drawerNavigationId = R.id.drawer_nav,
+            accounts = { accounts },
+            selectedAccount = { selectedAccount },
+            onAccountSelected = { account ->
+                selectedAccount = account
+                render()
+            },
+            isEditMode = { editModeController.editMode },
+            openSchedule = { openSchedule(selectedAccount) },
+            openScheduleTrash = { openScheduleTrash(selectedAccount) },
+        )
         syncController = MainSyncController(this)
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
@@ -222,21 +235,6 @@ class MainActivity : EdgeToEdgeActivity() {
                 .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
                 .putExtra(ScheduleActivity.EXTRA_OPEN_TRASH, true)
         )
-    }
-
-    internal fun openSettings() {
-        startLeftSidePopOverActivity(Intent(this, SettingsActivity::class.java))
-    }
-
-    internal fun openAnalyticsImport(username: String) {
-        startActivity(
-            Intent(this, AnalyticsImportActivity::class.java)
-                .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username)
-        )
-    }
-
-    internal fun addAccount() {
-        startAddAccountActivity()
     }
 
     private fun openActiveProfile() {

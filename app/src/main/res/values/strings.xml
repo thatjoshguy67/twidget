@@ -388,6 +388,7 @@
     <string name="schedule_compose_title">Compose</string>
     <string name="schedule_ready_now">Ready to post now</string>
     <string name="schedule_post_now">Post</string>
+    <string name="schedule_paste_in_x">Tweet copied. Paste it into X’s composer.</string>
     <string name="schedule_postpone_auto_summary">Posts automatically at the scheduled time via Postpone</string>
     <string name="schedule_one_image_attached">1 image attached</string>
     <string name="schedule_images_attached">%1$d images attached</string>

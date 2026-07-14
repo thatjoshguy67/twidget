@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/schedule_selection_cancel_menu"
-        android:title="@android:string/cancel"
-        android:visible="false"
-        android:showAsAction="always|withText" />
-    <item
         android:id="@+id/schedule_trash_menu"
         android:icon="@drawable/ic_oui_delete_outline"
         android:title="@string/schedule_trash"

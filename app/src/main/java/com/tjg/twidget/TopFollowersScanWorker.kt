@@ -50,8 +50,10 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                     scanning = true,
                 )
                 TopFollowersStore.write(applicationContext, username, state)
-                if (state.pages == 1 || state.pages % 10 == 0) notifyUpdated(username)
-                Thread.sleep(PAGE_DELAY_MS)
+                // The cursor makes page requests sequential already. Do not add
+                // an artificial delay: TwitterAPIs advertises no platform rate
+                // cap, and WorkManager's 429 retry path remains the safety net.
+                if (state.pages == 1 || state.pages % UI_UPDATE_PAGE_INTERVAL == 0) notifyUpdated(username)
             }
             Result.retry()
         } catch (error: HttpTransport.HttpException) {
@@ -89,7 +91,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
     companion object {
         private const val KEY_USERNAME = "username"
         private const val RUN_BUDGET_MS = 3 * 60 * 1000L
-        private const val PAGE_DELAY_MS = 150L
+        private const val UI_UPDATE_PAGE_INTERVAL = 25
         private const val MAX_PAGES_PER_SCAN = 6250 // $5 at the documented $0.0008/read.
         private const val TOP_LIMIT = 5
         const val ACTION_UPDATED = "com.tjg.twidget.TOP_FOLLOWERS_UPDATED"

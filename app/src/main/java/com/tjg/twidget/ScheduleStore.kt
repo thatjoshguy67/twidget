@@ -174,7 +174,9 @@ class ScheduleStore(context: Context) {
 
     private fun sortPosts(posts: List<ScheduledPost>): List<ScheduledPost> =
         posts.sortedWith(
-            compareByDescending<ScheduledPost> { it.status == ScheduleStatus.DRAFT && it.pinned }
+            compareByDescending<ScheduledPost> {
+                it.pinned && ScheduleQueuePolicy.canPin(it.status)
+            }
                 .thenBy { it.scheduledAt ?: Long.MAX_VALUE }
                 .thenByDescending { it.updatedAt },
         )

@@ -96,6 +96,17 @@ data class ScheduledPost(
 object ScheduleTrashPolicy {
     const val RETENTION_DAYS = 30
     const val RETENTION_MS = RETENTION_DAYS * 24L * 60L * 60L * 1000L
+
+    fun canMoveToTrash(status: ScheduleStatus): Boolean =
+        status == ScheduleStatus.DRAFT || status == ScheduleStatus.NEEDS_ACTION
+}
+
+object ScheduleQueuePolicy {
+    fun canPin(status: ScheduleStatus): Boolean = status in setOf(
+        ScheduleStatus.DRAFT,
+        ScheduleStatus.SCHEDULED,
+        ScheduleStatus.FAILED,
+    )
 }
 
 enum class ScheduleValidationCode {

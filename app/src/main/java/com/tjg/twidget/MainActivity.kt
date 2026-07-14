@@ -210,7 +210,7 @@ class MainActivity : EdgeToEdgeActivity() {
     }
 
     internal fun openSchedule(username: String) {
-        startLeftSidePopOverActivity(
+        startActivity(
             Intent(this, ScheduleActivity::class.java)
                 .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
         )

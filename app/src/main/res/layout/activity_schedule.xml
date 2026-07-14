@@ -1,26 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<dev.oneuiproject.oneui.layout.NavDrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/schedule_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg"
+    app:drawerBackAnimation="true"
+    app:expanded="false"
+    app:handleInsets="false"
+    app:mainRoundedCorners="top"
+    app:title="@string/schedule_title">
 
-    <dev.oneuiproject.oneui.layout.ToolbarLayout
-        android:id="@+id/schedule_root"
+    <dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
+        android:id="@+id/schedule_drawer_nav"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/oneui_bg"
-        app:expandable="true"
-        app:expanded="false"
-        app:handleInsets="false"
-        app:mainRoundedCorners="top"
-        app:showNavButtonAsBack="true"
-        app:title="@string/schedule_title">
+        app:layout_location="drawer_panel" />
 
-        <FrameLayout
-            android:id="@+id/schedule_queue_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layout_location="main_content">
+    <FrameLayout
+        android:id="@+id/schedule_queue_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_location="main_content">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -74,7 +75,6 @@
                 app:fabCustomSize="70dp"
                 app:srcCompat="@drawable/ic_oui_add"
                 app:tint="@android:color/white" />
-        </FrameLayout>
-    </dev.oneuiproject.oneui.layout.ToolbarLayout>
+    </FrameLayout>
 
-</FrameLayout>
+</dev.oneuiproject.oneui.layout.NavDrawerLayout>

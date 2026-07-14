@@ -4,8 +4,6 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.GestureDetector
@@ -49,6 +47,7 @@ import dev.oneuiproject.oneui.R as OneUiIconR
 import dev.oneuiproject.oneui.design.R as OneUiDesignR
 
 class ScheduleActivity : FoldablePopOverActivity() {
+    private lateinit var drawerController: ScheduleDrawerController
     private lateinit var content: LinearLayout
     private lateinit var primaryButton: ScrollAwareFloatingActionButton
     private lateinit var queueRoot: View
@@ -59,7 +58,6 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private lateinit var trashBar: View
     private lateinit var trashRestoreLabel: TextView
     private lateinit var trashDeleteLabel: TextView
-    private lateinit var selectionCount: TextView
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
 
@@ -72,12 +70,14 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private val selectedQueueIds = linkedSetOf<String>()
     private var activeQueueMenu: PopupMenu? = null
     private var viewingTrash = false
+    private var selectedAccount = ""
     private val keepQueueSwitcherInContent: (Float) -> Unit = {
         if (::queueSwitcher.isInitialized) queueSwitcher.translationY = 0f
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        selectedAccount = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
         setContentView(R.layout.activity_schedule)
         content = findViewById(R.id.schedule_content)
         primaryButton = findViewById(R.id.schedule_primary_button)
@@ -88,14 +88,15 @@ class ScheduleActivity : FoldablePopOverActivity() {
         trashBar = findViewById(R.id.schedule_trash_bar)
         trashRestoreLabel = findViewById(R.id.schedule_trash_restore_label)
         trashDeleteLabel = findViewById(R.id.schedule_trash_delete_label)
-        selectionCount = findViewById(R.id.schedule_selection_count)
         setupQueueSelectionBar()
         setupTrashBar()
         setupQueueViewSwitcher()
+        drawerController = ScheduleDrawerController(this).also(ScheduleDrawerController::setup)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
                     queueSelectionMode -> exitQueueSelection()
+                    viewingTrash && intent.getBooleanExtra(EXTRA_OPEN_TRASH, false) -> finish()
                     viewingTrash -> exitTrashView()
                     else -> {
                         isEnabled = false
@@ -104,8 +105,6 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 }
             }
         })
-        findViewById<ToolbarLayout>(R.id.schedule_root)
-            .setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         applyEdgeToEdgeInsets(findViewById(R.id.schedule_root)) { inset ->
             primaryButton.updateBottomMarginForNavigationBar(dp(20), inset)
             selectionBar.updateBottomMarginForNavigationBar(dp(20), inset)
@@ -138,8 +137,12 @@ class ScheduleActivity : FoldablePopOverActivity() {
 
     override fun onRestart() {
         super.onRestart()
+        drawerController.rebuild()
         renderQueue()
     }
+
+    override fun allowsPopOverPresentation(): Boolean =
+        intent.getBooleanExtra(EXTRA_OPEN_TRASH, false)
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.schedule, menu)
@@ -147,12 +150,13 @@ class ScheduleActivity : FoldablePopOverActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(R.id.schedule_trash_menu)?.isVisible = !queueSelectionMode
+        menu.findItem(R.id.schedule_selection_cancel_menu)?.isVisible = queueSelectionMode
+        menu.findItem(R.id.schedule_trash_menu)?.isVisible = !queueSelectionMode && !viewingTrash
         val filterGroup = menu.findItem(R.id.schedule_filter_all_menu)?.groupId ?: 0
         for (index in 0 until menu.size()) {
             val item = menu.getItem(index)
             if (item.groupId == filterGroup) {
-                item.isVisible = !viewingTrash
+                item.isVisible = !viewingTrash && !queueSelectionMode
             }
         }
         if (!viewingTrash) {
@@ -169,12 +173,12 @@ class ScheduleActivity : FoldablePopOverActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.schedule_selection_cancel_menu) {
+            exitQueueSelection()
+            return true
+        }
         if (item.itemId == R.id.schedule_trash_menu) {
-            if (viewingTrash) {
-                exitTrashView()
-            } else {
-                enterTrashView()
-            }
+            openTrashPopover()
             return true
         }
         if (viewingTrash) return super.onOptionsItemSelected(item)
@@ -206,6 +210,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
         viewingTrash = true
         selectedQueueView = ScheduleQueueView.LIST
         findViewById<ToolbarLayout>(R.id.schedule_root).setTitle(getString(R.string.schedule_trash))
+        if (::drawerController.isInitialized) drawerController.rebuild()
         invalidateOptionsMenu()
         renderQueue()
     }
@@ -215,6 +220,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
         exitQueueSelection()
         viewingTrash = false
         findViewById<ToolbarLayout>(R.id.schedule_root).setTitle(getString(R.string.schedule_title))
+        if (::drawerController.isInitialized) drawerController.rebuild()
         invalidateOptionsMenu()
         renderQueue()
     }
@@ -229,16 +235,19 @@ class ScheduleActivity : FoldablePopOverActivity() {
         }
     }
     private fun setupQueueSelectionBar() {
-        findViewById<AppCompatButton>(R.id.schedule_selection_pin).setOnClickListener {
-            val drafts = selectedQueuePosts().filter { it.status == ScheduleStatus.DRAFT }
-            if (drafts.isEmpty()) return@setOnClickListener
-            bulkSetPinned(selected = !drafts.all { it.pinned })
+        findViewById<View>(R.id.schedule_selection_pin).setOnClickListener {
+            val posts = selectedPinnablePosts()
+            if (posts.isEmpty()) return@setOnClickListener
+            bulkSetPinned(selected = !posts.all { it.pinned })
         }
-        findViewById<AppCompatButton>(R.id.schedule_selection_delete).setOnClickListener {
+        findViewById<View>(R.id.schedule_selection_duplicate).setOnClickListener {
+            duplicateSelectedPosts()
+        }
+        findViewById<View>(R.id.schedule_selection_delete).setOnClickListener {
             bulkDeleteSelected()
         }
-        findViewById<AppCompatButton>(R.id.schedule_selection_cancel).setOnClickListener {
-            exitQueueSelection()
+        findViewById<View>(R.id.schedule_selection_more).setOnClickListener { anchor ->
+            showQueueSelectionMenu(anchor)
         }
     }
 
@@ -305,18 +314,35 @@ class ScheduleActivity : FoldablePopOverActivity() {
             findViewById<View>(R.id.schedule_trash_restore).isEnabled = selected > 0
             findViewById<View>(R.id.schedule_trash_delete).isEnabled = selected > 0
         }
-        selectionCount.text = getString(R.string.schedule_selection_count, selectedQueueIds.size)
-        val drafts = selectedQueuePosts().filter { it.status == ScheduleStatus.DRAFT }
-        findViewById<AppCompatButton>(R.id.schedule_selection_pin).apply {
-            isEnabled = drafts.isNotEmpty()
-            text = if (drafts.isNotEmpty() && drafts.all { it.pinned }) {
-                getString(R.string.schedule_unpin)
+        val toolbar = findViewById<ToolbarLayout>(R.id.schedule_root)
+        toolbar.setTitle(
+            if (showSelection) {
+                getString(R.string.schedule_selection_count, selectedQueueIds.size)
+            } else if (viewingTrash) {
+                getString(R.string.schedule_trash)
             } else {
-                getString(R.string.schedule_pin)
-            }
+                getString(R.string.schedule_title)
+            },
+        )
+        val pinnable = selectedPinnablePosts()
+        val unpin = pinnable.isNotEmpty() && pinnable.all { it.pinned }
+        findViewById<View>(R.id.schedule_selection_pin).apply {
+            isEnabled = pinnable.isNotEmpty()
+            alpha = if (isEnabled) 1f else 0.38f
         }
-        findViewById<AppCompatButton>(R.id.schedule_selection_delete).isEnabled =
-            selectedQueueIds.isNotEmpty()
+        findViewById<TextView>(R.id.schedule_selection_pin_label).text = getString(
+            if (unpin) R.string.schedule_unpin else R.string.schedule_pin,
+        )
+        findViewById<android.widget.ImageView>(R.id.schedule_selection_pin_icon).apply {
+            setImageResource(
+                if (unpin) OneUiIconR.drawable.ic_oui_pin_off else OneUiIconR.drawable.ic_oui_pin_outline,
+            )
+            contentDescription = getString(if (unpin) R.string.schedule_unpin else R.string.schedule_pin)
+        }
+        val hasSelection = selectedQueueIds.isNotEmpty()
+        findViewById<View>(R.id.schedule_selection_duplicate).isEnabled = hasSelection
+        findViewById<View>(R.id.schedule_selection_delete).isEnabled = hasSelection
+        findViewById<View>(R.id.schedule_selection_more).isEnabled = hasSelection
         primaryButton.apply {
             visibility = if (showSelection || showTrashBar || calendarMode || viewingTrash) {
                 View.GONE
@@ -633,7 +659,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             }
             addView(cardItem)
             attachQueueCardInteractions(cardItem, post)
-            if (ready) addView(actionRow().apply {
+            if (ready && !queueSelectionMode && !viewingTrash) addView(actionRow().apply {
                 setPadding(dp(16), 0, dp(16), dp(14))
                 addView(actionButton(getString(R.string.schedule_post_now)) { postReady(post) })
                 addView(actionButton(getString(R.string.schedule_copy_text)) {
@@ -745,64 +771,23 @@ class ScheduleActivity : FoldablePopOverActivity() {
         }
         if (queueSelectionMode) {
             anchor.setOnClickListener { toggleQueueSelection(post.id) }
+            anchor.setOnLongClickListener {
+                if (post.id !in selectedQueueIds) {
+                    selectedQueueIds += post.id
+                    invalidateOptionsMenu()
+                    renderQueue()
+                } else {
+                    showQueueSelectionMenu(anchor)
+                }
+                true
+            }
             return
         }
 
-        val handler = Handler(Looper.getMainLooper())
-        val touchSlop = ViewConfiguration.get(anchor.context).scaledTouchSlop
-        val menuDelay = ViewConfiguration.getLongPressTimeout().toLong()
-        val bulkDelay = menuDelay * 2
-        var downX = 0f
-        var downY = 0f
-        var menuShown = false
-        var bulkTriggered = false
-
-        val showMenu = Runnable {
-            if (!bulkTriggered && !queueSelectionMode) {
-                menuShown = true
-                showQueueMenu(anchor, post)
-            }
-        }
-        val showBulk = Runnable {
-            if (queueSelectionMode) return@Runnable
-            bulkTriggered = true
-            handler.removeCallbacks(showMenu)
-            dismissQueueMenu()
+        anchor.setOnClickListener { openEditor(post) }
+        anchor.setOnLongClickListener {
             enterQueueSelection(post.id)
-        }
-
-        val gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onSingleTapConfirmed(event: MotionEvent): Boolean {
-                if (!menuShown && !bulkTriggered) {
-                    openEditor(post)
-                }
-                return true
-            }
-        })
-
-        anchor.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    menuShown = false
-                    bulkTriggered = false
-                    downX = event.x
-                    downY = event.y
-                    handler.postDelayed(showMenu, menuDelay)
-                    handler.postDelayed(showBulk, bulkDelay)
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
-                        handler.removeCallbacks(showMenu)
-                        handler.removeCallbacks(showBulk)
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    handler.removeCallbacks(showMenu)
-                    handler.removeCallbacks(showBulk)
-                }
-            }
-            gestureDetector.onTouchEvent(event)
-            menuShown || bulkTriggered
+            true
         }
     }
 
@@ -822,7 +807,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             gravity = Gravity.CENTER_VERTICAL
             isClickable = true
             setOnTouchListener { _, _ -> true }
-            if (post.status == ScheduleStatus.DRAFT) {
+            if (ScheduleQueuePolicy.canPin(post.status)) {
                 addView(
                     queueQuickActionButton(
                         iconRes = if (post.pinned) {
@@ -892,7 +877,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
                 openEditor(post)
                 true
             }
-            if (post.status == ScheduleStatus.DRAFT) {
+            if (ScheduleQueuePolicy.canPin(post.status)) {
                 menu.add(
                     if (post.pinned) getString(R.string.schedule_unpin) else getString(R.string.schedule_pin),
                 ).setOnMenuItemClickListener {
@@ -912,11 +897,51 @@ class ScheduleActivity : FoldablePopOverActivity() {
         }
     }
 
+    private fun showQueueSelectionMenu(anchor: View) {
+        val posts = selectedQueuePosts()
+        if (!queueSelectionMode || posts.isEmpty()) return
+        dismissQueueMenu()
+        activeQueueMenu = PopupMenu(this, anchor).apply {
+            setOnDismissListener { activeQueueMenu = null }
+            if (posts.size == 1) {
+                menu.add(getString(R.string.schedule_edit)).setOnMenuItemClickListener {
+                    exitQueueSelection()
+                    openEditor(posts.single())
+                    true
+                }
+            }
+            val pinnable = posts.filter { ScheduleQueuePolicy.canPin(it.status) }
+            menu.add(
+                if (pinnable.isNotEmpty() && pinnable.all { it.pinned }) {
+                    getString(R.string.schedule_unpin)
+                } else {
+                    getString(R.string.schedule_pin)
+                },
+            ).apply {
+                isEnabled = pinnable.isNotEmpty()
+                setOnMenuItemClickListener {
+                    bulkSetPinned(selected = !pinnable.all { it.pinned })
+                    true
+                }
+            }
+            menu.add(getString(R.string.delete)).setOnMenuItemClickListener {
+                bulkDeleteSelected()
+                true
+            }
+            menu.add(getString(R.string.schedule_duplicate)).setOnMenuItemClickListener {
+                duplicateSelectedPosts()
+                true
+            }
+            show()
+        }
+    }
+
     private fun enterQueueSelection(postId: String) {
         dismissQueueMenu()
         queueSelectionMode = true
         selectedQueueIds.clear()
         selectedQueueIds += postId
+        invalidateOptionsMenu()
         renderQueue()
     }
 
@@ -927,6 +952,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
         if (selectedQueueIds.isEmpty()) {
             exitQueueSelection()
         } else {
+            invalidateOptionsMenu()
             renderQueue()
         }
     }
@@ -936,11 +962,15 @@ class ScheduleActivity : FoldablePopOverActivity() {
         dismissQueueMenu()
         queueSelectionMode = false
         selectedQueueIds.clear()
+        invalidateOptionsMenu()
         renderQueue()
     }
 
     private fun selectedQueuePosts(): List<ScheduledPost> =
         currentQueuePosts().filter { it.id in selectedQueueIds }
+
+    private fun selectedPinnablePosts(): List<ScheduledPost> =
+        selectedQueuePosts().filter { ScheduleQueuePolicy.canPin(it.status) }
 
     private fun restoreSelectedTrash() {
         val posts = selectedQueuePosts()
@@ -985,7 +1015,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
     }
 
     private fun bulkSetPinned(selected: Boolean) {
-        val posts = selectedQueuePosts().filter { it.status == ScheduleStatus.DRAFT }
+        val posts = selectedPinnablePosts()
         if (posts.isEmpty()) return
         val now = System.currentTimeMillis()
         posts.forEach { post ->
@@ -1011,6 +1041,18 @@ class ScheduleActivity : FoldablePopOverActivity() {
     } ?: getString(R.string.schedule_no_time)
 
     private fun duplicate(post: ScheduledPost) {
+        val duplicate = createDuplicate(post)
+        openEditor(duplicate)
+    }
+
+    private fun duplicateSelectedPosts() {
+        val posts = selectedQueuePosts()
+        if (posts.isEmpty()) return
+        posts.forEach(::createDuplicate)
+        exitQueueSelection()
+    }
+
+    private fun createDuplicate(post: ScheduledPost): ScheduledPost {
         val now = System.currentTimeMillis()
         val duplicate = post.copy(
             id = UUID.randomUUID().toString(),
@@ -1025,7 +1067,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             thread = post.thread.map { it.copy(id = UUID.randomUUID().toString()) },
         )
         store.create(duplicate)
-        openEditor(duplicate)
+        return duplicate
     }
 
     private fun cancelPost(post: ScheduledPost) {
@@ -1051,10 +1093,10 @@ class ScheduleActivity : FoldablePopOverActivity() {
 
     private fun deletePosts(posts: List<ScheduledPost>) {
         if (posts.isEmpty()) return
-        val drafts = posts.filter { it.status == ScheduleStatus.DRAFT }
-        val permanent = posts.filterNot { it.status == ScheduleStatus.DRAFT }
+        val trashable = posts.filter { ScheduleTrashPolicy.canMoveToTrash(it.status) }
+        val permanent = posts.filterNot { ScheduleTrashPolicy.canMoveToTrash(it.status) }
         if (permanent.isEmpty()) {
-            confirmMoveToTrash(drafts)
+            confirmMoveToTrash(trashable)
             return
         }
         val message = if (permanent.size == 1) {
@@ -1068,8 +1110,8 @@ class ScheduleActivity : FoldablePopOverActivity() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.delete) { _, _ ->
                 deletePostsPermanently(permanent) {
-                    if (drafts.isNotEmpty()) {
-                        movePostsToTrash(drafts)
+                    if (trashable.isNotEmpty()) {
+                        movePostsToTrash(trashable)
                         exitQueueSelection()
                         renderQueue()
                         invalidateOptionsMenu()
@@ -1168,7 +1210,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
             }
             intent.putExtra(ScheduleComposeActivity.EXTRA_SCHEDULED_AT, selectedTime.timeInMillis)
         }
-        startActivity(intent)
+        startRightSidePopOverActivity(intent)
     }
 
     private fun showQueueMode() {
@@ -1448,8 +1490,42 @@ class ScheduleActivity : FoldablePopOverActivity() {
         return getString(R.string.schedule_media_summary, media.size, names.joinToString(", "))
     }
 
-    private fun requestedUsername(): String =
-        intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
+    private fun requestedUsername(): String = selectedAccount
+
+    internal fun scheduleAccounts(): List<String> = TwidgetStore.accounts(this)
+        .ifEmpty { listOf(TwidgetStore.settings(this).username) }
+        .filter(String::isNotBlank)
+
+    internal fun selectedScheduleAccount(): String = selectedAccount
+
+    internal fun selectScheduleAccount(account: String) {
+        val normalized = account.trim().trimStart('@')
+        if (normalized.equals(selectedAccount, ignoreCase = true)) return
+        selectedAccount = normalized
+        exitQueueSelection()
+        drawerController.rebuild()
+        renderQueue()
+    }
+
+    internal fun isViewingScheduleTrash(): Boolean = viewingTrash
+
+    internal fun openSchedulePage() {
+        if (!viewingTrash) return
+        startActivity(
+            Intent(this, ScheduleActivity::class.java)
+                .putExtra(EXTRA_USERNAME, requestedUsername()),
+        )
+        finish()
+    }
+
+    internal fun openTrashPopover() {
+        if (viewingTrash) return
+        startLeftSidePopOverActivity(
+            Intent(this, ScheduleActivity::class.java)
+                .putExtra(EXTRA_USERNAME, requestedUsername())
+                .putExtra(EXTRA_OPEN_TRASH, true),
+        )
+    }
 
     private fun queueAccountLabel(): String =
         requestedUsername().takeIf(String::isNotBlank)?.let { "@$it" }
@@ -1479,7 +1555,7 @@ class ScheduleActivity : FoldablePopOverActivity() {
     private fun toast(message: Int) =
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    internal fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun <T> MutableList<T>.swap(first: Int, second: Int) {
         val value = this[first]

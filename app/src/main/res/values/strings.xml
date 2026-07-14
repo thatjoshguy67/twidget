@@ -292,6 +292,15 @@
     <string name="onboarding_overview_summary">Twidget keeps your follower count, recent changes, and One UI home screen widgets in sync from one profile.</string>
     <string name="onboarding_profile_title">Enter your handle</string>
     <string name="onboarding_profile_summary">Don\'t worry, you can add more later</string>
+    <string name="onboarding_scheduling_title">Choose how to post</string>
+    <string name="onboarding_scheduling_summary">Connect Postpone to sync drafts and scheduled posts and publish automatically, or keep everything local and post through X yourself.</string>
+    <string name="onboarding_connect_postpone">Connect Postpone</string>
+    <string name="onboarding_run_locally">Run locally</string>
+    <string name="onboarding_get_postpone_key">Get API key</string>
+    <string name="onboarding_postpone_key_summary">Postpone currently connects apps with a personal API key. Get one from Postpone, then paste it below.</string>
+    <string name="onboarding_postpone_no_x_account">Connect an X account in Postpone first.</string>
+    <string name="onboarding_choose_postpone_account">Choose your default X account</string>
+    <string name="connect">Connect</string>
     <string name="onboarding_tip_stats_title">Live follower stats</string>
     <string name="onboarding_tip_stats_summary">Sync followers, following, posts, and likes for any public X profile.</string>
     <string name="onboarding_tip_widgets_title">Home and lock screen widgets</string>
@@ -440,6 +449,10 @@
     <string name="schedule_unknown_error">Unknown scheduling error.</string>
     <string name="schedule_not_found">That scheduled tweet could not be found.</string>
     <string name="schedule_updated">Schedule updated.</string>
+    <string name="schedule_fell_back_local">Postpone couldn’t schedule this post. A local X reminder was set instead.</string>
+    <string name="schedule_draft_fell_back_local">Postpone couldn’t save this draft. It was kept locally instead.</string>
+    <string name="schedule_sync_complete">Postpone synced · %1$d new, %2$d updated</string>
+    <string name="schedule_sync_failed">Couldn’t sync Postpone: %1$s</string>
     <string name="schedule_error_title">Couldn’t update schedule</string>
     <string name="schedule_publish_checklist">Publish checklist</string>
     <string name="schedule_checklist_summary">Open X with your draft and complete all %1$d thread items.</string>
@@ -488,6 +501,7 @@
     <string name="schedule_disconnect_postpone">Disconnect Postpone</string>
     <string name="schedule_disconnect_postpone_summary">Remove the API key and account mappings from this device</string>
     <string name="schedule_postpone_accounts">Postpone account mapping</string>
+    <string name="schedule_postpone_account">Postpone X account</string>
     <string name="schedule_postpone_accounts_summary">Match each tracked account with an X account connected in Postpone</string>
     <string name="schedule_postpone_mapping_required">Map @%1$s to a connected Postpone account in Settings first.</string>
     <string name="schedule_mapping_value">\@%1$s → \@%2$s</string>

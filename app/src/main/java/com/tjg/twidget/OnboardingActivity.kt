@@ -6,11 +6,13 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.InputFilter
+import android.text.InputType
 import android.text.TextWatcher
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -21,8 +23,10 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 
@@ -38,7 +42,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         override fun handleOnBackPressed() {
             when (step) {
                 STEP_PROFILE -> goToStep(STEP_OVERVIEW)
-                STEP_WIDGETS -> goToStep(STEP_PROFILE)
+                STEP_SCHEDULING -> goToStep(STEP_PROFILE)
+                STEP_WIDGETS -> goToStep(STEP_SCHEDULING)
                 STEP_DONE -> goToStep(STEP_WIDGETS)
             }
         }
@@ -101,6 +106,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             when (step) {
                 STEP_OVERVIEW -> goToStep(STEP_PROFILE)
                 STEP_PROFILE -> submitProfile()
+                STEP_SCHEDULING -> showPostponeConnectionDialog()
                 STEP_WIDGETS -> {
                     requestWidgetPin()
                     goToStep(STEP_DONE)
@@ -109,7 +115,13 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).setOnClickListener {
-            if (step == STEP_WIDGETS) goToStep(STEP_DONE)
+            when (step) {
+                STEP_SCHEDULING -> {
+                    ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.LOCAL_REMINDER)
+                    goToStep(STEP_WIDGETS)
+                }
+                STEP_WIDGETS -> goToStep(STEP_DONE)
+            }
         }
     }
 
@@ -131,6 +143,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         val steps = mapOf(
             STEP_OVERVIEW to R.id.step_overview,
             STEP_PROFILE to R.id.step_profile,
+            STEP_SCHEDULING to R.id.step_scheduling,
             STEP_WIDGETS to R.id.step_widgets,
             STEP_DONE to R.id.step_done,
         )
@@ -209,17 +222,18 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun updateButtons() {
         stepBackCallback.isEnabled = !isStarting && !addAccountMode && when (step) {
-            STEP_PROFILE, STEP_DONE -> true
+            STEP_PROFILE, STEP_SCHEDULING, STEP_DONE -> true
             STEP_WIDGETS -> !startedOnWidgetStep
             else -> false
         }
-        val showSecondary = step == STEP_WIDGETS
+        val showSecondary = step == STEP_SCHEDULING || step == STEP_WIDGETS
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
                 isStarting -> getString(R.string.starting_twidget)
                 step == STEP_OVERVIEW -> getString(R.string.get_started)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
                 step == STEP_PROFILE -> getString(R.string.continue_button)
+                step == STEP_SCHEDULING -> getString(R.string.onboarding_connect_postpone)
                 step == STEP_WIDGETS -> getString(R.string.add_widget)
                 else -> getString(R.string.continue_button)
             }
@@ -227,7 +241,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             alpha = if (isEnabled) 1f else 0.5f
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
-            text = getString(R.string.skip)
+            text = getString(
+                if (step == STEP_SCHEDULING) R.string.onboarding_run_locally else R.string.skip,
+            )
             visibility = if (showSecondary) View.VISIBLE else View.GONE
             isEnabled = !isStarting
             alpha = if (isEnabled) 1f else 0.5f
@@ -376,6 +392,111 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 }
             }
         }
+        goToStep(STEP_SCHEDULING)
+    }
+
+    private fun showPostponeConnectionDialog() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            hint = getString(R.string.schedule_api_key_hint)
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            setSingleLine(true)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val horizontal = (24 * resources.displayMetrics.density).toInt()
+            setPadding(horizontal, 0, horizontal, 0)
+            addView(input, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.onboarding_connect_postpone)
+            .setMessage(R.string.onboarding_postpone_key_summary)
+            .setView(container)
+            .setNeutralButton(R.string.onboarding_get_postpone_key) { _, _ ->
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(POSTPONE_API_SETTINGS_URL)))
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.connect, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val key = input.text.toString().trim()
+                if (key.isBlank()) {
+                    input.error = getString(R.string.schedule_postpone_api_key_missing)
+                    return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                connectPostpone(key, dialog, input)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun connectPostpone(key: String, dialog: AlertDialog, input: EditText) {
+        val generation = ++asyncGeneration
+        AppExecutors.execute(
+            onRejected = {
+                postUiIfCurrent(generation) {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                    input.error = getString(R.string.schedule_busy)
+                }
+            },
+        ) {
+            val client = PostponeClient(this, apiKeyOverride = key)
+            val profile = client.verifyProfile()
+            val accounts = if (profile.isSuccess) client.listTwitterSocialAccounts() else null
+            postUiIfCurrent(generation) {
+                val enabled = accounts?.value.orEmpty().filter { it.isConnected && it.isEnabled }
+                when {
+                    !profile.isSuccess -> {
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                        input.error = profile.errors.firstOrNull()?.message
+                            ?: getString(R.string.schedule_connection_failed, getString(R.string.schedule_unknown_error))
+                    }
+                    accounts?.isSuccess != true -> {
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                        input.error = accounts?.errors?.firstOrNull()?.message
+                            ?: getString(R.string.schedule_unknown_error)
+                    }
+                    enabled.isEmpty() -> {
+                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                        input.error = getString(R.string.onboarding_postpone_no_x_account)
+                    }
+                    else -> {
+                        dialog.dismiss()
+                        choosePostponeAccount(key, enabled)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun choosePostponeAccount(key: String, accounts: List<PostponeSocialAccount>) {
+        val tracked = TwidgetStore.settings(this).username
+        val matching = accounts.firstOrNull { it.username.equals(tracked, ignoreCase = true) }
+        if (matching != null || accounts.size == 1) {
+            finishPostponeConnection(key, matching ?: accounts.single())
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.onboarding_choose_postpone_account)
+            .setItems(accounts.map { "@${it.username}" }.toTypedArray()) { _, index ->
+                finishPostponeConnection(key, accounts[index])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun finishPostponeConnection(key: String, account: PostponeSocialAccount) {
+        val tracked = TwidgetStore.settings(this).username
+        SecureCredentialStore.write(this, mapOf(SecureCredentialStore.POSTPONE_API_KEY to key))
+        ScheduleSettingsStore.setPostponeAccount(this, tracked, account.username)
+        ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.POSTPONE)
+        Toast.makeText(this, getString(R.string.schedule_connection_success, account.username), Toast.LENGTH_SHORT).show()
+        AppExecutors.execute { PostponeScheduleSync(this).sync() }
         goToStep(STEP_WIDGETS)
     }
 
@@ -428,7 +549,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         const val EXTRA_SHOW_WIDGET_STEP = "com.tjg.twidget.extra.SHOW_WIDGET_STEP"
         private const val STEP_OVERVIEW = 0
         private const val STEP_PROFILE = 1
-        private const val STEP_WIDGETS = 2
-        private const val STEP_DONE = 3
+        private const val STEP_SCHEDULING = 2
+        private const val STEP_WIDGETS = 3
+        private const val STEP_DONE = 4
+        private const val POSTPONE_API_SETTINGS_URL = "https://www.postpone.app/settings/api"
     }
 }

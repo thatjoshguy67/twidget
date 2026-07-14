@@ -31,6 +31,7 @@ class ScheduleJsonCodecTest {
                 )
             ),
             remotePostId = "remote-id",
+            remoteSubmissionId = "submission-id",
             errorMessage = "Try again",
             createdAt = 100L,
             updatedAt = 200L,

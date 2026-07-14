@@ -97,8 +97,8 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-        screen.addPreference(category(R.string.schedule_postpone_accounts))
-        TwidgetStore.accounts(context).forEach { tracked ->
+        screen.addPreference(category(R.string.schedule_postpone_account))
+        listOf(TwidgetStore.settings(context).username).filter(String::isNotBlank).forEach { tracked ->
             val mapped = ScheduleSettingsStore.postponeAccountFor(context, tracked)
             screen.addPreference(Preference(context).apply {
                 key = "schedule_mapping_${tracked.lowercase()}"
@@ -183,7 +183,7 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
                 val labels = listOf(getString(R.string.schedule_mapping_clear)) +
                     accounts.map { "@${it.username}" }
                 AlertDialog.Builder(requireContext())
-                    .setTitle(getString(R.string.schedule_postpone_accounts))
+            .setTitle(getString(R.string.schedule_postpone_account))
                     .setItems(labels.toTypedArray()) { _, index ->
                         ScheduleSettingsStore.setPostponeAccount(
                             requireContext(),

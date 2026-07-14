@@ -28,6 +28,7 @@ class PostponeGraphQlCodecTest {
 
         assertEquals("ScheduleTweet", root.string("operationName"))
         assertEquals("owen", input.string("username"))
+        assertEquals("READY_TO_PUBLISH", input.string("publishingStatus"))
         assertEquals("Hello", tweet.string("text"))
         assertEquals(
             "https://example.com/image.jpg",
@@ -58,7 +59,7 @@ class PostponeGraphQlCodecTest {
     fun parsesSuccessfulMutationAndFieldErrors() {
         val success = PostponeGraphQlCodec.parseMutation(
             """
-            {"data":{"scheduleTweet":{"success":true,"errors":[],"post":{"id":"post-123"}}}}
+            {"data":{"scheduleTweet":{"success":true,"errors":[],"post":{"id":"post-123","submissions":[{"id":"submission-123"}]}}}}
             """.trimIndent(),
             "scheduleTweet",
         )
@@ -73,6 +74,7 @@ class PostponeGraphQlCodecTest {
 
         assertTrue(success.isSuccess)
         assertEquals("post-123", success.value?.remotePostId)
+        assertEquals("submission-123", success.value?.remoteSubmissionId)
         assertFalse(failure.isSuccess)
         assertEquals("text", failure.errors.single().field)
         assertEquals("Tweet is too long", failure.errors.single().message)
@@ -112,5 +114,35 @@ class PostponeGraphQlCodecTest {
         assertEquals(listOf("owen"), accounts.value?.map { it.username })
         assertEquals(1, media.value?.total)
         assertEquals(42L, media.value?.items?.single()?.size)
+    }
+
+    @Test
+    fun requestsAndParsesScheduledAndDraftSubmissions() {
+        val request = JsonText.parse(
+            PostponeGraphQlCodec.submissionsRequest(
+                "account-1",
+                PostponePublishingStatus.DRAFT,
+                PostponeSubmissionType.ALL,
+                page = 2,
+                limit = 100,
+            )
+        ).asObject()
+        val variables = request.objectValue("variables")
+        assertEquals("DRAFT", variables.string("publishingStatus"))
+        assertEquals("ALL", variables.string("submissionType"))
+        assertEquals(2L, variables.long("page"))
+
+        val result = PostponeGraphQlCodec.parseSubmissions(
+            """
+            {"data":{"twitterSubmissions":{"total":1,"objects":[{
+              "id":"submission-1","text":"Remote draft","postAt":"2030-01-02T03:04:05Z",
+              "error":null
+            }]}}}
+            """.trimIndent()
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("submission-1", result.value?.submissions?.single()?.id)
+        assertEquals(1893553445000L, result.value?.submissions?.single()?.postAt)
     }
 }

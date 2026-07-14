@@ -5,6 +5,7 @@ import android.content.Context
 data class ScheduleCoordinatorResult(
     val post: ScheduledPost,
     val errors: List<String> = emptyList(),
+    val fellBackToLocal: Boolean = false,
 ) {
     val isSuccess: Boolean get() = errors.isEmpty()
 }
@@ -31,6 +32,49 @@ class ScheduleCoordinator(
             updatedAt = nowMillis,
         )
         return store.upsert(draft)
+    }
+
+    fun saveDraftWithProvider(
+        post: ScheduledPost,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): ScheduleCoordinatorResult {
+        if (post.provider == ScheduleProvider.LOCAL_REMINDER) {
+            return ScheduleCoordinatorResult(saveDraft(post, nowMillis))
+        }
+        if (post.remoteSubmissionId != null && post.remotePostId == null) {
+            return ScheduleCoordinatorResult(
+                post,
+                listOf("This imported Postpone draft cannot be updated because Postpone does not expose its parent post ID"),
+            )
+        }
+        val result = postponeClient.saveTweetDraft(post)
+        if (result.isSuccess) {
+            val draft = post.copy(
+                status = ScheduleStatus.DRAFT,
+                remotePostId = result.value?.remotePostId ?: post.remotePostId,
+                remoteSubmissionId = result.value?.remoteSubmissionId ?: post.remoteSubmissionId,
+                errorMessage = null,
+                updatedAt = nowMillis,
+            )
+            PostponePublishCheckWorker.cancel(appContext, draft.id)
+            store.upsert(draft)
+            return ScheduleCoordinatorResult(draft)
+        }
+        if (!post.remotePostId.isNullOrBlank()) {
+            return persistFailure(post, result.errors.map { it.message }, nowMillis)
+        }
+        val localUsername = post.accountId?.takeIf(String::isNotBlank)
+            ?: TwidgetStore.settings(appContext).username
+        val local = saveDraft(
+            post.copy(
+                provider = ScheduleProvider.LOCAL_REMINDER,
+                accountUsername = localUsername.trim().trimStart('@'),
+                remotePostId = null,
+                remoteSubmissionId = null,
+            ),
+            nowMillis,
+        )
+        return ScheduleCoordinatorResult(local, fellBackToLocal = true)
     }
 
     fun schedule(post: ScheduledPost, nowMillis: Long = System.currentTimeMillis()): ScheduleCoordinatorResult {
@@ -77,6 +121,7 @@ class ScheduleCoordinator(
                 } else {
                     val remote = postponeClient.cancelScheduledTweet(remoteId)
                     if (remote.isSuccess) {
+                        PostponePublishCheckWorker.cancel(appContext, post.id)
                         val cancelled = store.cancel(post.id, nowMillis) ?: post
                         ScheduleCoordinatorResult(cancelled)
                     } else {
@@ -116,16 +161,31 @@ class ScheduleCoordinator(
             postponeClient.updateScheduledTweet(post)
         }
         if (!result.isSuccess) {
+            if (post.remotePostId.isNullOrBlank()) {
+                val localUsername = post.accountId?.takeIf(String::isNotBlank)
+                    ?: TwidgetStore.settings(appContext).username
+                val local = post.copy(
+                    provider = ScheduleProvider.LOCAL_REMINDER,
+                    accountUsername = localUsername.trim().trimStart('@'),
+                    remotePostId = null,
+                    remoteSubmissionId = null,
+                    errorMessage = null,
+                )
+                val fallback = scheduleLocal(local, nowMillis)
+                if (fallback.isSuccess) return fallback.copy(fellBackToLocal = true)
+            }
             return persistFailure(post, result.errors.map { it.message }, nowMillis)
         }
         val scheduled = post.copy(
             status = ScheduleStatus.SCHEDULED,
             remotePostId = result.value?.remotePostId ?: post.remotePostId,
+            remoteSubmissionId = result.value?.remoteSubmissionId ?: post.remoteSubmissionId,
             errorMessage = null,
             pinned = false,
             updatedAt = nowMillis,
         )
         store.upsert(scheduled)
+        PostponePublishCheckWorker.enqueue(appContext, scheduled)
         return ScheduleCoordinatorResult(scheduled)
     }
 

@@ -31,6 +31,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
 import dev.oneuiproject.oneui.layout.ToolbarLayout
@@ -64,6 +65,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private lateinit var queueRoot: View
     private lateinit var queueTabs: RoundedTabLayout
     private lateinit var scroll: RoundedNestedScrollView
+    private lateinit var refresh: SwipeRefreshLayout
     private lateinit var selectionBottomNav: BottomNavigationView
     private lateinit var trashBottomNav: BottomNavigationView
     private val store by lazy { ScheduleStore(this) }
@@ -74,6 +76,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private var calendarMonth = YearMonth.now()
     private var selectedCalendarDate: LocalDate? = null
     private var busy = false
+    private var syncing = false
     private var queueSelectionMode = false
     private val selectedQueueIds = linkedSetOf<String>()
     private var activeQueueMenu: PopupMenu? = null
@@ -118,7 +121,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             post != null && post.deletedAt != null -> enterTrashView()
             post != null -> openEditor(post)
             intent.getBooleanExtra(EXTRA_OPEN_TRASH, false) -> enterTrashView()
-            else -> renderQueue()
+            else -> {
+                renderQueue()
+                syncPostponeQueue(userInitiated = false)
+            }
         }
     }
 
@@ -138,6 +144,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         primaryButton = findViewById(R.id.schedule_primary_button)
         queueTabs = findViewById(R.id.schedule_tabs)
         scroll = findViewById(R.id.schedule_scroll)
+        refresh = findViewById<SwipeRefreshLayout>(R.id.schedule_refresh).apply {
+            OneUiSpinner.attachToSwipeRefresh(this)
+            setOnRefreshListener { syncPostponeQueue(userInitiated = true) }
+        }
         selectionBottomNav = findViewById(R.id.schedule_selection_bottom_nav)
         trashBottomNav = findViewById(R.id.schedule_trash_bottom_nav)
         setupBottomNavigation()
@@ -157,6 +167,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         viewingTrash = false
         queueRoot.visibility = View.VISIBLE
         renderQueue()
+        syncPostponeQueue(userInitiated = false)
     }
 
     protected fun hideEmbeddedScheduleQueue() {
@@ -182,7 +193,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     override fun onRestart() {
         super.onRestart()
-        if (::queueRoot.isInitialized && queueRoot.visibility == View.VISIBLE) renderQueue()
+        if (::queueRoot.isInitialized && queueRoot.visibility == View.VISIBLE) {
+            renderQueue()
+            syncPostponeQueue(userInitiated = false)
+        }
     }
 
     override fun allowsPopOverPresentation(): Boolean =
@@ -294,6 +308,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         content.removeAllViews()
         val posts = currentQueuePosts()
         val calendarMode = !viewingTrash && selectedQueueView == ScheduleQueueView.CALENDAR
+        refresh.isEnabled = !viewingTrash && !calendarMode && !queueSelectionMode
         queueTabs.visibility = if (viewingTrash) View.GONE else View.VISIBLE
         scroll.setPadding(
             scroll.paddingLeft,
@@ -328,6 +343,55 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         }
         updateQueueSelectionUi(calendarMode)
         TwidgetFonts.applyTo(content)
+    }
+
+    private fun syncPostponeQueue(userInitiated: Boolean) {
+        if (syncing || viewingTrash || !::refresh.isInitialized) {
+            if (::refresh.isInitialized && !syncing) refresh.isRefreshing = false
+            return
+        }
+        if (ScheduleSettingsStore.defaultProvider(this) != ScheduleProvider.POSTPONE) {
+            refresh.isRefreshing = false
+            if (userInitiated) renderQueue()
+            return
+        }
+        syncing = true
+        if (userInitiated) refresh.isRefreshing = true
+        AppExecutors.execute(
+            onRejected = {
+                runOnUiThread {
+                    syncing = false
+                    refresh.isRefreshing = false
+                    if (userInitiated) toast(R.string.schedule_busy)
+                }
+            },
+        ) {
+            val result = PostponeScheduleSync(this).sync()
+            runOnUiThread {
+                syncing = false
+                refresh.isRefreshing = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                renderQueue()
+                if (userInitiated) {
+                    if (result.isSuccess) {
+                        Toast.makeText(
+                            this,
+                            getString(R.string.schedule_sync_complete, result.imported, result.updated),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        Toast.makeText(
+                            this,
+                            getString(
+                                R.string.schedule_sync_failed,
+                                result.errors.firstOrNull() ?: getString(R.string.schedule_unknown_error),
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+        }
     }
 
     private fun updateQueueSelectionUi(calendarMode: Boolean) {
@@ -1166,6 +1230,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             id = UUID.randomUUID().toString(),
             status = ScheduleStatus.DRAFT,
             remotePostId = null,
+            remoteSubmissionId = null,
             errorMessage = null,
             pinned = false,
             deletedAt = null,
@@ -1298,6 +1363,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun removePostLocally(post: ScheduledPost) {
+        PostponePublishCheckWorker.cancel(this, post.id)
         if (post.provider == ScheduleProvider.LOCAL_REMINDER) {
             LocalReminderScheduler(this).cancel(post.id)
             ScheduleNotificationHelper.cancel(this, post.id)
@@ -1352,7 +1418,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         if (result == null) {
             toast(R.string.schedule_not_found)
         } else if (result.isSuccess) {
-            toast(R.string.schedule_updated)
+            toast(
+                if (result.fellBackToLocal) R.string.schedule_fell_back_local
+                else R.string.schedule_updated,
+            )
         } else {
             showErrors(result.errors)
         }

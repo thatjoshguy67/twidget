@@ -85,6 +85,7 @@ data class ScheduledPost(
     val scheduledAt: Long?,
     val thread: List<ScheduleThreadItem>,
     val remotePostId: String? = null,
+    val remoteSubmissionId: String? = null,
     val errorMessage: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = createdAt,

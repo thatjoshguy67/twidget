@@ -2,7 +2,7 @@ name: Debug Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Only trusted main/manual builds receive the production signing key.
+      # Only trusted branch/manual builds receive the production signing key.
       # Pull-request code must never run with production signing credentials.
       - name: Decode release keystore
         if: github.event_name != 'pull_request'

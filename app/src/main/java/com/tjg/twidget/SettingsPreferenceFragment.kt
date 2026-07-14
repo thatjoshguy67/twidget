@@ -108,12 +108,14 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 getString(R.string.source_default),
                 getString(R.string.source_self_hosted),
                 getString(R.string.source_x_api),
+                getString(R.string.source_twitterapis),
             )
             entryValues = arrayOf(
                 TwidgetStore.DATA_SOURCE_FXTWITTER,
                 TwidgetStore.DATA_SOURCE_DEFAULT,
                 TwidgetStore.DATA_SOURCE_SELF_HOSTED,
                 TwidgetStore.DATA_SOURCE_X_API,
+                TwidgetStore.DATA_SOURCE_TWITTERAPIS,
             )
             value = settings.dataSource
             setOnPreferenceChangeListener { pref, value ->
@@ -414,6 +416,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.DATA_SOURCE_FXTWITTER -> getString(R.string.source_fxtwitter)
         TwidgetStore.DATA_SOURCE_SELF_HOSTED -> getString(R.string.source_self_hosted)
         TwidgetStore.DATA_SOURCE_X_API -> getString(R.string.source_x_api)
+        TwidgetStore.DATA_SOURCE_TWITTERAPIS -> getString(R.string.source_twitterapis)
         else -> getString(R.string.source_default)
     }
 }

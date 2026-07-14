@@ -186,6 +186,14 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
         })
 
         screen.addPreference(category(R.string.twitterapis_title))
+        val twitterApisStatus = statusPreference(
+            keyName = "twitterapis_status_pref",
+            titleRes = R.string.twitterapis_status,
+            active = settings.dataSource == TwidgetStore.DATA_SOURCE_TWITTERAPIS,
+            infoTitleRes = R.string.source_twitterapis,
+            infoTextRes = R.string.twitterapis_explainer,
+        )
+        screen.addPreference(twitterApisStatus)
         screen.addPreference(EditTextPreference(context).apply {
             key = "twitterapis_api_key_pref"
             title = getString(R.string.twitterapis_api_key)
@@ -219,7 +227,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
 
         screen.addBottomInset()
         preferenceScreen = screen
-        refreshConnectorStatuses(bridgeStatus, selfHostedStatus, xApiStatus, fxTwitterStatus)
+        refreshConnectorStatuses(bridgeStatus, selfHostedStatus, xApiStatus, fxTwitterStatus, twitterApisStatus)
     }
 
     private fun refreshConnectorStatuses(
@@ -227,6 +235,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
         selfHostedStatus: Preference,
         xApiStatus: Preference,
         fxTwitterStatus: Preference,
+        twitterApisStatus: Preference,
     ) {
         val snapshot = settings
         val generation = ++statusRefreshGeneration
@@ -242,6 +251,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
                 selfHostedStatus.summary = rejectedSummary
                 xApiStatus.summary = rejectedSummary
                 fxTwitterStatus.summary = rejectedSummary
+                twitterApisStatus.summary = rejectedSummary
             }
         }) {
             val bridge = runCatching { bridgeHealthSummary(TwidgetStore.DEFAULT_BRIDGE_URL, "") }
@@ -255,6 +265,8 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
             val xApi = runCatching { xApiStatusSummary(appContext, snapshot, account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             val fxTwitter = runCatching { fxTwitterStatusSummary(account) }
+                .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
+            val twitterApis = runCatching { twitterApisStatusSummary(appContext, account) }
                 .getOrElse { getString(R.string.status_failed, friendlyError(it)) }
             mainHandler.post {
                 if (!isAdded || generation != statusRefreshGeneration) return@post
@@ -284,6 +296,11 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
                     fallback = false,
                     status = fxTwitter,
                 )
+                twitterApisStatus.summary = connectorStatusPrefix(
+                    active = snapshot.dataSource == TwidgetStore.DATA_SOURCE_TWITTERAPIS,
+                    fallback = false,
+                    status = twitterApis,
+                )
             }
         }
     }
@@ -308,6 +325,14 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
         if (account.isNullOrBlank()) return getString(R.string.status_not_configured)
         XApiClient.fetchProfile(context, account)
         return getString(R.string.status_connected)
+    }
+
+    private fun twitterApisStatusSummary(context: android.content.Context, account: String?): String {
+        if (!TwitterApisClient.hasCredentials(context) || account.isNullOrBlank()) {
+            return getString(R.string.status_not_configured)
+        }
+        // A status-screen repaint must not spend the user's API credit.
+        return getString(R.string.status_configured)
     }
 
     // Reports the live follower count so the FxTwitter numbers can be eyeballed

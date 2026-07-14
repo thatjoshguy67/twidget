@@ -29,10 +29,11 @@ The selected data source determines where requests go:
 - **Self-hosted bridge:** the app contacts the URL configured by the user.
 - **Official X API:** the app contacts X directly using credentials supplied by
   the user.
-- **TwitterAPIs top-followers scan:** only when manually started, the app sends
-  the selected public X/Twitter username and the user's encrypted-at-rest
-  TwitterAPIs key directly to TwitterAPIs. Results and resumable scan progress
-  remain on-device; the key and results are not sent through the Twidget bridge.
+- **TwitterAPIs:** when selected as the data source, or when a top-followers
+  scan is manually started, the app sends the selected public X/Twitter username
+  and the user's encrypted-at-rest TwitterAPIs key directly to TwitterAPIs.
+  Profile results, follower rankings, and resumable scan progress remain
+  on-device; the key and results are not sent through the Twidget bridge.
 - **Postpone scheduling:** when the user explicitly selects Postpone for a
   scheduled post, the app sends its text, publishing time, selected connected
   account, and public or Content Library media references to Postpone. Local

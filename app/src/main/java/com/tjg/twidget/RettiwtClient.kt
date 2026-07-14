@@ -15,6 +15,16 @@ object RettiwtClient {
         var lastError: Exception? = null
         val useXApi = settings.dataSource == TwidgetStore.DATA_SOURCE_X_API &&
             XApiClient.hasCredentials(settings)
+        val useTwitterApis = settings.dataSource == TwidgetStore.DATA_SOURCE_TWITTERAPIS &&
+            TwitterApisClient.hasCredentials(context)
+
+        if (useTwitterApis) {
+            try {
+                return finalize(withAvailableLikes(context, username, TwitterApisClient.fetchProfile(context, username)), username)
+            } catch (error: Exception) {
+                lastError = error
+            }
+        }
 
         // X API source calls api.x.com directly from the device; the bridge is
         // only a fallback. Other sources go through the bridge first and fall
@@ -66,7 +76,7 @@ object RettiwtClient {
             }
         }
 
-        if (!useXApi && XApiClient.hasCredentials(settings)) {
+        if (!useXApi && !useTwitterApis && XApiClient.hasCredentials(settings)) {
             try {
                 return finalize(withAvailableLikes(context, username, XApiClient.fetchProfile(context, username)), username)
             } catch (error: Exception) {

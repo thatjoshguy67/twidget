@@ -1,6 +1,7 @@
 package com.tjg.twidget
 
 import android.appwidget.AppWidgetManager
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -162,6 +164,14 @@ class MainActivity : ScheduleQueueHostActivity() {
         menuInflater.inflate(R.menu.schedule, menu)
         updateNoticesMenuIcon(menu)
         return true
+    }
+
+    internal fun requestTopFollowersNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 9042)
+        }
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {

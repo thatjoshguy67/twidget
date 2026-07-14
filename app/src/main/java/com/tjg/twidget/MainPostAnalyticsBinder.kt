@@ -22,54 +22,43 @@ import java.util.Locale
 internal class MainPostAnalyticsBinder(
     private val activity: MainActivity,
 ) {
-    fun bindBestWorst(page: View, account: String) {
-        val section = page.findViewById<LinearLayout>(R.id.post_analytics_section) ?: return
-        val cards = page.findViewById<LinearLayout>(R.id.post_analytics_cards) ?: return
-        cards.removeAllViews()
-
+    fun createGridCard(card: DashboardCardType, account: String): View {
         val data = activity.analytics
-        var bangerScanning = BangerScanWorker.isScanning(activity, account)
-        if (data != null && data.banger == null && !bangerScanning) {
-            BangerScanWorker.enqueue(activity, account)
-            bangerScanning = true
-        }
-        val bangerProgress = BangerScanWorker.postsScanned(activity, account)
-        val posts = listOfNotNull(
-            data?.banger?.let {
-                activity.getString(if (data.bangerComplete) R.string.all_time_banger else R.string.best_banger_found) to it
-            },
-            data?.best?.let {
-                activity.getString(if (data.postsAnalyzed == 1) R.string.only_post else R.string.best_post) to it
-            },
-            data?.worst?.let { activity.getString(R.string.worst_post) to it },
-        )
-        if (posts.isEmpty() && !bangerScanning) {
-            section.visibility = if (data == null) View.GONE else View.VISIBLE
-            if (data != null) cards.addView(emptyPostAnalyticsCard(account))
-            return
-        }
-
-        section.visibility = View.VISIBLE
-        if (bangerScanning) {
-            val progress = if (bangerProgress > 0) {
-                activity.getString(R.string.banger_scanning_progress, NumberFormat.getIntegerInstance().format(bangerProgress))
-            } else {
-                activity.getString(R.string.banger_scanning)
+        return when (card) {
+            DashboardCardType.ALL_TIME_POST -> {
+                var scanning = BangerScanWorker.isScanning(activity, account)
+                if (data != null && data.banger == null && !scanning) {
+                    BangerScanWorker.enqueue(activity, account)
+                    scanning = true
+                }
+                val post = data?.banger
+                when {
+                    post != null -> postAnalyticsCard(
+                        activity.getString(if (data.bangerComplete) R.string.all_time_banger else R.string.best_banger_found),
+                        post,
+                    )
+                    scanning -> postAnalyticsShell(
+                        activity.getString(R.string.finding_banger),
+                        BangerScanWorker.postsScanned(activity, account).takeIf { it > 0 }
+                            ?.let { activity.getString(R.string.banger_scanning_progress, NumberFormat.getIntegerInstance().format(it)) }
+                            ?: activity.getString(R.string.banger_scanning),
+                        null,
+                    )
+                    else -> emptyPostAnalyticsCard(account, R.string.all_time_banger)
+                }
             }
-            cards.addView(postAnalyticsShell(activity.getString(R.string.finding_banger), progress, null))
-        }
-        posts.forEachIndexed { index, (label, post) ->
-            cards.addView(postAnalyticsCard(label, post), LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                if (index > 0 || bangerScanning) topMargin = activity.dp(8)
-            })
+            DashboardCardType.BEST_POST -> data?.best
+                ?.let { postAnalyticsCard(activity.getString(if (data.postsAnalyzed == 1) R.string.only_post else R.string.best_post), it) }
+                ?: emptyPostAnalyticsCard(account, R.string.best_post)
+            DashboardCardType.WORST_POST -> data?.worst
+                ?.let { postAnalyticsCard(activity.getString(R.string.worst_post), it) }
+                ?: emptyPostAnalyticsCard(account, R.string.worst_post)
+            else -> error("Not a post card")
         }
     }
 
-    private fun emptyPostAnalyticsCard(account: String): View =
-        postAnalyticsShell(activity.getString(R.string.post_analytics), "@$account", null)
+    private fun emptyPostAnalyticsCard(account: String, labelRes: Int = R.string.post_analytics): View =
+        postAnalyticsShell(activity.getString(labelRes), activity.getString(R.string.post_card_waiting, account), null)
 
     private fun postAnalyticsCard(label: String, post: PostSummary): View =
         postAnalyticsShell(label, post.text.ifBlank { post.url }, post)
@@ -115,7 +104,7 @@ internal class MainPostAnalyticsBinder(
             addView(TextView(activity).apply {
                 text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
-                maxLines = 6
+                maxLines = 4
                 setTextColor(activity.getColor(R.color.oneui_text_primary))
                 textSize = 15f
                 setLineSpacing(activity.dp(2).toFloat(), 1f)
@@ -134,7 +123,7 @@ internal class MainPostAnalyticsBinder(
                     ProfileImageLoader.loadMediaInto(activity, this, media.url, activity.dp(14))
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    activity.dp(190),
+                    activity.dp(120),
                 ).apply {
                     topMargin = activity.dp(12)
                 })

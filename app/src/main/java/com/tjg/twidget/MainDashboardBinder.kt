@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -22,6 +23,8 @@ import android.animation.LayoutTransition
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -33,6 +36,8 @@ internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
     HALF(1, 140),
     FULL(2, 156),
     CHART(2, 260),
+    TOP_FOLLOWERS(2, 430),
+    POST(2, 360),
 }
 
 internal enum class DashboardCardType(val id: String, val labelRes: Int, val size: DashboardCardSize) {
@@ -54,7 +59,10 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     MOMENTUM("momentum", R.string.momentum, DashboardCardSize.HALF),
     AUDIENCE_BALANCE("audience_balance", R.string.audience_balance, DashboardCardSize.HALF),
     ACCOUNT_HEALTH("account_health", R.string.account_health, DashboardCardSize.HALF),
-    TOP_FOLLOWERS("top_followers", R.string.top_followers, DashboardCardSize.FULL),
+    TOP_FOLLOWERS("top_followers", R.string.top_followers, DashboardCardSize.TOP_FOLLOWERS),
+    ALL_TIME_POST("all_time_post", R.string.all_time_banger, DashboardCardSize.POST),
+    BEST_POST("best_post_card", R.string.best_post, DashboardCardSize.POST),
+    WORST_POST("worst_post_card", R.string.worst_post, DashboardCardSize.POST),
     FOLLOWERS("followers", R.string.followers, DashboardCardSize.CHART),
     FOLLOWING("following", R.string.following, DashboardCardSize.CHART),
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
@@ -144,6 +152,8 @@ internal class MainDashboardBinder(
             .forEach { card ->
                 val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
                     createTopFollowersCard(account)
+                } else if (card in POST_CARD_TYPES) {
+                    activity.postAnalyticsBinder.createGridCard(card, account)
                 } else if (card.size == DashboardCardSize.CHART) {
                     createChartCard(card, stats, chartHistory, history)
                 } else {
@@ -153,7 +163,6 @@ internal class MainDashboardBinder(
                 container.addView(wrapper, dashboardCardLayoutParams(card))
             }
 
-        activity.postAnalyticsBinder.bindBestWorst(page, account)
         activity.syncController.maybeRefreshAnalytics(account)
     }
 
@@ -268,6 +277,7 @@ internal class MainDashboardBinder(
 
     private fun createTopFollowersCard(account: String): View {
         val state = TopFollowersStore.read(activity, account)
+        val accountStats = TwidgetStore.currentStats(activity, account)
         val keyConfigured = SecureCredentialStore.read(
             activity,
             SecureCredentialStore.TWITTERAPIS_API_KEY,
@@ -276,35 +286,34 @@ internal class MainDashboardBinder(
             orientation = LinearLayout.VERTICAL
             setPadding(activity.dp(16), activity.dp(12), activity.dp(16), activity.dp(12))
             background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
-            isClickable = true
-            isFocusable = true
-
-            addView(TextView(activity).apply {
-                text = activity.getString(R.string.top_followers)
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = 13f
-                typeface = Typeface.create("sec", Typeface.BOLD)
-                includeFontPadding = false
-            })
+            addView(LinearLayout(activity).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(activity).apply {
+                    text = activity.getString(R.string.top_followers)
+                    setTextColor(activity.getColor(R.color.oneui_text_primary))
+                    textSize = 17f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                    includeFontPadding = false
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                if (!state.scanning && keyConfigured) addView(TextView(activity).apply {
+                    text = activity.getString(if (state.complete) R.string.scan_again else R.string.scan)
+                    setTextColor(activity.getColor(R.color.oneui_accent))
+                    textSize = 13f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                    setPadding(activity.dp(10), activity.dp(7), activity.dp(10), activity.dp(7))
+                    background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { confirmTopFollowersScan(account) }
+                })
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
             when {
-                state.top.isNotEmpty() -> {
-                    state.top.take(3).forEachIndexed { index, follower ->
-                        addView(TextView(activity).apply {
-                            text = activity.getString(
-                                R.string.top_follower_row,
-                                index + 1,
-                                follower.username,
-                                TwidgetStore.compactNumber(follower.followers),
-                            )
-                            setTextColor(activity.getColor(R.color.oneui_text_primary))
-                            textSize = 15f
-                            maxLines = 1
-                            ellipsize = android.text.TextUtils.TruncateAt.END
-                            includeFontPadding = false
-                            setPadding(0, activity.dp(7), 0, 0)
-                        })
-                    }
+                state.top.isNotEmpty() -> state.top.take(5).forEachIndexed { index, follower ->
+                    addView(topFollowerRow(index + 1, follower), LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        activity.dp(58),
+                    ).apply { topMargin = activity.dp(5) })
                 }
                 else -> addView(TextView(activity).apply {
                     text = activity.getString(
@@ -312,15 +321,35 @@ internal class MainDashboardBinder(
                     )
                     setTextColor(activity.getColor(R.color.oneui_text_primary))
                     textSize = 17f
-                    setPadding(0, activity.dp(18), 0, 0)
-                })
+                    setPadding(0, activity.dp(34), 0, 0)
+                    isClickable = !keyConfigured
+                    setOnClickListener {
+                        if (!keyConfigured) activity.startActivity(android.content.Intent(activity, SettingsAdvancedActivity::class.java))
+                    }
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             }
+
+            if (state.scanning) addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 1000
+                val total = accountStats.followersCount.takeIf { accountStats.followersKnown && it > 0 }
+                isIndeterminate = total == null
+                progress = total?.let { ((state.scanned.toLong().coerceAtMost(it) * 1000L) / it).toInt() } ?: 0
+                progressTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_accent))
+                progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, activity.dp(6)).apply {
+                topMargin = activity.dp(8)
+            })
 
             addView(TextView(activity).apply {
                 text = when {
                     state.scanning -> activity.getString(R.string.top_followers_scanning, state.scanned, state.pages)
                     state.error.isNotBlank() -> state.error
-                    state.complete -> activity.getString(R.string.top_followers_complete, state.scanned, state.pages)
+                    state.complete -> activity.getString(
+                        R.string.top_followers_last_scan,
+                        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(state.completedAt)),
+                        state.scanned,
+                        state.pages,
+                    )
                     else -> activity.getString(R.string.top_followers_tap)
                 }
                 setTextColor(activity.getColor(
@@ -329,28 +358,63 @@ internal class MainDashboardBinder(
                 textSize = 12f
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, activity.dp(8), 0, 0)
+                setPadding(0, activity.dp(7), 0, 0)
             })
+        }
+    }
 
-            setOnClickListener {
-                if (!keyConfigured) {
-                    activity.startActivity(android.content.Intent(activity, SettingsAdvancedActivity::class.java))
-                } else if (!state.scanning) {
-                    if (state.top.isNotEmpty()) {
-                        val results = state.top.joinToString("\n") { follower ->
-                            "@${follower.username} · ${TwidgetStore.compactNumber(follower.followers)} followers"
-                        }
-                        androidx.appcompat.app.AlertDialog.Builder(activity)
-                            .setTitle(R.string.top_followers)
-                            .setMessage(results)
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .setPositiveButton(R.string.refresh) { _, _ -> confirmTopFollowersScan(account) }
-                            .show()
-                        return@setOnClickListener
-                    }
-                    confirmTopFollowersScan(account)
-                }
-            }
+    private fun topFollowerRow(rank: Int, follower: TopFollower): View =
+        LinearLayout(activity).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
+            isClickable = true
+            isFocusable = true
+            setPadding(activity.dp(8), activity.dp(5), activity.dp(10), activity.dp(5))
+            setOnClickListener { openXProfile(follower.username) }
+
+            addView(TextView(activity).apply {
+                text = rank.toString()
+                gravity = Gravity.CENTER
+                setTextColor(activity.getColor(R.color.oneui_accent))
+                textSize = 14f
+                typeface = Typeface.create("sec", Typeface.BOLD)
+            }, LinearLayout.LayoutParams(activity.dp(24), LinearLayout.LayoutParams.MATCH_PARENT))
+            addView(ImageView(activity).apply {
+                contentDescription = follower.name
+                ProfileImageLoader.loadInto(activity, this, follower.avatarUrl)
+            }, LinearLayout.LayoutParams(activity.dp(42), activity.dp(42)).apply { marginStart = activity.dp(4) })
+            addView(LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(activity.dp(10), 0, activity.dp(8), 0)
+                addView(TextView(activity).apply {
+                    text = follower.name
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(activity.getColor(R.color.oneui_text_primary))
+                    textSize = 14f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                })
+                addView(TextView(activity).apply {
+                    text = "@${follower.username}"
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                    textSize = 12f
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(TextView(activity).apply {
+                text = activity.getString(R.string.compact_followers, TwidgetStore.compactNumber(follower.followers))
+                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                textSize = 12f
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            })
+        }
+
+    private fun openXProfile(username: String) {
+        val native = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("twitter://user?screen_name=$username"))
+            .setPackage("com.twitter.android")
+        runCatching { activity.startActivity(native) }.getOrElse {
+            activity.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://x.com/$username")))
         }
     }
 
@@ -360,6 +424,7 @@ internal class MainDashboardBinder(
             .setMessage(R.string.top_followers_scan_message)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.scan) { _, _ ->
+                activity.requestTopFollowersNotificationPermission()
                 TopFollowersScanWorker.enqueue(activity, account, restart = true)
                 activity.dashboardBinder.bindContent()
             }
@@ -893,5 +958,10 @@ internal class MainDashboardBinder(
         private const val DASHBOARD_GRID_COLUMNS = 2
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
+        private val POST_CARD_TYPES = setOf(
+            DashboardCardType.ALL_TIME_POST,
+            DashboardCardType.BEST_POST,
+            DashboardCardType.WORST_POST,
+        )
     }
 }

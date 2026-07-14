@@ -528,5 +528,16 @@
     <string name="scan">Scan</string>
     <string name="twitterapis_title">TwitterAPIs · Top followers</string>
     <string name="twitterapis_api_key">TwitterAPIs API key</string>
-    <string name="twitterapis_explainer">Optional bring-your-own-key integration for the Your Top Followers card. The key is encrypted on this device and never sent through the Twidget bridge.</string>
+    <string name="twitterapis_explainer">Optional bring-your-own-key profile provider and Your Top Followers scanner. The key is encrypted on this device and never sent through the Twidget bridge. Opening Settings does not make a paid test call.</string>
+    <string name="source_twitterapis">TwitterAPIs</string>
+    <string name="twitterapis_status">TwitterAPIs status</string>
+    <string name="scan_again">Scan again</string>
+    <string name="compact_followers">%1$s followers</string>
+    <string name="post_card_waiting">No result yet for @%1$s</string>
+    <string name="top_followers_notifications">Top follower scans</string>
+    <string name="top_followers_notifications_description">Notifies when a background top-followers scan finishes</string>
+    <string name="top_followers_notification_title">Top followers ready for @%1$s</string>
+    <string name="top_followers_notification_leader">%1$s leads with %2$s followers</string>
+    <string name="top_followers_last_scan">Last scanned %1$s · %2$d followers across %3$d pages</string>
+    <string name="status_configured">Configured</string>
 </resources>

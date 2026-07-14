@@ -7,6 +7,36 @@ import org.junit.Test
 
 class TwitterApisClientTest {
     @Test
+    fun parsesProfileMetrics() {
+        val profile = TwitterApisClient.parseProfile(
+            """{"data":{"username":"person","name":"Person","followers_count":9000,"following_count":25,"tweet_count":300,"favourites_count":40,"profile_image_url":"https://pbs.twimg.com/a_normal.jpg","is_blue_verified":true,"protected":false}}""",
+            "fallback",
+        )
+
+        assertEquals("person", profile.userName)
+        assertEquals(9_000L, profile.followersCount)
+        assertEquals(25L, profile.followingsCount)
+        assertEquals(300L, profile.statusesCount)
+        assertEquals(40L, profile.likeCount)
+        assertTrue(profile.isVerified == true)
+        assertTrue(profile.isPrivate == false)
+        assertTrue(profile.profileImage.contains("_400x400."))
+    }
+
+    @Test
+    fun parsesNestedGraphProfileShape() {
+        val profile = TwitterApisClient.parseProfile(
+            """{"data":{"user":{"result":{"legacy":{"screen_name":"nested","name":"Nested User","followers_count":77,"friends_count":8,"statuses_count":9,"favourites_count":10,"profile_image_url_https":"https://pbs.twimg.com/n_normal.jpg","verified":false,"protected":true}}}}}""",
+            "fallback",
+        )
+
+        assertEquals("nested", profile.userName)
+        assertEquals(77L, profile.followersCount)
+        assertEquals(8L, profile.followingsCount)
+        assertTrue(profile.isPrivate == true)
+    }
+
+    @Test
     fun parsesFollowerPageAndCursor() {
         val page = TwitterApisClient.parsePage(
             """{

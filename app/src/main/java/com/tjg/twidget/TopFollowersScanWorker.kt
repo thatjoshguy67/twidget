@@ -30,12 +30,16 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 }
                 val page = TwitterApisClient.fetchFollowers(username, state.cursor, apiKey)
                 if (page.users.isEmpty()) {
-                    publish(username, state.copy(
+                    val completed = state.copy(
                         scanning = false,
                         complete = true,
                         error = "",
                         completedAt = System.currentTimeMillis(),
-                    ))
+                    )
+                    publish(username, completed)
+                    if (!TwidgetAppVisibility.isVisible()) {
+                        TopFollowersNotificationHelper.showComplete(applicationContext, username, completed)
+                    }
                     return Result.success()
                 }
                 if (page.nextCursor.isBlank() || page.nextCursor == state.cursor) {

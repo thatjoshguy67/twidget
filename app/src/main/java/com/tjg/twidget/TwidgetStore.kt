@@ -96,6 +96,7 @@ object TwidgetStore {
     const val DATA_SOURCE_DEFAULT = "default_rettiwt"
     const val DATA_SOURCE_SELF_HOSTED = "self_hosted_rettiwt"
     const val DATA_SOURCE_X_API = "official_x_api"
+    const val DATA_SOURCE_TWITTERAPIS = "twitterapis"
     const val DATA_SOURCE_FXTWITTER = "fxtwitter"
     const val COLOR_MODE_LIGHT = "light"
     const val COLOR_MODE_DARK = "dark"
@@ -151,6 +152,9 @@ object TwidgetStore {
         "x_likes_received",
         "posts",
         "likes",
+        "all_time_post",
+        "best_post_card",
+        "worst_post_card",
     )
     const val LOGO_X = "x"
     const val LOGO_TWITTER = "twitter"

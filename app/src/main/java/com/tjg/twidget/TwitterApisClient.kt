@@ -9,6 +9,73 @@ data class TopFollowersPage(val users: List<TopFollower>, val nextCursor: String
 object TwitterApisClient {
     const val WEBSITE_URL = "https://twitterapis.com"
     private const val ENDPOINT = "https://api.twitterapis.com/twitter/user/followers_v2"
+    private const val PROFILE_ENDPOINT = "https://api.twitterapis.com/twitter/user/info"
+
+    fun hasCredentials(context: android.content.Context): Boolean =
+        SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY).isNotBlank()
+
+    fun fetchProfile(context: android.content.Context, username: String): ProfileStats {
+        val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
+        require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }
+        val url = "$PROFILE_ENDPOINT?username=${encode(username.trim().trimStart('@'))}"
+        val response = HttpTransport.get(
+            url,
+            headers = mapOf("Authorization" to "Bearer $apiKey"),
+            userAgent = "Twidget (Android)",
+        )
+        return parseProfile(HttpTransport.requireSuccess(response, "TwitterAPIs"), username)
+    }
+
+    internal fun parseProfile(body: String, requestedUsername: String): ProfileStats {
+        val root = JSONObject(body)
+        val data = root.optJSONObject("data")
+        val userContainer = data?.optJSONObject("user") ?: root.optJSONObject("user")
+        val user = userContainer?.optJSONObject("result")
+            ?: data?.optJSONObject("result")
+            ?: root.optJSONObject("result")
+            ?: userContainer
+            ?: data
+            ?: root
+        val legacy = user.optJSONObject("legacy")
+        val metrics = user.optJSONObject("public_metrics")
+        val sources = listOfNotNull(user, legacy, metrics)
+        fun string(vararg names: String): String = sources.firstNotNullOfOrNull { source ->
+            names.firstNotNullOfOrNull { name -> source.optString(name).takeIf(String::isNotBlank) }
+        }.orEmpty()
+        fun count(vararg names: String): Long = sources.firstNotNullOfOrNull { source ->
+            names.firstNotNullOfOrNull { name ->
+                source.takeIf { it.has(name) && !it.isNull(name) }?.optLong(name)
+            }
+        } ?: 0L
+        fun known(vararg names: String): Boolean = sources.any { source ->
+            names.any { source.has(it) && !source.isNull(it) }
+        }
+        fun boolean(vararg names: String): Boolean? = sources.firstNotNullOfOrNull { source ->
+            names.firstNotNullOfOrNull { name ->
+                source.takeIf { it.has(name) && !it.isNull(name) }?.optBoolean(name)
+            }
+        }
+        val handle = string("username", "screen_name", "userName")
+            .ifBlank { requestedUsername }.trimStart('@')
+        require(handle.isNotBlank() && (known("followers_count", "followers") || string("name").isNotBlank())) {
+            "TwitterAPIs returned an unrecognized profile response"
+        }
+        return ProfileStats(
+            fullName = string("name").ifBlank { handle },
+            userName = handle,
+            followersCount = count("followers_count", "followers"),
+            followingsCount = count("following_count", "friends_count", "following"),
+            statusesCount = count("tweet_count", "statuses_count", "tweets"),
+            likeCount = count("favourites_count", "favorites_count", "like_count", "likes"),
+            profileImage = highResolutionAvatar(string("profile_image_url", "profile_image_url_https", "profileImageUrl")),
+            isVerified = boolean("is_blue_verified", "verified"),
+            isPrivate = boolean("protected", "is_private"),
+            followersKnown = known("followers_count", "followers"),
+            followingKnown = known("following_count", "friends_count", "following"),
+            postsKnown = known("tweet_count", "statuses_count", "tweets"),
+            likesKnown = known("favourites_count", "favorites_count", "like_count", "likes"),
+        )
+    }
 
     fun fetchFollowers(username: String, cursor: String, apiKey: String): TopFollowersPage {
         require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }

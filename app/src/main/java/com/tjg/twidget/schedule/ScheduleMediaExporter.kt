@@ -1,3 +1,5 @@
+@file:Suppress("UseKtx")
+
 package com.tjg.twidget.schedule
 
 import android.content.ContentValues
@@ -11,9 +13,6 @@ import java.io.File
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
-
-@file:Suppress("UseKtx")
-
 
 
 enum class ScheduleMediaExportResult {

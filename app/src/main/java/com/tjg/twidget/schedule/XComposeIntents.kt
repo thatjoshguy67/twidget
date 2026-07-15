@@ -1,3 +1,5 @@
+@file:Suppress("UseKtx")
+
 package com.tjg.twidget.schedule
 
 import android.content.ActivityNotFoundException
@@ -8,9 +10,6 @@ import android.content.Intent
 import android.net.Uri
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-
-@file:Suppress("UseKtx")
-
 
 
 enum class XHandoffResult {

@@ -1,3 +1,5 @@
+@file:Suppress("UseKtx") // This project intentionally excludes AndroidX core-ktx.
+
 package com.tjg.twidget.data
 
 import android.content.Context
@@ -9,9 +11,6 @@ import java.security.KeyStore
 import java.security.ProviderException
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
-
-@file:Suppress("UseKtx") // This project intentionally excludes AndroidX core-ktx.
-
 
 
 /**

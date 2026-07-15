@@ -16,7 +16,7 @@
     android:updatePeriodMillis="1800000"
     android:description="@string/widget_description"
     android:widgetCategory="home_screen"
-    android:configure="com.tjg.twidget.WidgetConfigActivity"
+    android:configure="com.tjg.twidget.widget.WidgetConfigActivity"
     android:widgetFeatures="reconfigurable"
     app:previewLayoutSmall="@layout/widget_preview_strip"
     app:previewLayoutWideSmall="@layout/widget_preview_row"

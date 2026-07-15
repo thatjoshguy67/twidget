@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Reorganized the app's source tree from one flat package into feature packages (analytics, schedule, settings, widget, and friends). Existing home and lock screen widgets keep working: the original widget provider component names stay registered.
+
 ### Added
 
 - Added pull-to-refresh on the About page to immediately recheck the selected update channel.

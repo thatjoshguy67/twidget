@@ -1,0 +1,1750 @@
+package com.tjg.twidget.main
+
+import android.animation.LayoutTransition
+import android.appwidget.AppWidgetManager
+import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ForegroundColorSpan
+import android.text.style.URLSpan
+import android.util.TypedValue
+import android.view.DragEvent
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.widget.FrameLayout
+import android.widget.GridLayout
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.widget.TextViewCompat
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.tjg.twidget.R
+import com.tjg.twidget.analytics.AnalyticsBlendPolicy
+import com.tjg.twidget.analytics.AnalyticsClient
+import com.tjg.twidget.analytics.AnalyticsImportActivity
+import com.tjg.twidget.analytics.BlendedAnalytics
+import com.tjg.twidget.analytics.ImportedAnalyticsStore
+import com.tjg.twidget.analytics.PostAnalytics
+import com.tjg.twidget.analytics.PostSummary
+import com.tjg.twidget.analytics.XAnalyticsMovement
+import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.data.HistoryRange
+import com.tjg.twidget.data.HistorySample
+import com.tjg.twidget.data.ProfileStats
+import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.notices.NoticeBadgeDrawable
+import com.tjg.twidget.notices.NoticesActivity
+import com.tjg.twidget.notices.ReleaseNoticesStore
+import com.tjg.twidget.providers.RettiwtClient
+import com.tjg.twidget.schedule.ScheduleActivity
+import com.tjg.twidget.schedule.ScheduleComposeActivity
+import com.tjg.twidget.settings.SettingsActivity
+import com.tjg.twidget.ui.EdgeToEdgeActivity
+import com.tjg.twidget.ui.MetricChartView
+import com.tjg.twidget.ui.OneUiSpinner
+import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.VerifiedBadge
+import com.tjg.twidget.ui.startAddAccountActivity
+import com.tjg.twidget.ui.startLeftSidePopOverActivity
+import com.tjg.twidget.ui.startRightSidePopOverActivity
+import com.tjg.twidget.update.AppUpdateManager
+import com.tjg.twidget.widget.RefreshWorker
+import com.tjg.twidget.widget.TwidgetWidget
+import dev.oneuiproject.oneui.R as OneUiIconR
+import dev.oneuiproject.oneui.design.R as OneUiDesignR
+import dev.oneuiproject.oneui.layout.Badge
+import dev.oneuiproject.oneui.layout.DrawerLayout
+import dev.oneuiproject.oneui.layout.NavDrawerLayout
+import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToLong
+
+class MainActivity : EdgeToEdgeActivity() {
+    private val heavyTypeface: Typeface by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
+        } else {
+            Typeface.create("sec", Typeface.BOLD)
+        }
+    }
+    private var isSyncing = false
+    private var accounts = emptyList<String>()
+    private var selectedAccount: String = ""
+    private var analytics: PostAnalytics? = null
+    private var importedAnalytics = emptyList<XAnalyticsMovement>()
+    private val analyticsInFlight = mutableSetOf<String>()
+    private var editMode = false
+    private var draggedCardId: String? = null
+    private var dragPreviewOrder: List<String>? = null
+    private var dragPlaceholderView: View? = null
+    private var dragSourceView: View? = null
+    private val drawerAccountItemIds = mutableMapOf<Int, String>()
+    private val drawerAvatarItemIds = mutableSetOf<Int>()
+    private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
+    private var lifecycleGeneration = 0L
+    private var syncGeneration = 0L
+    private val bangerUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val username = intent?.getStringExtra(BangerScanWorker.EXTRA_USERNAME) ?: return
+            if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            analytics = AnalyticsClient.cached(this@MainActivity, selectedAccount)
+            bindContent()
+        }
+    }
+    private val exitEditModeOnBack = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            setEditMode(false)
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (!TwidgetStore.isOnboarded(this)) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
+        setContentView(R.layout.activity_main)
+        val scheduleFab = findViewById<View>(R.id.schedule_fab)
+        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { navigationBarInset ->
+            scheduleFab.updateBottomMarginForNavigationBar(dp(20), navigationBarInset)
+        }
+        onBackPressedDispatcher.addCallback(this, exitEditModeOnBack)
+        RefreshWorker.schedule(this)
+        TwidgetStore.migrateStoredHistories(this)
+        setupRefresh()
+        setupDrawerChrome()
+        setupScheduleAction()
+        render()
+        if (savedInstanceState == null) checkReleasesOnLaunch()
+        if (TwidgetStore.settings(this).refreshOnLaunch) {
+            sync()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        render()
+        updateSettingsBadge()
+        invalidateOptionsMenu()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            bangerUpdateReceiver,
+            IntentFilter(BangerScanWorker.ACTION_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(bangerUpdateReceiver) }
+        super.onStop()
+    }
+
+    // Orange dot on the drawer's settings cog while an app update is
+    // available, mirroring official Samsung apps.
+    private fun updateSettingsBadge() {
+        findViewById<DrawerLayout>(R.id.main_toolbar_layout).setHeaderButtonBadge(
+            if (TwidgetStore.updateAvailable(this)) Badge.DOT else Badge.NONE
+        )
+    }
+
+    private fun checkReleasesOnLaunch() {
+        val appContext = applicationContext
+        val installedVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: return
+        val channel = AboutActivity.savedUpdateChannel(this)
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute {
+            val result = runCatching {
+                AppUpdateManager.checkReleases(installedVersion, channel)
+            }
+            result.onSuccess { check ->
+                TwidgetStore.setUpdateAvailable(appContext, check.update != null)
+                // The debug channel uses a quota-free release sidecar and does
+                // not refresh notices through the rate-limited GitHub API.
+                if (check.notices.isNotEmpty()) ReleaseNoticesStore.save(appContext, check.notices)
+            }
+            postUiIfCurrent(lifecycleToken) {
+                updateSettingsBadge()
+                invalidateOptionsMenu()
+            }
+        }
+    }
+
+    private fun updateNoticesMenuIcon(menu: Menu) {
+        val item = menu.findItem(R.id.menu_notices) ?: return
+        val base = AppCompatResources.getDrawable(this, OneUiIconR.drawable.ic_oui_notice_outline) ?: return
+        item.icon = if (ReleaseNoticesStore.hasUnseen(this)) {
+            NoticeBadgeDrawable(base, getColor(R.color.notice_badge_orange), resources.displayMetrics.density)
+        } else {
+            base
+        }
+    }
+
+    override fun onDestroy() {
+        // Invalidates every queued UI delivery owned by this Activity. The
+        // background result may still populate application caches, but can no
+        // longer retain or repaint a destroyed window.
+        lifecycleGeneration++
+        super.onDestroy()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main, menu)
+        updateNoticesMenuIcon(menu)
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.menu_notices)?.isVisible = !editMode
+        updateNoticesMenuIcon(menu)
+        menu.findItem(R.id.menu_add_widget)?.isVisible = !editMode
+        menu.findItem(R.id.menu_open_profile)?.isVisible = !editMode
+        menu.findItem(R.id.menu_edit_layout)?.isVisible = !editMode
+        menu.findItem(R.id.menu_reset_layout)?.isVisible = !editMode
+        menu.findItem(R.id.menu_add_card)?.isVisible = editMode
+        menu.findItem(R.id.menu_done_editing)?.isVisible = editMode
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_notices -> {
+                ReleaseNoticesStore.markCurrentAsSeen(this)
+                invalidateOptionsMenu()
+                startRightSidePopOverActivity(Intent(this, NoticesActivity::class.java))
+            }
+            R.id.menu_add_widget -> requestWidgetPin()
+            R.id.menu_open_profile -> openActiveProfile()
+            R.id.menu_edit_layout -> setEditMode(true)
+            R.id.menu_reset_layout -> confirmResetLayout()
+            R.id.menu_add_card -> showAddCardDialog()
+            R.id.menu_done_editing -> setEditMode(false)
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
+
+    private fun confirmResetLayout() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.reset_layout_confirm)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.reset_layout) { _, _ ->
+                TwidgetStore.resetDashboardCards(this)
+                render()
+            }
+            .show()
+    }
+
+    private fun render() {
+        accounts = TwidgetStore.accounts(this)
+            .ifEmpty { listOf(TwidgetStore.settings(this).username) }
+            .filter { it.isNotBlank() }
+        if (accounts.isEmpty()) return
+        if (selectedAccount.isBlank() || accounts.none { it.equals(selectedAccount, ignoreCase = true) }) {
+            selectedAccount = accounts.first()
+        }
+        bindContent()
+        buildDrawer()
+        renderHeader()
+        updateScheduleFabVisibility()
+    }
+
+    private fun bindContent() {
+        val host = findViewById<FrameLayout>(R.id.main_content_host)
+        val page = host.getChildAt(0)
+            ?: LayoutInflater.from(this).inflate(R.layout.main_account_page, host, false)
+                .also { host.addView(it) }
+        bindPage(page, selectedAccount)
+    }
+
+    private fun bindPage(page: View, account: String) {
+        val stats = TwidgetStore.currentStats(this, account)
+        // Post analytics load from cache instantly; a background refresh below
+        // repaints when fresh data arrives.
+        analytics = AnalyticsClient.cached(this, account)
+        // Daily samples drive the numbers; the chart list is the same week
+        // bucketed down to a readable bar count. Analytics are fixed to the
+        // weekly window — the old range chips are gone.
+        val history = TwidgetStore.rangedHistory(this, account, HistoryRange.WEEK)
+        val chartHistory = TwidgetStore.chartHistory(this, account, HistoryRange.WEEK)
+        importedAnalytics = ImportedAnalyticsStore.recent(this, account)
+        bindPrivateAccountNotice(page, stats)
+        bindHistoryNotice(page, chartHistory)
+        val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
+        container.columnCount = DASHBOARD_GRID_COLUMNS
+        container.layoutTransition = LayoutTransition().apply {
+            enableTransitionType(LayoutTransition.CHANGING)
+            setDuration(140)
+        }
+        container.setOnDragListener { _, event ->
+            when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> editMode && (event.localState as? String) != null
+                DragEvent.ACTION_DROP -> {
+                    finishDashboardDrag(commit = true)
+                    true
+                }
+                DragEvent.ACTION_DRAG_ENDED -> {
+                    finishDashboardDrag(commit = false)
+                    true
+                }
+                else -> true
+            }
+        }
+        container.removeAllViews()
+
+        TwidgetStore.dashboardCards(this)
+            .mapNotNull(DashboardCardType::fromId)
+            .forEach { card ->
+                val content = if (card.size == DashboardCardSize.CHART) {
+                    createChartCard(card, stats, chartHistory, history)
+                } else {
+                    createInsightCard(card, stats, history)
+                }
+                val wrapper = createDashboardCardWrapper(card, content)
+                container.addView(wrapper, dashboardCardLayoutParams(card))
+            }
+
+        bindBestWorst(page, account)
+        maybeRefreshAnalytics(account)
+    }
+
+    // Fetches fresh post analytics off the main thread when the cache is stale,
+    // then repaints the current account's dashboard.
+    private fun maybeRefreshAnalytics(account: String) {
+        if (editMode || !AnalyticsClient.isStale(analytics)) return
+        val key = account.lowercase(Locale.US)
+        synchronized(analyticsInFlight) {
+            if (!analyticsInFlight.add(key)) return
+        }
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute(onRejected = {
+            synchronized(analyticsInFlight) { analyticsInFlight.remove(key) }
+        }) {
+            val fresh = runCatching { AnalyticsClient.refresh(applicationContext, account) }.getOrNull()
+            synchronized(analyticsInFlight) { analyticsInFlight.remove(key) }
+            fresh ?: return@execute
+            postUiIfCurrent(lifecycleToken) {
+                if (selectedAccount.equals(account, ignoreCase = true) && !editMode) {
+                    analytics = fresh
+                    bindContent()
+                }
+            }
+        }
+    }
+
+    private fun bindBestWorst(page: View, account: String) {
+        val section = page.findViewById<LinearLayout>(R.id.post_analytics_section) ?: return
+        val cards = page.findViewById<LinearLayout>(R.id.post_analytics_cards) ?: return
+        cards.removeAllViews()
+
+        val data = analytics
+        var bangerScanning = BangerScanWorker.isScanning(this, account)
+        if (data != null && data.banger == null && !bangerScanning) {
+            BangerScanWorker.enqueue(this, account)
+            bangerScanning = true
+        }
+        val bangerProgress = BangerScanWorker.postsScanned(this, account)
+        val posts = listOfNotNull(
+            data?.banger?.let {
+                getString(if (data.bangerComplete) R.string.all_time_banger else R.string.best_banger_found) to it
+            },
+            data?.best?.let {
+                getString(if (data.postsAnalyzed == 1) R.string.only_post else R.string.best_post) to it
+            },
+            data?.worst?.let { getString(R.string.worst_post) to it },
+        )
+        if (posts.isEmpty() && !bangerScanning) {
+            section.visibility = if (data == null) View.GONE else View.VISIBLE
+            if (data != null) cards.addView(emptyPostAnalyticsCard(account))
+            return
+        }
+
+        section.visibility = View.VISIBLE
+        if (bangerScanning) {
+            val progress = if (bangerProgress > 0) {
+                getString(R.string.banger_scanning_progress, NumberFormat.getIntegerInstance().format(bangerProgress))
+            } else {
+                getString(R.string.banger_scanning)
+            }
+            cards.addView(postAnalyticsShell(getString(R.string.finding_banger), progress, null))
+        }
+        posts.forEachIndexed { index, (label, post) ->
+            cards.addView(postAnalyticsCard(label, post), LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                if (index > 0 || bangerScanning) topMargin = dp(8)
+            })
+        }
+    }
+
+    private fun emptyPostAnalyticsCard(account: String): View =
+        postAnalyticsShell(getString(R.string.post_analytics), "@$account", null)
+
+    private fun postAnalyticsCard(label: String, post: PostSummary): View =
+        postAnalyticsShell(label, post.text.ifBlank { post.url }, post)
+
+    private fun postAnalyticsShell(label: String, body: String, post: PostSummary?): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            val opensPost = post?.url?.isNotBlank() == true
+            background = AppCompatResources.getDrawable(
+                this@MainActivity,
+                if (opensPost) R.drawable.metric_card_clickable_bg else R.drawable.metric_card_bg,
+            )
+            isClickable = opensPost
+            isFocusable = opensPost
+            contentDescription = if (post == null) label else getString(R.string.open_post)
+            post?.url?.takeIf { it.isNotBlank() }?.let { postUrl ->
+                setOnClickListener {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(postUrl)))
+                }
+            }
+
+            addView(TextView(this@MainActivity).apply {
+                text = label
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_secondary))
+                textSize = 13f
+                typeface = Typeface.create("sec", Typeface.BOLD)
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+
+            post?.let { addView(tweetAuthorRow(it), LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(11)
+            }) }
+
+            addView(TextView(this@MainActivity).apply {
+                text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
+                includeFontPadding = false
+                maxLines = 6
+                setTextColor(getColor(R.color.oneui_text_primary))
+                textSize = 15f
+                setLineSpacing(dp(2).toFloat(), 1f)
+                linksClickable = true
+                movementMethod = LinkMovementMethod.getInstance()
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(7)
+            })
+
+            post?.media?.firstOrNull()?.let { media ->
+                addView(ImageView(this@MainActivity).apply {
+                    contentDescription = media.alt.ifBlank { getString(R.string.post_media) }
+                    ProfileImageLoader.loadMediaInto(this@MainActivity, this, media.url, dp(14))
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(190),
+                ).apply {
+                    topMargin = dp(12)
+                })
+            }
+
+            post?.let {
+                addView(TextView(this@MainActivity).apply {
+                    text = tweetMetrics(it)
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_secondary))
+                    textSize = 13f
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(10)
+                })
+            }
+        }
+
+    private fun tweetAuthorRow(post: PostSummary): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            addView(ImageView(this@MainActivity).apply {
+                ProfileImageLoader.loadInto(this@MainActivity, this, post.authorAvatar)
+            }, LinearLayout.LayoutParams(dp(38), dp(38)))
+
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(10), 0, 0, 0)
+                addView(TextView(this@MainActivity).apply {
+                    text = post.authorName.ifBlank { post.authorUserName.ifBlank { getString(R.string.app_name) } }
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_primary))
+                    textSize = 14f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = getString(
+                        R.string.tweet_handle_and_date,
+                        post.authorUserName.ifBlank { "x" },
+                        postDate(post),
+                    )
+                    includeFontPadding = false
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.oneui_text_secondary))
+                    textSize = 12f
+                    setPadding(0, dp(3), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
+    private fun formattedPostText(post: PostSummary): CharSequence {
+        val spannable = SpannableString(post.text.ifBlank { post.url })
+        post.links.forEach { link ->
+            val start = spannable.indexOf(link.display)
+            if (start < 0) return@forEach
+            val end = start + link.display.length
+            spannable.setSpan(URLSpan(link.url), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(getColor(R.color.oneui_accent)), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        return spannable
+    }
+
+    private fun postDate(post: PostSummary): String =
+        if (post.timestamp > 0L) {
+            SimpleDateFormat("MMM d, h:mm a", Locale.US).format(Date(post.timestamp))
+        } else {
+            post.createdAt
+        }
+
+    private fun tweetMetrics(post: PostSummary): String =
+        getString(
+            R.string.tweet_metrics,
+            TwidgetStore.compactNumber(post.views),
+            TwidgetStore.compactNumber(post.replies),
+            TwidgetStore.compactNumber(post.likes),
+        )
+
+    private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
+        val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
+        // The daily-capture explanation lives in onboarding now; only the
+        // estimate footnote still surfaces on the dashboard.
+        if (chartHistory.any { it.estimated }) {
+            notice.setText(R.string.estimated_notice)
+            notice.visibility = View.VISIBLE
+        } else {
+            notice.visibility = View.GONE
+        }
+    }
+
+    private fun bindPrivateAccountNotice(page: View, stats: ProfileStats) {
+        page.findViewById<TextView>(R.id.private_account_notice)?.visibility =
+            if (stats.isPrivate == true) View.VISIBLE else View.GONE
+    }
+
+    // Net change across the whole visible range (last bucket minus first).
+    private fun rangeDelta(history: List<HistorySample>, selector: (HistorySample) -> Long): Long {
+        if (history.size < 2) return 0
+        return selector(history.last()) - selector(history.first())
+    }
+
+    private fun createInsightCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
+        val spec = insightSpec(card, stats, history)
+        val valueTextSize = if (card.size == DashboardCardSize.FULL) 38f else 32f
+        val labelTextSize = 13f
+        val detailTextSize = 14f
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = AppCompatResources.getDrawable(this@MainActivity, R.drawable.metric_card_bg)
+
+            val labelRow = LinearLayout(this@MainActivity).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                orientation = LinearLayout.HORIZONTAL
+            }
+            labelRow.addView(View(this@MainActivity).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(spec.accent)
+                }
+            }, LinearLayout.LayoutParams(dp(8), dp(8)))
+            labelRow.addView(TextView(this@MainActivity).apply {
+                text = spec.label
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_secondary))
+                textSize = labelTextSize
+                typeface = Typeface.create("sec", Typeface.BOLD)
+                setPadding(dp(6), 0, 0, 0)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(labelRow, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+
+            // Auto-size needs a bounded height to reach the max size — with
+            // wrap_content it locks to the first measured bounds. Fix the row
+            // height to the max text size's line and let width do the shrinking.
+            val valueHeight = (valueTextSize * 1.3f * resources.displayMetrics.scaledDensity).toInt()
+            addView(TextView(this@MainActivity).apply {
+                text = spec.value
+                includeFontPadding = false
+                maxLines = 1
+                gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                setTextColor(getColor(R.color.oneui_text_primary))
+                typeface = heavyTypeface
+                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    this, 16, valueTextSize.toInt(), 1, TypedValue.COMPLEX_UNIT_SP,
+                )
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                valueHeight,
+            ).apply {
+                topMargin = dp(4)
+            })
+
+            if (spec.progress != null) {
+                addView(ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = 100
+                    progress = spec.progress.coerceIn(0, 100)
+                    progressTintList = ColorStateList.valueOf(spec.accent)
+                    progressBackgroundTintList = ColorStateList.valueOf(getColor(R.color.oneui_divider))
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(6),
+                ).apply {
+                    topMargin = dp(9)
+                })
+            }
+
+            addView(TextView(this@MainActivity).apply {
+                text = spec.detail
+                includeFontPadding = false
+                maxLines = if (spec.progress == null) 2 else 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(getColor(R.color.oneui_text_secondary))
+                textSize = detailTextSize
+                setPadding(0, dp(7), 0, 0)
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+    }
+
+    private fun createChartCard(card: DashboardCardType, stats: ProfileStats, chartHistory: List<HistorySample>, history: List<HistorySample>): View {
+        val (layoutRes, valueId, deltaId, chartId, value, known, selector) = when (card) {
+            DashboardCardType.FOLLOWERS -> ChartBinding(
+                R.layout.metric_card_followers,
+                R.id.followers_value,
+                R.id.followers_delta,
+                R.id.followers_chart,
+                if (stats.followersKnown) fullCount(stats.followersCount) else "--",
+                { it.followersKnown },
+            ) { it.followers }
+            DashboardCardType.FOLLOWING -> ChartBinding(
+                R.layout.metric_card_following,
+                R.id.following_value,
+                R.id.following_delta,
+                R.id.following_chart,
+                if (stats.followingKnown) fullCount(stats.followingsCount) else "--",
+                { it.followingKnown },
+            ) { it.following }
+            DashboardCardType.POSTS -> ChartBinding(
+                R.layout.metric_card_posts,
+                R.id.posts_value,
+                R.id.posts_delta,
+                R.id.posts_chart,
+                if (stats.postsKnown) fullCount(stats.statusesCount) else "--",
+                { it.postsKnown },
+            ) { it.posts }
+            DashboardCardType.LIKES -> ChartBinding(
+                R.layout.metric_card_likes,
+                R.id.likes_value,
+                R.id.likes_delta,
+                R.id.likes_chart,
+                if (stats.likesKnown) fullCount(stats.likeCount) else "--",
+                { it.likesKnown },
+            ) { it.likes }
+            else -> error("Compact cards do not have chart layouts.")
+        }
+        return LayoutInflater.from(this).inflate(layoutRes, null, false).also {
+            bindMetric(
+                it,
+                valueId,
+                deltaId,
+                chartId,
+                value,
+                TwidgetStore.todayDelta(this, stats.userName, known, selector),
+                chartHistory.filter(known),
+                selector,
+            )
+        }
+    }
+
+    private fun createDropPlaceholder(card: DashboardCardType): View =
+        FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = dp(22).toFloat()
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(2), getColor(R.color.oneui_accent), dp(10).toFloat(), dp(6).toFloat())
+            }
+            alpha = 0.75f
+            contentDescription = getString(card.labelRes)
+        }
+
+    private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
+        FrameLayout(this).apply {
+            tag = card.id
+            val longPressHandler = View.OnLongClickListener {
+                handleDashboardCardLongPress(card, this)
+            }
+            addView(content, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ))
+            alpha = if (editMode) 0.96f else 1f
+            setOnLongClickListener(longPressHandler)
+            attachCardLongPress(content, longPressHandler)
+            setOnDragListener { _, event ->
+                when (event.action) {
+                    DragEvent.ACTION_DRAG_STARTED -> editMode && (event.localState as? String) != null
+                    DragEvent.ACTION_DRAG_ENTERED -> {
+                        val dragged = event.localState as? String ?: draggedCardId
+                        if (editMode && dragged != null && dragged != card.id) {
+                            animate().scaleX(0.98f).scaleY(0.98f).setDuration(80).start()
+                            previewMoveDashboardCard(dragged, card.id)
+                        }
+                        true
+                    }
+                    DragEvent.ACTION_DRAG_EXITED -> {
+                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
+                        true
+                    }
+                    DragEvent.ACTION_DROP -> {
+                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
+                        finishDashboardDrag(commit = true)
+                        true
+                    }
+                    DragEvent.ACTION_DRAG_ENDED -> {
+                        finishDashboardDrag(commit = false)
+                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
+                        true
+                    }
+                    else -> true
+                }
+            }
+            if (editMode) {
+                addView(removeCardButton(card), FrameLayout.LayoutParams(dp(36), dp(36), Gravity.TOP or Gravity.END).apply {
+                    topMargin = dp(6)
+                    marginEnd = dp(6)
+                })
+            }
+        }
+
+    private fun handleDashboardCardLongPress(card: DashboardCardType, dragView: View): Boolean {
+        if (!editMode) {
+            setEditMode(true)
+        } else {
+            draggedCardId = card.id
+            dragPreviewOrder = TwidgetStore.dashboardCards(this)
+            dragSourceView = dragView
+            val dragShadow = View.DragShadowBuilder(dragView)
+            moveDropPlaceholder(card, card.id)
+            dragView.visibility = View.GONE
+            val started = dragView.startDragAndDrop(
+                ClipData.newPlainText("dashboard_card", card.id),
+                dragShadow,
+                card.id,
+                0,
+            )
+            if (!started) {
+                finishDashboardDrag(commit = false)
+            }
+        }
+        return true
+    }
+
+    private fun attachCardLongPress(view: View, listener: View.OnLongClickListener) {
+        view.setOnLongClickListener(listener)
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                attachCardLongPress(view.getChildAt(index), listener)
+            }
+        }
+    }
+
+    private fun removeCardButton(card: DashboardCardType): ImageButton =
+        ImageButton(this).apply {
+            setImageResource(OneUiIconR.drawable.ic_oui_remove)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.metric_red))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(getColor(R.color.oneui_card_bg))
+                setStroke(dp(1), getColor(R.color.oneui_divider))
+            }
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            contentDescription = getString(R.string.delete)
+            setOnClickListener { removeDashboardCard(card.id) }
+    }
+
+    private fun fullCount(value: Long): String =
+        NumberFormat.getIntegerInstance(Locale.US).format(value)
+
+    private fun bindMetric(
+        root: View,
+        valueId: Int,
+        deltaId: Int,
+        chartId: Int,
+        value: String,
+        delta: Long,
+        history: List<HistorySample>,
+        selector: (HistorySample) -> Long,
+    ) {
+        root.findViewById<TextView>(valueId)?.apply {
+            text = value
+            // textStyle="bold" renders Samsung's lighter bold cut; force the
+            // same true 700 weight the insight cards use.
+            typeface = heavyTypeface
+        }
+        root.findViewById<TextView>(deltaId)?.apply {
+            text = if (delta == 0L) "" else TwidgetStore.signedNumber(delta)
+            setTextColor(if (delta < 0) getColor(R.color.metric_red) else getColor(R.color.metric_green))
+            visibility = if (delta == 0L) View.GONE else View.VISIBLE
+        }
+        root.findViewById<MetricChartView>(chartId)?.setData(history, selector)
+    }
+
+    private fun insightSpec(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): InsightSpec {
+        val followersDelta = rangeDelta(history) { it.followers }
+        return when (card) {
+            DashboardCardType.FOLLOWER_RATIO -> {
+                val diff = stats.followersCount - stats.followingsCount
+                InsightSpec(
+                    label = getString(R.string.follower_ratio),
+                    value = if (stats.followersKnown && stats.followingKnown) {
+                        decimal(stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1), "x")
+                    } else "--",
+                    detail = if (!stats.followersKnown || !stats.followingKnown) {
+                        getString(R.string.unknown_profile_status)
+                    } else if (diff >= 0) {
+                        getString(R.string.more_followers_than_following, TwidgetStore.compactNumber(diff))
+                    } else {
+                        getString(R.string.fewer_followers_than_following, TwidgetStore.compactNumber(-diff))
+                    },
+                    accent = getColor(R.color.oneui_accent),
+                )
+            }
+            DashboardCardType.POST_RATE -> InsightSpec(
+                label = getString(R.string.post_rate),
+                value = history.filter { it.postsKnown }.let { known ->
+                    if (known.size >= 2) decimal(dailyAverage(known) { it.posts }.coerceAtLeast(0.0), "") else "--"
+                },
+                detail = history.filter { it.postsKnown }.let { known ->
+                    if (known.size >= 2) {
+                        getString(R.string.per_range, TwidgetStore.signedNumber(rangeDelta(known) { it.posts }))
+                    } else getString(R.string.unknown_profile_status)
+                },
+                accent = getColor(R.color.metric_green),
+            )
+            DashboardCardType.LIKES_PER_POST -> InsightSpec(
+                label = getString(R.string.likes_per_post),
+                value = if (stats.likesKnown && stats.postsKnown) {
+                    decimal(stats.likeCount.toDouble() / stats.statusesCount.coerceAtLeast(1), "")
+                } else "--",
+                detail = if (stats.likesKnown) {
+                    "${TwidgetStore.compactNumber(stats.likeCount)} ${getString(R.string.likes).lowercase(Locale.US)}"
+                } else getString(R.string.unknown_profile_status),
+                accent = getColor(R.color.oneui_accent),
+            )
+            DashboardCardType.MILESTONE -> {
+                val milestone = nextMilestone(stats.followersCount)
+                val previous = previousMilestone(milestone)
+                val remaining = (milestone - stats.followersCount).coerceAtLeast(0)
+                val progress = if (milestone == previous) 100 else (((stats.followersCount - previous).coerceAtLeast(0) * 100) / (milestone - previous)).toInt()
+                InsightSpec(
+                    label = "Milestone",
+                    value = TwidgetStore.compactNumber(milestone),
+                    detail = getString(R.string.to_next_milestone, TwidgetStore.compactNumber(remaining), TwidgetStore.compactNumber(milestone)),
+                    accent = getColor(R.color.oneui_accent),
+                    progress = progress,
+                )
+            }
+            DashboardCardType.GROWTH_PACE -> {
+                val daily = dailyAverage(history) { it.followers }
+                InsightSpec(
+                    label = "Growth",
+                    value = TwidgetStore.signedNumber(followersDelta),
+                    detail = getString(R.string.per_day, signedDecimal(daily)),
+                    accent = if (followersDelta < 0) getColor(R.color.metric_red) else getColor(R.color.metric_green),
+                )
+            }
+            DashboardCardType.BEST_DAY -> {
+                val best = bestRecentDay(history)
+                InsightSpec(
+                    label = "Best day",
+                    value = if (best == null) "--" else TwidgetStore.signedNumber(best.second),
+                    detail = best?.first ?: getString(R.string.no_recent_gain),
+                    accent = getColor(R.color.metric_green),
+                )
+            }
+            DashboardCardType.MOMENTUM -> {
+                val momentum = momentum(history)
+                InsightSpec(
+                    label = getString(R.string.momentum),
+                    value = momentum.first,
+                    detail = getString(R.string.per_range, TwidgetStore.signedNumber(followersDelta)),
+                    accent = momentum.second,
+                )
+            }
+            DashboardCardType.AUDIENCE_BALANCE -> {
+                val ratio = stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1)
+                InsightSpec(
+                    label = "Balance",
+                    value = if (ratio >= 1.0) {
+                        String.format(Locale.US, "%.1f:1", ratio)
+                    } else {
+                        String.format(Locale.US, "1:%.1f", 1.0 / ratio.coerceAtLeast(0.01))
+                    },
+                    detail = "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}",
+                    accent = getColor(R.color.oneui_accent),
+                )
+            }
+            DashboardCardType.ACCOUNT_HEALTH -> {
+                // Never claim Public unless the API explicitly said so.
+                InsightSpec(
+                    label = "Health",
+                    value = when {
+                        stats.isVerified == true -> getString(R.string.verified)
+                        stats.isPrivate == true -> getString(R.string.private_profile)
+                        stats.isPrivate == false -> getString(R.string.public_profile)
+                        else -> "--"
+                    },
+                    detail = when {
+                        stats.isVerified == true && stats.isPrivate == true -> getString(R.string.verified_private)
+                        stats.isVerified == true && stats.isPrivate == false -> getString(R.string.verified_public)
+                        stats.isVerified == true -> getString(R.string.verified)
+                        stats.isPrivate == true -> getString(R.string.private_unverified)
+                        stats.isPrivate == false -> getString(R.string.public_unverified)
+                        else -> getString(R.string.unknown_profile_status)
+                    },
+                    accent = when {
+                        stats.isPrivate == true -> getColor(R.color.metric_red)
+                        stats.isVerified == true || stats.isPrivate == false -> getColor(R.color.metric_green)
+                        else -> getColor(R.color.oneui_text_secondary)
+                    },
+                )
+            }
+            DashboardCardType.ENGAGEMENT_RATE -> blendedAnalyticsSpec(
+                getString(R.string.engagement_rate),
+                getColor(R.color.oneui_accent),
+                { blend -> blend.engagementRate?.let(::percent) },
+                { blend -> blend.usesImportedRate },
+            )
+            DashboardCardType.AVG_VIEWS -> blendedAnalyticsSpec(
+                getString(R.string.avg_views),
+                getColor(R.color.metric_green),
+                { blend -> blend.avgViews?.roundToLong()?.let(TwidgetStore::compactNumber) },
+                { blend -> blend.usesImportedViews },
+            )
+            DashboardCardType.TOTAL_VIEWS -> analyticsSpec(
+                getString(R.string.total_views),
+                getColor(R.color.oneui_accent),
+                { TwidgetStore.compactNumber(it.totalViews) },
+                { analyticsCoverage(it) },
+            )
+            DashboardCardType.AVG_ENGAGEMENTS -> blendedAnalyticsSpec(
+                getString(R.string.avg_engagements),
+                getColor(R.color.metric_green),
+                { blend -> blend.avgEngagements?.roundToLong()?.let(TwidgetStore::compactNumber) },
+                { blend -> blend.usesImportedEngagements },
+            )
+            DashboardCardType.MEDIAN_ENGAGEMENTS -> analyticsSpec(
+                getString(R.string.median_engagements),
+                getColor(R.color.oneui_accent),
+                { TwidgetStore.compactNumber(it.medianEngagements.roundToLong()) },
+                { analyticsCoverage(it) },
+            )
+            DashboardCardType.X_IMPRESSIONS -> importedAnalyticsSpec(
+                getString(R.string.x_impressions),
+                getColor(R.color.oneui_accent),
+            ) { it.impressions }
+            DashboardCardType.X_ENGAGEMENTS -> importedAnalyticsSpec(
+                getString(R.string.x_engagements),
+                getColor(R.color.metric_green),
+            ) { it.engagements }
+            DashboardCardType.X_PROFILE_VISITS -> importedAnalyticsSpec(
+                getString(R.string.x_profile_visits),
+                getColor(R.color.oneui_accent),
+            ) { it.profileVisits }
+            DashboardCardType.X_LIKES_RECEIVED -> importedAnalyticsSpec(
+                getString(R.string.x_likes_received),
+                getColor(R.color.metric_green),
+            ) { it.likes }
+            else -> error("Chart cards do not have insight specs.")
+        }
+    }
+
+    private fun importedAnalyticsSpec(
+        label: String,
+        accent: Int,
+        selector: (XAnalyticsMovement) -> Long?,
+    ): InsightSpec {
+        val values = importedAnalytics.mapNotNull(selector)
+        return InsightSpec(
+            label = label,
+            value = values.takeIf { it.isNotEmpty() }?.sum()?.let(TwidgetStore::compactNumber) ?: "--",
+            detail = if (values.isEmpty()) {
+                getString(R.string.import_x_analytics_hint)
+            } else {
+                getString(R.string.x_analytics_days, values.size)
+            },
+            accent = accent,
+        )
+    }
+
+    private fun blendedAnalyticsSpec(
+        label: String,
+        accent: Int,
+        value: (BlendedAnalytics) -> String?,
+        usesImported: (BlendedAnalytics) -> Boolean,
+    ): InsightSpec {
+        val blend = AnalyticsBlendPolicy.blend(analytics, importedAnalytics)
+        return InsightSpec(
+            label = label,
+            value = value(blend) ?: "--",
+            detail = when {
+                usesImported(blend) -> getString(
+                    R.string.analytics_blended_coverage,
+                    blend.livePosts,
+                    blend.importedDays,
+                )
+                analytics != null -> analyticsCoverage(requireNotNull(analytics))
+                else -> getString(R.string.analytics_syncing)
+            },
+            accent = accent,
+        )
+    }
+
+    private fun analyticsCoverage(data: PostAnalytics): String =
+        if (data.isSampled) {
+            getString(R.string.posts_from_capped_status_sample, data.postsAnalyzed, data.statusesInspected)
+        } else {
+            getString(R.string.across_posts, data.postsAnalyzed)
+        }
+
+    // Analytics cards fall back to a placeholder until the timeline fetch lands.
+    private fun analyticsSpec(
+        label: String,
+        accent: Int,
+        value: (PostAnalytics) -> String,
+        detail: (PostAnalytics) -> String,
+    ): InsightSpec {
+        val data = analytics
+        return InsightSpec(
+            label = label,
+            value = data?.let(value) ?: "--",
+            detail = data?.let(detail) ?: getString(R.string.analytics_syncing),
+            accent = accent,
+        )
+    }
+
+    private fun percent(fraction: Double): String =
+        String.format(Locale.US, "%.2f%%", fraction * 100)
+
+    // Average per real elapsed day — samples can have gaps, so count days
+    // between the first and last sample rather than counting samples.
+    private fun dailyAverage(history: List<HistorySample>, selector: (HistorySample) -> Long): Double {
+        if (history.size < 2) return 0.0
+        val days = ((history.last().timestamp - history.first().timestamp) / DAY_MILLIS).coerceAtLeast(1)
+        return rangeDelta(history, selector).toDouble() / days
+    }
+
+    private fun bestRecentDay(history: List<HistorySample>): Pair<String, Long>? =
+        history.zipWithNext()
+            .map { (previous, current) -> current.dayLabel to (current.followers - previous.followers) }
+            .filter { it.second > 0 }
+            .maxByOrNull { it.second }
+
+    private fun momentum(history: List<HistorySample>): Pair<String, Int> {
+        if (history.size < 4) return getString(R.string.flat) to getColor(R.color.oneui_text_secondary)
+        val middle = history.lastIndex / 2
+        val firstHalf = history[middle].followers - history.first().followers
+        val secondHalf = history.last().followers - history[middle].followers
+        val threshold = maxOf(2L, (abs(firstHalf) * 0.25).roundToLong())
+        return when {
+            secondHalf > firstHalf + threshold -> getString(R.string.accelerating) to getColor(R.color.metric_green)
+            secondHalf < firstHalf - threshold -> getString(R.string.cooling) to getColor(R.color.metric_red)
+            firstHalf == 0L && secondHalf == 0L -> getString(R.string.flat) to getColor(R.color.oneui_text_secondary)
+            else -> "Steady" to getColor(R.color.oneui_accent)
+        }
+    }
+
+    private fun nextMilestone(value: Long): Long {
+        var step = 100L
+        while (value >= step * 10) step *= 10
+        return ((value / step) + 1) * step
+    }
+
+    private fun previousMilestone(milestone: Long): Long {
+        var step = 100L
+        while (milestone > step * 10) step *= 10
+        return milestone - step
+    }
+
+    private fun signedDecimal(value: Double): String =
+        if (abs(value) >= 10.0) {
+            TwidgetStore.signedNumber(value.roundToLong())
+        } else {
+            val sign = if (value > 0) "+" else ""
+            String.format(Locale.US, "%s%.1f", sign, value)
+        }
+
+    private fun setEditMode(enabled: Boolean) {
+        if (editMode == enabled) return
+        editMode = enabled
+        exitEditModeOnBack.isEnabled = enabled
+        updateScheduleFabVisibility()
+        if (!enabled) clearDragPreview()
+        invalidateOptionsMenu()
+        render()
+    }
+
+    private fun removeDashboardCard(cardId: String) {
+        val current = TwidgetStore.dashboardCards(this)
+        if (current.size <= 1) {
+            Toast.makeText(this, R.string.cannot_remove_last_card, Toast.LENGTH_SHORT).show()
+            return
+        }
+        TwidgetStore.saveDashboardCards(this, current.filterNot { it == cardId })
+        render()
+    }
+
+    private fun previewMoveDashboardCard(draggedId: String, targetId: String) {
+        val cards = (dragPreviewOrder ?: TwidgetStore.dashboardCards(this)).toMutableList()
+        val from = cards.indexOf(draggedId)
+        val to = cards.indexOf(targetId)
+        if (from == -1 || to == -1 || from == to) return
+        val moved = cards.removeAt(from)
+        cards.add(if (from < to) to - 1 else to, moved)
+        if (cards == dragPreviewOrder) return
+        dragPreviewOrder = cards
+        DashboardCardType.fromId(draggedId)?.let { moveDropPlaceholder(it, targetId) }
+    }
+
+    private fun finishDashboardDrag(commit: Boolean) {
+        if (draggedCardId == null) return
+        if (commit) {
+            dragPreviewOrder?.let { TwidgetStore.saveDashboardCards(this, it) }
+        }
+        clearDragPreview()
+        if (commit) render()
+    }
+
+    private fun clearDragPreview() {
+        dragPlaceholderView?.let { placeholder ->
+            (placeholder.parent as? ViewGroup)?.removeView(placeholder)
+        }
+        dragSourceView?.visibility = View.VISIBLE
+        draggedCardId = null
+        dragPreviewOrder = null
+        dragPlaceholderView = null
+        dragSourceView = null
+    }
+
+    private fun moveDropPlaceholder(card: DashboardCardType, targetId: String) {
+        val container = findViewById<GridLayout>(R.id.dashboard_content) ?: return
+        val placeholder = dragPlaceholderView ?: FrameLayout(this).apply {
+            tag = DRAG_PLACEHOLDER_TAG
+            addView(createDropPlaceholder(card), FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ))
+            setOnDragListener { _, event ->
+                when (event.action) {
+                    DragEvent.ACTION_DRAG_STARTED -> editMode && (event.localState as? String) != null
+                    DragEvent.ACTION_DROP -> {
+                        finishDashboardDrag(commit = true)
+                        true
+                    }
+                    DragEvent.ACTION_DRAG_ENDED -> {
+                        finishDashboardDrag(commit = false)
+                        true
+                    }
+                    else -> true
+                }
+            }
+        }.also { dragPlaceholderView = it }
+
+        val existingParent = placeholder.parent as? ViewGroup
+        var targetIndex = container.childIndexWithTag(targetId)
+        if (targetIndex == -1) targetIndex = container.childCount
+        if (existingParent === container) {
+            val oldIndex = container.indexOfChild(placeholder)
+            if (oldIndex != -1 && oldIndex < targetIndex) targetIndex--
+            container.removeView(placeholder)
+        } else {
+            existingParent?.removeView(placeholder)
+        }
+        container.addView(placeholder, targetIndex.coerceIn(0, container.childCount), dashboardCardLayoutParams(card))
+    }
+
+    private fun ViewGroup.childIndexWithTag(tagValue: String): Int {
+        for (index in 0 until childCount) {
+            if (getChildAt(index).tag == tagValue) return index
+        }
+        return -1
+    }
+
+    private fun dashboardCardLayoutParams(card: DashboardCardType): GridLayout.LayoutParams =
+        GridLayout.LayoutParams().apply {
+            width = 0
+            height = dp(card.size.heightDp)
+            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, card.size.span, 1f)
+            setMargins(dp(5), dp(5), dp(5), dp(5))
+        }
+
+    private fun showAddCardDialog() {
+        val current = TwidgetStore.dashboardCards(this)
+        val hidden = TwidgetStore.DEFAULT_DASHBOARD_CARDS
+            .filterNot { it in current }
+            .mapNotNull(DashboardCardType::fromId)
+        if (hidden.isEmpty()) {
+            Toast.makeText(this, R.string.all_cards_added, Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.add_cards_title)
+            .setItems(hidden.map { getString(it.labelRes) }.toTypedArray()) { _, which ->
+                TwidgetStore.saveDashboardCards(this, current + hidden[which].id)
+                render()
+            }
+            .show()
+    }
+
+    private fun decimal(value: Double, suffix: String): String =
+        String.format(Locale.US, "%.1f%s", value, suffix)
+
+    // --- Drawer ---
+
+    private fun buildDrawer() {
+        val drawerNav = findViewById<DrawerNavigationView>(R.id.drawer_nav)
+        val menu = drawerNav.drawerMenu()
+
+        drawerAccountItemIds.clear()
+        drawerAvatarItemIds.clear()
+        menu.clear()
+        accounts.forEachIndexed { index, account ->
+            val stats = TwidgetStore.currentStats(this, account)
+            val itemId = DRAWER_ACCOUNT_ITEM_BASE + index
+            drawerAccountItemIds[itemId] = account
+            menu.add(
+                DRAWER_GROUP_ACCOUNTS,
+                itemId,
+                index,
+                VerifiedBadge.decorate(this, stats.fullName.ifBlank { account }, stats.isVerified, stats.isPrivate, dp(17)),
+            ).apply {
+                val (icon, isAvatar) = drawerAccountIcon(stats)
+                setIcon(icon)
+                if (isAvatar) drawerAvatarItemIds += itemId
+                isCheckable = true
+                isChecked = account.equals(selectedAccount, ignoreCase = true)
+                contentDescription = stats.fullName.ifBlank { account }
+            }
+        }
+
+        menu.setGroupCheckable(DRAWER_GROUP_ACCOUNTS, true, true)
+        menu.add(
+            DRAWER_GROUP_ACTIONS,
+            DRAWER_ITEM_ADD_ACCOUNT,
+            accounts.size,
+            getString(R.string.add_account),
+        ).apply {
+            setIcon(OneUiIconR.drawable.ic_oui_add)
+            contentDescription = getString(R.string.add_account)
+        }
+        menu.add(
+            DRAWER_GROUP_ACTIONS,
+            DRAWER_ITEM_SCHEDULE,
+            accounts.size + 1,
+            getString(R.string.schedule_title),
+        ).apply {
+            setIcon(OneUiIconR.drawable.ic_oui_time_outline)
+            contentDescription = getString(R.string.schedule_title)
+        }
+        drawerNav.refreshDrawerMenu()
+        drawerNav.post {
+            applyDrawerIconTints(drawerNav)
+            attachDrawerAccountLongPresses(drawerNav)
+        }
+    }
+
+    private fun attachDrawerAccountLongPresses(drawerNav: DrawerNavigationView) {
+        drawerAccountItemIds.forEach { (itemId, account) ->
+            drawerNav.findViewById<View>(itemId)?.setOnLongClickListener {
+                closeDrawerOnCompactScreens()
+                openAnalyticsImport(account)
+                true
+            }
+        }
+    }
+
+    private fun drawerAccountIcon(stats: ProfileStats): Pair<Drawable, Boolean> {
+        val iconSize = resources.getDimensionPixelSize(OneUiDesignR.dimen.oui_des_drawer_menu_item_icon_size)
+        ProfileImageLoader.cachedCircularBitmap(this, stats.profileImage, iconSize)?.let { bitmap ->
+            return BitmapDrawable(resources, bitmap).apply {
+                setTintList(null)
+                clearColorFilter()
+            } to true
+        }
+
+        queueDrawerAvatarDownload(stats.profileImage)
+        val fallback = requireNotNull(AppCompatResources.getDrawable(this, OneUiIconR.drawable.ic_oui_samsung_account))
+        return fallback to false
+    }
+
+    private fun queueDrawerAvatarDownload(url: String) {
+        if (url.isBlank()) return
+        synchronized(downloadingDrawerAvatarUrls) {
+            if (!downloadingDrawerAvatarUrls.add(url)) return
+        }
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute(onRejected = {
+            synchronized(downloadingDrawerAvatarUrls) {
+                downloadingDrawerAvatarUrls.remove(url)
+            }
+        }) {
+            val loaded = ProfileImageLoader.downloadToCache(applicationContext, url) != null
+            synchronized(downloadingDrawerAvatarUrls) {
+                downloadingDrawerAvatarUrls.remove(url)
+            }
+            if (loaded) postUiIfCurrent(lifecycleToken, ::buildDrawer)
+        }
+    }
+
+    private fun applyDrawerIconTints(drawerNav: DrawerNavigationView) {
+        val normalTint = AppCompatResources.getColorStateList(
+            this,
+            OneUiDesignR.color.oui_des_drawer_menu_item_text_color_selector,
+        )
+        drawerAccountItemIds.keys.forEach { itemId ->
+            val iconView = drawerNav.findViewById<View>(itemId)
+                ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
+                ?: return@forEach
+            if (itemId in drawerAvatarItemIds) {
+                applyDrawerAvatarAppearance(iconView)
+                ensureDrawerAvatarRenderGuard(iconView)
+            } else {
+                removeDrawerAvatarRenderGuard(iconView)
+                iconView.imageTintList = normalTint
+                iconView.alpha = DRAWER_STANDARD_ICON_ALPHA
+            }
+        }
+        listOf(
+            DRAWER_ITEM_ADD_ACCOUNT,
+            DRAWER_ITEM_SCHEDULE,
+        ).forEach { itemId ->
+            drawerNav.findViewById<View>(itemId)
+                ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
+                ?.also { iconView ->
+                    removeDrawerAvatarRenderGuard(iconView)
+                    iconView.imageTintList = normalTint
+                    iconView.alpha = DRAWER_STANDARD_ICON_ALPHA
+                }
+        }
+    }
+
+    private fun applyDrawerAvatarAppearance(iconView: ImageView) {
+        iconView.alpha = 1f
+        iconView.imageTintList = null
+        iconView.clearColorFilter()
+        iconView.drawable?.mutate()?.let { avatar ->
+            DrawableCompat.setTintList(avatar, null)
+            avatar.clearColorFilter()
+            iconView.setImageDrawable(avatar)
+        }
+    }
+
+    private fun ensureDrawerAvatarRenderGuard(iconView: ImageView) {
+        if (iconView.getTag(R.id.drawer_avatar_render_guard) is DrawerAvatarRenderGuard) return
+        DrawerAvatarRenderGuard(iconView).also { guard ->
+            iconView.setTag(R.id.drawer_avatar_render_guard, guard)
+        }
+    }
+
+    private fun removeDrawerAvatarRenderGuard(iconView: ImageView) {
+        (iconView.getTag(R.id.drawer_avatar_render_guard) as? DrawerAvatarRenderGuard)?.dispose()
+        iconView.setTag(R.id.drawer_avatar_render_guard, null)
+    }
+
+    private class DrawerAvatarRenderGuard(
+        private val iconView: ImageView,
+    ) : ViewTreeObserver.OnPreDrawListener, View.OnAttachStateChangeListener {
+        private var observer: ViewTreeObserver? = null
+
+        init {
+            iconView.addOnAttachStateChangeListener(this)
+            if (iconView.isAttachedToWindow) attach()
+        }
+
+        override fun onPreDraw(): Boolean {
+            if (iconView.getTag(R.id.drawer_avatar_render_guard) !== this) {
+                dispose()
+                return true
+            }
+            if (iconView.alpha != 1f) iconView.alpha = 1f
+            if (iconView.imageTintList != null) iconView.imageTintList = null
+            if (iconView.colorFilter != null) iconView.clearColorFilter()
+            iconView.drawable?.let { avatar ->
+                if (avatar.colorFilter != null) {
+                    DrawableCompat.setTintList(avatar, null)
+                    avatar.clearColorFilter()
+                }
+            }
+            return true
+        }
+
+        override fun onViewAttachedToWindow(view: View) = attach()
+
+        override fun onViewDetachedFromWindow(view: View) = detach()
+
+        fun dispose() {
+            detach()
+            iconView.removeOnAttachStateChangeListener(this)
+        }
+
+        private fun attach() {
+            detach()
+            iconView.viewTreeObserver.takeIf(ViewTreeObserver::isAlive)?.let { currentObserver ->
+                currentObserver.addOnPreDrawListener(this)
+                observer = currentObserver
+            }
+        }
+
+        private fun detach() {
+            observer?.takeIf(ViewTreeObserver::isAlive)?.removeOnPreDrawListener(this)
+            observer = null
+        }
+    }
+
+    private fun handleDrawerItemSelected(item: MenuItem): Boolean {
+        drawerAccountItemIds[item.itemId]?.let { account ->
+            if (!account.equals(selectedAccount, ignoreCase = true)) {
+                selectedAccount = account
+                render()
+            }
+            closeDrawerOnCompactScreens()
+            return true
+        }
+
+        if (item.itemId == DRAWER_ITEM_ADD_ACCOUNT) {
+            closeDrawerOnCompactScreens()
+            addAccount()
+            return true
+        }
+        if (item.itemId == DRAWER_ITEM_SCHEDULE) {
+            closeDrawerOnCompactScreens()
+            openSchedule(selectedAccount)
+            return true
+        }
+        return false
+    }
+
+    private fun closeDrawerOnCompactScreens() {
+        val drawer = findViewById<NavDrawerLayout>(R.id.main_toolbar_layout)
+        if (!drawer.isLargeScreenMode) {
+            drawer.setDrawerOpen(false, animate = true)
+        }
+    }
+
+    private fun DrawerNavigationView.drawerMenu(): Menu {
+        val field = DrawerNavigationView::class.java.getDeclaredField("navDrawerMenu")
+        field.isAccessible = true
+        return field.get(this) as Menu
+    }
+
+    private fun DrawerNavigationView.refreshDrawerMenu() {
+        val field = DrawerNavigationView::class.java.getDeclaredField("menuPresenter")
+        field.isAccessible = true
+        val presenter = field.get(this)
+        val method = presenter.javaClass.getDeclaredMethod("updateMenuView", Boolean::class.javaPrimitiveType)
+        method.isAccessible = true
+        method.invoke(presenter, false)
+    }
+
+    private fun setupDrawerChrome() {
+        findViewById<NavDrawerLayout>(R.id.main_toolbar_layout).apply {
+            closeNavRailOnBack = true
+            setHideNavRailDrawerOnCollapse(false)
+        }
+        findViewById<DrawerNavigationView>(R.id.drawer_nav)
+            .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
+        findViewById<DrawerLayout>(R.id.main_toolbar_layout).setupHeaderButton(
+            requireNotNull(AppCompatResources.getDrawable(this, OneUiIconR.drawable.ic_oui_settings_outline)),
+            getColor(R.color.oneui_text_secondary),
+            getString(R.string.settings),
+        ) {
+            closeDrawerOnCompactScreens()
+            openSettings()
+        }
+    }
+
+    private fun renderHeader() {
+        val stats = TwidgetStore.currentStats(this, selectedAccount)
+        findViewById<DrawerLayout>(R.id.main_toolbar_layout).apply {
+            if (editMode) {
+                setTitle(getString(R.string.edit_home))
+                setSubtitle("")
+            } else {
+                val name = stats.fullName.ifBlank { "@${stats.userName}" }
+                setTitle(VerifiedBadge.decorate(this@MainActivity, name, stats.isVerified, stats.isPrivate, dp(26)))
+                setSubtitle("@${stats.userName} · ${TwidgetStore.lastSyncedText(this@MainActivity, stats)}")
+            }
+        }
+    }
+
+    private fun setupRefresh() {
+        findViewById<SwipeRefreshLayout>(R.id.main_refresh).apply {
+            OneUiSpinner.attachToSwipeRefresh(this)
+            setOnRefreshListener { handlePullRefresh() }
+        }
+    }
+
+    private fun setupScheduleAction() {
+        findViewById<View>(R.id.schedule_fab).setOnClickListener {
+            startRightSidePopOverActivity(
+                Intent(this, ScheduleComposeActivity::class.java)
+                    .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, selectedAccount)
+            )
+        }
+    }
+
+    private fun updateScheduleFabVisibility() {
+        val defaultAccount = TwidgetStore.settings(this).username
+        findViewById<View>(R.id.schedule_fab)?.visibility = if (
+            !editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
+        ) View.VISIBLE else View.GONE
+    }
+
+    private fun openSchedule(username: String) {
+        startLeftSidePopOverActivity(
+            Intent(this, ScheduleActivity::class.java)
+                .putExtra(ScheduleActivity.EXTRA_USERNAME, username)
+        )
+    }
+
+    private fun handlePullRefresh() {
+        val toolbarLayout = findViewById<NavDrawerLayout>(R.id.main_toolbar_layout)
+        if (!toolbarLayout.isExpanded) {
+            toolbarLayout.setExpanded(true, animate = true)
+            findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+            return
+        }
+        sync()
+    }
+
+    private fun sync() {
+        if (isSyncing) {
+            findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+            return
+        }
+        val account = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
+        isSyncing = true
+        val generation = ++syncGeneration
+        val lifecycleToken = lifecycleGeneration
+        // Launch-time syncs show the same spinner as a pull refresh.
+        findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = true
+        AppExecutors.execute(onRejected = {
+            postUiIfCurrent(lifecycleToken) {
+                if (generation != syncGeneration) return@postUiIfCurrent
+                isSyncing = false
+                findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+                Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            val appContext = applicationContext
+            val result = runCatching {
+                val stats = RettiwtClient.refresh(appContext, account)
+                TwidgetStore.saveStats(appContext, stats)
+                TwidgetWidget.updateAll(appContext)
+                stats
+            }
+            postUiIfCurrent(lifecycleToken) {
+                if (generation != syncGeneration) return@postUiIfCurrent
+                isSyncing = false
+                findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+                render()
+                if (result.isFailure) {
+                    Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun postUiIfCurrent(lifecycleToken: Long, action: () -> Unit) {
+        runOnUiThread {
+            if (lifecycleToken != lifecycleGeneration || isFinishing || isDestroyed) return@runOnUiThread
+            action()
+        }
+    }
+
+    private fun openSettings() {
+        startLeftSidePopOverActivity(Intent(this, SettingsActivity::class.java))
+    }
+
+    private fun openAnalyticsImport(username: String) {
+        startActivity(
+            Intent(this, AnalyticsImportActivity::class.java)
+                .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username)
+        )
+    }
+
+    private fun addAccount() {
+        startAddAccountActivity()
+    }
+
+    private fun openActiveProfile() {
+        val username = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
+            .trim()
+            .trimStart('@')
+        if (username.isBlank()) return
+
+        val encoded = Uri.encode(username)
+        val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("twitter://user?screen_name=$encoded"))
+        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://x.com/$encoded"))
+        try {
+            startActivity(appIntent)
+        } catch (_: ActivityNotFoundException) {
+            startActivity(webIntent)
+        }
+    }
+
+    private fun requestWidgetPin() {
+        val appWidgetManager = getSystemService(AppWidgetManager::class.java)
+        if (!appWidgetManager.isRequestPinAppWidgetSupported) {
+            Toast.makeText(this, R.string.add_widget_not_supported, Toast.LENGTH_SHORT).show()
+            return
+        }
+        appWidgetManager.requestPinAppWidget(
+            ComponentName(this, com.tjg.twidget.TwidgetWidget::class.java),
+            null,
+            null
+        )
+        Toast.makeText(this, R.string.add_widget_requested, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private data class InsightSpec(
+        val label: String,
+        val value: String,
+        val detail: String,
+        val accent: Int,
+        val progress: Int? = null,
+    )
+
+    private data class ChartBinding(
+        val layoutRes: Int,
+        val valueId: Int,
+        val deltaId: Int,
+        val chartId: Int,
+        val value: String,
+        val known: (HistorySample) -> Boolean,
+        val selector: (HistorySample) -> Long,
+    )
+
+    // Two grid footprints only: half-width and full-width. Charts are
+    // full-width cards with extra height.
+    private enum class DashboardCardSize(val span: Int, val heightDp: Int) {
+        HALF(1, 140),
+        FULL(2, 156),
+        CHART(2, 260),
+    }
+
+    private enum class DashboardCardType(val id: String, val labelRes: Int, val size: DashboardCardSize) {
+        FOLLOWER_RATIO("follower_ratio", R.string.follower_ratio, DashboardCardSize.HALF),
+        POST_RATE("post_rate", R.string.post_rate, DashboardCardSize.HALF),
+        LIKES_PER_POST("likes_per_post", R.string.likes_per_post, DashboardCardSize.HALF),
+        ENGAGEMENT_RATE("engagement_rate", R.string.engagement_rate, DashboardCardSize.HALF),
+        AVG_VIEWS("avg_views", R.string.avg_views, DashboardCardSize.HALF),
+        TOTAL_VIEWS("total_views", R.string.total_views, DashboardCardSize.HALF),
+        AVG_ENGAGEMENTS("avg_engagements", R.string.avg_engagements, DashboardCardSize.HALF),
+        MEDIAN_ENGAGEMENTS("median_engagements", R.string.median_engagements, DashboardCardSize.HALF),
+        X_IMPRESSIONS("x_impressions", R.string.x_impressions, DashboardCardSize.HALF),
+        X_ENGAGEMENTS("x_engagements", R.string.x_engagements, DashboardCardSize.HALF),
+        X_PROFILE_VISITS("x_profile_visits", R.string.x_profile_visits, DashboardCardSize.HALF),
+        X_LIKES_RECEIVED("x_likes_received", R.string.x_likes_received, DashboardCardSize.HALF),
+        MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.FULL),
+        GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.HALF),
+        BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.HALF),
+        MOMENTUM("momentum", R.string.momentum, DashboardCardSize.HALF),
+        AUDIENCE_BALANCE("audience_balance", R.string.audience_balance, DashboardCardSize.HALF),
+        ACCOUNT_HEALTH("account_health", R.string.account_health, DashboardCardSize.HALF),
+        FOLLOWERS("followers", R.string.followers, DashboardCardSize.CHART),
+        FOLLOWING("following", R.string.following, DashboardCardSize.CHART),
+        POSTS("posts", R.string.posts, DashboardCardSize.CHART),
+        LIKES("likes", R.string.likes, DashboardCardSize.CHART);
+
+        companion object {
+            fun fromId(id: String): DashboardCardType? = entries.firstOrNull { it.id == id }
+        }
+    }
+
+    private companion object {
+        private const val DRAWER_GROUP_ACCOUNTS = 1
+        private const val DRAWER_GROUP_ACTIONS = 2
+        private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
+        private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
+        private const val DRAWER_ITEM_SCHEDULE = 20_001
+        private const val DRAWER_STANDARD_ICON_ALPHA = 0.7f
+        private const val DASHBOARD_GRID_COLUMNS = 2
+        private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+        private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
+    }
+}

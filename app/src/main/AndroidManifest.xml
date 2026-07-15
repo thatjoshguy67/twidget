@@ -27,21 +27,28 @@
         android:theme="@style/Theme.Twidget">
 
         <activity
+            android:name=".main.MainActivity"
+            android:exported="true" />
+
+        <!-- Keeps the launcher component name from before MainActivity moved to
+             .main, preserving home screen icons and pinned shortcuts. -->
+        <activity-alias
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:targetActivity=".main.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <activity
-            android:name=".OnboardingActivity"
+            android:name=".main.OnboardingActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".WidgetConfigActivity"
+            android:name=".widget.WidgetConfigActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -49,59 +56,59 @@
         </activity>
 
         <activity
-            android:name=".AboutActivity"
+            android:name=".main.AboutActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".SettingsActivity"
+            android:name=".settings.SettingsActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".AnalyticsImportActivity"
+            android:name=".analytics.AnalyticsImportActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".NoticesActivity"
+            android:name=".notices.NoticesActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".NoticeDetailActivity"
+            android:name=".notices.NoticeDetailActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".ScheduleActivity"
+            android:name=".schedule.ScheduleActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".ScheduleComposeActivity"
+            android:name=".schedule.ScheduleComposeActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".SettingsScheduleActivity"
+            android:name=".settings.SettingsScheduleActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".SettingsAdvancedActivity"
+            android:name=".settings.SettingsAdvancedActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".SettingsDebugActivity"
+            android:name=".settings.SettingsDebugActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
-            android:name=".DebugBridgeLogActivity"
+            android:name=".bridge.DebugBridgeLogActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
@@ -130,19 +137,19 @@
                 android:resource="@xml/widget_supported_cell_size_info" />
             <meta-data
                 android:name="android.appwidget.provider.semConfigureActivity"
-                android:value="com.tjg.twidget.WidgetConfigActivity" />
+                android:value="com.tjg.twidget.widget.WidgetConfigActivity" />
         </receiver>
 
         <receiver
-            android:name=".WidgetRefreshReceiver"
+            android:name=".widget.WidgetRefreshReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".ScheduleReminderReceiver"
+            android:name=".schedule.ScheduleReminderReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".ScheduleBootReceiver"
+            android:name=".schedule.ScheduleBootReceiver"
             android:directBootAware="false"
             android:exported="false">
             <intent-filter>
@@ -152,7 +159,7 @@
         </receiver>
 
         <receiver
-            android:name=".LockScreenFollowerServiceBoxReceiver"
+            android:name=".widget.LockScreenFollowerServiceBoxReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.samsung.android.intent.action.REQUEST_SERVICEBOX_REMOTEVIEWS" />
@@ -174,7 +181,7 @@
                 android:resource="@xml/lockscreen_message_1x1_widget_info_oneui" />
             <meta-data
                 android:name="android.appwidget.provider.semConfigureActivity"
-                android:value="com.tjg.twidget.WidgetConfigActivity" />
+                android:value="com.tjg.twidget.widget.WidgetConfigActivity" />
         </receiver>
 
         <receiver
@@ -192,7 +199,7 @@
                 android:resource="@xml/lockscreen_message_2x1_widget_info_oneui" />
             <meta-data
                 android:name="android.appwidget.provider.semConfigureActivity"
-                android:value="com.tjg.twidget.WidgetConfigActivity" />
+                android:value="com.tjg.twidget.widget.WidgetConfigActivity" />
         </receiver>
 
     </application>

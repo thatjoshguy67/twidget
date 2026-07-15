@@ -2,8 +2,8 @@
 <samsung-appwidget-info
     xmlns:app="http://schemas.android.com/apk/res-auto"
     app:allowMultipleSizes="true"
-    app:configure="com.tjg.twidget.WidgetConfigActivity"
-    app:configureLockScreen="com.tjg.twidget.WidgetConfigActivity"
+    app:configure="com.tjg.twidget.widget.WidgetConfigActivity"
+    app:configureLockScreen="com.tjg.twidget.widget.WidgetConfigActivity"
     app:initialLayoutTiny="@layout/lockscreen_message_1x1"
     app:previewLayoutTiny="@layout/lockscreen_message_1x1"
     app:targetHost="lock_and_aod|cover"

@@ -7,7 +7,7 @@
 
     <include layout="@layout/metric_header_impressions" />
 
-    <com.tjg.twidget.MetricChartView
+    <com.tjg.twidget.ui.MetricChartView
         android:id="@+id/impressions_chart"
         android:layout_width="match_parent"
         android:layout_height="0dp"

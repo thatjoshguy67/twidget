@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Reorganized the app's source tree from one flat package into feature packages (analytics, schedule, settings, widget, and friends). Existing home and lock screen widgets keep working: the original widget provider component names stay registered.
+
 ### Added
 
 - The native composer now uses Android's active keyboard for spell checking, autocorrection, and word suggestions.

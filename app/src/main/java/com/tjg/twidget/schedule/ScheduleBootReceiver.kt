@@ -19,9 +19,14 @@ class ScheduleBootReceiver : BroadcastReceiver() {
             try {
                 LocalReminderScheduler(context).rescheduleAll()
                 // WorkManager stores each request's worker class name, so
-                // re-register the periodic refresh in case a persisted request
-                // predates a class move (such as the feature-package reorg).
+                // re-register persisted work in case a request predates a
+                // class move (such as the feature-package reorg). enqueue()
+                // skips posts that no longer need a publish check, and the
+                // unique work names make both calls idempotent.
                 RefreshWorker.schedule(context)
+                ScheduleStore(context).list().forEach { post ->
+                    PostponePublishCheckWorker.enqueue(context, post)
+                }
             } finally {
                 pendingResult.finish()
             }

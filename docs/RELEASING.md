@@ -37,8 +37,9 @@ For a one-off alternative location, pass
 5. Confirm the shared bridge health endpoint and one representative public
    profile lookup succeed without exposing operator credentials.
 6. Dispatch the **Release** workflow with the plain version, for example
-   `1.0.0`. The workflow verifies the version, builds and signs the APK, creates
-   `twidget-v<version>`, and publishes the GitHub release.
+   `1.0.0`. The workflow runs bridge checks first, then verifies the version,
+   builds and signs the APK, creates `twidget-v<version>`, and publishes the
+   GitHub release.
 7. Verify the workflow conclusion, release notes, APK filename, APK version,
    signing certificate, and updater visibility from a logged-out client.
 
@@ -68,7 +69,8 @@ must not be published or shared.
 ```bash
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
   ./gradlew testDebugUnitTest assembleDebug lintDebug \
-  testReleaseUnitTest assembleRelease lintVitalRelease
+  testReleaseUnitTest assembleRelease lintVitalRelease \
+  testBetaUnitTest assembleBeta lintVitalBeta
 
 cd bridge
 npm ci
@@ -76,6 +78,9 @@ npm run check
 npm test
 npm audit --omit=dev
 ```
+
+Release and Pre-release workflows run the bridge checks automatically before
+building the Android APK. The local checklist above mirrors both jobs.
 
 Before making the repository public, scan the complete Git history—not merely
 the working tree—for credentials and sensitive signing files. If a real secret

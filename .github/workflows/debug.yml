@@ -2,9 +2,9 @@ name: Debug Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 permissions:
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # Only trusted main/manual builds receive the production signing key.
+      # Only trusted branch/manual builds receive the production signing key.
       # Pull-request code must never run with production signing credentials.
       - name: Decode release keystore
         if: github.event_name != 'pull_request'
@@ -78,9 +78,9 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./gradlew testDebugUnitTest assembleDebug lintDebug --no-daemon --stacktrace
+            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug lintDebug --no-daemon --stacktrace
           else
-            ./gradlew testDebugUnitTest assembleDebug lintDebug \
+            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug lintDebug \
               -PsignDebugWithRelease=true --no-daemon --stacktrace
           fi
 

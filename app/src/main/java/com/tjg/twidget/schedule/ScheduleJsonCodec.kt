@@ -22,10 +22,13 @@ internal object ScheduleJsonCodec {
         "scheduledAt" to json(scheduledAt),
         "thread" to JsonValue.ArrayValue(thread.map { it.toJsonValue() }),
         "remotePostId" to json(remotePostId),
+        "remoteSubmissionId" to json(remoteSubmissionId),
         "errorMessage" to json(errorMessage),
         "createdAt" to json(createdAt),
         "updatedAt" to json(updatedAt),
         "publishedAt" to json(publishedAt),
+        "pinned" to json(pinned),
+        "deletedAt" to json(deletedAt),
     )
 
     private fun ScheduleThreadItem.toJsonValue() = jsonObject(
@@ -66,10 +69,13 @@ internal object ScheduleJsonCodec {
             scheduledAt = value.optionalLong("scheduledAt"),
             thread = value.array("thread").values.map { threadFromValue(it.asObject()) },
             remotePostId = value.optionalString("remotePostId"),
+            remoteSubmissionId = value.optionalString("remoteSubmissionId"),
             errorMessage = value.optionalString("errorMessage"),
             createdAt = createdAt,
             updatedAt = value.long("updatedAt"),
             publishedAt = value.optionalLong("publishedAt"),
+            pinned = value.optionalBoolean("pinned"),
+            deletedAt = value.optionalLong("deletedAt"),
         )
     }
 
@@ -113,6 +119,11 @@ internal sealed class JsonValue {
         fun optionalLong(name: String): Long? = when (val value = values[name]) {
             null, NullValue -> null
             is NumberValue -> value.value.toLongOrNull() ?: error("Invalid '$name'")
+            else -> error("Invalid '$name'")
+        }
+        fun optionalBoolean(name: String): Boolean = when (val value = values[name]) {
+            null, NullValue -> false
+            is BooleanValue -> value.value
             else -> error("Invalid '$name'")
         }
         fun boolean(name: String): Boolean = (values[name] as? BooleanValue)?.value

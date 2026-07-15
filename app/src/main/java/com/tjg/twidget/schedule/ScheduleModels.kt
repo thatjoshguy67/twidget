@@ -85,11 +85,30 @@ data class ScheduledPost(
     val scheduledAt: Long?,
     val thread: List<ScheduleThreadItem>,
     val remotePostId: String? = null,
+    val remoteSubmissionId: String? = null,
     val errorMessage: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = createdAt,
     val publishedAt: Long? = null,
+    val pinned: Boolean = false,
+    val deletedAt: Long? = null,
 )
+
+object ScheduleTrashPolicy {
+    const val RETENTION_DAYS = 30
+    const val RETENTION_MS = RETENTION_DAYS * 24L * 60L * 60L * 1000L
+
+    fun canMoveToTrash(status: ScheduleStatus): Boolean =
+        status == ScheduleStatus.DRAFT || status == ScheduleStatus.NEEDS_ACTION
+}
+
+object ScheduleQueuePolicy {
+    fun canPin(status: ScheduleStatus): Boolean = status in setOf(
+        ScheduleStatus.DRAFT,
+        ScheduleStatus.SCHEDULED,
+        ScheduleStatus.FAILED,
+    )
+}
 
 enum class ScheduleValidationCode {
     EMPTY_THREAD,

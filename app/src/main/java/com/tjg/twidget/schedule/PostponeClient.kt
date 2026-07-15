@@ -1,13 +1,9 @@
 package com.tjg.twidget.schedule
 
 import android.content.Context
+import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.data.TwidgetStore
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 import org.json.JSONObject
 
@@ -58,6 +54,32 @@ data class PostponeLibraryPage(
 
 data class PostponeMutation(
     val remotePostId: String?,
+    val remoteSubmissionId: String? = null,
+)
+
+enum class PostponePublishingStatus {
+    READY_TO_PUBLISH,
+    DRAFT,
+}
+
+enum class PostponeSubmissionType {
+    ALL,
+    SCHEDULED,
+    FAILED,
+    SUBMITTED,
+}
+
+data class PostponeSubmission(
+    val id: String,
+    val text: String,
+    val postAt: Long?,
+    val submittedAt: Long?,
+    val errorMessage: String?,
+)
+
+data class PostponeSubmissionPage(
+    val total: Int,
+    val submissions: List<PostponeSubmission>,
 )
 
 class PostponeClient(
@@ -89,6 +111,34 @@ class PostponeClient(
         )
     }
 
+    fun listTwitterSubmissions(
+        socialAccountId: String,
+        publishingStatus: PostponePublishingStatus,
+        submissionType: PostponeSubmissionType = if (publishingStatus == PostponePublishingStatus.DRAFT) {
+            PostponeSubmissionType.ALL
+        } else {
+            PostponeSubmissionType.SCHEDULED
+        },
+        page: Int = 1,
+        limit: Int = 100,
+        startDateMillis: Long? = null,
+    ): PostponeResult<PostponeSubmissionPage> {
+        require(socialAccountId.isNotBlank()) { "A Postpone social account ID is required" }
+        require(page > 0) { "Page must be positive" }
+        require(limit in 1..100) { "Postpone supports between 1 and 100 submissions per page" }
+        return executeAndParse(
+            PostponeGraphQlCodec.submissionsRequest(
+                socialAccountId,
+                publishingStatus,
+                submissionType,
+                page,
+                limit,
+                startDateMillis,
+            ),
+            PostponeGraphQlCodec::parseSubmissions,
+        )
+    }
+
     fun scheduleTweet(post: ScheduledPost): PostponeResult<PostponeMutation> =
         runCatching {
             require(post.provider == ScheduleProvider.POSTPONE) { "Post must use the Postpone provider" }
@@ -99,6 +149,23 @@ class PostponeClient(
             )
         }.fold(
             onSuccess = { executeAndParse(it) { raw -> PostponeGraphQlCodec.parseMutation(raw, "scheduleTweet") } },
+            onFailure = { failure(it) },
+        )
+
+    fun saveTweetDraft(post: ScheduledPost): PostponeResult<PostponeMutation> =
+        runCatching {
+            require(post.provider == ScheduleProvider.POSTPONE) { "Post must use the Postpone provider" }
+            PostponeGraphQlCodec.tweetMutationRequest(
+                post,
+                update = !post.remotePostId.isNullOrBlank(),
+                maxTextLength = accountTextLimit(post),
+                publishingStatus = PostponePublishingStatus.DRAFT,
+            )
+        }.fold(
+            onSuccess = { request ->
+                val field = if (post.remotePostId.isNullOrBlank()) "scheduleTweet" else "updateScheduledTweet"
+                executeAndParse(request) { raw -> PostponeGraphQlCodec.parseMutation(raw, field) }
+            },
             onFailure = { failure(it) },
         )
 
@@ -154,39 +221,25 @@ class PostponeClient(
     private fun execute(requestBody: String): String {
         val key = apiKeyOverride?.trim().orEmpty().ifBlank { readApiKey() }
         if (key.isBlank()) error("Postpone API key is not configured")
-        val connection = URL(endpoint).openConnection() as HttpURLConnection
-        try {
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 20_000
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connection.setRequestProperty("Authorization", "Bearer $key")
-            // JSONObject validates the generated GraphQL envelope before it is sent.
-            val validatedBody = JSONObject(requestBody).toString()
-            connection.outputStream.use {
-                it.write(validatedBody.toByteArray(StandardCharsets.UTF_8))
-            }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.let {
-                BufferedReader(InputStreamReader(it, StandardCharsets.UTF_8)).use { reader ->
-                    reader.readText()
-                }
-            }.orEmpty()
-            if (status !in 200..299) {
-                val detail = PostponeGraphQlCodec.firstErrorMessage(response)
-                    ?: response.take(400).takeIf(String::isNotBlank)
-                    ?: "empty response"
-                throw PostponeHttpError(status, "Postpone HTTP $status: $detail")
-            }
-            // Validate server JSON here; pure parsers below remain JVM-testable.
-            JSONObject(response)
-            return response
-        } finally {
-            connection.disconnect()
+        val validatedBody = JSONObject(requestBody).toString()
+        val response = HttpTransport.post(
+            endpoint,
+            validatedBody,
+            mapOf(
+                "Content-Type" to "application/json; charset=utf-8",
+                "Authorization" to "Bearer $key",
+            ),
+            connectTimeoutMs = 15_000,
+            readTimeoutMs = 20_000,
+        )
+        if (response.code !in 200..299) {
+            val detail = PostponeGraphQlCodec.firstErrorMessage(response.body)
+                ?: response.body.take(400).takeIf(String::isNotBlank)
+                ?: "empty response"
+            throw PostponeHttpError(response.code, "Postpone HTTP ${response.code}: $detail")
         }
+        JSONObject(response.body)
+        return response.body
     }
 
     private fun readApiKey(): String {
@@ -205,7 +258,7 @@ class PostponeClient(
 
 internal object PostponeGraphQlCodec {
     private const val MUTATION_FIELDS =
-        "success errors { field message } post { id }"
+        "success errors { field message } post { id submissions { id } }"
 
     fun profileRequest(): String = request(
         "query Profile { profile { id username email } }",
@@ -242,10 +295,57 @@ internal object PostponeGraphQlCodec {
         "Media",
     )
 
+    fun submissionsRequest(
+        socialAccountId: String,
+        publishingStatus: PostponePublishingStatus,
+        submissionType: PostponeSubmissionType,
+        page: Int,
+        limit: Int,
+        startDateMillis: Long? = null,
+    ): String = request(
+        """
+        query TwitterSubmissions(
+          ${'$'}socialAccountIds: [ID],
+          ${'$'}page: Int,
+          ${'$'}limit: Int,
+          ${'$'}submissionType: SubmissionType,
+          ${'$'}publishingStatus: PublishingStatusType,
+          ${'$'}startDate: DateTime
+        ) {
+          twitterSubmissions(
+            socialAccountIds: ${'$'}socialAccountIds,
+            page: ${'$'}page,
+            limit: ${'$'}limit,
+            submissionType: ${'$'}submissionType,
+            publishingStatus: ${'$'}publishingStatus,
+            startDate: ${'$'}startDate,
+            rootsOnly: true
+          ) {
+            total
+            objects {
+              id text postAt
+              result { dateSubmitted }
+              error { errorCode message }
+            }
+          }
+        }
+        """.trimIndent(),
+        jsonObject(
+            "socialAccountIds" to JsonValue.ArrayValue(listOf(json(socialAccountId))),
+            "page" to json(page),
+            "limit" to json(limit),
+            "submissionType" to json(submissionType.name),
+            "publishingStatus" to json(publishingStatus.name),
+            "startDate" to json(startDateMillis?.let { Instant.ofEpochMilli(it).toString() }),
+        ),
+        "TwitterSubmissions",
+    )
+
     fun tweetMutationRequest(
         post: ScheduledPost,
         update: Boolean,
         maxTextLength: Int = SchedulePolicy.STANDARD_TEXT_LENGTH,
+        publishingStatus: PostponePublishingStatus = PostponePublishingStatus.READY_TO_PUBLISH,
     ): String {
         val scheduledAt = requireNotNull(post.scheduledAt) { "A scheduled time is required" }
         val issues = SchedulePolicy.validate(post, maxTextLength = maxTextLength)
@@ -254,6 +354,7 @@ internal object PostponeGraphQlCodec {
             "username" to json(post.accountUsername.trim().trimStart('@')),
             "postAt" to json(Instant.ofEpochMilli(scheduledAt).toString()),
             "thread" to JsonValue.ArrayValue(post.thread.mapIndexed(::tweetInput)),
+            "publishingStatus" to json(publishingStatus.name),
         )
         if (update) inputValues["id"] = json(requireNotNull(post.remotePostId))
         val operation = if (update) "UpdateScheduledTweet" else "ScheduleTweet"
@@ -356,6 +457,33 @@ internal object PostponeGraphQlCodec {
         )
     }
 
+    fun parseSubmissions(raw: String): PostponeResult<PostponeSubmissionPage> {
+        val root = parseRoot(raw)
+        root.errors.takeIf { it.isNotEmpty() }?.let { return PostponeResult(errors = it) }
+        val page = root.data?.optionalObject("twitterSubmissions")
+            ?: return missing("Postpone returned no Twitter submissions")
+        return runCatching {
+            PostponeSubmissionPage(
+                total = page.long("total").toInt(),
+                submissions = page.array("objects").values.map { entry ->
+                    val item = entry.asObject()
+                    PostponeSubmission(
+                        id = item.string("id"),
+                        text = item.optionalString("text").orEmpty(),
+                        postAt = item.optionalString("postAt")?.let { Instant.parse(it).toEpochMilli() },
+                        submittedAt = item.optionalObject("result")
+                            ?.optionalString("dateSubmitted")
+                            ?.let { Instant.parse(it).toEpochMilli() },
+                        errorMessage = item.optionalObject("error")?.optionalString("message"),
+                    )
+                },
+            )
+        }.fold(
+            onSuccess = { PostponeResult(value = it) },
+            onFailure = { missing(it.message ?: "Invalid Twitter submissions response") },
+        )
+    }
+
     fun parseMutation(
         raw: String,
         field: String,
@@ -372,9 +500,14 @@ internal object PostponeGraphQlCodec {
                 errors = fieldErrors.ifEmpty { listOf(PostponeError("$field was not successful")) },
             )
         }
-        val remoteId = mutation.optionalObject("post")?.optionalString("id") ?: knownPostId
+        val post = mutation.optionalObject("post")
+        val remoteId = post?.optionalString("id") ?: knownPostId
         if (remoteId.isNullOrBlank()) return missing("$field returned no post ID")
-        return PostponeResult(value = PostponeMutation(remoteId))
+        val submissionId = (post?.values?.get("submissions") as? JsonValue.ArrayValue)
+            ?.values
+            ?.firstOrNull()
+            ?.let { runCatching { it.asObject().optionalString("id") }.getOrNull() }
+        return PostponeResult(value = PostponeMutation(remoteId, submissionId))
     }
 
     fun firstErrorMessage(raw: String): String? =

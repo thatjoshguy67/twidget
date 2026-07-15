@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import com.tjg.twidget.core.HttpTransport
 import java.io.File
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -90,12 +91,12 @@ object ScheduleMediaExporter {
         index: Int,
         preferredName: String? = null,
     ) {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8_000
-            readTimeout = 20_000
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Android) Twidget/0.1")
-        }
+        val connection = HttpTransport.openConnection(
+            url,
+            headers = mapOf("User-Agent" to "Mozilla/5.0 (Android) Twidget/0.1"),
+            connectTimeoutMs = 8_000,
+            readTimeoutMs = 20_000,
+        ).apply { instanceFollowRedirects = true }
         val code = connection.responseCode
         if (code !in 200..299) {
             connection.disconnect()

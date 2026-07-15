@@ -9,6 +9,7 @@ import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.core.HistoryMigrationPolicy
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
+import com.tjg.twidget.update.AppVersion
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -103,6 +104,7 @@ object TwidgetStore {
     const val DATA_SOURCE_DEFAULT = "default_rettiwt"
     const val DATA_SOURCE_SELF_HOSTED = "self_hosted_rettiwt"
     const val DATA_SOURCE_X_API = "official_x_api"
+    const val DATA_SOURCE_TWITTERAPIS = "twitterapis"
     const val DATA_SOURCE_FXTWITTER = "fxtwitter"
     const val COLOR_MODE_LIGHT = "light"
     const val COLOR_MODE_DARK = "dark"
@@ -131,6 +133,8 @@ object TwidgetStore {
     private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
     private const val KEY_FAKE_UPDATE = "debug_fake_update"
     private const val KEY_UPDATE_AVAILABLE = "update_available"
+    private const val KEY_UPDATE_VERSION = "update_version"
+    private const val KEY_UPDATE_SUGGESTION_DISMISSED = "update_suggestion_dismissed"
     const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
     private const val MAX_HISTORY_DAYS = 400
@@ -140,6 +144,7 @@ object TwidgetStore {
     private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "followers",
+        "top_followers",
         "follower_ratio",
         "engagement_rate",
         "post_rate",
@@ -155,6 +160,9 @@ object TwidgetStore {
         "x_likes_received",
         "posts",
         "likes",
+        "all_time_post",
+        "best_post_card",
+        "worst_post_card",
     )
     const val LOGO_X = "x"
     const val LOGO_TWITTER = "twitter"
@@ -236,7 +244,12 @@ object TwidgetStore {
         prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
 
     fun setFakeUpdateAvailable(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(KEY_FAKE_UPDATE, enabled).apply()
+        val preferences = prefs(context)
+        val wasEnabled = preferences.getBoolean(KEY_FAKE_UPDATE, false)
+        preferences.edit().apply {
+            putBoolean(KEY_FAKE_UPDATE, enabled)
+            if (enabled && !wasEnabled) remove(KEY_UPDATE_SUGGESTION_DISMISSED)
+        }.apply()
     }
 
     // Powers the update badges (Settings "About Twidget" row, drawer settings
@@ -245,8 +258,44 @@ object TwidgetStore {
         fakeUpdateAvailable(context) ||
             prefs(context).getBoolean(KEY_UPDATE_AVAILABLE, false)
 
-    fun setUpdateAvailable(context: Context, available: Boolean) {
-        prefs(context).edit().putBoolean(KEY_UPDATE_AVAILABLE, available).apply()
+    fun setUpdateAvailable(context: Context, available: Boolean, version: String? = null) {
+        val preferences = prefs(context)
+        val wasAvailable = preferences.getBoolean(KEY_UPDATE_AVAILABLE, false)
+        val previousVersion = preferences.getString(KEY_UPDATE_VERSION, null)
+        preferences.edit().apply {
+            putBoolean(KEY_UPDATE_AVAILABLE, available)
+            if (available && !version.isNullOrBlank()) {
+                putString(KEY_UPDATE_VERSION, version)
+            } else {
+                remove(KEY_UPDATE_VERSION)
+            }
+            if (available && (!wasAvailable || version != previousVersion)) {
+                remove(KEY_UPDATE_SUGGESTION_DISMISSED)
+            }
+        }.apply()
+    }
+
+    fun updateSuggestionVersion(context: Context): String? {
+        val preferences = prefs(context)
+        if (preferences.getBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, false)) return null
+        if (fakeUpdateAvailable(context)) return fakeUpdateVersion(context)
+        if (!preferences.getBoolean(KEY_UPDATE_AVAILABLE, false)) return null
+        val available = preferences.getString(KEY_UPDATE_VERSION, null)?.takeIf(String::isNotBlank) ?: return null
+        val availableVersion = AppVersion.parse(available) ?: return null
+        val installedVersion = installedAppVersion(context) ?: return null
+        return available.takeIf { availableVersion > installedVersion }
+    }
+
+    private fun fakeUpdateVersion(context: Context): String {
+        val current = installedAppVersion(context) ?: AppVersion(1, 0, 0, null, null)
+        return AppVersion(current.major, current.minor + 1, 0, null, null).toString()
+    }
+
+    private fun installedAppVersion(context: Context): AppVersion? =
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName?.let(AppVersion::parse)
+
+    fun dismissUpdateSuggestion(context: Context) {
+        prefs(context).edit().putBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, true).apply()
     }
 
     fun cachedXApiBearer(context: Context): String {

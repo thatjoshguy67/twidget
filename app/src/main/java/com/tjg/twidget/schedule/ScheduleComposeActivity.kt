@@ -437,10 +437,12 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             scheduledAt = editorTime.timeInMillis,
             thread = editorItems.map { ScheduleThreadItem(it.id, it.text, it.media.toList()) },
             remotePostId = old?.remotePostId?.takeIf { old.provider == editorProvider },
+            remoteSubmissionId = old?.remoteSubmissionId?.takeIf { old.provider == editorProvider },
             errorMessage = null,
             createdAt = old?.createdAt ?: System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis(),
             publishedAt = old?.publishedAt,
+            pinned = old?.pinned ?: false,
         )
     }
 
@@ -450,15 +452,8 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             return
         }
         val draft = buildEditedPost()
-        val previous = editorPost
-        if (previous?.provider == ScheduleProvider.POSTPONE &&
-            !previous.remotePostId.isNullOrBlank() && previous.status == ScheduleStatus.SCHEDULED
-        ) {
-            runRemote {
-                val cancelled = coordinator.cancel(previous.id)
-                if (cancelled?.isSuccess != true) cancelled
-                else ScheduleCoordinatorResult(coordinator.saveDraft(draft.copy(remotePostId = null)))
-            }
+        if (draft.provider == ScheduleProvider.POSTPONE) {
+            runRemote { coordinator.saveDraftWithProvider(draft) }
         } else {
             editorPost = coordinator.saveDraft(draft)
             toast(R.string.schedule_draft_saved)
@@ -543,7 +538,15 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     private fun showCoordinatorResult(result: ScheduleCoordinatorResult?) {
         when {
             result == null -> toast(R.string.schedule_not_found)
-            result.isSuccess -> { toast(R.string.schedule_updated); finish() }
+            result.isSuccess -> {
+                toast(
+                    if (result.fellBackToLocal && result.post.status == ScheduleStatus.DRAFT) {
+                        R.string.schedule_draft_fell_back_local
+                    } else if (result.fellBackToLocal) R.string.schedule_fell_back_local
+                    else R.string.schedule_updated,
+                )
+                finish()
+            }
             else -> showErrors(result.errors)
         }
     }
@@ -551,12 +554,11 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     private fun resolveEditorAccount(post: ScheduledPost?): String {
         post?.accountId?.takeIf(String::isNotBlank)?.let { return it }
         post?.accountUsername?.takeIf(String::isNotBlank)?.let { return it }
-        requestedUsername().takeIf(String::isNotBlank)?.let { return it }
-        return TwidgetStore.accounts(this).firstOrNull().orEmpty()
+        return requestedUsername()
     }
 
     private fun requestedUsername(): String =
-        intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
+        TwidgetStore.settings(this).username.trim().trimStart('@')
 
     private fun setBusy(value: Boolean) {
         busy = value

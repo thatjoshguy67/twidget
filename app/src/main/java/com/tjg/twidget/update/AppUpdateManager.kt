@@ -1,5 +1,6 @@
 package com.tjg.twidget.update
 
+import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.schedule.json
 import java.io.File
 import java.net.HttpURLConnection
@@ -260,14 +261,16 @@ object AppUpdateManager {
     }
 
     private fun request(url: String): HttpURLConnection =
-        (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = CONNECT_TIMEOUT_MS
-            readTimeout = READ_TIMEOUT_MS
-            instanceFollowRedirects = true
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-            setRequestProperty("User-Agent", USER_AGENT)
-        }
+        HttpTransport.openConnection(
+            url,
+            headers = mapOf(
+                "Accept" to "application/vnd.github+json",
+                "X-GitHub-Api-Version" to "2022-11-28",
+                "User-Agent" to USER_AGENT,
+            ),
+            connectTimeoutMs = CONNECT_TIMEOUT_MS,
+            readTimeoutMs = READ_TIMEOUT_MS,
+        ).apply { instanceFollowRedirects = true }
 
     private const val RELEASE_PAGE_PREFIX =
         "https://github.com/thatjoshguy67/twidget/releases/"

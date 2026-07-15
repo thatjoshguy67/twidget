@@ -37,6 +37,16 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        TwidgetAppVisibility.activityStarted()
+    }
+
+    override fun onStop() {
+        TwidgetAppVisibility.activityStopped()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         fontRoot?.viewTreeObserver?.removeOnGlobalLayoutListener(fontLayoutListener)
         fontRoot = null
@@ -79,4 +89,12 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
         params.bottomMargin = targetMargin
         layoutParams = params
     }
+}
+
+internal object TwidgetAppVisibility {
+    private var visibleActivities = 0
+
+    @Synchronized fun activityStarted() { visibleActivities++ }
+    @Synchronized fun activityStopped() { visibleActivities = (visibleActivities - 1).coerceAtLeast(0) }
+    @Synchronized fun isVisible(): Boolean = visibleActivities > 0
 }

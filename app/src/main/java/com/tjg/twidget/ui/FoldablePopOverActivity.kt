@@ -16,6 +16,7 @@ abstract class FoldablePopOverActivity : EdgeToEdgeActivity() {
     }
 
     private fun updatePresentationIfNeeded() {
+        if (!allowsPopOverPresentation()) return
         if (isChangingPresentation) return
 
         val shouldUsePopOver = resources.configuration.smallestScreenWidthDp >= MIN_POPOVER_WIDTH_DP
@@ -38,6 +39,8 @@ abstract class FoldablePopOverActivity : EdgeToEdgeActivity() {
     private fun popoverSide(): PopOverSide = runCatching {
         PopOverSide.valueOf(intent.getStringExtra(EXTRA_POPOVER_SIDE) ?: PopOverSide.LEFT.name)
     }.getOrDefault(PopOverSide.LEFT)
+
+    protected open fun allowsPopOverPresentation(): Boolean = true
 
     companion object {
         const val EXTRA_POPOVER = "com.tjg.twidget.extra.POPOVER"

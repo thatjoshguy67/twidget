@@ -1,11 +1,9 @@
 package com.tjg.twidget.providers
 
+import com.tjg.twidget.core.HttpTransport
+import com.tjg.twidget.core.NetworkResponseParsers
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.schedule.json
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.json.JSONObject
@@ -22,44 +20,11 @@ object FxTwitterClient {
     fun fetchProfile(username: String): ProfileStats {
         val encoded = URLEncoder.encode(username.trim().trimStart('@'), StandardCharsets.UTF_8.name())
         val json = JSONObject(read("$BASE_URL/$encoded"))
-        val user = json.optJSONObject("user")
-            ?: throw IllegalStateException(
-                "FxTwitter returned no user for @$username" +
-                    json.optString("message")
-                        .takeIf { it.isNotBlank() && it != "OK" }
-                        ?.let { " ($it)" }
-                        .orEmpty()
-            )
-        return ProfileStats(
-            fullName = user.optString("name"),
-            userName = user.optString("screen_name").trimStart('@'),
-            followersCount = user.optLong("followers"),
-            followingsCount = user.optLong("following"),
-            statusesCount = user.optLong("tweets"),
-            likeCount = user.optLong("likes"),
-            profileImage = user.optString("avatar_url"),
-            isVerified = user.optJSONObject("verification")?.optBoolean("verified", false)
-                ?: if (user.has("verified")) user.optBoolean("verified") else null,
-            isPrivate = if (user.has("protected")) user.optBoolean("protected") else null,
-            syncedAt = System.currentTimeMillis(),
-            followersKnown = user.has("followers") && !user.isNull("followers"),
-            followingKnown = user.has("following") && !user.isNull("following"),
-            postsKnown = user.has("tweets") && !user.isNull("tweets"),
-            likesKnown = user.has("likes") && !user.isNull("likes"),
-        )
+        return NetworkResponseParsers.parseFxTwitterUser(json, username)
     }
 
     private fun read(url: String): String {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "application/json")
-        connection.setRequestProperty("User-Agent", "Twidget (Android)")
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val body = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
-        if (code !in 200..299) throw IllegalStateException("FxTwitter HTTP $code: ${body.take(300)}")
-        return body
+        val response = HttpTransport.get(url, userAgent = "Twidget (Android)")
+        return HttpTransport.requireSuccess(response, "FxTwitter")
     }
 }

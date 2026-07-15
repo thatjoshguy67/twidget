@@ -39,6 +39,7 @@ import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as IconR
 import dev.oneuiproject.oneui.preference.LayoutPreference
+import dev.oneuiproject.oneui.preference.SuggestionCardPreference
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
@@ -58,6 +59,21 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private fun buildScreen() {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
+
+        TwidgetStore.updateSuggestionVersion(context)?.let { version ->
+            screen.addPreference(SuggestionCardPreference(context).apply {
+                key = "update_suggestion"
+                title = getString(R.string.update_suggestion_title)
+                summary = getString(R.string.update_suggestion_summary, version)
+                setActionButtonText(getString(R.string.update))
+                setActionButtonOnClickListener {
+                    requireActivity().startSettingsSubActivity(Intent(context, AboutActivity::class.java))
+                }
+                setOnClosedClickedListener {
+                    TwidgetStore.dismissUpdateSuggestion(context)
+                }
+            })
+        }
 
         screen.addPreference(category(R.string.accounts))
         screen.addPreference(LayoutPreference(context, accountsCard()).apply {
@@ -104,12 +120,14 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 getString(R.string.source_default),
                 getString(R.string.source_self_hosted),
                 getString(R.string.source_x_api),
+                getString(R.string.source_twitterapis),
             )
             entryValues = arrayOf(
                 TwidgetStore.DATA_SOURCE_FXTWITTER,
                 TwidgetStore.DATA_SOURCE_DEFAULT,
                 TwidgetStore.DATA_SOURCE_SELF_HOSTED,
                 TwidgetStore.DATA_SOURCE_X_API,
+                TwidgetStore.DATA_SOURCE_TWITTERAPIS,
             )
             value = settings.dataSource
             setOnPreferenceChangeListener { pref, value ->
@@ -410,6 +428,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.DATA_SOURCE_FXTWITTER -> getString(R.string.source_fxtwitter)
         TwidgetStore.DATA_SOURCE_SELF_HOSTED -> getString(R.string.source_self_hosted)
         TwidgetStore.DATA_SOURCE_X_API -> getString(R.string.source_x_api)
+        TwidgetStore.DATA_SOURCE_TWITTERAPIS -> getString(R.string.source_twitterapis)
         else -> getString(R.string.source_default)
     }
 }

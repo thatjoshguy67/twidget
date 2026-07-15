@@ -22,4 +22,19 @@ class ScheduleStateTransitionsTest {
         assertFalse(ScheduleStateTransitions.canMove(ScheduleStatus.PUBLISHED, ScheduleStatus.SCHEDULED))
         assertFalse(ScheduleStateTransitions.canMove(ScheduleStatus.CANCELLED, ScheduleStatus.DRAFT))
     }
+
+    @Test
+    fun draftsAndReadyToPostItemsUseTheRecycleBin() {
+        assertTrue(ScheduleTrashPolicy.canMoveToTrash(ScheduleStatus.DRAFT))
+        assertTrue(ScheduleTrashPolicy.canMoveToTrash(ScheduleStatus.NEEDS_ACTION))
+        assertFalse(ScheduleTrashPolicy.canMoveToTrash(ScheduleStatus.SCHEDULED))
+    }
+
+    @Test
+    fun activeQueueItemsCanBePinnedButReadyItemsCannot() {
+        assertTrue(ScheduleQueuePolicy.canPin(ScheduleStatus.DRAFT))
+        assertTrue(ScheduleQueuePolicy.canPin(ScheduleStatus.SCHEDULED))
+        assertTrue(ScheduleQueuePolicy.canPin(ScheduleStatus.FAILED))
+        assertFalse(ScheduleQueuePolicy.canPin(ScheduleStatus.NEEDS_ACTION))
+    }
 }

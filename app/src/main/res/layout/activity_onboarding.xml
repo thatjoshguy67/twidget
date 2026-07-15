@@ -142,7 +142,40 @@
                         android:textSize="13sp" />
                 </LinearLayout>
 
-                <!-- Step 3 · Add widget -->
+                <!-- Step 3 · Scheduling -->
+                <LinearLayout
+                    android:id="@+id/step_scheduling"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingTop="96dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sec"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:text="@string/onboarding_scheduling_title"
+                        android:textColor="?android:textColorPrimary"
+                        android:textSize="30sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:fontFamily="sec"
+                        android:gravity="center"
+                        android:lineSpacingExtra="3dp"
+                        android:text="@string/onboarding_scheduling_summary"
+                        android:textColor="?android:textColorSecondary"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <!-- Step 4 · Add widget -->
                 <LinearLayout
                     android:id="@+id/step_widgets"
                     android:layout_width="match_parent"
@@ -196,7 +229,7 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- Step 4 · Done (title centred; fades up into place) -->
+                <!-- Step 5 · Done (title centred; fades up into place) -->
                 <LinearLayout
                     android:id="@+id/step_done"
                     android:layout_width="match_parent"

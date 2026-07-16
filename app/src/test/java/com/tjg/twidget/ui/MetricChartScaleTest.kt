@@ -17,4 +17,11 @@ class MetricChartScaleTest {
         assertEquals(0L to 231L, MetricChartScale.axisBounds(listOf(231, 231, 231)))
         assertEquals(0L to 73L, MetricChartScale.axisBounds(listOf(0, 35, 73)))
     }
+
+    @Test
+    fun linePointsUseTheirExactPositionWithinTheAxis() {
+        assertEquals(0f, MetricChartScale.yFraction(232, 226, 232))
+        assertEquals(0.5f, MetricChartScale.yFraction(229, 226, 232))
+        assertEquals(1f, MetricChartScale.yFraction(226, 226, 232))
+    }
 }

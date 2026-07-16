@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -54,6 +55,23 @@ class MetricChartView @JvmOverloads constructor(
         strokeWidth = resources.displayMetrics.density
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val lineHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_card_bg)
+        style = Paint.Style.STROKE
+        strokeWidth = 5f * resources.displayMetrics.density
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        alpha = 190
+    }
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_accent)
+        style = Paint.Style.STROKE
+        strokeWidth = 2f * resources.displayMetrics.density
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        alpha = 185
+    }
+    private val linePath = Path()
     private val barRect = RectF()
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
@@ -145,6 +163,7 @@ class MetricChartView @JvmOverloads constructor(
                 (chartHeight * normalized / scaleRange).coerceIn(14f * density, chartHeight)
             }
         }
+        fun yFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
         val maxLabelWidth = labels.maxOf { labelPaint.measureText(it) } + 6f * density
@@ -154,6 +173,20 @@ class MetricChartView @JvmOverloads constructor(
             val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
             canvas.drawLine(left, y, width - right, y, gridPaint)
             canvas.drawText(label, labelInset, y + 4f * density, labelPaint)
+        }
+
+        // The connected series retains the exact position of each value. It
+        // sits behind the bars so the familiar at-a-glance comparison remains
+        // primary, while small day-to-day changes are easier to follow.
+        linePath.reset()
+        values.forEachIndexed { index, value ->
+            val x = left + index * barSlot + barSlot / 2f
+            val y = yFor(value)
+            if (index == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
+        }
+        if (values.size > 1) {
+            canvas.drawPath(linePath, lineHaloPaint)
+            canvas.drawPath(linePath, linePaint)
         }
 
         barPaint.shader = barGradient
@@ -189,7 +222,7 @@ class MetricChartView @JvmOverloads constructor(
                 canvas = canvas,
                 label = "$label  ${if (estimated[activeIndex]) "~" else ""}${numberFormat.format(value)}",
                 anchorX = x + barWidth / 2f,
-                anchorY = chartBottom - heightFor(value),
+                anchorY = yFor(value),
                 chartLeft = left,
                 chartRight = width - right,
                 chartTop = top,
@@ -351,6 +384,12 @@ internal object MetricChartScale {
         } else {
             compact
         }
+    }
+
+    fun yFraction(value: Long, min: Long, max: Long): Float {
+        val range = (max - min).coerceAtLeast(1)
+        val clamped = value.coerceIn(min, max)
+        return (max - clamped).toFloat() / range
     }
 
     private fun niceStep(value: Double): Long {

@@ -28,7 +28,7 @@ class MetricChartView @JvmOverloads constructor(
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
         textSize = 14f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.oneUiSans(context, 700)
+        typeface = TwidgetFonts.oneUiSans(context, 500)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_divider)

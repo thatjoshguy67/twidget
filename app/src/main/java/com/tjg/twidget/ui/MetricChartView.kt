@@ -231,7 +231,7 @@ class MetricChartView @JvmOverloads constructor(
                 val labelWidth = labelPaint.measureText(label)
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-                canvas.drawText(label, labelX, height - 7f * density, labelPaint)
+                canvas.drawText(label, labelX, height - 11f * density, labelPaint)
             }
 
         }

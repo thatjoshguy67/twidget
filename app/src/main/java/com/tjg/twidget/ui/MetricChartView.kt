@@ -26,8 +26,8 @@ class MetricChartView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_secondary)
-        textSize = 10f * resources.displayMetrics.scaledDensity
+        color = context.getColor(R.color.oneui_text_primary)
+        textSize = 14f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -55,23 +55,27 @@ class MetricChartView @JvmOverloads constructor(
         strokeWidth = resources.displayMetrics.density
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val lineHaloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_card_bg)
+    private val areaFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_divider)
+        style = Paint.Style.FILL
+        alpha = 55
+    }
+    private val areaStripePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_text_secondary)
         style = Paint.Style.STROKE
-        strokeWidth = 5f * resources.displayMetrics.density
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-        alpha = 190
+        strokeWidth = resources.displayMetrics.density
+        alpha = 45
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_accent)
+        color = context.getColor(R.color.oneui_text_secondary)
         style = Paint.Style.STROKE
-        strokeWidth = 2f * resources.displayMetrics.density
+        strokeWidth = resources.displayMetrics.density
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        alpha = 185
+        alpha = 90
     }
     private val linePath = Path()
+    private val areaPath = Path()
     private val barRect = RectF()
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
@@ -154,7 +158,7 @@ class MetricChartView @JvmOverloads constructor(
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
         val axisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
         val barSlot = widthAvailable / labels.size
-        val barWidth = (barSlot * 0.56f).coerceIn(3f * density, 32f * density)
+        val barWidth = (barSlot * 0.30f).coerceIn(3f * density, 14f * density)
         fun heightFor(value: Long): Float {
             val normalized = (value - scaleMin).coerceAtLeast(0)
             return if (value <= 0) {
@@ -166,7 +170,7 @@ class MetricChartView @JvmOverloads constructor(
         fun yFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
-        val maxLabelWidth = labels.maxOf { labelPaint.measureText(it) } + 6f * density
+        val maxLabelWidth = labels.maxOf { labelPaint.measureText(it) } + 2f * density
         val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
 
         axisLabels.forEachIndexed { index, label ->
@@ -175,17 +179,38 @@ class MetricChartView @JvmOverloads constructor(
             canvas.drawText(label, labelInset, y + 4f * density, labelPaint)
         }
 
-        // The connected series retains the exact position of each value. It
-        // sits behind the bars so the familiar at-a-glance comparison remains
-        // primary, while small day-to-day changes are easier to follow.
+        // The linked Figma graph uses a light diagonal-hatched area behind
+        // narrow blue bars. Its upper edge is the precise connected series,
+        // while the bars remain the primary at-a-glance comparison.
         linePath.reset()
+        areaPath.reset()
         values.forEachIndexed { index, value ->
             val x = left + index * barSlot + barSlot / 2f
             val y = yFor(value)
-            if (index == 0) linePath.moveTo(x, y) else linePath.lineTo(x, y)
+            if (index == 0) {
+                linePath.moveTo(x, y)
+                areaPath.moveTo(x, y)
+            } else {
+                linePath.lineTo(x, y)
+                areaPath.lineTo(x, y)
+            }
         }
         if (values.size > 1) {
-            canvas.drawPath(linePath, lineHaloPaint)
+            val firstX = left + barSlot / 2f
+            val lastX = left + (values.lastIndex + 0.5f) * barSlot
+            areaPath.lineTo(lastX, chartBottom)
+            areaPath.lineTo(firstX, chartBottom)
+            areaPath.close()
+            canvas.drawPath(areaPath, areaFillPaint)
+            val checkpoint = canvas.save()
+            canvas.clipPath(areaPath)
+            val stripeGap = 6f * density
+            var stripeX = left - chartHeight
+            while (stripeX < width - right) {
+                canvas.drawLine(stripeX, chartBottom, stripeX + chartHeight, top, areaStripePaint)
+                stripeX += stripeGap
+            }
+            canvas.restoreToCount(checkpoint)
             canvas.drawPath(linePath, linePaint)
         }
 

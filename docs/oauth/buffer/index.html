@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+    <title>Return to TWidget</title>
+    <style>
+      :root { color-scheme: light dark; font: 16px system-ui, sans-serif; }
+      body { display: grid; min-height: 100vh; margin: 0; place-items: center; }
+      main { max-width: 32rem; padding: 2rem; text-align: center; }
+      a { display: inline-block; margin-top: 1rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Returning to TWidget…</h1>
+      <p>If the app does not open automatically, use the button below.</p>
+      <a id="continue" href="twidget://oauth/buffer">Open TWidget</a>
+    </main>
+    <script>
+      const callback = `twidget://oauth/buffer${window.location.search}${window.location.hash}`;
+      document.getElementById("continue").href = callback;
+      window.history.replaceState(null, "", window.location.pathname);
+      window.location.replace(callback);
+    </script>
+  </body>
+</html>

@@ -81,7 +81,11 @@ android {
         versionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
         versionName = baseVersionName
         resValue("string", "buffer_oauth_client_id", bufferOAuthClientId)
-        resValue("string", "buffer_oauth_redirect_uri", "twidget://oauth/buffer")
+        resValue(
+            "string",
+            "buffer_oauth_redirect_uri",
+            "https://thatjoshguy67.github.io/twidget/oauth/buffer/",
+        )
     }
 
     signingConfigs {

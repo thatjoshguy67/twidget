@@ -3,6 +3,8 @@ package com.tjg.twidget.followers
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 
 data class TopFollower(
@@ -22,8 +24,23 @@ data class TopFollowersState(
     val scanning: Boolean = false,
     val complete: Boolean = false,
     val error: String = "",
+    val startedAt: Long = 0L,
+    val lastStartedDay: String = "",
     val completedAt: Long = 0L,
 )
+
+enum class TopFollowersScanStart {
+    STARTED,
+    ALREADY_SCANNED_TODAY,
+}
+
+internal object TopFollowersScanPolicy {
+    fun localDay(timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): String =
+        Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate().toString()
+
+    fun canStart(lastStartedDay: String, timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): Boolean =
+        lastStartedDay != localDay(timestamp, zoneId)
+}
 
 object TopFollowersStore {
     private const val PREFS = "twidget_top_followers"
@@ -53,6 +70,8 @@ object TopFollowersStore {
                 scanning = root.optBoolean("scanning"),
                 complete = root.optBoolean("complete"),
                 error = root.optString("error"),
+                startedAt = root.optLong("startedAt"),
+                lastStartedDay = root.optString("lastStartedDay"),
                 completedAt = root.optLong("completedAt"),
             )
         }.getOrDefault(TopFollowersState())
@@ -78,16 +97,35 @@ object TopFollowersStore {
             put("scanning", state.scanning)
             put("complete", state.complete)
             put("error", state.error)
+            put("startedAt", state.startedAt)
+            put("lastStartedDay", state.lastStartedDay)
             put("completedAt", state.completedAt)
         }
         prefs(context).edit().putString(key(username), root.toString()).apply()
     }
 
-    fun reset(context: Context, username: String) = write(
-        context,
-        username,
-        TopFollowersState(scanning = true),
-    )
+    @Synchronized
+    fun tryStartScan(
+        context: Context,
+        username: String,
+        now: Long = System.currentTimeMillis(),
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): TopFollowersScanStart {
+        val previous = read(context, username)
+        if (!TopFollowersScanPolicy.canStart(previous.lastStartedDay, now, zoneId)) {
+            return TopFollowersScanStart.ALREADY_SCANNED_TODAY
+        }
+        write(
+            context,
+            username,
+            TopFollowersState(
+                scanning = true,
+                startedAt = now,
+                lastStartedDay = TopFollowersScanPolicy.localDay(now, zoneId),
+            ),
+        )
+        return TopFollowersScanStart.STARTED
+    }
 
     private fun key(username: String) = username.trim().trimStart('@').lowercase(Locale.US)
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

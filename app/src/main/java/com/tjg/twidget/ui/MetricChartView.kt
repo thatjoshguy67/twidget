@@ -25,15 +25,20 @@ class MetricChartView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
-    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val axisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
-        textSize = 14f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.oneUiSans(context, 500)
+        textSize = 10f * resources.displayMetrics.scaledDensity
+        typeface = TwidgetFonts.oneUiSans(context, 700)
+    }
+    private val dateLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.oneui_text_primary)
+        textSize = 10f * resources.displayMetrics.scaledDensity
+        typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_divider)
-        strokeWidth = resources.displayMetrics.density
-        alpha = 170
+        style = Paint.Style.FILL
+        alpha = 105
     }
     private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_card_bg)
@@ -58,21 +63,21 @@ class MetricChartView @JvmOverloads constructor(
     private val areaFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_divider)
         style = Paint.Style.FILL
-        alpha = 55
+        alpha = 35
     }
     private val areaStripePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_secondary)
         style = Paint.Style.STROKE
-        strokeWidth = resources.displayMetrics.density
-        alpha = 45
+        strokeWidth = 2f * resources.displayMetrics.density
+        alpha = 55
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_secondary)
         style = Paint.Style.STROKE
-        strokeWidth = resources.displayMetrics.density
+        strokeWidth = 2f * resources.displayMetrics.density
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        alpha = 90
+        alpha = 105
     }
     private val linePath = Path()
     private val areaPath = Path()
@@ -83,6 +88,7 @@ class MetricChartView @JvmOverloads constructor(
     private var labels: List<String> = emptyList()
     private var estimated: List<Boolean> = emptyList()
     private var values: List<Long> = emptyList()
+    private var averageValues: List<Long> = emptyList()
     private var barGradient: LinearGradient? = null
     private var activeIndex = -1
     private val hideTooltipRunnable = Runnable { clearActiveBar() }
@@ -108,6 +114,7 @@ class MetricChartView @JvmOverloads constructor(
         labels = samples.map(HistorySample::dayLabel)
         estimated = samples.map(HistorySample::estimated)
         values = samples.map(selector)
+        averageValues = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -115,10 +122,21 @@ class MetricChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    /**
+     * Sets the account-average series drawn behind the primary bars. Keeping
+     * this separate prevents the current week from being presented as its own
+     * historical average. An empty or misaligned series intentionally hides it.
+     */
+    fun setAverageSeries(values: List<Long>) {
+        averageValues = values.takeIf { it.size == this.values.size } ?: emptyList()
+        invalidate()
+    }
+
     fun setSeries(points: List<ImportedChartPoint>) {
         labels = points.map(ImportedChartPoint::label)
         estimated = List(points.size) { false }
         values = points.map(ImportedChartPoint::value)
+        averageValues = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -135,7 +153,7 @@ class MetricChartView @JvmOverloads constructor(
             top,
             0f,
             (height - 34f * density).coerceAtLeast(top + 1f),
-            intArrayOf(Color.rgb(57, 125, 244), Color.rgb(110, 156, 239)),
+            intArrayOf(Color.rgb(56, 122, 255), Color.rgb(133, 163, 222)),
             null,
             Shader.TileMode.CLAMP,
         )
@@ -146,19 +164,22 @@ class MetricChartView @JvmOverloads constructor(
         if (labels.isEmpty()) return
 
         val density = resources.displayMetrics.density
-        val labelInset = 18f * density
-        val left = 52f * density
+        val labelInset = 12f * density
+        val left = 46f * density
         val right = 24f * density
         val top = 18f * density
         val bottomLabels = 34f * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         val widthAvailable = width - left - right
-        val (scaleMin, scaleMax) = MetricChartScale.axisBounds(values)
+        // The numbered axis belongs to the current week's bars. Including the
+        // long-term account average here compresses small but real day-to-day
+        // differences and makes every current bar appear maxed out.
+        val (scaleMin, scaleMax) = MetricChartScale.primaryAxisBounds(values, averageValues)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
         val axisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
         val barSlot = widthAvailable / labels.size
-        val barWidth = (barSlot * 0.30f).coerceIn(3f * density, 14f * density)
+        val barWidth = (barSlot * 0.54f).coerceIn(6f * density, 24f * density)
         fun heightFor(value: Long): Float {
             val normalized = (value - scaleMin).coerceAtLeast(0)
             return if (value <= 0) {
@@ -168,38 +189,51 @@ class MetricChartView @JvmOverloads constructor(
             }
         }
         fun yFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
+        val averageBounds = MetricChartScale.axisBounds(averageValues)
+        fun averageYFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(
+            value,
+            averageBounds.first,
+            averageBounds.second,
+        )
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
-        val maxLabelWidth = labels.maxOf { labelPaint.measureText(it) } + 2f * density
+        val maxLabelWidth = labels.maxOf { dateLabelPaint.measureText(it) } + 2f * density
         val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
+
+        // The Figma graph uses four alternating rear columns rather than
+        // horizontal rules, keeping the average line and bars easy to scan.
+        labels.indices.filter { it % 2 == 0 }.forEach { index ->
+            val columnLeft = left + index * barSlot
+            canvas.drawRect(columnLeft, top, columnLeft + barSlot, chartBottom, gridPaint)
+        }
 
         axisLabels.forEachIndexed { index, label ->
             val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
-            canvas.drawLine(left, y, width - right, y, gridPaint)
-            canvas.drawText(label, labelInset, y + 4f * density, labelPaint)
+            canvas.drawText(label, labelInset, y + 4f * density, axisLabelPaint)
         }
 
-        // The linked Figma graph uses a light diagonal-hatched area behind
-        // narrow blue bars. Its upper edge is the precise connected series,
-        // while the bars remain the primary at-a-glance comparison.
+        // The linked Figma graph uses the account average as a light,
+        // diagonal-hatched area behind the primary current-week bars.
         linePath.reset()
         areaPath.reset()
-        values.forEachIndexed { index, value ->
-            val x = left + index * barSlot + barSlot / 2f
-            val y = yFor(value)
-            if (index == 0) {
-                linePath.moveTo(x, y)
-                areaPath.moveTo(x, y)
-            } else {
-                linePath.lineTo(x, y)
-                areaPath.lineTo(x, y)
-            }
+        averageValues.firstOrNull()?.let { firstValue ->
+            val firstY = averageYFor(firstValue)
+            linePath.moveTo(left, firstY)
+            areaPath.moveTo(left, firstY)
         }
-        if (values.size > 1) {
-            val firstX = left + barSlot / 2f
-            val lastX = left + (values.lastIndex + 0.5f) * barSlot
-            areaPath.lineTo(lastX, chartBottom)
-            areaPath.lineTo(firstX, chartBottom)
+        averageValues.forEachIndexed { index, value ->
+            val x = left + index * barSlot + barSlot / 2f
+            val y = averageYFor(value)
+            linePath.lineTo(x, y)
+            areaPath.lineTo(x, y)
+        }
+        if (averageValues.size > 1) {
+            val plotRight = width - right
+            val lastY = averageYFor(averageValues.last())
+            linePath.lineTo(plotRight, lastY)
+            areaPath.lineTo(plotRight, lastY)
+            areaPath.lineTo(plotRight, chartBottom)
+            areaPath.lineTo(left, chartBottom)
             areaPath.close()
             canvas.drawPath(areaPath, areaFillPaint)
             val checkpoint = canvas.save()
@@ -228,10 +262,10 @@ class MetricChartView @JvmOverloads constructor(
             canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
             barPaint.alpha = 255
             if ((labels.lastIndex - index) % labelStep == 0) {
-                val labelWidth = labelPaint.measureText(label)
+                val labelWidth = dateLabelPaint.measureText(label)
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-                canvas.drawText(label, labelX, height - 11f * density, labelPaint)
+                canvas.drawText(label, labelX, height - 11f * density, dateLabelPaint)
             }
 
         }
@@ -382,6 +416,12 @@ class MetricChartView @JvmOverloads constructor(
 }
 
 internal object MetricChartScale {
+    /** Background trends must never distort the numbered scale for the bars. */
+    fun primaryAxisBounds(
+        primary: List<Long>,
+        @Suppress("UNUSED_PARAMETER") background: List<Long>,
+    ): Pair<Long, Long> = axisBounds(primary)
+
     // Picks a [min, max] window for the y-axis. The highest observed value is
     // always the top gridline, so the bars use all available vertical space.
     // Near-flat cumulative counts keep a three-step zoomed window beneath it.
@@ -392,8 +432,6 @@ internal object MetricChartScale {
         val zoom = rawMin > 0 && spread > 0 && spread <= rawMax / 3
         if (!zoom) return 0L to rawMax.coerceAtLeast(3)
 
-        // Keep some context below the smallest value while anchoring the top
-        // exactly to the real maximum. Three equal steps give distinct labels.
         val step = niceStep((spread * 1.5 / 3).coerceAtLeast(1.0))
         val min = (rawMax - step * 3).coerceAtLeast(0)
         return min to rawMax

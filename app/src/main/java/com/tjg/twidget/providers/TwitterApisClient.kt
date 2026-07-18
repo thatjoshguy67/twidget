@@ -111,7 +111,15 @@ object TwitterApisClient {
                     name = user.optString("name").ifBlank { handle },
                     followers = user.optLong("followers_count").coerceAtLeast(0),
                     verified = user.optBoolean("is_blue_verified"),
-                    avatarUrl = highResolutionAvatar(user.optString("profile_image_url")),
+                    avatarUrl = highResolutionAvatar(
+                        sequenceOf(
+                            "profile_image_url_https",
+                            "profile_image_url",
+                            "avatar_url",
+                            "avatar",
+                            "profile_image",
+                        ).map(user::optString).firstOrNull { it.isNotBlank() }.orEmpty(),
+                    ),
                 ))
             }
         }
@@ -121,7 +129,9 @@ object TwitterApisClient {
     private fun encode(value: String): String =
         URLEncoder.encode(value, StandardCharsets.UTF_8.name())
 
-    private fun highResolutionAvatar(url: String): String = url
+    internal fun highResolutionAvatar(url: String): String = url.trim()
+        .let { if (it.startsWith("//")) "https:$it" else it }
+        .replace(Regex("^http://pbs\\.twimg\\.com/", RegexOption.IGNORE_CASE), "https://pbs.twimg.com/")
         .replace("_normal.", "_400x400.")
         .replace("name=normal", "name=400x400")
 }

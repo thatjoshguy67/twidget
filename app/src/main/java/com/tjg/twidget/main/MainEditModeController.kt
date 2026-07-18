@@ -1,9 +1,13 @@
 package com.tjg.twidget.main
 
+import android.view.DragEvent
+import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import androidx.core.widget.NestedScrollView
 import com.tjg.twidget.R
+import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.data.TwidgetStore
 
 internal class MainEditModeController(
@@ -16,6 +20,23 @@ internal class MainEditModeController(
     var dragPreviewOrder: List<String>? = null
     var dragPlaceholderView: android.view.View? = null
     var dragSourceView: android.view.View? = null
+
+    private var autoScrollDirection = 0
+    private var autoScrollScheduled = false
+    private val autoScrollStep: Runnable = object : Runnable {
+        override fun run() {
+            autoScrollScheduled = false
+            val scroll = activity.findViewById<NestedScrollView>(R.id.dashboard_scroll) ?: return
+            if (autoScrollDirection == 0 || draggedCardId == null) return
+            if (!scroll.canScrollVertically(autoScrollDirection)) {
+                autoScrollDirection = 0
+                return
+            }
+            scroll.scrollBy(0, activity.dp(AUTO_SCROLL_STEP_DP) * autoScrollDirection)
+            autoScrollScheduled = true
+            scroll.postOnAnimation(this)
+        }
+    }
 
     val exitEditModeOnBack = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -59,6 +80,7 @@ internal class MainEditModeController(
         val hidden = TwidgetStore.DEFAULT_DASHBOARD_CARDS
             .filterNot { it in current }
             .mapNotNull(DashboardCardType::fromId)
+            .filter { !it.requiresAnalyticsImport() || hasAnalyticsImport() }
         if (hidden.isEmpty()) {
             Toast.makeText(activity, R.string.all_cards_added, Toast.LENGTH_SHORT).show()
             return
@@ -94,6 +116,7 @@ internal class MainEditModeController(
     }
 
     fun clearDragPreview() {
+        stopDashboardDragAutoScroll()
         dragPlaceholderView?.let { placeholder ->
             (placeholder.parent as? android.view.ViewGroup)?.removeView(placeholder)
         }
@@ -102,5 +125,36 @@ internal class MainEditModeController(
         dragPreviewOrder = null
         dragPlaceholderView = null
         dragSourceView = null
+    }
+
+    fun updateDashboardDragAutoScroll(source: View, event: DragEvent) {
+        val scroll = activity.findViewById<NestedScrollView>(R.id.dashboard_scroll) ?: return
+        val sourceLocation = IntArray(2).also(source::getLocationOnScreen)
+        val scrollLocation = IntArray(2).also(scroll::getLocationOnScreen)
+        val pointerY = sourceLocation[1] + event.y
+        val edgeSize = activity.dp(AUTO_SCROLL_EDGE_DP)
+        autoScrollDirection = when {
+            pointerY < scrollLocation[1] + edgeSize && scroll.canScrollVertically(-1) -> -1
+            pointerY > scrollLocation[1] + scroll.height - edgeSize && scroll.canScrollVertically(1) -> 1
+            else -> 0
+        }
+        if (autoScrollDirection != 0 && !autoScrollScheduled) {
+            autoScrollScheduled = true
+            scroll.postOnAnimation(autoScrollStep)
+        }
+    }
+
+    fun hasAnalyticsImport(): Boolean =
+        ImportedAnalyticsStore.all(activity, activity.selectedAccount).isNotEmpty()
+
+    private fun stopDashboardDragAutoScroll() {
+        autoScrollDirection = 0
+        activity.findViewById<NestedScrollView>(R.id.dashboard_scroll)?.removeCallbacks(autoScrollStep)
+        autoScrollScheduled = false
+    }
+
+    private companion object {
+        private const val AUTO_SCROLL_EDGE_DP = 72
+        private const val AUTO_SCROLL_STEP_DP = 12
     }
 }

@@ -71,6 +71,23 @@ class TwitterApisClientTest {
     }
 
     @Test
+    fun followerAvatarAcceptsHttpsAliasAndNormalizesCdnUrl() {
+        val page = TwitterApisClient.parsePage(
+            """{"users":[{"id":"1","username":"avatar","name":"Avatar","profile_image_url_https":"//pbs.twimg.com/profile_images/1/photo_normal.jpg"}],"next_cursor":""}""",
+        )
+
+        assertEquals("https://pbs.twimg.com/profile_images/1/photo_400x400.jpg", page.users.single().avatarUrl)
+    }
+
+    @Test
+    fun insecureTwimgAvatarIsUpgradedToHttps() {
+        assertEquals(
+            "https://pbs.twimg.com/profile_images/1/photo_400x400.png",
+            TwitterApisClient.highResolutionAvatar("http://pbs.twimg.com/profile_images/1/photo_normal.png"),
+        )
+    }
+
+    @Test
     fun rankingKeepsLargestUniqueAccounts() {
         val users = listOf(
             follower("1", "small", 10),

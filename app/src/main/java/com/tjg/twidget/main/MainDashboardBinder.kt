@@ -29,21 +29,15 @@ import com.tjg.twidget.analytics.BlendedAnalytics
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.XAnalyticsMovement
+import com.tjg.twidget.data.AccountAverageSeries
 import com.tjg.twidget.data.HistoryRange
 import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
-import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.followers.TopFollower
-import com.tjg.twidget.followers.TopFollowersScanWorker
-import com.tjg.twidget.followers.TopFollowersStore
-import com.tjg.twidget.settings.SettingsAdvancedActivity
+import com.tjg.twidget.followers.TopFollowersCardBinder
 import com.tjg.twidget.ui.MetricChartView
-import com.tjg.twidget.ui.ProfileImageLoader
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -140,6 +134,7 @@ internal class MainDashboardBinder(
         // weekly window — the old range chips are gone.
         val history = TwidgetStore.rangedHistory(activity, account, HistoryRange.WEEK)
         val chartHistory = TwidgetStore.chartHistory(activity, account, HistoryRange.WEEK)
+        val fullHistory = TwidgetStore.fullHistory(activity, account)
         activity.importedAnalytics = ImportedAnalyticsStore.recent(activity, account)
         bindPrivateAccountNotice(page, stats)
         bindHistoryNotice(page, chartHistory)
@@ -149,9 +144,13 @@ internal class MainDashboardBinder(
             enableTransitionType(LayoutTransition.CHANGING)
             setDuration(140)
         }
-        container.setOnDragListener { _, event ->
+        container.setOnDragListener { source, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    editModeController.updateDashboardDragAutoScroll(source, event)
+                    true
+                }
                 DragEvent.ACTION_DROP -> {
                     editModeController.finishDashboardDrag(commit = true)
                     true
@@ -167,18 +166,25 @@ internal class MainDashboardBinder(
 
         TwidgetStore.dashboardCards(activity)
             .mapNotNull(DashboardCardType::fromId)
+            .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
             .forEach { card ->
                 val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
                     createTopFollowersCard(account)
                 } else if (card in POST_CARD_TYPES) {
                     activity.postAnalyticsBinder.createGridCard(card, account)
                 } else if (card.size == DashboardCardSize.CHART) {
-                    createChartCard(card, stats, chartHistory, history)
+                    createChartCard(card, stats, chartHistory, history, fullHistory)
                 } else {
                     createInsightCard(card, stats, history)
                 }
                 val wrapper = createDashboardCardWrapper(card, content)
-                container.addView(wrapper, dashboardCardLayoutParams(card))
+                container.addView(
+                    wrapper,
+                    dashboardCardLayoutParams(
+                        card,
+                        content.minimumHeight.takeIf { card == DashboardCardType.TOP_FOLLOWERS && it > 0 },
+                    ),
+                )
             }
 
         activity.syncController.maybeRefreshAnalytics(account)
@@ -294,162 +300,20 @@ internal class MainDashboardBinder(
     }
 
     private fun createTopFollowersCard(account: String): View {
-        val state = TopFollowersStore.read(activity, account)
-        val accountStats = TwidgetStore.currentStats(activity, account)
-        val keyConfigured = SecureCredentialStore.read(
-            activity,
-            SecureCredentialStore.TWITTERAPIS_API_KEY,
-        ).isNotBlank()
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(activity.dp(16), activity.dp(12), activity.dp(16), activity.dp(12))
-            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
-            addView(LinearLayout(activity).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                addView(TextView(activity).apply {
-                    text = activity.getString(R.string.top_followers)
-                    setTextColor(activity.getColor(R.color.oneui_text_primary))
-                    textSize = 17f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                    includeFontPadding = false
-                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                if (!state.scanning && keyConfigured) addView(TextView(activity).apply {
-                    text = activity.getString(if (state.complete) R.string.scan_again else R.string.scan)
-                    setTextColor(activity.getColor(R.color.oneui_accent))
-                    textSize = 13f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                    setPadding(activity.dp(10), activity.dp(7), activity.dp(10), activity.dp(7))
-                    background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { confirmTopFollowersScan(account) }
-                })
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-
-            when {
-                state.top.isNotEmpty() -> state.top.take(5).forEachIndexed { index, follower ->
-                    addView(topFollowerRow(index + 1, follower), LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        activity.dp(58),
-                    ).apply { topMargin = activity.dp(5) })
-                }
-                else -> addView(TextView(activity).apply {
-                    text = activity.getString(
-                        if (keyConfigured) R.string.top_followers_ready else R.string.top_followers_setup,
-                    )
-                    setTextColor(activity.getColor(R.color.oneui_text_primary))
-                    textSize = 17f
-                    setPadding(0, activity.dp(34), 0, 0)
-                    isClickable = !keyConfigured
-                    setOnClickListener {
-                        if (!keyConfigured) activity.startActivity(android.content.Intent(activity, SettingsAdvancedActivity::class.java))
-                    }
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
-            }
-
-            if (state.scanning) addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
-                max = 1000
-                val total = accountStats.followersCount.takeIf { accountStats.followersKnown && it > 0 }
-                isIndeterminate = total == null
-                progress = total?.let { ((state.scanned.toLong().coerceAtMost(it) * 1000L) / it).toInt() } ?: 0
-                progressTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_accent))
-                progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, activity.dp(6)).apply {
-                topMargin = activity.dp(8)
-            })
-
-            addView(TextView(activity).apply {
-                text = when {
-                    state.scanning -> activity.getString(R.string.top_followers_scanning, state.scanned, state.pages)
-                    state.error.isNotBlank() -> state.error
-                    state.complete -> activity.getString(
-                        R.string.top_followers_last_scan,
-                        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(state.completedAt)),
-                        state.scanned,
-                        state.pages,
-                    )
-                    else -> activity.getString(R.string.top_followers_tap)
-                }
-                setTextColor(activity.getColor(
-                    if (state.error.isNotBlank()) R.color.metric_red else R.color.oneui_text_secondary,
-                ))
-                textSize = 12f
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, activity.dp(7), 0, 0)
-            })
-        }
+        return TopFollowersCardBinder(
+            activity = activity,
+            onStateChanged = { activity.dashboardBinder.bindContent() },
+            requestNotificationPermission = { activity.requestTopFollowersNotificationPermission() },
+        ).create(account)
     }
 
-    private fun topFollowerRow(rank: Int, follower: TopFollower): View =
-        LinearLayout(activity).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_clickable_bg)
-            isClickable = true
-            isFocusable = true
-            setPadding(activity.dp(8), activity.dp(5), activity.dp(10), activity.dp(5))
-            setOnClickListener { openXProfile(follower.username) }
-
-            addView(TextView(activity).apply {
-                text = rank.toString()
-                gravity = Gravity.CENTER
-                setTextColor(activity.getColor(R.color.oneui_accent))
-                textSize = 14f
-                typeface = Typeface.create("sec", Typeface.BOLD)
-            }, LinearLayout.LayoutParams(activity.dp(24), LinearLayout.LayoutParams.MATCH_PARENT))
-            addView(ImageView(activity).apply {
-                contentDescription = follower.name
-                ProfileImageLoader.loadInto(activity, this, follower.avatarUrl)
-            }, LinearLayout.LayoutParams(activity.dp(42), activity.dp(42)).apply { marginStart = activity.dp(4) })
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(activity.dp(10), 0, activity.dp(8), 0)
-                addView(TextView(activity).apply {
-                    text = follower.name
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_primary))
-                    textSize = 14f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                })
-                addView(TextView(activity).apply {
-                    text = "@${follower.username}"
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                    textSize = 12f
-                })
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(TextView(activity).apply {
-                text = activity.getString(R.string.compact_followers, TwidgetStore.compactNumber(follower.followers))
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = 12f
-                gravity = Gravity.END or Gravity.CENTER_VERTICAL
-            })
-        }
-
-    private fun openXProfile(username: String) {
-        val native = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("twitter://user?screen_name=$username"))
-            .setPackage("com.twitter.android")
-        runCatching { activity.startActivity(native) }.getOrElse {
-            activity.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://x.com/$username")))
-        }
-    }
-
-    private fun confirmTopFollowersScan(account: String) {
-        androidx.appcompat.app.AlertDialog.Builder(activity)
-            .setTitle(R.string.top_followers_scan_title)
-            .setMessage(R.string.top_followers_scan_message)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.scan) { _, _ ->
-                activity.requestTopFollowersNotificationPermission()
-                TopFollowersScanWorker.enqueue(activity, account, restart = true)
-                activity.dashboardBinder.bindContent()
-            }
-            .show()
-    }
-
-    private fun createChartCard(card: DashboardCardType, stats: ProfileStats, chartHistory: List<HistorySample>, history: List<HistorySample>): View {
+    private fun createChartCard(
+        card: DashboardCardType,
+        stats: ProfileStats,
+        chartHistory: List<HistorySample>,
+        history: List<HistorySample>,
+        fullHistory: List<HistorySample>,
+    ): View {
         val (layoutRes, valueId, deltaId, chartId, value, known, selector) = when (card) {
             DashboardCardType.FOLLOWERS -> ChartBinding(
                 R.layout.metric_card_followers,
@@ -494,6 +358,7 @@ internal class MainDashboardBinder(
                 value,
                 TwidgetStore.todayDelta(activity, stats.userName, known, selector),
                 chartHistory.filter(known),
+                fullHistory.filter(known),
                 selector,
             )
         }
@@ -518,14 +383,22 @@ internal class MainDashboardBinder(
             }
             addView(content, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
+                if (card.size == DashboardCardSize.POST) {
+                    FrameLayout.LayoutParams.WRAP_CONTENT
+                } else {
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                },
             ))
             alpha = if (editModeController.editMode) 0.96f else 1f
             setOnLongClickListener(longPressHandler)
             attachCardLongPress(content, longPressHandler)
-            setOnDragListener { _, event ->
+            setOnDragListener { source, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
+                    DragEvent.ACTION_DRAG_LOCATION -> {
+                        editModeController.updateDashboardDragAutoScroll(source, event)
+                        true
+                    }
                     DragEvent.ACTION_DRAG_ENTERED -> {
                         val dragged = event.localState as? String ?: editModeController.draggedCardId
                         if (editModeController.editMode && dragged != null && dragged != card.id) {
@@ -616,6 +489,7 @@ internal class MainDashboardBinder(
         value: String,
         delta: Long,
         history: List<HistorySample>,
+        fullHistory: List<HistorySample>,
         selector: (HistorySample) -> Long,
     ) {
         root.findViewById<TextView>(valueId)?.apply {
@@ -629,7 +503,10 @@ internal class MainDashboardBinder(
             setTextColor(if (delta < 0) activity.getColor(R.color.metric_red) else activity.getColor(R.color.metric_green))
             visibility = if (delta == 0L) View.GONE else View.VISIBLE
         }
-        root.findViewById<MetricChartView>(chartId)?.setData(history, selector)
+        root.findViewById<MetricChartView>(chartId)?.apply {
+            setData(history, selector)
+            setAverageSeries(AccountAverageSeries.values(fullHistory, history, selector))
+        }
     }
 
     private fun insightSpec(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): InsightSpec {
@@ -925,9 +802,13 @@ internal class MainDashboardBinder(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ))
-            setOnDragListener { _, event ->
+            setOnDragListener { source, event ->
                 when (event.action) {
                     DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
+                    DragEvent.ACTION_DRAG_LOCATION -> {
+                        editModeController.updateDashboardDragAutoScroll(source, event)
+                        true
+                    }
                     DragEvent.ACTION_DROP -> {
                         editModeController.finishDashboardDrag(commit = true)
                         true
@@ -951,7 +832,11 @@ internal class MainDashboardBinder(
         } else {
             existingParent?.removeView(placeholder)
         }
-        container.addView(placeholder, targetIndex.coerceIn(0, container.childCount), dashboardCardLayoutParams(card))
+        container.addView(
+            placeholder,
+            targetIndex.coerceIn(0, container.childCount),
+            dashboardCardLayoutParams(card, editModeController.dragSourceView?.height),
+        )
     }
 
     private fun ViewGroup.childIndexWithTag(tagValue: String): Int {
@@ -961,10 +846,14 @@ internal class MainDashboardBinder(
         return -1
     }
 
-    private fun dashboardCardLayoutParams(card: DashboardCardType): GridLayout.LayoutParams =
+    private fun dashboardCardLayoutParams(card: DashboardCardType, dragHeight: Int? = null): GridLayout.LayoutParams =
         GridLayout.LayoutParams().apply {
             width = 0
-            height = activity.dp(card.size.heightDp)
+            height = when {
+                dragHeight != null && dragHeight > 0 -> dragHeight
+                card.size == DashboardCardSize.POST -> ViewGroup.LayoutParams.WRAP_CONTENT
+                else -> activity.dp(card.size.heightDp)
+            }
             columnSpec = GridLayout.spec(GridLayout.UNDEFINED, card.size.span, 1f)
             setMargins(activity.dp(5), activity.dp(5), activity.dp(5), activity.dp(5))
         }
@@ -982,4 +871,13 @@ internal class MainDashboardBinder(
             DashboardCardType.WORST_POST,
         )
     }
+}
+
+internal fun DashboardCardType.requiresAnalyticsImport(): Boolean = when (this) {
+    DashboardCardType.X_IMPRESSIONS,
+    DashboardCardType.X_ENGAGEMENTS,
+    DashboardCardType.X_PROFILE_VISITS,
+    DashboardCardType.X_LIKES_RECEIVED,
+    -> true
+    else -> false
 }

@@ -34,19 +34,9 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 }
                 val page = TwitterApisClient.fetchFollowers(username, state.cursor, apiKey)
                 if (page.users.isEmpty()) {
-                    val completed = state.copy(
-                        scanning = false,
-                        complete = true,
-                        error = "",
-                        completedAt = System.currentTimeMillis(),
-                    )
-                    publish(username, completed)
-                    if (!TwidgetAppVisibility.isVisible()) {
-                        TopFollowersNotificationHelper.showComplete(applicationContext, username, completed)
-                    }
-                    return Result.success()
+                    return complete(username, state)
                 }
-                if (page.nextCursor.isBlank() || page.nextCursor == state.cursor) {
+                if (page.nextCursor == state.cursor) {
                     return fail(username, "TwitterAPIs pagination stopped unexpectedly", state)
                 }
                 val top = rankedTopFollowers(state.top + page.users, TOP_LIMIT)
@@ -57,11 +47,12 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                     scanned = state.scanned + page.users.size,
                     scanning = true,
                 )
+                if (page.nextCursor.isBlank()) return complete(username, state)
                 TopFollowersStore.write(applicationContext, username, state)
                 // The cursor makes page requests sequential already. Do not add
                 // an artificial delay: TwitterAPIs advertises no platform rate
                 // cap, and WorkManager's 429 retry path remains the safety net.
-                if (state.pages == 1 || state.pages % UI_UPDATE_PAGE_INTERVAL == 0) notifyUpdated(username)
+                notifyUpdated(username)
             }
             Result.retry()
         } catch (error: HttpTransport.HttpException) {
@@ -75,6 +66,20 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         } catch (_: Exception) {
             Result.retry()
         }
+    }
+
+    private fun complete(username: String, prior: TopFollowersState): Result {
+        val completed = prior.copy(
+            scanning = false,
+            complete = true,
+            error = "",
+            completedAt = System.currentTimeMillis(),
+        )
+        publish(username, completed)
+        if (!TwidgetAppVisibility.isVisible()) {
+            TopFollowersNotificationHelper.showComplete(applicationContext, username, completed)
+        }
+        return Result.success()
     }
 
     private fun fail(username: String, message: String, prior: TopFollowersState? = null): Result {
@@ -99,16 +104,20 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
     companion object {
         private const val KEY_USERNAME = "username"
         private const val RUN_BUDGET_MS = 3 * 60 * 1000L
-        private const val UI_UPDATE_PAGE_INTERVAL = 25
         private const val MAX_PAGES_PER_SCAN = 6250 // $5 at the documented $0.0008/read.
         private const val TOP_LIMIT = 5
         const val ACTION_UPDATED = "com.tjg.twidget.TOP_FOLLOWERS_UPDATED"
         const val EXTRA_USERNAME = "username"
 
-        fun enqueue(context: Context, username: String, restart: Boolean) {
+        fun enqueue(context: Context, username: String, restart: Boolean): TopFollowersScanStart {
             val clean = username.trim().trimStart('@')
-            if (clean.isBlank()) return
-            if (restart) TopFollowersStore.reset(context, clean)
+            if (clean.isBlank()) return TopFollowersScanStart.ALREADY_SCANNED_TODAY
+            val startResult = if (restart) {
+                TopFollowersStore.tryStartScan(context, clean)
+            } else {
+                TopFollowersScanStart.STARTED
+            }
+            if (startResult != TopFollowersScanStart.STARTED) return startResult
             val request = OneTimeWorkRequestBuilder<TopFollowersScanWorker>()
                 .setInputData(Data.Builder().putString(KEY_USERNAME, clean).build())
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -119,6 +128,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 if (restart) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
                 request,
             )
+            return TopFollowersScanStart.STARTED
         }
     }
 }

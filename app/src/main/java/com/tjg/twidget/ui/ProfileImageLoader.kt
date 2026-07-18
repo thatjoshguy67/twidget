@@ -1,19 +1,23 @@
 package com.tjg.twidget.ui
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.widget.ImageView
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.HttpTransport
+import dev.oneuiproject.oneui.R as OneUiIconR
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -43,6 +47,7 @@ object ProfileImageLoader {
 
         cachedBitmap(context, imageUrl)?.let {
             imageView.setPadding(0, 0, 0, 0)
+            imageView.imageTintList = null
             imageView.setImageBitmap(it)
             return
         }
@@ -51,11 +56,12 @@ object ProfileImageLoader {
         AppExecutors.execute {
             val bitmap = downloadToCache(context, imageUrl)
             imageView.post {
-                if (imageView.isAttachedToWindow &&
-                    imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null
-                ) {
+                // Dashboard rows are often populated before attachment. The old
+                // attachment guard discarded fast avatar responses permanently.
+                if (imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null) {
                     applyCircleClip(imageView)
                     imageView.setPadding(0, 0, 0, 0)
+                    imageView.imageTintList = null
                     imageView.setImageBitmap(bitmap)
                 }
             }
@@ -200,10 +206,15 @@ object ProfileImageLoader {
     }
 
     private fun showFallback(imageView: ImageView) {
-        imageView.clipToOutline = false
-        imageView.setBackgroundResource(0)
-        imageView.setPadding(0, 0, 0, 0)
-        imageView.setImageResource(R.mipmap.ic_launcher)
+        applyCircleClip(imageView)
+        imageView.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.rgb(243, 243, 245))
+        }
+        val inset = (8 * imageView.resources.displayMetrics.density).toInt()
+        imageView.setPadding(inset, inset, inset, inset)
+        imageView.setImageResource(OneUiIconR.drawable.ic_oui_samsung_account)
+        imageView.imageTintList = ColorStateList.valueOf(Color.rgb(132, 132, 135))
     }
 
     private fun applyRoundedClip(imageView: ImageView, radiusPx: Int) {
@@ -253,6 +264,8 @@ object ProfileImageLoader {
 
     private fun highResolutionUrl(url: String): String =
         url.trim()
+            .let { if (it.startsWith("//")) "https:$it" else it }
+            .replace(Regex("^http://pbs\\.twimg\\.com/", RegexOption.IGNORE_CASE), "https://pbs.twimg.com/")
             .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
             .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
 

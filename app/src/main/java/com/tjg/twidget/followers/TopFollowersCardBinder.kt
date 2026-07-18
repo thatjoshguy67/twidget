@@ -5,6 +5,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Build
 import android.text.TextUtils
@@ -144,6 +145,13 @@ internal class TopFollowersCardBinder(
                 alpha = if (refreshEnabled) 1f else 0.7f
                 isClickable = refreshEnabled
                 isFocusable = refreshEnabled
+                if (refreshEnabled) {
+                    background = RippleDrawable(
+                        ColorStateList.valueOf(RIPPLE),
+                        null,
+                        rounded(Color.WHITE, 20f),
+                    )
+                }
                 contentDescription = activity.getString(R.string.top_followers_refresh)
                 if (refreshEnabled) setOnClickListener { showStartDialog(account) }
             }, LinearLayout.LayoutParams(dp(40), dp(40)))
@@ -181,7 +189,14 @@ internal class TopFollowersCardBinder(
     private fun resultRow(rank: Int, follower: TopFollower, divider: Boolean): View = FrameLayout(activity).apply {
         isClickable = true
         isFocusable = true
-        foreground = activity.getDrawable(android.R.drawable.list_selector_background)
+        // One bounded target owns the complete row, including its avatar and
+        // follower count. The mask gives every row the same rounded grey
+        // pressed surface instead of separate, inconsistent child targets.
+        foreground = RippleDrawable(
+            ColorStateList.valueOf(RIPPLE),
+            null,
+            rounded(Color.WHITE, 24f),
+        )
         contentDescription = activity.getString(
             R.string.top_follower_accessibility,
             rank,
@@ -296,5 +311,6 @@ internal class TopFollowersCardBinder(
         private const val SECONDARY = 0xFF848487.toInt()
         private const val SKELETON = 0xFFF3F3F5.toInt()
         private const val DIVIDER = 0xFFEAEAEA.toInt()
+        private const val RIPPLE = 0x24000000
     }
 }

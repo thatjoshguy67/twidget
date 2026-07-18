@@ -455,11 +455,22 @@ internal class MainDashboardBinder(
         return true
     }
 
-    private fun attachCardLongPress(view: View, listener: View.OnLongClickListener) {
-        view.setOnLongClickListener(listener)
+    private fun attachCardLongPress(
+        view: View,
+        listener: View.OnLongClickListener,
+        isContentRoot: Boolean = true,
+    ) {
+        // Making every descendant long-clickable also makes plain TextViews
+        // and ImageViews consume taps before an interactive row can receive
+        // them. Keep edit-mode long press on the card root and on controls
+        // that already own clicks; decorative descendants remain transparent
+        // to their row's touch target.
+        if (isContentRoot || view.isClickable) {
+            view.setOnLongClickListener(listener)
+        }
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) {
-                attachCardLongPress(view.getChildAt(index), listener)
+                attachCardLongPress(view.getChildAt(index), listener, isContentRoot = false)
             }
         }
     }

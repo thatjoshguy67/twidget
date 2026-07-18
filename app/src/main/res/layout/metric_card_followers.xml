@@ -8,7 +8,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="88dp"
+        android:layout_height="76dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="20dp"
@@ -18,7 +18,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:contentDescription="@null"
-            android:src="@drawable/ic_oneui_profile"
+            android:src="@drawable/ic_oui_community"
             app:tint="@color/oneui_text_primary" />
 
         <LinearLayout
@@ -62,6 +62,13 @@
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:background="@color/oneui_divider" />
 
     <com.tjg.twidget.ui.MetricChartView
         android:id="@+id/followers_chart"

@@ -81,7 +81,9 @@ class MetricChartView @JvmOverloads constructor(
     }
     private val linePath = Path()
     private val areaPath = Path()
+    private val plotClipPath = Path()
     private val barRect = RectF()
+    private val plotRect = RectF()
     private val tooltipRect = RectF()
     private val barHitBounds = mutableListOf<RectF>()
     private val numberFormat = NumberFormat.getIntegerInstance(Locale.US)
@@ -147,7 +149,7 @@ class MetricChartView @JvmOverloads constructor(
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         val density = resources.displayMetrics.density
-        val top = 18f * density
+        val top = 8f * density
         barGradient = LinearGradient(
             0f,
             top,
@@ -167,8 +169,8 @@ class MetricChartView @JvmOverloads constructor(
         val labelInset = 12f * density
         val left = 46f * density
         val right = 24f * density
-        val top = 18f * density
-        val bottomLabels = 34f * density
+        val top = 8f * density
+        val bottomLabels = 30f * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         val widthAvailable = width - left - right
@@ -200,16 +202,19 @@ class MetricChartView @JvmOverloads constructor(
         val maxLabelWidth = labels.maxOf { dateLabelPaint.measureText(it) } + 2f * density
         val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
 
+        // Keep the plot as one softly rounded surface while axes and dates
+        // remain outside the clipped region, matching the compact Figma card.
+        plotRect.set(left, top, width - right, chartBottom)
+        val plotCheckpoint = canvas.save()
+        plotClipPath.reset()
+        plotClipPath.addRoundRect(plotRect, 16f * density, 16f * density, Path.Direction.CW)
+        canvas.clipPath(plotClipPath)
+
         // The Figma graph uses four alternating rear columns rather than
         // horizontal rules, keeping the average line and bars easy to scan.
         labels.indices.filter { it % 2 == 0 }.forEach { index ->
             val columnLeft = left + index * barSlot
             canvas.drawRect(columnLeft, top, columnLeft + barSlot, chartBottom, gridPaint)
-        }
-
-        axisLabels.forEachIndexed { index, label ->
-            val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
-            canvas.drawText(label, labelInset, y + 4f * density, axisLabelPaint)
         }
 
         // The linked Figma graph uses the account average as a light,
@@ -250,7 +255,7 @@ class MetricChartView @JvmOverloads constructor(
 
         barPaint.shader = barGradient
 
-        labels.forEachIndexed { index, label ->
+        labels.forEachIndexed { index, _ ->
             val value = values[index]
             val barHeight = heightFor(value)
             val x = left + index * barSlot + (barSlot - barWidth) / 2f
@@ -261,15 +266,23 @@ class MetricChartView @JvmOverloads constructor(
             barPaint.alpha = if (estimated[index]) 80 else 255
             canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
             barPaint.alpha = 255
+        }
+        barPaint.shader = null
+        canvas.restoreToCount(plotCheckpoint)
+
+        axisLabels.forEachIndexed { index, label ->
+            val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
+            canvas.drawText(label, labelInset, y + 4f * density, axisLabelPaint)
+        }
+        labels.forEachIndexed { index, label ->
             if ((labels.lastIndex - index) % labelStep == 0) {
+                val x = left + index * barSlot + (barSlot - barWidth) / 2f
                 val labelWidth = dateLabelPaint.measureText(label)
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-                canvas.drawText(label, labelX, height - 11f * density, dateLabelPaint)
+                canvas.drawText(label, labelX, height - 8f * density, dateLabelPaint)
             }
-
         }
-        barPaint.shader = null
 
         // Tooltips are an overlay. Drawing one inside the bar loop lets later
         // bars paint over it, which clips the bubble on selected early days.

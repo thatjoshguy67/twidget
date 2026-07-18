@@ -167,19 +167,21 @@ class MetricChartView @JvmOverloads constructor(
 
         val density = resources.displayMetrics.density
         val labelInset = 20f * density
-        val left = 46f * density
         val right = 20f * density
         val top = 18f * density
         val bottomLabels = 30f * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
-        val widthAvailable = width - left - right
         // The numbered axis belongs to the current week's bars. Including the
         // long-term account average here compresses small but real day-to-day
         // differences and makes every current bar appear maxed out.
         val (scaleMin, scaleMax) = MetricChartScale.primaryAxisBounds(values, averageValues)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
         val axisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
+        // Reserve a real gutter after the widest formatted Y label. A fixed
+        // plot origin collapses this gap as soon as values gain commas/digits.
+        val left = labelInset + axisLabels.maxOf(axisLabelPaint::measureText) + 8f * density
+        val widthAvailable = width - left - right
         val barSlot = widthAvailable / labels.size
         val barWidth = (barSlot * 0.54f).coerceIn(6f * density, 24f * density)
         fun heightFor(value: Long): Float {

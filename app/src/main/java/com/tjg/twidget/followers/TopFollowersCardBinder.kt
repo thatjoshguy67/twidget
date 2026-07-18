@@ -132,10 +132,10 @@ internal class TopFollowersCardBinder(
 
     private fun header(title: String, account: String, refreshEnabled: Boolean): View =
         LinearLayout(activity).apply {
-            gravity = Gravity.BOTTOM
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(12), 0)
-            addView(label(title, 14f, SECONDARY, 700).apply { gravity = Gravity.BOTTOM },
-                LinearLayout.LayoutParams(0, dp(24), 1f))
+            addView(label(title, 13f, SECONDARY, 700).apply { gravity = Gravity.CENTER_VERTICAL },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
             addView(ImageView(activity).apply {
                 setImageDrawable(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_refresh))
                 imageTintList = ColorStateList.valueOf(Color.BLACK)
@@ -153,7 +153,7 @@ internal class TopFollowersCardBinder(
         addView(LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(20), 0)
-            addView(label(rank.toString(), 30f, Color.BLACK, 200).apply { gravity = Gravity.CENTER },
+            addView(label(rank.toString(), 24f, Color.BLACK, 200).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(dp(24), dp(40)))
             addView(ImageView(activity).apply {
                 setImageResource(R.drawable.oneui_spinner)
@@ -193,7 +193,7 @@ internal class TopFollowersCardBinder(
         addView(LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(20), 0)
-            addView(label(rank.toString(), 30f, Color.BLACK, 200).apply { gravity = Gravity.CENTER },
+            addView(label(rank.toString(), 24f, Color.BLACK, 200).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(dp(24), dp(40)))
             addView(ImageView(activity).apply {
                 contentDescription = null
@@ -202,15 +202,15 @@ internal class TopFollowersCardBinder(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(label(follower.name, 20f, Color.BLACK, 700).apply {
+                addView(label(follower.name, 16f, Color.BLACK, 700).apply {
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(27)))
-                addView(label("@${follower.username}", 14f, SECONDARY, 400).apply {
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(23)))
+                addView(label("@${follower.username}", 12f, SECONDARY, 400).apply {
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(19)))
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(17)))
             }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(10); marginEnd = dp(8) })
             addView(communityIcon(Color.BLACK), LinearLayout.LayoutParams(dp(18), dp(18)))
-            addView(label(TwidgetStore.compactNumber(follower.followers), 14f, SECONDARY, 400).apply {
+            addView(label(TwidgetStore.compactNumber(follower.followers), 12f, SECONDARY, 400).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL; maxLines = 1
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(24)).apply { marginStart = dp(4) })
         }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))

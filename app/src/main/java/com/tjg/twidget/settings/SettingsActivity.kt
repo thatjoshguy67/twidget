@@ -15,9 +15,22 @@ class SettingsActivity : FoldablePopOverActivity() {
             setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         }
         if (savedInstanceState == null) {
+            val fragment = SettingsPreferenceFragment().apply {
+                arguments = Bundle().apply {
+                    putString(
+                        SettingsPreferenceFragment.ARG_SCROLL_TO_PREFERENCE,
+                        intent.getStringExtra(EXTRA_SCROLL_TO_PREFERENCE),
+                    )
+                }
+            }
             supportFragmentManager.beginTransaction()
-                .replace(R.id.preference_fragment_container, SettingsPreferenceFragment())
+                .replace(R.id.preference_fragment_container, fragment)
                 .commit()
         }
+    }
+
+    companion object {
+        const val EXTRA_SCROLL_TO_PREFERENCE = "settings_scroll_to_preference"
+        const val PREFERENCE_SCHEDULING = "scheduling_category"
     }
 }

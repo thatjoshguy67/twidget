@@ -31,10 +31,8 @@ import com.tjg.twidget.followers.TopFollowersScanWorker
 import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
-import com.tjg.twidget.schedule.ScheduleActivity
 import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleQueueHostActivity
-import com.tjg.twidget.ui.startLeftSidePopOverActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.widget.RefreshWorker
@@ -105,7 +103,6 @@ class MainActivity : ScheduleQueueHostActivity() {
             exitEditMode = { editModeController.setEditMode(false) },
             isSchedulePage = { destination == MainDestination.SCHEDULING },
             openSchedule = ::showScheduling,
-            openScheduleTrash = ::openScheduleTrash,
         )
         syncController = MainSyncController(this)
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
@@ -226,7 +223,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             return super.onPrepareOptionsMenu(menu)
         }
         menu.findItem(R.id.schedule_trash_menu)?.isVisible = false
-        menu.setGroupVisible(R.id.schedule_filter_group, false)
+        menu.findItem(R.id.schedule_settings_menu)?.isVisible = false
         setDashboardMenuVisible(menu, true)
         menu.findItem(R.id.menu_notices)?.isVisible = !editModeController.editMode
         updateNoticesMenuIcon(menu)
@@ -393,13 +390,6 @@ class MainActivity : ScheduleQueueHostActivity() {
         destination = MainDestination.DASHBOARD
         render()
         invalidateOptionsMenu()
-    }
-
-    private fun openScheduleTrash() {
-        startLeftSidePopOverActivity(
-            Intent(this, ScheduleActivity::class.java)
-                .putExtra(ScheduleActivity.EXTRA_OPEN_TRASH, true)
-        )
     }
 
     private fun setDashboardMenuVisible(menu: Menu, visible: Boolean) {

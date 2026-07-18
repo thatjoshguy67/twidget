@@ -39,9 +39,7 @@ internal class MainDrawerController(
     private val isEditMode: () -> Boolean = { false },
     private val exitEditMode: () -> Unit = {},
     private val isSchedulePage: () -> Boolean = { false },
-    private val isTrashPage: () -> Boolean = { false },
     private val openSchedule: () -> Unit,
-    private val openScheduleTrash: () -> Unit,
 ) {
     private val drawerAccountItemIds = mutableMapOf<Int, String>()
     private val drawerAvatarItemIds = mutableSetOf<Int>()
@@ -110,19 +108,8 @@ internal class MainDrawerController(
         ).apply {
             setIcon(OneUiIconR.drawable.ic_oui_time_outline)
             isCheckable = true
-            isChecked = isSchedulePage() && !isTrashPage()
+            isChecked = isSchedulePage()
             contentDescription = activity.getString(R.string.schedule_title)
-        }
-        menu.add(
-            DRAWER_GROUP_ACTIONS,
-            DRAWER_ITEM_SCHEDULE_TRASH,
-            drawerAccounts.size + 2,
-            activity.getString(R.string.schedule_trash),
-        ).apply {
-            setIcon(OneUiIconR.drawable.ic_oui_delete_outline)
-            isCheckable = true
-            isChecked = isTrashPage()
-            contentDescription = activity.getString(R.string.schedule_trash)
         }
         drawerNav.refreshDrawerMenu()
         drawerNav.post {
@@ -155,8 +142,18 @@ internal class MainDrawerController(
         }
         layout.showNavigationButton = true
         val closeIcon = AppCompatResources.getDrawable(activity, R.drawable.ic_dashboard_edit_close)
-        layout.setNavigationButtonIcon(closeIcon)
-        layout.setNavigationButtonTooltip(activity.getString(R.string.done))
+        if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
+            layout.setNavigationButtonIcon(
+                AppCompatResources.getDrawable(activity, OneUiDesignR.drawable.oui_des_ic_ab_drawer),
+            )
+            layout.setNavigationButtonTooltip(
+                activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
+            )
+            layout.findViewById<ImageView>(OneUiDesignR.id.navRailDrawerButton)?.alpha = 1f
+        } else {
+            layout.setNavigationButtonIcon(closeIcon)
+            layout.setNavigationButtonTooltip(activity.getString(R.string.done))
+        }
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
             navigationIcon = closeIcon
             setNavigationOnClickListener { exitEditMode() }
@@ -176,8 +173,15 @@ internal class MainDrawerController(
             activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
         )
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
-            navigationIcon = drawerIcon
-            setNavigationOnClickListener { layout.setDrawerOpen(true, true) }
+            if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
+                // NavDrawerLayout renders the drawer affordance in the navigation rail on
+                // large screens. Restoring it here as well leaves two hamburger buttons.
+                navigationIcon = null
+                setNavigationOnClickListener(null)
+            } else {
+                navigationIcon = drawerIcon
+                setNavigationOnClickListener { layout.setDrawerOpen(true, true) }
+            }
         }
     }
 
@@ -249,7 +253,6 @@ internal class MainDrawerController(
         listOf(
             DRAWER_ITEM_ADD_ACCOUNT,
             DRAWER_ITEM_SCHEDULE,
-            DRAWER_ITEM_SCHEDULE_TRASH,
         ).forEach { itemId ->
             drawerNav.findViewById<View>(itemId)
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
@@ -351,11 +354,6 @@ internal class MainDrawerController(
             openSchedule()
             return true
         }
-        if (item.itemId == DRAWER_ITEM_SCHEDULE_TRASH) {
-            closeDrawerOnCompactScreens()
-            openScheduleTrash()
-            return true
-        }
         return false
     }
 
@@ -390,7 +388,6 @@ internal class MainDrawerController(
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
         private const val DRAWER_ITEM_SCHEDULE = 20_001
-        private const val DRAWER_ITEM_SCHEDULE_TRASH = 20_002
         private const val DRAWER_STANDARD_ICON_ALPHA = 0.7f
     }
 }

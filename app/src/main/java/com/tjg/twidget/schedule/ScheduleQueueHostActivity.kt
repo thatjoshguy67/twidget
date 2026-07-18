@@ -38,10 +38,10 @@ import com.google.android.material.tabs.TabLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.TwidgetFonts
-import com.tjg.twidget.ui.startLeftSidePopOverActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import dev.oneuiproject.oneui.design.R as OneUiDesignR
@@ -80,7 +80,6 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
 
-    private var selectedQueueStatus: ScheduleStatus? = null
     private var selectedQueueView = ScheduleQueueView.LIST
     private var calendarMonth = YearMonth.now()
     private var selectedCalendarDate: LocalDate? = null
@@ -252,44 +251,18 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(R.id.schedule_trash_menu)?.isVisible = !queueSelectionMode && !viewingTrash
-        val filterGroup = menu.findItem(R.id.schedule_filter_all_menu)?.groupId ?: 0
-        for (index in 0 until menu.size()) {
-            val item = menu.getItem(index)
-            if (item.groupId == filterGroup) {
-                item.isVisible = !viewingTrash && !queueSelectionMode
-            }
-        }
-        if (!viewingTrash) {
-            val checked = when (selectedQueueStatus) {
-                ScheduleStatus.SCHEDULED -> R.id.schedule_filter_scheduled_menu
-                ScheduleStatus.DRAFT -> R.id.schedule_filter_drafts_menu
-                ScheduleStatus.NEEDS_ACTION -> R.id.schedule_filter_action_menu
-                ScheduleStatus.FAILED -> R.id.schedule_filter_failed_menu
-                else -> R.id.schedule_filter_all_menu
-            }
-            menu.findItem(checked)?.isChecked = true
-        }
+        val showScheduleActions = !queueSelectionMode && !viewingTrash
+        menu.findItem(R.id.schedule_trash_menu)?.isVisible = showScheduleActions
+        menu.findItem(R.id.schedule_settings_menu)?.isVisible = showScheduleActions
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.schedule_trash_menu) {
-            openTrashPopover()
-            return true
-        }
-        if (viewingTrash) return super.onOptionsItemSelected(item)
-        selectedQueueStatus = when (item.itemId) {
-            R.id.schedule_filter_all_menu -> null
-            R.id.schedule_filter_scheduled_menu -> ScheduleStatus.SCHEDULED
-            R.id.schedule_filter_drafts_menu -> ScheduleStatus.DRAFT
-            R.id.schedule_filter_action_menu -> ScheduleStatus.NEEDS_ACTION
-            R.id.schedule_filter_failed_menu -> ScheduleStatus.FAILED
+        when (item.itemId) {
+            R.id.schedule_trash_menu -> openTrashPopover()
+            R.id.schedule_settings_menu -> openScheduleSettings()
             else -> return super.onOptionsItemSelected(item)
         }
-        exitQueueSelection()
-        item.isChecked = true
-        renderQueue()
         return true
     }
 
@@ -345,7 +318,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val allPosts = if (viewingTrash) store.listTrash() else store.list()
         return allPosts.filter { post ->
             ScheduleQueuePolicy.includes(post, provider, defaultUsername, bufferChannelId) &&
-                (viewingTrash || selectedQueueStatus == null || post.status == selectedQueueStatus)
+                (viewingTrash || post.deletedAt == null)
         }
     }
 
@@ -1727,9 +1700,19 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     internal fun openTrashPopover() {
         if (viewingTrash) return
-        startLeftSidePopOverActivity(
+        startRightSidePopOverActivity(
             Intent(this, ScheduleActivity::class.java)
                 .putExtra(EXTRA_OPEN_TRASH, true),
+        )
+    }
+
+    private fun openScheduleSettings() {
+        startRightSidePopOverActivity(
+            Intent(this, SettingsActivity::class.java)
+                .putExtra(
+                    SettingsActivity.EXTRA_SCROLL_TO_PREFERENCE,
+                    SettingsActivity.PREFERENCE_SCHEDULING,
+                ),
         )
     }
 

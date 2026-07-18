@@ -24,7 +24,9 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
+import androidx.preference.PreferenceGroup
 import androidx.preference.SwitchPreferenceCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsImportActivity
 import com.tjg.twidget.data.TwidgetSettings
@@ -56,6 +58,19 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         super.onResume()
         settings = TwidgetStore.settings(requireContext())
         buildScreen()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        arguments?.getString(ARG_SCROLL_TO_PREFERENCE)?.let { preferenceKey ->
+            listView.post {
+                val position = (listView.adapter as? PreferenceGroup.PreferencePositionCallback)
+                    ?.getPreferenceAdapterPosition(preferenceKey)
+                    ?: return@post
+                (listView.layoutManager as? LinearLayoutManager)
+                    ?.scrollToPositionWithOffset(position, 0)
+            }
+        }
     }
 
     private fun buildScreen() {
@@ -158,7 +173,9 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-        screen.addPreference(category(R.string.scheduling))
+        screen.addPreference(category(R.string.scheduling).apply {
+            key = SettingsActivity.PREFERENCE_SCHEDULING
+        })
         screen.addPreference(SwitchPreferenceCompat(context).apply {
             key = "schedule_notifications"
             title = getString(R.string.enable_notifications)
@@ -248,6 +265,10 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             if (titleRes != 0) title = getString(titleRes)
             isIconSpaceReserved = false
         }
+
+    companion object {
+        const val ARG_SCROLL_TO_PREFERENCE = "scroll_to_preference"
+    }
 
     private fun accountsCard(): View {
         val context = requireContext()

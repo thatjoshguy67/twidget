@@ -149,12 +149,12 @@ class MetricChartView @JvmOverloads constructor(
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         val density = resources.displayMetrics.density
-        val top = 8f * density
+        val top = 18f * density
         barGradient = LinearGradient(
             0f,
             top,
             0f,
-            (height - 34f * density).coerceAtLeast(top + 1f),
+            (height - 30f * density).coerceAtLeast(top + 1f),
             intArrayOf(Color.rgb(56, 122, 255), Color.rgb(133, 163, 222)),
             null,
             Shader.TileMode.CLAMP,
@@ -166,10 +166,10 @@ class MetricChartView @JvmOverloads constructor(
         if (labels.isEmpty()) return
 
         val density = resources.displayMetrics.density
-        val labelInset = 12f * density
+        val labelInset = 20f * density
         val left = 46f * density
-        val right = 24f * density
-        val top = 8f * density
+        val right = 20f * density
+        val top = 18f * density
         val bottomLabels = 30f * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top

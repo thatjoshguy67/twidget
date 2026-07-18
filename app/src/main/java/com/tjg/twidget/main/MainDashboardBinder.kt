@@ -118,6 +118,9 @@ internal class MainDashboardBinder(
 
     fun bindContent() {
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
+        // The launch skeleton is deliberately just static XML. Remove it only
+        // when the cached dashboard is ready to replace it in the same frame.
+        host.findViewById<View>(R.id.main_launch_skeleton)?.let(host::removeView)
         val page = host.getChildAt(0)
             ?: LayoutInflater.from(activity).inflate(R.layout.main_account_page, host, false)
                 .also { host.addView(it) }

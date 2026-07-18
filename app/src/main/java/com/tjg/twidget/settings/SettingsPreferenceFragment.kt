@@ -2,10 +2,10 @@ package com.tjg.twidget.settings
 
 import android.content.Intent
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.provider.Settings as AndroidSettings
 import android.text.InputType
 import android.text.SpannableString
 import android.text.Spanned
@@ -19,17 +19,19 @@ import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.NotificationManagerCompat
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsImportActivity
 import com.tjg.twidget.data.TwidgetSettings
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.AboutActivity
+import com.tjg.twidget.schedule.ScheduleProvider
+import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.VerifiedBadge
@@ -109,7 +111,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-        screen.addPreference(category(R.string.data_source))
+        screen.addPreference(category(R.string.analytics))
         screen.addPreference(ListPreference(context).apply {
             key = "data_source_pref"
             title = getString(R.string.active_source)
@@ -148,19 +150,57 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
         screen.addPreference(Preference(context).apply {
-            key = "post_scheduling"
-            title = getString(R.string.post_scheduling)
-            summary = getString(R.string.post_scheduling_summary)
-            setOnPreferenceClickListener {
-                requireActivity().startSettingsSubActivity(Intent(context, SettingsScheduleActivity::class.java))
-                true
-            }
-        })
-        screen.addPreference(Preference(context).apply {
             key = "advanced_options"
             title = getString(R.string.advanced_options)
             setOnPreferenceClickListener {
                 requireActivity().startSettingsSubActivity(Intent(context, SettingsAdvancedActivity::class.java))
+                true
+            }
+        })
+
+        screen.addPreference(category(R.string.scheduling))
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "schedule_notifications"
+            title = getString(R.string.enable_notifications)
+            isPersistent = false
+            isChecked = NotificationManagerCompat.from(context).areNotificationsEnabled()
+            setOnPreferenceChangeListener { _, _ ->
+                startActivity(
+                    Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(AndroidSettings.EXTRA_APP_PACKAGE, context.packageName)
+                )
+                false
+            }
+        })
+        screen.addPreference(ListPreference(context).apply {
+            key = "schedule_default_method_pref"
+            title = getString(R.string.scheduling_method)
+            entries = arrayOf(
+                getString(R.string.schedule_provider_local),
+                getString(R.string.schedule_provider_buffer),
+            )
+            entryValues = arrayOf(
+                ScheduleProvider.LOCAL_REMINDER.name,
+                ScheduleProvider.BUFFER.name,
+            )
+            val selected = ScheduleSettingsStore.defaultProvider(context)
+            value = selected.name
+            summary = providerLabel(selected)
+            setOnPreferenceChangeListener { preference, value ->
+                val provider = ScheduleProvider.valueOf(value as String)
+                ScheduleSettingsStore.setDefaultProvider(context, provider)
+                preference.summary = providerLabel(provider)
+                screen.findPreference<Preference>("buffer_settings")?.isVisible =
+                    provider == ScheduleProvider.BUFFER
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            key = "buffer_settings"
+            title = getString(R.string.buffer_settings)
+            isVisible = ScheduleSettingsStore.defaultProvider(context) == ScheduleProvider.BUFFER
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, SettingsScheduleActivity::class.java))
                 true
             }
         })
@@ -431,6 +471,14 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.DATA_SOURCE_TWITTERAPIS -> getString(R.string.source_twitterapis)
         else -> getString(R.string.source_default)
     }
+
+    private fun providerLabel(provider: ScheduleProvider): String = getString(
+        if (provider == ScheduleProvider.BUFFER) {
+            R.string.schedule_provider_buffer
+        } else {
+            R.string.schedule_provider_local
+        }
+    )
 }
 
 internal enum class AccountPopupAction {

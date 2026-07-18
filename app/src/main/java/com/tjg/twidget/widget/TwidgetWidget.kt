@@ -49,6 +49,7 @@ open class TwidgetWidget : AppWidgetProvider() {
         const val LAYOUT_MODE_COMPACT_2X1 = 1
         const val LAYOUT_MODE_COMPACT_STRIP = 2
         const val LAYOUT_MODE_COMPACT_SQUARE = 3
+        private const val REMOTE_VIEWS_BITMAP_BUDGET_BYTES = 12_000_000L
 
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -85,18 +86,35 @@ open class TwidgetWidget : AppWidgetProvider() {
 
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
-                responsiveSpecs(artworkWidth, artworkHeight).forEach { spec ->
-                    responsiveViews[SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())] = createRemoteViews(
+                val responsiveBitmapBytes = mutableMapOf<SizeF, Long>()
+                var totalBitmapBytes = 0L
+
+                fun addResponsiveView(key: SizeF, width: Int, height: Int, responsiveMode: Int) {
+                    val bitmapBytes = dp(context, width).toLong() * dp(context, height).toLong() * 4L
+                    val replacedBytes = responsiveBitmapBytes[key] ?: 0L
+                    if (totalBitmapBytes - replacedBytes + bitmapBytes > REMOTE_VIEWS_BITMAP_BUDGET_BYTES) return
+                    responsiveViews[key] = createRemoteViews(
                         context = context,
                         appWidgetId = appWidgetId,
-                        width = spec.renderWidth,
-                        height = spec.renderHeight,
-                        mode = spec.mode,
+                        width = width,
+                        height = height,
+                        mode = responsiveMode,
                         widgetSettings = widgetSettings,
                         account = account,
                         stats = stats,
                         delta = delta,
                         drawArtworkBackground = false,
+                    )
+                    totalBitmapBytes = totalBitmapBytes - replacedBytes + bitmapBytes
+                    responsiveBitmapBytes[key] = bitmapBytes
+                }
+
+                responsiveSpecs(artworkWidth, artworkHeight).forEach { spec ->
+                    addResponsiveView(
+                        key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat()),
+                        width = spec.renderWidth,
+                        height = spec.renderHeight,
+                        responsiveMode = spec.mode,
                     )
                 }
                 // Exact launcher allocations override the fallback buckets.
@@ -107,17 +125,11 @@ open class TwidgetWidget : AppWidgetProvider() {
                 widgetSizes(options).forEach { size ->
                     val width = size.width.toInt().coerceAtLeast(1)
                     val height = size.height.toInt().coerceAtLeast(1)
-                    responsiveViews[size] = createRemoteViews(
-                        context = context,
-                        appWidgetId = appWidgetId,
+                    addResponsiveView(
+                        key = size,
                         width = width,
                         height = height,
-                        mode = layoutModeForAosp(width, height),
-                        widgetSettings = widgetSettings,
-                        account = account,
-                        stats = stats,
-                        delta = delta,
-                        drawArtworkBackground = false,
+                        responsiveMode = layoutModeForAosp(width, height),
                     )
                 }
                 RemoteViews(responsiveViews)

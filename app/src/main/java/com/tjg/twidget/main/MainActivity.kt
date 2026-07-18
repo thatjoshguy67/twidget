@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
@@ -57,6 +58,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     internal lateinit var syncController: MainSyncController
     internal lateinit var postAnalyticsBinder: MainPostAnalyticsBinder
     internal lateinit var editModeController: MainEditModeController
+    private var skipNextResumeRender = false
 
     private val bangerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -127,12 +129,36 @@ class MainActivity : ScheduleQueueHostActivity() {
             }
         }
         onBackPressedDispatcher.addCallback(this, scheduleBackCallback)
-        RefreshWorker.schedule(this)
         TwidgetStore.migrateStoredHistories(this)
         syncController.setupRefresh()
         drawerController.setupDrawerChrome()
         setupScheduleAction()
-        render()
+        // Populate the toolbar/drawer immediately, then build the heavier
+        // dashboard grid after the first frame has reached the screen.
+        render(bindDashboard = false)
+        // onResume follows onCreate immediately and used to rebuild every
+        // dashboard card a second time during the same cold launch.
+        skipNextResumeRender = true
+        val decor = window.decorView
+        decor.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
+            private var scheduled = false
+
+            override fun onDraw() {
+                if (scheduled) return
+                scheduled = true
+                decor.post {
+                    if (decor.viewTreeObserver.isAlive) {
+                        decor.viewTreeObserver.removeOnDrawListener(this)
+                    }
+                    // WorkManager initialization and the dashboard grid both
+                    // happen after the lightweight app chrome has drawn once.
+                    AppExecutors.execute { RefreshWorker.schedule(applicationContext) }
+                    if (!isFinishing && !isDestroyed && destination == MainDestination.DASHBOARD) {
+                        dashboardBinder.bindContent()
+                    }
+                }
+            }
+        })
         if (savedInstanceState == null) checkReleasesOnLaunch()
         if (TwidgetStore.settings(this).refreshOnLaunch) {
             syncController.sync()
@@ -141,7 +167,11 @@ class MainActivity : ScheduleQueueHostActivity() {
 
     override fun onResume() {
         super.onResume()
-        render()
+        if (skipNextResumeRender) {
+            skipNextResumeRender = false
+        } else {
+            render()
+        }
         updateSettingsBadge()
         invalidateOptionsMenu()
     }
@@ -282,7 +312,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         }
     }
 
-    internal fun render() {
+    internal fun render(bindDashboard: Boolean = true) {
         accounts = TwidgetStore.accounts(this)
             .ifEmpty { listOf(TwidgetStore.settings(this).username) }
             .filter { it.isNotBlank() }
@@ -302,7 +332,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             schedule.visibility = View.GONE
             dashboard.visibility = View.VISIBLE
             dashboard.isEnabled = true
-            dashboardBinder.bindContent()
+            if (bindDashboard) dashboardBinder.bindContent()
         }
         if (::scheduleBackCallback.isInitialized) {
             scheduleBackCallback.isEnabled = destination == MainDestination.SCHEDULING

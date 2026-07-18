@@ -108,6 +108,7 @@
     <string name="profile_username">Profile username</string>
     <string name="profile_username_hint">thatjoshguy69</string>
     <string name="data_source">Data source</string>
+    <string name="analytics">Analytics</string>
     <string name="refresh">Refresh</string>
     <string name="active_source">Active source</string>
     <string name="source_default">Twidget bridge</string>
@@ -124,6 +125,7 @@
     <string name="advanced_options">Advanced options</string>
     <string name="advanced_options_summary">Configure self-hosted and X API sources</string>
     <string name="x_api_explainer">The official X API is not free for general v2 access. Bring your own developer credentials from a project with active paid or pay-per-use X API access, and Twidget will call X directly from your device.</string>
+    <string name="x_api_explainer_short">The official X API is expensive, and not viable for a small project like this. Which is why we don’t provide it. You can bring your own credentials if you’d prefer.</string>
     <string name="fxtwitter_explainer">FxTwitter is a free public API that needs no credentials. Twidget calls it directly from your device. With shared history enabled, the Twidget bridge steps in as a fallback.</string>
     <string name="bridge_explainer">The shared Twidget bridge powers the community history pool and acts as a backup for FxTwitter when it\'s unavailable. It is only contacted when shared history is on or a bridge source is selected.</string>
     <string name="self_hosted_explainer">Run your own self-hosted bridge and point Twidget to it. When the URL is empty, the shared Twidget bridge is used instead. The optional token is sent as a Bearer token to protected instances.</string>
@@ -146,12 +148,21 @@
     <string name="status_x_client_forbidden">X API access is not active for this project. Free access no longer includes this v2 endpoint.</string>
     <string name="self_hosted_rettiwt">Bridge URL</string>
     <string name="x_api_token">Bearer token (optional)</string>
+    <string name="x_api_token_short">X API token</string>
     <string name="configure">Configure</string>
+    <string name="login_to_x">Login to X</string>
     <string name="rettiwt_api_key">Bridge API token</string>
     <string name="rettiwt_api_key_hint">Optional for self-hosted protected bridges</string>
     <string name="refresh_on_launch">Refresh on launch</string>
     <string name="refresh_interval">Refresh interval</string>
     <string name="refresh_interval_value">%1$d minutes</string>
+    <string name="scheduling">Scheduling</string>
+    <string name="scheduling_method">Scheduling method</string>
+    <string name="enable_notifications">Enable notifications</string>
+    <string name="buffer_settings">Buffer settings</string>
+    <string name="self_hosted_rettiwt_section">Self hosted Rettiwt</string>
+    <string name="login_to_buffer">Login to Buffer</string>
+    <string name="connected_x_channel">Connected X channel</string>
     <string name="widget_tap_action">Widget tap action</string>
     <string name="account">Account</string>
     <string name="accounts">Accounts</string>

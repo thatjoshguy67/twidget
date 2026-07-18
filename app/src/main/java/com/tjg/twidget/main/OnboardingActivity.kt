@@ -471,7 +471,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun finishBufferConnection(channel: BufferChannel) {
         val tracked = TwidgetStore.settings(this).username
-        ScheduleSettingsStore.setBufferChannel(this, tracked, channel.id)
+        ScheduleSettingsStore.setBufferChannel(this, tracked, channel)
         ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.BUFFER)
         Toast.makeText(this, getString(R.string.schedule_connection_success, channel.displayName ?: channel.name), Toast.LENGTH_SHORT).show()
         AppExecutors.execute { BufferScheduleSync(this).sync() }

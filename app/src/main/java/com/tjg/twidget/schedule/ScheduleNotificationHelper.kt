@@ -83,7 +83,7 @@ object ScheduleNotificationHelper {
         ensureChannel(context)
         val preview = post.thread.firstOrNull()?.text?.takeIf(String::isNotBlank)
             ?: context.getString(R.string.schedule_media_post)
-        val open = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_SCHEDULE, 2)
+        val open = scheduleQueuePendingIntent(context, 2)
         val notification = Notification.Builder(context, BUFFER_STATUS_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_send)
             .setContentTitle(context.getString(R.string.schedule_buffer_published_title))
@@ -107,7 +107,7 @@ object ScheduleNotificationHelper {
     private fun buildNotification(context: Context, post: ScheduledPost): Notification {
         val first = post.thread.firstOrNull()
         val preview = first?.text?.takeIf { it.isNotBlank() } ?: "Media post ready to publish"
-        val open = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_SCHEDULE, 0)
+        val open = scheduleQueuePendingIntent(context, 0)
         val checklist = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_CHECKLIST, 1)
         val composeIntent = Intent(
             Intent.ACTION_VIEW,
@@ -121,7 +121,7 @@ object ScheduleNotificationHelper {
         )
         return Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Scheduled tweet is ready")
+            .setContentTitle(context.getString(R.string.schedule_local_reminder_title))
             .setContentText(preview)
             .setStyle(Notification.BigTextStyle().bigText(preview))
             .setContentIntent(open)
@@ -156,6 +156,17 @@ object ScheduleNotificationHelper {
         return PendingIntent.getActivity(
             context,
             LocalReminderScheduler.stableRequestCode(scheduleId) xor (0x3100 + discriminator),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun scheduleQueuePendingIntent(context: Context, discriminator: Int): PendingIntent {
+        val intent = Intent(ScheduleDeepLink.ACTION_OPEN_SCHEDULE)
+            .setClassName(context, ScheduleDeepLink.SCHEDULE_ACTIVITY_CLASS)
+        return PendingIntent.getActivity(
+            context,
+            0x6300 + discriminator,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

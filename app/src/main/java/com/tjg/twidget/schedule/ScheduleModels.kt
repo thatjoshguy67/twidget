@@ -101,6 +101,31 @@ object ScheduleQueuePolicy {
         ScheduleStatus.SCHEDULED,
         ScheduleStatus.FAILED,
     )
+
+    fun includes(
+        post: ScheduledPost,
+        provider: ScheduleProvider,
+        defaultUsername: String,
+        bufferChannelId: String?,
+    ): Boolean = when (provider) {
+        ScheduleProvider.LOCAL_REMINDER ->
+            post.provider == ScheduleProvider.LOCAL_REMINDER &&
+                listOf(post.accountId, post.accountUsername).any {
+                    ScheduleAccountMapping.normalize(it.orEmpty()) ==
+                        ScheduleAccountMapping.normalize(defaultUsername)
+                }
+        ScheduleProvider.BUFFER ->
+            post.provider == ScheduleProvider.BUFFER &&
+                !bufferChannelId.isNullOrBlank() &&
+                post.accountUsername == bufferChannelId
+    }
+}
+
+object ScheduleNotificationPolicy {
+    fun shouldNotifyBufferPublished(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
+        previous?.provider == ScheduleProvider.BUFFER &&
+            previous.status == ScheduleStatus.SCHEDULED &&
+            nextStatus == ScheduleStatus.PUBLISHED
 }
 
 enum class ScheduleValidationCode {

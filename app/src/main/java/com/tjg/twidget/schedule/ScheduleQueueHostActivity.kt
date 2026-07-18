@@ -339,20 +339,23 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun currentQueuePosts(): List<ScheduledPost> {
-        val username = requestedUsername()
-        return if (viewingTrash) {
-            if (username.isBlank()) store.listTrash() else store.listTrashForAccount(username)
-        } else {
-            val allPosts = if (username.isBlank()) store.list() else store.listForAccount(username)
-            allPosts.filter { selectedQueueStatus == null || it.status == selectedQueueStatus }
+        val provider = activeQueueProvider()
+        val defaultUsername = requestedUsername()
+        val bufferChannelId = ScheduleSettingsStore.bufferChannelFor(this, defaultUsername)
+        val allPosts = if (viewingTrash) store.listTrash() else store.list()
+        return allPosts.filter { post ->
+            ScheduleQueuePolicy.includes(post, provider, defaultUsername, bufferChannelId) &&
+                (viewingTrash || selectedQueueStatus == null || post.status == selectedQueueStatus)
         }
     }
+
     private fun renderQueue() {
         showQueueMode()
+        updateQueueHeader()
         content.removeAllViews()
         val posts = currentQueuePosts()
         val calendarMode = !viewingTrash && selectedQueueView == ScheduleQueueView.CALENDAR
-        refresh.isEnabled = !viewingTrash && !calendarMode && !queueSelectionMode
+        refresh.isEnabled = isBufferMode() && !viewingTrash && !calendarMode && !queueSelectionMode
         queueTabs.visibility = if (viewingTrash) View.GONE else View.VISIBLE
         scroll.setPadding(
             scroll.paddingLeft,
@@ -442,13 +445,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val showTrashBar = viewingTrash && !calendarMode
         val showSelection = !viewingTrash && queueSelectionMode && !calendarMode
         val toolbar = scheduleToolbar
-        if (!toolbar.isActionMode) toolbar.setTitle(
-            if (viewingTrash) {
-                getString(R.string.schedule_trash)
-            } else {
-                getString(R.string.schedule_title)
-            },
-        )
+        if (!toolbar.isActionMode) updateQueueHeader()
         val pinnable = selectedPinnablePosts()
         val unpin = pinnable.isNotEmpty() && pinnable.all { it.pinned }
         selectionBottomNav.menu.findItem(R.id.schedule_selection_pin)?.apply {
@@ -1713,6 +1710,21 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun requestedUsername(): String =
         TwidgetStore.settings(this).username.trim().trimStart('@')
 
+    private fun isBufferMode(): Boolean =
+        ScheduleSettingsStore.defaultProvider(this) == ScheduleProvider.BUFFER &&
+            BufferOAuth.isConnected(this)
+
+    private fun activeQueueProvider(): ScheduleProvider =
+        if (isBufferMode()) ScheduleProvider.BUFFER else ScheduleProvider.LOCAL_REMINDER
+
+    private fun updateQueueHeader() {
+        if (!::scheduleToolbar.isInitialized || scheduleToolbar.isActionMode) return
+        scheduleToolbar.setTitle(
+            getString(if (viewingTrash) R.string.schedule_trash else R.string.schedule_title),
+        )
+        scheduleToolbar.setSubtitle(queueAccountLabel())
+    }
+
     internal fun openTrashPopover() {
         if (viewingTrash) return
         startLeftSidePopOverActivity(
@@ -1721,9 +1733,18 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         )
     }
 
-    private fun queueAccountLabel(): String =
-        requestedUsername().takeIf(String::isNotBlank)?.let { "@$it" }
-            ?: getString(R.string.schedule_all_accounts)
+    private fun queueAccountLabel(): String {
+        val defaultUsername = requestedUsername()
+        if (!isBufferMode()) {
+            return defaultUsername.takeIf(String::isNotBlank)?.let {
+                getString(R.string.schedule_queue_local_account, it)
+            } ?: getString(R.string.schedule_all_accounts)
+        }
+        return ScheduleSettingsStore.bufferChannelUsernameFor(this, defaultUsername)
+            ?.takeIf(String::isNotBlank)
+            ?.let { getString(R.string.schedule_queue_buffer_account, it) }
+            ?: getString(R.string.schedule_queue_buffer_pending)
+    }
 
     private fun providerLabel(provider: ScheduleProvider): String = getString(
         if (provider == ScheduleProvider.BUFFER) {

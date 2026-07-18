@@ -438,15 +438,15 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             return
         }
         val post = buildEditedPost()
-        if (post.provider == ScheduleProvider.BUFFER) {
-            runRemote { coordinator.schedule(post) }
-            return
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
             !notificationWarningAccepted
         ) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        if (post.provider == ScheduleProvider.BUFFER) {
+            runRemote { coordinator.schedule(post) }
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&

@@ -400,6 +400,10 @@
     <string name="schedule_paste_in_x">Tweet copied. Paste it into X’s composer.</string>
     <string name="schedule_buffer_auto_summary">Posts automatically at the scheduled time via Buffer</string>
     <string name="schedule_buffer_published_title">Tweet posted successfully</string>
+    <string name="schedule_local_reminder_title">It’s time to post your scheduled tweet</string>
+    <string name="schedule_queue_local_account">@%1$s · Local drafts</string>
+    <string name="schedule_queue_buffer_account">@%1$s · Buffer</string>
+    <string name="schedule_queue_buffer_pending">Buffer X channel</string>
     <string name="schedule_one_image_attached">1 image attached</string>
     <string name="schedule_images_attached">%1$d images attached</string>
     <string name="schedule_more_actions">More actions</string>

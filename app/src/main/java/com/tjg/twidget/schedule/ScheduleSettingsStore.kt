@@ -27,6 +27,7 @@ internal object ScheduleAccountMapping {
 object ScheduleSettingsStore {
     private const val KEY_DEFAULT_PROVIDER = "schedule_default_provider"
     private const val KEY_BUFFER_MAPPINGS = "schedule_buffer_mappings"
+    private const val KEY_BUFFER_CHANNEL_NAMES = "schedule_buffer_channel_names"
     private const val KEY_LEGACY_POSTPONE_MAPPINGS = "schedule_postpone_mappings"
 
     fun defaultProvider(context: Context): ScheduleProvider {
@@ -70,6 +71,45 @@ object ScheduleSettingsStore {
             next.forEach { (tracked, mapped) -> put(tracked, mapped) }
         }.toString()
         prefs(context).edit().putString(KEY_BUFFER_MAPPINGS, encoded).apply()
+        if (bufferChannelId.isNullOrBlank()) {
+            setBufferChannelName(context, trackedUsername, null)
+        }
+    }
+
+    fun setBufferChannel(context: Context, trackedUsername: String, channel: BufferChannel?) {
+        setBufferChannel(context, trackedUsername, channel?.id)
+        setBufferChannelName(context, trackedUsername, channel?.name)
+    }
+
+    fun rememberBufferChannel(context: Context, trackedUsername: String, channel: BufferChannel) {
+        if (bufferChannelFor(context, trackedUsername) == channel.id) {
+            setBufferChannelName(context, trackedUsername, channel.name)
+        }
+    }
+
+    fun bufferChannelUsernameFor(context: Context, trackedUsername: String): String? =
+        stringMap(context, KEY_BUFFER_CHANNEL_NAMES)[ScheduleAccountMapping.normalize(trackedUsername)]
+
+    private fun setBufferChannelName(context: Context, trackedUsername: String, channelName: String?) {
+        val key = ScheduleAccountMapping.normalize(trackedUsername)
+        val next = stringMap(context, KEY_BUFFER_CHANNEL_NAMES).toMutableMap().apply {
+            val value = channelName?.trim()?.trimStart('@').orEmpty()
+            if (value.isBlank()) remove(key) else put(key, value)
+        }
+        val encoded = JSONObject().apply { next.forEach { (tracked, name) -> put(tracked, name) } }.toString()
+        prefs(context).edit().putString(KEY_BUFFER_CHANNEL_NAMES, encoded).apply()
+    }
+
+    private fun stringMap(context: Context, preferenceKey: String): Map<String, String> {
+        val raw = prefs(context).getString(preferenceKey, null) ?: return emptyMap()
+        return runCatching {
+            val objectValue = JSONObject(raw)
+            buildMap {
+                objectValue.keys().forEach { key ->
+                    objectValue.optString(key).takeIf(String::isNotBlank)?.let { put(key, it) }
+                }
+            }
+        }.getOrDefault(emptyMap())
     }
 
     fun clearBuffer(context: Context) {
@@ -79,6 +119,7 @@ object ScheduleSettingsStore {
         }
         prefs(context).edit()
             .remove(KEY_BUFFER_MAPPINGS)
+            .remove(KEY_BUFFER_CHANNEL_NAMES)
             .putString(KEY_DEFAULT_PROVIDER, ScheduleProvider.LOCAL_REMINDER.name)
             .apply()
     }

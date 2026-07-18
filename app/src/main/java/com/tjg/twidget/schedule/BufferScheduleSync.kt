@@ -35,11 +35,15 @@ class BufferScheduleSync(
                     ScheduleAccountMapping.normalize(it.displayName.orEmpty()) == ScheduleAccountMapping.normalize(trackedUsername)
             }
             ?: return BufferSyncResult(errors = listOf("Choose the default Buffer X channel in Settings"))
-        if (mappedId.isNullOrBlank()) {
-            ScheduleSettingsStore.setBufferChannel(appContext, trackedUsername, channel.id)
+        if (mappedId != channel.id) {
+            ScheduleSettingsStore.setBufferChannel(appContext, trackedUsername, channel)
+        } else {
+            ScheduleSettingsStore.rememberBufferChannel(appContext, trackedUsername, channel)
         }
 
-        val existing = store.listForAccount(trackedUsername).filter { it.provider == ScheduleProvider.BUFFER }
+        val existing = store.list().filter {
+            it.provider == ScheduleProvider.BUFFER && it.accountUsername == channel.id
+        }
         val active = client.listPosts(channel.organizationId, channel.id, listOf("scheduled", "draft"))
         if (!active.isSuccess) return BufferSyncResult(errors = active.errors.map { it.message })
         val confirmationStart = existing
@@ -87,6 +91,9 @@ class BufferScheduleSync(
                 deletedAt = current?.deletedAt,
             )
             store.upsert(local)
+            if (ScheduleNotificationPolicy.shouldNotifyBufferPublished(current, status)) {
+                ScheduleNotificationHelper.showBufferPublished(appContext, local)
+            }
             if (status == ScheduleStatus.SCHEDULED) BufferPublishCheckWorker.enqueue(appContext, local)
             if (current == null) imported++ else updated++
         }

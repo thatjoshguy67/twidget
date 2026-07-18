@@ -158,7 +158,7 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
                 AlertDialog.Builder(requireContext())
                     .setTitle(getString(R.string.schedule_buffer_account))
                     .setItems(labels.toTypedArray()) { _, index ->
-                        ScheduleSettingsStore.setBufferChannel(requireContext(), tracked, channels.getOrNull(index - 1)?.id)
+                        ScheduleSettingsStore.setBufferChannel(requireContext(), tracked, channels.getOrNull(index - 1))
                         buildScreen()
                     }
                     .setNegativeButton(android.R.string.cancel, null)

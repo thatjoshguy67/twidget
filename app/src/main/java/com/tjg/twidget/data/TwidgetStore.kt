@@ -433,12 +433,8 @@ object TwidgetStore {
                 val array = JSONArray(encoded)
                 List(array.length()) { index -> array.getString(index) }
             }.getOrNull()
-        }.orEmpty()
-        if (saved.isEmpty()) return DEFAULT_DASHBOARD_CARDS
-        // Keep the user's order for cards they have, drop retired ones, and
-        // append any new default cards so added metrics surface automatically.
-        val filtered = saved.filter { it in DEFAULT_DASHBOARD_CARDS }
-        return filtered + DEFAULT_DASHBOARD_CARDS.filter { it !in filtered }
+        }
+        return resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS)
     }
 
     fun saveDashboardCards(context: Context, cards: List<String>) {
@@ -962,3 +958,6 @@ object TwidgetStore {
         }
     }
 }
+
+internal fun resolveDashboardCards(saved: List<String>?, available: List<String>): List<String> =
+    saved?.filter { it in available }?.distinct() ?: available

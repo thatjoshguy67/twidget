@@ -102,6 +102,7 @@ class MainActivity : ScheduleQueueHostActivity() {
                 render()
             },
             isEditMode = { editModeController.editMode },
+            exitEditMode = { editModeController.setEditMode(false) },
             isSchedulePage = { destination == MainDestination.SCHEDULING },
             openSchedule = ::showScheduling,
             openScheduleTrash = ::openScheduleTrash,
@@ -234,7 +235,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         menu.findItem(R.id.menu_edit_layout)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_reset_layout)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_add_card)?.isVisible = editModeController.editMode
-        menu.findItem(R.id.menu_done_editing)?.isVisible = editModeController.editMode
+        menu.findItem(R.id.menu_done_editing)?.isVisible = false
         return true
     }
 

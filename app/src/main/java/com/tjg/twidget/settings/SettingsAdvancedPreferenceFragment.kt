@@ -43,6 +43,57 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
 
+        screen.addPreference(category(R.string.source_fxtwitter))
+        screen.addPreference(sourceStatusPreference(
+            keyName = "fxtwitter_status_pref",
+            titleRes = R.string.fxtwitter_status,
+            active = settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER,
+            infoTitleRes = R.string.source_fxtwitter,
+            infoTextRes = R.string.fxtwitter_explainer,
+        ))
+
+        screen.addPreference(category(R.string.source_default))
+        screen.addPreference(sourceStatusPreference(
+            keyName = "bridge_status_pref",
+            titleRes = R.string.bridge_status,
+            active = settings.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT,
+            infoTitleRes = R.string.source_default,
+            infoTextRes = R.string.bridge_explainer,
+            fallback = settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER && settings.shareHistory,
+        ))
+
+        screen.addPreference(category(R.string.twitterapis_title))
+        screen.addPreference(EditTextPreference(context).apply {
+            key = "twitterapis_api_key_pref"
+            title = getString(R.string.twitterapis_api_key)
+            val current = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
+            text = current
+            summary = maskedToken(current)
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                it.setSelectAllOnFocus(true)
+            }
+            setOnPreferenceChangeListener { preference, value ->
+                val apiKey = (value as String).trim()
+                SecureCredentialStore.write(
+                    context,
+                    mapOf(SecureCredentialStore.TWITTERAPIS_API_KEY to apiKey),
+                )
+                preference.summary = maskedToken(apiKey)
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            key = "twitterapis_configure_pref"
+            title = getString(R.string.configure)
+            summary = getString(R.string.twitterapis_explainer)
+            widgetLayoutResource = R.layout.preference_widget_open_link
+            setOnPreferenceClickListener {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TwitterApisClient.WEBSITE_URL)))
+                true
+            }
+        })
+
         screen.addPreference(category(R.string.self_hosted_rettiwt_section))
         screen.addPreference(EditTextPreference(context).apply {
             key = "self_hosted_url_pref"
@@ -116,57 +167,6 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
             widgetLayoutResource = R.layout.preference_widget_open_link
             setOnPreferenceClickListener {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(XApiClient.DEVELOPER_PORTAL_URL)))
-                true
-            }
-        })
-
-        screen.addPreference(category(R.string.source_fxtwitter))
-        screen.addPreference(sourceStatusPreference(
-            keyName = "fxtwitter_status_pref",
-            titleRes = R.string.fxtwitter_status,
-            active = settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER,
-            infoTitleRes = R.string.source_fxtwitter,
-            infoTextRes = R.string.fxtwitter_explainer,
-        ))
-
-        screen.addPreference(category(R.string.source_default))
-        screen.addPreference(sourceStatusPreference(
-            keyName = "bridge_status_pref",
-            titleRes = R.string.bridge_status,
-            active = settings.dataSource == TwidgetStore.DATA_SOURCE_DEFAULT,
-            infoTitleRes = R.string.source_default,
-            infoTextRes = R.string.bridge_explainer,
-            fallback = settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER && settings.shareHistory,
-        ))
-
-        screen.addPreference(category(R.string.twitterapis_title))
-        screen.addPreference(EditTextPreference(context).apply {
-            key = "twitterapis_api_key_pref"
-            title = getString(R.string.twitterapis_api_key)
-            val current = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
-            text = current
-            summary = maskedToken(current)
-            setOnBindEditTextListener {
-                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                it.setSelectAllOnFocus(true)
-            }
-            setOnPreferenceChangeListener { preference, value ->
-                val apiKey = (value as String).trim()
-                SecureCredentialStore.write(
-                    context,
-                    mapOf(SecureCredentialStore.TWITTERAPIS_API_KEY to apiKey),
-                )
-                preference.summary = maskedToken(apiKey)
-                true
-            }
-        })
-        screen.addPreference(Preference(context).apply {
-            key = "twitterapis_configure_pref"
-            title = getString(R.string.configure)
-            summary = getString(R.string.twitterapis_explainer)
-            widgetLayoutResource = R.layout.preference_widget_open_link
-            setOnPreferenceClickListener {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TwitterApisClient.WEBSITE_URL)))
                 true
             }
         })

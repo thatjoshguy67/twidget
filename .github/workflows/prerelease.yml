@@ -175,3 +175,17 @@ jobs:
               --title "Twidget v$VERSION" \
               --notes-file release-notes.md
           fi
+
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          DISCORD_RELEASE_MENTION: ${{ vars.DISCORD_RELEASE_MENTION }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_CHANNEL: beta
+          RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/twidget-v${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "::warning::DISCORD_RELEASE_WEBHOOK_URL is not configured; skipping Discord notification."
+            exit 0
+          fi
+          bash .github/scripts/notify-discord-release.sh

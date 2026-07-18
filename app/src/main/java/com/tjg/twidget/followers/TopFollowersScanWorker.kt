@@ -26,9 +26,9 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         if (apiKey.isBlank()) return fail(username, "Add a TwitterAPIs key in Advanced settings")
 
         var state = TopFollowersStore.read(applicationContext, username).copy(scanning = true, error = "")
-        val deadline = System.currentTimeMillis() + RUN_BUDGET_MS
         return try {
-            while (!isStopped && System.currentTimeMillis() < deadline) {
+            while (!isStopped) {
+                promoteToForegroundIfAppIsHidden(username, state)
                 if (state.pages >= MAX_PAGES_PER_SCAN) {
                     return fail(username, "Stopped at the $5 safety limit", state)
                 }
@@ -49,6 +49,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 )
                 if (page.nextCursor.isBlank()) return complete(username, state)
                 TopFollowersStore.write(applicationContext, username, state)
+                promoteToForegroundIfAppIsHidden(username, state)
                 // The cursor makes page requests sequential already. Do not add
                 // an artificial delay: TwitterAPIs advertises no platform rate
                 // cap, and WorkManager's 429 retry path remains the safety net.
@@ -66,6 +67,13 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         } catch (_: Exception) {
             Result.retry()
         }
+    }
+
+    private fun promoteToForegroundIfAppIsHidden(username: String, state: TopFollowersState) {
+        if (TwidgetAppVisibility.isVisible()) return
+        setForegroundAsync(
+            TopFollowersNotificationHelper.progressForegroundInfo(applicationContext, username, state),
+        ).get()
     }
 
     private fun complete(username: String, prior: TopFollowersState): Result {
@@ -103,7 +111,6 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
 
     companion object {
         private const val KEY_USERNAME = "username"
-        private const val RUN_BUDGET_MS = 3 * 60 * 1000L
         private const val MAX_PAGES_PER_SCAN = 6250 // $5 at the documented $0.0008/read.
         private const val TOP_LIMIT = 5
         const val ACTION_UPDATED = "com.tjg.twidget.TOP_FOLLOWERS_UPDATED"

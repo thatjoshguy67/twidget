@@ -71,6 +71,7 @@
     <string name="add_card">Add card</string>
     <string name="done">Done</string>
     <string name="edit_home">Edit home</string>
+    <string name="edit_dashboard">Edit dashboard</string>
     <string name="reset_layout">Reset layout</string>
     <string name="reset_layout_confirm">Restore the default card layout?</string>
     <string name="add_cards_title">Add cards</string>
@@ -160,7 +161,7 @@
     <string name="scheduling_method">Scheduling method</string>
     <string name="enable_notifications">Enable notifications</string>
     <string name="buffer_settings">Buffer settings</string>
-    <string name="self_hosted_rettiwt_section">Self hosted Rettiwt</string>
+    <string name="self_hosted_rettiwt_section">Self hosted bridge</string>
     <string name="login_to_buffer">Login to Buffer</string>
     <string name="connected_x_channel">Connected X channel</string>
     <string name="widget_tap_action">Widget tap action</string>
@@ -558,6 +559,9 @@
     <string name="post_card_waiting">No result yet for @%1$s</string>
     <string name="top_followers_notifications">Top follower scans</string>
     <string name="top_followers_notifications_description">Notifies when a background top-followers scan finishes</string>
+    <string name="top_followers_progress_notifications">Top follower scan progress</string>
+    <string name="top_followers_progress_notifications_description">Shows progress while a top-followers scan is running</string>
+    <string name="top_followers_progress_title">Scanning top followers for @%1$s</string>
     <string name="top_followers_notification_title">Top followers ready for @%1$s</string>
     <string name="top_followers_notification_leader">%1$s leads with %2$s followers</string>
     <string name="top_followers_last_scan">Last scanned %1$s · %2$d followers across %3$d pages</string>

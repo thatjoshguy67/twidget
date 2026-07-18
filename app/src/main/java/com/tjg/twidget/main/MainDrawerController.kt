@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.drawable.DrawableCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsImportActivity
@@ -36,6 +37,7 @@ internal class MainDrawerController(
     private val selectedAccount: () -> String,
     private val onAccountSelected: (String) -> Unit,
     private val isEditMode: () -> Boolean = { false },
+    private val exitEditMode: () -> Unit = {},
     private val isSchedulePage: () -> Boolean = { false },
     private val isTrashPage: () -> Boolean = { false },
     private val openSchedule: () -> Unit,
@@ -44,6 +46,7 @@ internal class MainDrawerController(
     private val drawerAccountItemIds = mutableMapOf<Int, String>()
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
+    private var showingEditNavigation = false
 
     fun setupDrawerChrome() {
         activity.findViewById<NavDrawerLayout>(drawerLayoutId).apply {
@@ -132,13 +135,49 @@ internal class MainDrawerController(
         val stats = TwidgetStore.currentStats(activity, selectedAccount())
         activity.findViewById<DrawerLayout>(drawerLayoutId).apply {
             if (isEditMode()) {
-                setTitle(activity.getString(R.string.edit_home))
+                renderEditModeNavigation(this)
+                setTitle(activity.getString(R.string.edit_dashboard))
                 setSubtitle("")
             } else {
+                renderDrawerNavigation(this)
                 val name = stats.fullName.ifBlank { "@${stats.userName}" }
                 setTitle(VerifiedBadge.decorate(activity, name, stats.isVerified, stats.isPrivate, dp(26)))
                 setSubtitle("@${stats.userName} · ${TwidgetStore.lastSyncedText(activity, stats)}")
             }
+        }
+    }
+
+    private fun renderEditModeNavigation(layout: DrawerLayout) {
+        if (!showingEditNavigation) {
+            layout.setExpanded(expanded = false, animate = true)
+            layout.isExpandable = false
+            showingEditNavigation = true
+        }
+        layout.showNavigationButton = true
+        val closeIcon = AppCompatResources.getDrawable(activity, R.drawable.ic_dashboard_edit_close)
+        layout.setNavigationButtonIcon(closeIcon)
+        layout.setNavigationButtonTooltip(activity.getString(R.string.done))
+        layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
+            navigationIcon = closeIcon
+            setNavigationOnClickListener { exitEditMode() }
+        }
+    }
+
+    private fun renderDrawerNavigation(layout: DrawerLayout) {
+        if (showingEditNavigation) {
+            layout.isExpandable = true
+            layout.setExpanded(expanded = true, animate = true)
+            showingEditNavigation = false
+        }
+        layout.showNavigationButton = true
+        val drawerIcon = AppCompatResources.getDrawable(activity, OneUiDesignR.drawable.oui_des_ic_ab_drawer)
+        layout.setNavigationButtonIcon(drawerIcon)
+        layout.setNavigationButtonTooltip(
+            activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
+        )
+        layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
+            navigationIcon = drawerIcon
+            setNavigationOnClickListener { layout.setDrawerOpen(true, true) }
         }
     }
 

@@ -11,6 +11,10 @@ the Git repository.
   `~/.config/twidget/github.properties` with owner-only permissions.
 - GitHub Actions stores the base64-encoded release keystore, signing passwords,
   and package-registry credentials as encrypted repository secrets.
+- GitHub Actions stores the Discord release-channel webhook as the encrypted
+  repository secret `DISCORD_RELEASE_WEBHOOK_URL`. Stable and beta workflows
+  post through it only after their GitHub Release is published; the Debug Build
+  workflow never uses it.
 - Railway stores its database, Redis, X API, administration, and service tokens
   in Railway variables. Never copy their values into a repository file,
   workflow, issue, log, or release note.
@@ -40,8 +44,9 @@ For a one-off alternative location, pass
    `1.0.0`. The workflow runs bridge checks first, then verifies the version,
    builds and signs the APK, creates `twidget-v<version>`, and publishes the
    GitHub release.
-7. Verify the workflow conclusion, release notes, APK filename, APK version,
-   signing certificate, and updater visibility from a logged-out client.
+7. Verify the workflow conclusion, Discord announcement, release notes, APK
+   filename, APK version, signing certificate, and updater visibility from a
+   logged-out client.
 
 For a public release, the release repository itself must be public. GitHub
 release assets in a private repository are not anonymously downloadable, and
@@ -49,6 +54,31 @@ the app updater deliberately does not embed a GitHub credential.
 
 Do not create the stable tag manually unless recovering a failed workflow; the
 workflow owns the tag and published asset.
+
+## Discord release notifications
+
+In the target Discord channel, create a webhook under **Edit Channel >
+Integrations > Webhooks**. Copy its URL directly into the GitHub repository
+secret without committing it:
+
+```bash
+gh secret set DISCORD_RELEASE_WEBHOOK_URL --repo thatjoshguy67/twidget
+```
+
+The command securely prompts for the webhook URL. To prefix each announcement
+with a release-role mention, set the optional repository variable to the
+Discord role ID in mention syntax:
+
+```bash
+gh variable set DISCORD_RELEASE_MENTION \
+  --body '<@&ROLE_ID>' \
+  --repo thatjoshguy67/twidget
+```
+
+Use `@everyone` instead only when a server-wide release ping is intentional and
+the webhook has permission to mention everyone. Leave the variable unset for a
+plain channel notification. Rotating or deleting the Discord webhook requires
+updating the GitHub secret before the next release.
 
 ## Local verification
 

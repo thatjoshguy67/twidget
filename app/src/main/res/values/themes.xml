@@ -8,6 +8,12 @@
         <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
     </style>
 
+    <!-- Used only by the launcher activity. Android displays this window
+         before MainActivity can draw its dashboard skeleton. -->
+    <style name="Theme.Twidget.Launcher" parent="Theme.Twidget">
+        <item name="android:windowBackground">@color/oneui_bg</item>
+    </style>
+
     <style name="WidgetPresetButton">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">48dp</item>

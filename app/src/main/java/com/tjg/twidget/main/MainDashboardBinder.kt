@@ -118,13 +118,14 @@ internal class MainDashboardBinder(
 
     fun bindContent() {
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
-        // The launch skeleton is deliberately just static XML. Remove it only
-        // when the cached dashboard is ready to replace it in the same frame.
-        host.findViewById<View>(R.id.main_launch_skeleton)?.let(host::removeView)
-        val page = host.getChildAt(0)
+        val skeleton = host.findViewById<View>(R.id.main_launch_skeleton)
+        val page = host.findViewById<View>(R.id.main_account_page)
             ?: LayoutInflater.from(activity).inflate(R.layout.main_account_page, host, false)
-                .also { host.addView(it) }
+                .also { host.addView(it, 0) }
         bindPage(page, activity.selectedAccount)
+        // Keep the static skeleton above the dashboard until every cached card
+        // has bound, then reveal the completed page in one frame.
+        skeleton?.let(host::removeView)
     }
 
     private fun bindPage(page: View, account: String) {
@@ -143,10 +144,10 @@ internal class MainDashboardBinder(
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
-        container.layoutTransition = LayoutTransition().apply {
-            enableTransitionType(LayoutTransition.CHANGING)
-            setDuration(140)
-        }
+        // Rebuild synchronously behind the launch skeleton. LayoutTransition's
+        // default APPEARING animation otherwise exposes a frame where every
+        // newly added card is still transparent.
+        container.layoutTransition = null
         container.setOnDragListener { source, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
@@ -189,6 +190,17 @@ internal class MainDashboardBinder(
                     ),
                 )
             }
+
+        // Card movement still animates in edit mode, but initial/rebound cards
+        // are immediately visible when the skeleton is removed.
+        container.layoutTransition = LayoutTransition().apply {
+            disableTransitionType(LayoutTransition.APPEARING)
+            disableTransitionType(LayoutTransition.DISAPPEARING)
+            disableTransitionType(LayoutTransition.CHANGE_APPEARING)
+            disableTransitionType(LayoutTransition.CHANGE_DISAPPEARING)
+            enableTransitionType(LayoutTransition.CHANGING)
+            setDuration(140)
+        }
 
         activity.syncController.maybeRefreshAnalytics(account)
     }

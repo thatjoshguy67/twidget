@@ -46,7 +46,12 @@
             android:layout_height="match_parent"
             android:visibility="gone">
 
-            <include layout="@layout/schedule_page" />
+            <ViewStub
+                android:id="@+id/schedule_page_stub"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:inflatedId="@id/schedule_queue_container"
+                android:layout="@layout/schedule_page" />
         </FrameLayout>
 
         <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -16,6 +17,7 @@
     </queries>
 
     <application
+        android:name=".core.TwidgetApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -26,15 +28,27 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Twidget">
 
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
+
         <activity
             android:name=".main.MainActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:theme="@style/Theme.Twidget.Launcher" />
 
         <!-- Keeps the launcher component name from before MainActivity moved to
              .main, preserving home screen icons and pinned shortcuts. -->
         <activity-alias
             android:name=".MainActivity"
             android:exported="true"
+            android:theme="@style/Theme.Twidget.Launcher"
             android:targetActivity=".main.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

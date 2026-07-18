@@ -15,6 +15,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewTreeObserver
+import android.view.ViewStub
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
@@ -59,6 +60,9 @@ class MainActivity : ScheduleQueueHostActivity() {
     internal lateinit var postAnalyticsBinder: MainPostAnalyticsBinder
     internal lateinit var editModeController: MainEditModeController
     private var skipNextResumeRender = false
+    private var navigationBarInset = 0
+    private var launchChromeReady = false
+    private var embeddedScheduleAttached = false
 
     private val bangerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -106,17 +110,14 @@ class MainActivity : ScheduleQueueHostActivity() {
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
-        attachEmbeddedScheduleQueue(
-            toolbar = findViewById<ToolbarLayout>(R.id.main_toolbar_layout),
-            root = findViewById(R.id.schedule_queue_container),
-        )
         destination = savedInstanceState?.getString(STATE_DESTINATION)
             ?.let(MainDestination::valueOf)
             ?: MainDestination.DASHBOARD
         val scheduleFab = findViewById<View>(R.id.schedule_fab)
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { navigationBarInset ->
-            scheduleFab.updateBottomMarginForNavigationBar(dp(20), navigationBarInset)
-            updateScheduleBottomInsets(navigationBarInset)
+        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { inset ->
+            navigationBarInset = inset
+            scheduleFab.updateBottomMarginForNavigationBar(dp(20), inset)
+            updateScheduleBottomInsets(inset)
         }
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         scheduleBackCallback = object : androidx.activity.OnBackPressedCallback(
@@ -129,15 +130,9 @@ class MainActivity : ScheduleQueueHostActivity() {
             }
         }
         onBackPressedDispatcher.addCallback(this, scheduleBackCallback)
-        TwidgetStore.migrateStoredHistories(this)
-        syncController.setupRefresh()
-        drawerController.setupDrawerChrome()
-        setupScheduleAction()
-        // Populate the toolbar/drawer immediately, then build the heavier
-        // dashboard grid after the first frame has reached the screen.
-        render(bindDashboard = false)
-        // onResume follows onCreate immediately and used to rebuild every
-        // dashboard card a second time during the same cold launch.
+        // Return from onCreate with only the toolbar and static dashboard
+        // skeleton inflated. The hidden scheduling UI, drawer contents,
+        // migrations and dashboard cards must not hold up the first frame.
         skipNextResumeRender = true
         val decor = window.decorView
         decor.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
@@ -150,26 +145,27 @@ class MainActivity : ScheduleQueueHostActivity() {
                     if (decor.viewTreeObserver.isAlive) {
                         decor.viewTreeObserver.removeOnDrawListener(this)
                     }
-                    // WorkManager initialization and the dashboard grid both
-                    // happen after the lightweight app chrome has drawn once.
-                    AppExecutors.execute { RefreshWorker.schedule(applicationContext) }
-                    if (!isFinishing && !isDestroyed && destination == MainDestination.DASHBOARD) {
-                        dashboardBinder.bindContent()
+                    if (isFinishing || isDestroyed) return@post
+                    setupLaunchChrome()
+                    AppExecutors.execute {
+                        TwidgetStore.migrateStoredHistories(applicationContext)
+                        RefreshWorker.schedule(applicationContext)
+                    }
+                    render()
+                    if (savedInstanceState == null) checkReleasesOnLaunch()
+                    if (TwidgetStore.settings(this@MainActivity).refreshOnLaunch) {
+                        syncController.sync()
                     }
                 }
             }
         })
-        if (savedInstanceState == null) checkReleasesOnLaunch()
-        if (TwidgetStore.settings(this).refreshOnLaunch) {
-            syncController.sync()
-        }
     }
 
     override fun onResume() {
         super.onResume()
         if (skipNextResumeRender) {
             skipNextResumeRender = false
-        } else {
+        } else if (launchChromeReady) {
             render()
         }
         updateSettingsBadge()
@@ -323,6 +319,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         val dashboard = findViewById<SwipeRefreshLayout>(R.id.main_refresh)
         val schedule = findViewById<View>(R.id.main_schedule_host)
         if (destination == MainDestination.SCHEDULING) {
+            ensureEmbeddedScheduleQueue()
             dashboard.visibility = View.GONE
             dashboard.isEnabled = false
             schedule.visibility = View.VISIBLE
@@ -354,6 +351,26 @@ class MainActivity : ScheduleQueueHostActivity() {
                     .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, defaultAccount)
             )
         }
+    }
+
+    private fun setupLaunchChrome() {
+        if (launchChromeReady) return
+        syncController.setupRefresh()
+        drawerController.setupDrawerChrome()
+        setupScheduleAction()
+        launchChromeReady = true
+    }
+
+    private fun ensureEmbeddedScheduleQueue() {
+        if (embeddedScheduleAttached) return
+        val root = findViewById<View?>(R.id.schedule_queue_container)
+            ?: findViewById<ViewStub>(R.id.schedule_page_stub).inflate()
+        attachEmbeddedScheduleQueue(
+            toolbar = findViewById<ToolbarLayout>(R.id.main_toolbar_layout),
+            root = root,
+        )
+        updateScheduleBottomInsets(navigationBarInset)
+        embeddedScheduleAttached = true
     }
 
     internal fun updateScheduleFabVisibility() {

@@ -42,7 +42,38 @@ class AccountAverageSeriesTest {
 
         assertEquals(
             List(7) { 80L },
-            AccountAverageSeries.values(historical + current, current, HistorySample::followers),
+            AccountAverageSeries.values(
+                historical + current,
+                current,
+                HistorySample::followers,
+                allowSparseHistory = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `sparse live history does not produce an average`() {
+        val historical = listOf(sample(Instant.parse("2026-07-01T00:00:00Z").toEpochMilli(), 80))
+        val current = weekStarting("2026-07-13T00:00:00Z", 200)
+
+        assertEquals(
+            emptyList<Long>(),
+            AccountAverageSeries.values(historical + current, current, HistorySample::following),
+        )
+    }
+
+    @Test
+    fun `known zero placeholders do not produce an average`() {
+        val placeholders = weekStarting("2026-07-06T00:00:00Z", 100).map {
+            it.copy(following = 0, followingKnown = true)
+        }
+        val current = weekStarting("2026-07-13T00:00:00Z", 200).mapIndexed { index, sample ->
+            sample.copy(following = 1_300L + index, followingKnown = true)
+        }
+
+        assertEquals(
+            emptyList<Long>(),
+            AccountAverageSeries.values(placeholders + current, current, HistorySample::following),
         )
     }
 

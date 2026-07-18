@@ -360,6 +360,8 @@ internal class MainDashboardBinder(
                 chartHistory.filter(known),
                 fullHistory.filter(known),
                 selector,
+                allowSparseAverage = card == DashboardCardType.FOLLOWERS &&
+                    fullHistory.any { it.imported && it.followersKnown },
             )
         }
     }
@@ -502,6 +504,7 @@ internal class MainDashboardBinder(
         history: List<HistorySample>,
         fullHistory: List<HistorySample>,
         selector: (HistorySample) -> Long,
+        allowSparseAverage: Boolean,
     ) {
         root.findViewById<TextView>(valueId)?.apply {
             text = value
@@ -516,7 +519,7 @@ internal class MainDashboardBinder(
         }
         root.findViewById<MetricChartView>(chartId)?.apply {
             setData(history, selector)
-            setAverageSeries(AccountAverageSeries.values(fullHistory, history, selector))
+            setAverageSeries(AccountAverageSeries.values(fullHistory, history, selector, allowSparseAverage))
         }
     }
 

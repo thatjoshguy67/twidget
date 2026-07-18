@@ -88,6 +88,7 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
         run: ./gradlew testReleaseUnitTest assembleRelease lintVitalRelease --no-daemon --stacktrace
 
       - name: Create tag if missing

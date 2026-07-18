@@ -98,6 +98,21 @@
             android:exported="false" />
 
         <activity
+            android:name=".schedule.BufferOAuthCallbackActivity"
+            android:exported="true"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="oauth"
+                    android:path="/buffer"
+                    android:scheme="twidget" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".settings.SettingsAdvancedActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />

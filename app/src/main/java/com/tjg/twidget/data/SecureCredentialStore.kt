@@ -23,7 +23,10 @@ object SecureCredentialStore {
     const val X_API_KEY = "x_api_key"
     const val X_API_SECRET = "x_api_secret"
     const val X_API_BEARER = "x_api_bearer"
-    const val POSTPONE_API_KEY = "postpone_api_key"
+    const val BUFFER_ACCESS_TOKEN = "buffer_access_token"
+    const val BUFFER_REFRESH_TOKEN = "buffer_refresh_token"
+    const val BUFFER_TOKEN_EXPIRY = "buffer_token_expiry"
+    const val LEGACY_POSTPONE_API_KEY = "postpone_api_key"
     const val TWITTERAPIS_API_KEY = "twitterapis_api_key"
 
     private const val KEYSTORE = "AndroidKeyStore"
@@ -36,7 +39,10 @@ object SecureCredentialStore {
         X_API_KEY,
         X_API_SECRET,
         X_API_BEARER,
-        POSTPONE_API_KEY,
+        BUFFER_ACCESS_TOKEN,
+        BUFFER_REFRESH_TOKEN,
+        BUFFER_TOKEN_EXPIRY,
+        LEGACY_POSTPONE_API_KEY,
         TWITTERAPIS_API_KEY,
     )
     private val lock = Any()

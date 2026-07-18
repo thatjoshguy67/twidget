@@ -7,23 +7,23 @@ import org.junit.Test
 class ScheduleAccountMappingTest {
     @Test
     fun resolvesTrackedHandlesCaseInsensitively() {
-        val mappings = mapOf("owen" to "postpone_owen")
+        val mappings = mapOf("owen" to "buffer-channel-id")
 
-        assertEquals("postpone_owen", ScheduleAccountMapping.resolve(mappings, "  @OwEn "))
+        assertEquals("buffer-channel-id", ScheduleAccountMapping.resolve(mappings, "  @OwEn "))
     }
 
     @Test
     fun blankUpdateClearsMapping() {
-        val mappings = mapOf("owen" to "postpone_owen")
+        val mappings = mapOf("owen" to "buffer-channel-id")
         val updated = ScheduleAccountMapping.updated(mappings, "@Owen", " ")
 
         assertNull(ScheduleAccountMapping.resolve(updated, "owen"))
     }
 
     @Test
-    fun updateNormalizesBothSides() {
-        val updated = ScheduleAccountMapping.updated(emptyMap(), " @OWEN ", " @MyPostpone ")
+    fun updateNormalizesTrackedHandleAndPreservesChannelId() {
+        val updated = ScheduleAccountMapping.updated(emptyMap(), " @OWEN ", " Channel_ABC ")
 
-        assertEquals(mapOf("owen" to "mypostpone"), updated)
+        assertEquals(mapOf("owen" to "Channel_ABC"), updated)
     }
 }

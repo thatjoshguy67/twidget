@@ -15,7 +15,7 @@ class ScheduleCoordinator(
     context: Context,
     private val store: ScheduleStore = ScheduleStore(context),
     private val localScheduler: LocalReminderScheduler = LocalReminderScheduler(context),
-    private val postponeClient: PostponeClient = PostponeClient(context),
+    private val bufferClient: BufferClient = BufferClient(context),
 ) {
     private val appContext = context.applicationContext
 
@@ -42,22 +42,16 @@ class ScheduleCoordinator(
         if (post.provider == ScheduleProvider.LOCAL_REMINDER) {
             return ScheduleCoordinatorResult(saveDraft(post, nowMillis))
         }
-        if (post.remoteSubmissionId != null && post.remotePostId == null) {
-            return ScheduleCoordinatorResult(
-                post,
-                listOf("This imported Postpone draft cannot be updated because Postpone does not expose its parent post ID"),
-            )
-        }
-        val result = postponeClient.saveTweetDraft(post)
+        val result = bufferClient.saveDraft(post)
         if (result.isSuccess) {
             val draft = post.copy(
                 status = ScheduleStatus.DRAFT,
-                remotePostId = result.value?.remotePostId ?: post.remotePostId,
-                remoteSubmissionId = result.value?.remoteSubmissionId ?: post.remoteSubmissionId,
+                remotePostId = result.value ?: post.remotePostId,
+                remoteSubmissionId = null,
                 errorMessage = null,
                 updatedAt = nowMillis,
             )
-            PostponePublishCheckWorker.cancel(appContext, draft.id)
+            BufferPublishCheckWorker.cancel(appContext, draft.id)
             store.upsert(draft)
             return ScheduleCoordinatorResult(draft)
         }
@@ -101,7 +95,7 @@ class ScheduleCoordinator(
         }
         return when (post.provider) {
             ScheduleProvider.LOCAL_REMINDER -> scheduleLocal(post, nowMillis)
-            ScheduleProvider.POSTPONE -> schedulePostpone(post, nowMillis)
+            ScheduleProvider.BUFFER -> scheduleBuffer(post, nowMillis)
         }
     }
 
@@ -114,15 +108,15 @@ class ScheduleCoordinator(
                 val cancelled = store.cancel(post.id, nowMillis) ?: post
                 ScheduleCoordinatorResult(cancelled)
             }
-            ScheduleProvider.POSTPONE -> {
+            ScheduleProvider.BUFFER -> {
                 val remoteId = post.remotePostId
                 if (remoteId.isNullOrBlank()) {
                     val cancelled = store.cancel(post.id, nowMillis) ?: post
                     ScheduleCoordinatorResult(cancelled)
                 } else {
-                    val remote = postponeClient.cancelScheduledTweet(remoteId)
+                    val remote = bufferClient.deletePost(remoteId)
                     if (remote.isSuccess) {
-                        PostponePublishCheckWorker.cancel(appContext, post.id)
+                        BufferPublishCheckWorker.cancel(appContext, post.id)
                         val cancelled = store.cancel(post.id, nowMillis) ?: post
                         ScheduleCoordinatorResult(cancelled)
                     } else {
@@ -151,15 +145,15 @@ class ScheduleCoordinator(
         }
     }
 
-    private fun schedulePostpone(post: ScheduledPost, nowMillis: Long): ScheduleCoordinatorResult {
+    private fun scheduleBuffer(post: ScheduledPost, nowMillis: Long): ScheduleCoordinatorResult {
         store.get(post.id)?.takeIf { it.provider == ScheduleProvider.LOCAL_REMINDER }?.let {
             localScheduler.cancel(it.id)
             ScheduleNotificationHelper.cancel(appContext, it.id)
         }
         val result = if (post.remotePostId.isNullOrBlank()) {
-            postponeClient.scheduleTweet(post)
+            bufferClient.schedulePost(post)
         } else {
-            postponeClient.updateScheduledTweet(post)
+            bufferClient.updatePost(post)
         }
         if (!result.isSuccess) {
             if (post.remotePostId.isNullOrBlank()) {
@@ -179,14 +173,14 @@ class ScheduleCoordinator(
         }
         val scheduled = post.copy(
             status = ScheduleStatus.SCHEDULED,
-            remotePostId = result.value?.remotePostId ?: post.remotePostId,
-            remoteSubmissionId = result.value?.remoteSubmissionId ?: post.remoteSubmissionId,
+            remotePostId = result.value ?: post.remotePostId,
+            remoteSubmissionId = null,
             errorMessage = null,
             pinned = false,
             updatedAt = nowMillis,
         )
         store.upsert(scheduled)
-        PostponePublishCheckWorker.enqueue(appContext, scheduled)
+        BufferPublishCheckWorker.enqueue(appContext, scheduled)
         return ScheduleCoordinatorResult(scheduled)
     }
 

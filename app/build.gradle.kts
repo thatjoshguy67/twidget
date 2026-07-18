@@ -64,6 +64,9 @@ val debugNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIntOrNu
         }
     }
 val betaNumber = providers.gradleProperty("betaNumber").orNull?.toIntOrNull() ?: 1
+val bufferOAuthClientId = providers.gradleProperty("bufferOAuthClientId").orNull
+    ?: System.getenv("BUFFER_OAUTH_CLIENT_ID")
+    ?: ""
 require(debugNumber > 0) { "prereleaseNumber must be greater than zero" }
 require(betaNumber > 0) { "betaNumber must be greater than zero" }
 
@@ -77,6 +80,8 @@ android {
         targetSdk = 35
         versionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
         versionName = baseVersionName
+        resValue("string", "buffer_oauth_client_id", bufferOAuthClientId)
+        resValue("string", "buffer_oauth_redirect_uri", "twidget://oauth/buffer")
     }
 
     signingConfigs {

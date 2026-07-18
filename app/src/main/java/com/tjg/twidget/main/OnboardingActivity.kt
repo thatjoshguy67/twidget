@@ -6,13 +6,11 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.InputFilter
-import android.text.InputType
 import android.text.TextWatcher
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -23,19 +21,18 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
-import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.providers.RettiwtClient
-import com.tjg.twidget.schedule.PostponeClient
-import com.tjg.twidget.schedule.PostponeScheduleSync
-import com.tjg.twidget.schedule.PostponeSocialAccount
+import com.tjg.twidget.schedule.BufferChannel
+import com.tjg.twidget.schedule.BufferClient
+import com.tjg.twidget.schedule.BufferOAuth
+import com.tjg.twidget.schedule.BufferScheduleSync
 import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.EdgeToEdgeActivity
@@ -53,6 +50,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private var previewFloatAnimator: ObjectAnimator? = null
     private val previewHandler = Handler(Looper.getMainLooper())
     private var asyncGeneration = 0L
+    private var bufferConnectStarted = false
     private val stepBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
             when (step) {
@@ -90,6 +88,14 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         super.onDestroy()
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (bufferConnectStarted && BufferOAuth.isConnected(this)) {
+            bufferConnectStarted = false
+            configureBufferChannel()
+        }
+    }
+
     private fun goToStep(next: Int) {
         step = next
         renderStep(animate = true)
@@ -121,7 +127,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             when (step) {
                 STEP_OVERVIEW -> goToStep(STEP_PROFILE)
                 STEP_PROFILE -> submitProfile()
-                STEP_SCHEDULING -> showPostponeConnectionDialog()
+                STEP_SCHEDULING -> connectBuffer()
                 STEP_WIDGETS -> {
                     requestWidgetPin()
                     goToStep(STEP_DONE)
@@ -248,7 +254,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 step == STEP_OVERVIEW -> getString(R.string.get_started)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
                 step == STEP_PROFILE -> getString(R.string.continue_button)
-                step == STEP_SCHEDULING -> getString(R.string.onboarding_connect_postpone)
+                step == STEP_SCHEDULING -> getString(R.string.onboarding_connect_buffer)
                 step == STEP_WIDGETS -> getString(R.string.add_widget)
                 else -> getString(R.string.continue_button)
             }
@@ -410,108 +416,65 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         goToStep(STEP_SCHEDULING)
     }
 
-    private fun showPostponeConnectionDialog() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            hint = getString(R.string.schedule_api_key_hint)
-            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
-            setSingleLine(true)
+    private fun connectBuffer() {
+        if (!BufferOAuth.isConfigured(this)) {
+            Toast.makeText(this, R.string.schedule_buffer_oauth_unavailable, Toast.LENGTH_LONG).show()
+            return
         }
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val horizontal = (24 * resources.displayMetrics.density).toInt()
-            setPadding(horizontal, 0, horizontal, 0)
-            addView(input, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
+        runCatching {
+            bufferConnectStarted = true
+            startActivity(BufferOAuth.authorizationIntent(this))
+        }.onFailure {
+            bufferConnectStarted = false
+            Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
         }
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.onboarding_connect_postpone)
-            .setMessage(R.string.onboarding_postpone_key_summary)
-            .setView(container)
-            .setNeutralButton(R.string.onboarding_get_postpone_key) { _, _ ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(POSTPONE_API_SETTINGS_URL)))
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.connect, null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val key = input.text.toString().trim()
-                if (key.isBlank()) {
-                    input.error = getString(R.string.schedule_postpone_api_key_missing)
-                    return@setOnClickListener
-                }
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                connectPostpone(key, dialog, input)
-            }
-        }
-        dialog.show()
     }
 
-    private fun connectPostpone(key: String, dialog: AlertDialog, input: EditText) {
+    private fun configureBufferChannel() {
         val generation = ++asyncGeneration
-        AppExecutors.execute(
-            onRejected = {
-                postUiIfCurrent(generation) {
-                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                    input.error = getString(R.string.schedule_busy)
-                }
-            },
-        ) {
-            val client = PostponeClient(this, apiKeyOverride = key)
-            val profile = client.verifyProfile()
-            val accounts = if (profile.isSuccess) client.listTwitterSocialAccounts() else null
+        AppExecutors.execute(onRejected = {
+            postUiIfCurrent(generation) { Toast.makeText(this, R.string.schedule_busy, Toast.LENGTH_SHORT).show() }
+        }) {
+            val result = BufferClient(this).listTwitterChannels()
             postUiIfCurrent(generation) {
-                val enabled = accounts?.value.orEmpty().filter { it.isConnected && it.isEnabled }
-                when {
-                    !profile.isSuccess -> {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                        input.error = profile.errors.firstOrNull()?.message
-                            ?: getString(R.string.schedule_connection_failed, getString(R.string.schedule_unknown_error))
-                    }
-                    accounts?.isSuccess != true -> {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                        input.error = accounts?.errors?.firstOrNull()?.message
-                            ?: getString(R.string.schedule_unknown_error)
-                    }
-                    enabled.isEmpty() -> {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                        input.error = getString(R.string.onboarding_postpone_no_x_account)
-                    }
-                    else -> {
-                        dialog.dismiss()
-                        choosePostponeAccount(key, enabled)
-                    }
+                val channels = result.value.orEmpty()
+                if (channels.isEmpty()) {
+                    Toast.makeText(
+                        this,
+                        result.errors.firstOrNull()?.message ?: getString(R.string.onboarding_buffer_no_x_account),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                } else {
+                    chooseBufferChannel(channels)
                 }
             }
         }
     }
 
-    private fun choosePostponeAccount(key: String, accounts: List<PostponeSocialAccount>) {
+    private fun chooseBufferChannel(channels: List<BufferChannel>) {
         val tracked = TwidgetStore.settings(this).username
-        val matching = accounts.firstOrNull { it.username.equals(tracked, ignoreCase = true) }
-        if (matching != null || accounts.size == 1) {
-            finishPostponeConnection(key, matching ?: accounts.single())
+        val matching = channels.firstOrNull {
+            it.name.equals(tracked, ignoreCase = true) || it.displayName.equals(tracked, ignoreCase = true)
+        }
+        if (matching != null || channels.size == 1) {
+            finishBufferConnection(matching ?: channels.single())
             return
         }
         AlertDialog.Builder(this)
-            .setTitle(R.string.onboarding_choose_postpone_account)
-            .setItems(accounts.map { "@${it.username}" }.toTypedArray()) { _, index ->
-                finishPostponeConnection(key, accounts[index])
+            .setTitle(R.string.onboarding_choose_buffer_account)
+            .setItems(channels.map { it.displayName ?: it.name }.toTypedArray()) { _, index ->
+                finishBufferConnection(channels[index])
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun finishPostponeConnection(key: String, account: PostponeSocialAccount) {
+    private fun finishBufferConnection(channel: BufferChannel) {
         val tracked = TwidgetStore.settings(this).username
-        SecureCredentialStore.write(this, mapOf(SecureCredentialStore.POSTPONE_API_KEY to key))
-        ScheduleSettingsStore.setPostponeAccount(this, tracked, account.username)
-        ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.POSTPONE)
-        Toast.makeText(this, getString(R.string.schedule_connection_success, account.username), Toast.LENGTH_SHORT).show()
-        AppExecutors.execute { PostponeScheduleSync(this).sync() }
+        ScheduleSettingsStore.setBufferChannel(this, tracked, channel.id)
+        ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.BUFFER)
+        Toast.makeText(this, getString(R.string.schedule_connection_success, channel.displayName ?: channel.name), Toast.LENGTH_SHORT).show()
+        AppExecutors.execute { BufferScheduleSync(this).sync() }
         goToStep(STEP_WIDGETS)
     }
 
@@ -567,6 +530,5 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         private const val STEP_SCHEDULING = 2
         private const val STEP_WIDGETS = 3
         private const val STEP_DONE = 4
-        private const val POSTPONE_API_SETTINGS_URL = "https://www.postpone.app/settings/api"
     }
 }

@@ -42,11 +42,6 @@ object ScheduleMediaExporter {
                 when (source) {
                     is LocalUriMedia -> saveLocal(context, source, index)
                     is PublicUrlMedia -> saveRemote(context, source.url, source.mimeType, index)
-                    is PostponeLibraryMedia -> {
-                        val url = source.url
-                        if (url.isNullOrBlank()) error("Missing media URL")
-                        saveRemote(context, url, source.mimeType, index, source.name)
-                    }
                 }
             }.onSuccess { saved++ }
                 .onFailure { lastError = it.message ?: "Save failed" }

@@ -4,7 +4,7 @@ import java.util.UUID
 
 enum class ScheduleProvider {
     LOCAL_REMINDER,
-    POSTPONE,
+    BUFFER,
 }
 
 enum class ScheduleStatus {
@@ -60,13 +60,6 @@ data class LocalUriMedia(
 
 data class PublicUrlMedia(
     val url: String,
-    override val mimeType: String? = null,
-) : ScheduleMediaSource()
-
-data class PostponeLibraryMedia(
-    val id: String,
-    val name: String,
-    val url: String? = null,
     override val mimeType: String? = null,
 ) : ScheduleMediaSource()
 

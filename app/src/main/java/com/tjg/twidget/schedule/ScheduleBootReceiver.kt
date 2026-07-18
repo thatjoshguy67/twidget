@@ -25,7 +25,8 @@ class ScheduleBootReceiver : BroadcastReceiver() {
                 // unique work names make both calls idempotent.
                 RefreshWorker.schedule(context)
                 ScheduleStore(context).list().forEach { post ->
-                    PostponePublishCheckWorker.enqueue(context, post)
+                    BufferPublishCheckWorker.cancelLegacyPostponeWork(context, post.id)
+                    BufferPublishCheckWorker.enqueue(context, post)
                 }
             } finally {
                 pendingResult.finish()

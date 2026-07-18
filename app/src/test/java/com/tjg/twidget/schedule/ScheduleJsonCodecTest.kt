@@ -9,7 +9,7 @@ class ScheduleJsonCodecTest {
     fun roundTripsEveryScheduleFieldAndMediaType() {
         val post = ScheduledPost(
             id = "schedule-id",
-            provider = ScheduleProvider.POSTPONE,
+            provider = ScheduleProvider.BUFFER,
             status = ScheduleStatus.FAILED,
             accountId = "account-id",
             accountUsername = "owen",
@@ -21,12 +21,7 @@ class ScheduleJsonCodecTest {
                     media = listOf(
                         LocalUriMedia("content://media/1", "photo.jpg", "image/jpeg"),
                         PublicUrlMedia("https://example.com/photo.png", "image/png"),
-                        PostponeLibraryMedia(
-                            id = "library-id",
-                            name = "library.gif",
-                            url = "https://cdn.example.com/library.gif",
-                            mimeType = "image/gif",
-                        ),
+                        PublicUrlMedia("https://cdn.example.com/library.gif", "image/gif"),
                     ),
                 )
             ),
@@ -97,5 +92,25 @@ class ScheduleJsonCodecTest {
     @Test
     fun malformedDocumentIsRejectedForStoreToTreatAsEmpty() {
         assertTrue(runCatching { ScheduleJsonCodec.decodeList("not json") }.isFailure)
+    }
+
+    @Test
+    fun legacyPostponeSchedulesMigrateToSafeLocalReminders() {
+        val legacy = """
+            {"id":"legacy","provider":"POSTPONE","status":"SCHEDULED","accountId":"owen",
+            "accountUsername":"owen","scheduledAt":2000000,"thread":[{"id":"item","text":"Legacy",
+            "media":[{"type":"postpone_library","id":"media","name":"photo.jpg",
+            "url":"https://example.com/photo.jpg","mimeType":"image/jpeg"}]}],"remotePostId":"remote",
+            "remoteSubmissionId":"submission","errorMessage":null,"createdAt":100,"updatedAt":200,
+            "publishedAt":null,"pinned":false,"deletedAt":null}
+        """.trimIndent()
+
+        val migrated = ScheduleJsonCodec.decode(legacy)
+
+        assertEquals(ScheduleProvider.LOCAL_REMINDER, migrated.provider)
+        assertEquals(
+            PublicUrlMedia("https://example.com/photo.jpg", "image/jpeg"),
+            migrated.thread.single().media.single(),
+        )
     }
 }

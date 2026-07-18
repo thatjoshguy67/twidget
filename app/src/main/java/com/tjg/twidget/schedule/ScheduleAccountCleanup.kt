@@ -13,7 +13,7 @@ object ScheduleAccountCleanup {
             ScheduleNotificationHelper.cancel(appContext, post.id)
             store.remove(post.id)
         }
-        posts.filter { it.provider == ScheduleProvider.POSTPONE }.forEach { post ->
+        posts.filter { it.provider == ScheduleProvider.BUFFER }.forEach { post ->
             AppExecutors.execute(onRejected = { store.remove(post.id) }) {
                 if (!post.remotePostId.isNullOrBlank()) {
                     ScheduleCoordinator(appContext).cancel(post.id)

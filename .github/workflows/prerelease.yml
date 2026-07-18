@@ -80,6 +80,7 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
         run: |
           ./gradlew testBetaUnitTest assembleBeta lintVitalBeta \
             -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace

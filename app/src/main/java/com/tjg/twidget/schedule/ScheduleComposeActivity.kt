@@ -39,7 +39,6 @@ import java.util.UUID
 class ScheduleComposeActivity : FoldablePopOverActivity() {
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
-    private val postponeClient by lazy { PostponeClient(this) }
 
     private lateinit var composeUi: ScheduleComposeUi
     private var draftButton: AppCompatButton? = null
@@ -211,13 +210,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             )
             return
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.schedule_add_local_media)
-            .setItems(arrayOf(
-                getString(R.string.schedule_add_public_url),
-                getString(R.string.schedule_content_library),
-            )) { _, which -> if (which == 0) showPublicUrlDialog() else browsePostponeLibrary() }
-            .show()
+        showPublicUrlDialog()
     }
 
     internal fun onComposeTakePhoto(index: Int) {
@@ -368,43 +361,11 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
                 if ((uri.scheme == "https" || uri.scheme == "http") &&
                     editorItems[index].media.size < SchedulePolicy.MAX_MEDIA_PER_ITEM
                 ) {
-                    editorItems[index].media.removeAll { it is PostponeLibraryMedia }
                     editorItems[index].media += PublicUrlMedia(value)
                     composeUi.refreshMediaForActiveItem()
                 } else toast(R.string.schedule_invalid_public_url)
             }
             .show()
-    }
-
-    private fun browsePostponeLibrary() {
-        val index = mediaTarget.coerceIn(editorItems.indices)
-        setBusy(true)
-        AppExecutors.execute(
-            onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
-        ) {
-            val result = postponeClient.browseContentLibrary()
-            runOnUiThread {
-                setBusy(false)
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                val items = result.value?.items.orEmpty()
-                if (items.isEmpty()) {
-                    showErrors(result.errors.map { it.message }.ifEmpty { listOf(getString(R.string.schedule_library_empty)) })
-                    return@runOnUiThread
-                }
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.schedule_content_library)
-                    .setItems(items.map { it.name }.toTypedArray()) { _, which ->
-                        val selected = items[which]
-                        editorItems[index].media.clear()
-                        editorItems[index].media += PostponeLibraryMedia(
-                            selected.id, selected.name, selected.url, selected.mimeType,
-                        )
-                        composeUi.refreshMediaForActiveItem()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-            }
-        }
     }
 
     private fun pickDate() {
@@ -425,8 +386,8 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     private fun buildEditedPost(): ScheduledPost {
         val old = editorPost
-        val providerUsername = if (editorProvider == ScheduleProvider.POSTPONE) {
-            ScheduleSettingsStore.postponeAccountFor(this, editorAccount).orEmpty()
+        val providerUsername = if (editorProvider == ScheduleProvider.BUFFER) {
+            ScheduleSettingsStore.bufferChannelFor(this, editorAccount).orEmpty()
         } else editorAccount
         return ScheduledPost(
             id = old?.id ?: UUID.randomUUID().toString(),
@@ -447,12 +408,12 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     }
 
     private fun saveDraft() {
-        if (editorProvider == ScheduleProvider.POSTPONE && editorAccount.isBlank()) {
-            toast(R.string.schedule_postpone_account_required)
+        if (editorProvider == ScheduleProvider.BUFFER && editorAccount.isBlank()) {
+            toast(R.string.schedule_buffer_account_required)
             return
         }
         val draft = buildEditedPost()
-        if (draft.provider == ScheduleProvider.POSTPONE) {
+        if (draft.provider == ScheduleProvider.BUFFER) {
             runRemote { coordinator.saveDraftWithProvider(draft) }
         } else {
             editorPost = coordinator.saveDraft(draft)
@@ -466,18 +427,18 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             toast(R.string.schedule_character_limit_error)
             return
         }
-        if (editorProvider == ScheduleProvider.POSTPONE && editorAccount.isBlank()) {
-            toast(R.string.schedule_postpone_account_required)
+        if (editorProvider == ScheduleProvider.BUFFER && editorAccount.isBlank()) {
+            toast(R.string.schedule_buffer_account_required)
             return
         }
-        if (editorProvider == ScheduleProvider.POSTPONE &&
-            ScheduleSettingsStore.postponeAccountFor(this, editorAccount).isNullOrBlank()
+        if (editorProvider == ScheduleProvider.BUFFER &&
+            ScheduleSettingsStore.bufferChannelFor(this, editorAccount).isNullOrBlank()
         ) {
-            showErrors(listOf(getString(R.string.schedule_postpone_mapping_required, editorAccount)))
+            showErrors(listOf(getString(R.string.schedule_buffer_mapping_required, editorAccount)))
             return
         }
         val post = buildEditedPost()
-        if (post.provider == ScheduleProvider.POSTPONE) {
+        if (post.provider == ScheduleProvider.BUFFER) {
             runRemote { coordinator.schedule(post) }
             return
         }
@@ -495,7 +456,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             return
         }
         val previous = editorPost
-        if (previous?.provider == ScheduleProvider.POSTPONE && !previous.remotePostId.isNullOrBlank()) {
+        if (previous?.provider == ScheduleProvider.BUFFER && !previous.remotePostId.isNullOrBlank()) {
             runRemote {
                 val cancelled = coordinator.cancel(previous.id)
                 if (cancelled?.isSuccess != true) cancelled else coordinator.schedule(post)

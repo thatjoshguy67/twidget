@@ -140,7 +140,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             intent.getBooleanExtra(EXTRA_OPEN_TRASH, false) -> enterTrashView()
             else -> {
                 renderQueue()
-                syncPostponeQueue(userInitiated = false)
+                syncBufferQueue(userInitiated = false)
             }
         }
     }
@@ -163,7 +163,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         scroll = findViewById(R.id.schedule_scroll)
         refresh = findViewById<SwipeRefreshLayout>(R.id.schedule_refresh).apply {
             OneUiSpinner.attachToSwipeRefresh(this)
-            setOnRefreshListener { syncPostponeQueue(userInitiated = true) }
+            setOnRefreshListener { syncBufferQueue(userInitiated = true) }
         }
         selectionBottomNav = findViewById(R.id.schedule_selection_bottom_nav)
         trashBottomNav = findViewById(R.id.schedule_trash_bottom_nav)
@@ -211,7 +211,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         viewingTrash = false
         queueRoot.visibility = View.VISIBLE
         renderQueue()
-        syncPostponeQueue(userInitiated = false)
+        syncBufferQueue(userInitiated = false)
     }
 
     protected fun hideEmbeddedScheduleQueue() {
@@ -239,7 +239,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         super.onRestart()
         if (::queueRoot.isInitialized && queueRoot.visibility == View.VISIBLE) {
             renderQueue()
-            syncPostponeQueue(userInitiated = false)
+            syncBufferQueue(userInitiated = false)
         }
     }
 
@@ -389,12 +389,12 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         TwidgetFonts.applyTo(content)
     }
 
-    private fun syncPostponeQueue(userInitiated: Boolean) {
+    private fun syncBufferQueue(userInitiated: Boolean) {
         if (syncing || viewingTrash || !::refresh.isInitialized) {
             if (::refresh.isInitialized && !syncing) refresh.isRefreshing = false
             return
         }
-        if (ScheduleSettingsStore.defaultProvider(this) != ScheduleProvider.POSTPONE) {
+        if (ScheduleSettingsStore.defaultProvider(this) != ScheduleProvider.BUFFER) {
             refresh.isRefreshing = false
             if (userInitiated) renderQueue()
             return
@@ -410,7 +410,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 }
             },
         ) {
-            val result = PostponeScheduleSync(this).sync()
+            val result = BufferScheduleSync(this).sync()
             runOnUiThread {
                 syncing = false
                 refresh.isRefreshing = false
@@ -766,10 +766,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 summary = buildString {
                     append(
                         if (
-                            post.provider == ScheduleProvider.POSTPONE &&
+                            post.provider == ScheduleProvider.BUFFER &&
                             post.status == ScheduleStatus.SCHEDULED
                         ) {
-                            "$mediaSummary\n${getString(R.string.schedule_postpone_auto_summary)}"
+                            "$mediaSummary\n${getString(R.string.schedule_buffer_auto_summary)}"
                         } else {
                             mediaSummary
                         },
@@ -1293,7 +1293,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             .setMessage(R.string.schedule_cancel_message)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.cancel) { _, _ ->
-                if (post.provider == ScheduleProvider.POSTPONE) {
+                if (post.provider == ScheduleProvider.BUFFER) {
                     runRemote {
                         coordinator.cancel(post.id)
                     }
@@ -1370,7 +1370,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             return
         }
         val remotePosts = posts.filter {
-            it.provider == ScheduleProvider.POSTPONE &&
+            it.provider == ScheduleProvider.BUFFER &&
                 !it.remotePostId.isNullOrBlank() &&
                 it.status != ScheduleStatus.CANCELLED
         }
@@ -1407,7 +1407,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun removePostLocally(post: ScheduledPost) {
-        PostponePublishCheckWorker.cancel(this, post.id)
+        BufferPublishCheckWorker.cancel(this, post.id)
         if (post.provider == ScheduleProvider.LOCAL_REMINDER) {
             LocalReminderScheduler(this).cancel(post.id)
             ScheduleNotificationHelper.cancel(this, post.id)
@@ -1705,7 +1705,6 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             when (it) {
                 is LocalUriMedia -> it.displayName ?: getString(R.string.schedule_local_media)
                 is PublicUrlMedia -> it.url
-                is PostponeLibraryMedia -> it.name
             }
         }
         return getString(R.string.schedule_media_summary, media.size, names.joinToString(", "))
@@ -1727,8 +1726,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             ?: getString(R.string.schedule_all_accounts)
 
     private fun providerLabel(provider: ScheduleProvider): String = getString(
-        if (provider == ScheduleProvider.POSTPONE) {
-            R.string.schedule_provider_postpone
+        if (provider == ScheduleProvider.BUFFER) {
+            R.string.schedule_provider_buffer
         } else {
             R.string.schedule_provider_local
         },

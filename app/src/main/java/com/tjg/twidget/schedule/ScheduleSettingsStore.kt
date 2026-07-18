@@ -16,20 +16,29 @@ internal object ScheduleAccountMapping {
     fun updated(
         mappings: Map<String, String>,
         trackedUsername: String,
-        postponeUsername: String?,
+        bufferChannelId: String?,
     ): Map<String, String> = mappings.toMutableMap().apply {
         val key = normalize(trackedUsername)
-        val value = postponeUsername?.let(::normalize).orEmpty()
+        val value = bufferChannelId?.trim().orEmpty()
         if (value.isBlank()) remove(key) else put(key, value)
     }
 }
 
 object ScheduleSettingsStore {
     private const val KEY_DEFAULT_PROVIDER = "schedule_default_provider"
-    private const val KEY_POSTPONE_MAPPINGS = "schedule_postpone_mappings"
+    private const val KEY_BUFFER_MAPPINGS = "schedule_buffer_mappings"
+    private const val KEY_LEGACY_POSTPONE_MAPPINGS = "schedule_postpone_mappings"
 
     fun defaultProvider(context: Context): ScheduleProvider {
         val stored = prefs(context).getString(KEY_DEFAULT_PROVIDER, null)
+        if (stored == "POSTPONE") {
+            SecureCredentialStore.clear(context, SecureCredentialStore.LEGACY_POSTPONE_API_KEY)
+            prefs(context).edit()
+                .remove(KEY_LEGACY_POSTPONE_MAPPINGS)
+                .putString(KEY_DEFAULT_PROVIDER, ScheduleProvider.LOCAL_REMINDER.name)
+                .apply()
+            return ScheduleProvider.LOCAL_REMINDER
+        }
         return runCatching { ScheduleProvider.valueOf(stored.orEmpty()) }
             .getOrDefault(ScheduleProvider.LOCAL_REMINDER)
     }
@@ -38,35 +47,38 @@ object ScheduleSettingsStore {
         prefs(context).edit().putString(KEY_DEFAULT_PROVIDER, provider.name).apply()
     }
 
-    fun postponeAccountFor(context: Context, trackedUsername: String): String? =
+    fun bufferChannelFor(context: Context, trackedUsername: String): String? =
         ScheduleAccountMapping.resolve(mappings(context), trackedUsername)
 
     fun mappings(context: Context): Map<String, String> {
-        val raw = prefs(context).getString(KEY_POSTPONE_MAPPINGS, null) ?: return emptyMap()
+        val raw = prefs(context).getString(KEY_BUFFER_MAPPINGS, null) ?: return emptyMap()
         return runCatching {
             val objectValue = JSONObject(raw)
             buildMap {
                 objectValue.keys().forEach { key ->
                     objectValue.optString(key).takeIf(String::isNotBlank)?.let {
-                        put(ScheduleAccountMapping.normalize(key), ScheduleAccountMapping.normalize(it))
+                        put(ScheduleAccountMapping.normalize(key), it.trim())
                     }
                 }
             }
         }.getOrDefault(emptyMap())
     }
 
-    fun setPostponeAccount(context: Context, trackedUsername: String, postponeUsername: String?) {
-        val next = ScheduleAccountMapping.updated(mappings(context), trackedUsername, postponeUsername)
+    fun setBufferChannel(context: Context, trackedUsername: String, bufferChannelId: String?) {
+        val next = ScheduleAccountMapping.updated(mappings(context), trackedUsername, bufferChannelId)
         val encoded = JSONObject().apply {
             next.forEach { (tracked, mapped) -> put(tracked, mapped) }
         }.toString()
-        prefs(context).edit().putString(KEY_POSTPONE_MAPPINGS, encoded).apply()
+        prefs(context).edit().putString(KEY_BUFFER_MAPPINGS, encoded).apply()
     }
 
-    fun clearPostpone(context: Context) {
-        SecureCredentialStore.clear(context, SecureCredentialStore.POSTPONE_API_KEY)
+    fun clearBuffer(context: Context) {
+        BufferOAuth.disconnect(context)
+        ScheduleStore(context).list().filter { it.provider == ScheduleProvider.BUFFER }.forEach {
+            BufferPublishCheckWorker.cancel(context, it.id)
+        }
         prefs(context).edit()
-            .remove(KEY_POSTPONE_MAPPINGS)
+            .remove(KEY_BUFFER_MAPPINGS)
             .putString(KEY_DEFAULT_PROVIDER, ScheduleProvider.LOCAL_REMINDER.name)
             .apply()
     }

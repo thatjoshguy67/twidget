@@ -7,6 +7,7 @@ All notable changes to Twidget are documented here.
 ### Changed
 
 - Reorganized the app's source tree from one flat package into feature packages (analytics, schedule, settings, widget, and friends). Existing home and lock screen widgets keep working: the original widget provider component names stay registered.
+- Replaced Postpone cloud scheduling and API-key onboarding with Buffer OAuth, encrypted refresh-token rotation, connected X-channel mapping, and Buffer-backed draft and schedule syncing.
 
 ### Added
 

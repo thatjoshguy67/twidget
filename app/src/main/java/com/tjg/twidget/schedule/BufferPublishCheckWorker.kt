@@ -12,24 +12,20 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import java.util.concurrent.TimeUnit
 
-class PostponePublishCheckWorker(
-    context: Context,
-    workerParams: WorkerParameters,
-) : Worker(context, workerParams) {
+class BufferPublishCheckWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {
-        val id = inputData.getString(KEY_SCHEDULE_ID)?.takeIf(String::isNotBlank)
-            ?: return Result.failure()
+        val id = inputData.getString(KEY_SCHEDULE_ID)?.takeIf(String::isNotBlank) ?: return Result.failure()
         val store = ScheduleStore(applicationContext)
         val before = store.get(id) ?: return Result.success()
-        if (before.provider != ScheduleProvider.POSTPONE || before.status != ScheduleStatus.SCHEDULED) {
+        if (before.provider != ScheduleProvider.BUFFER || before.status != ScheduleStatus.SCHEDULED) {
             return Result.success()
         }
-        val sync = PostponeScheduleSync(applicationContext).sync()
+        val sync = BufferScheduleSync(applicationContext).sync()
         if (!sync.isSuccess) return Result.retry()
         val post = store.get(id) ?: return Result.success()
         return when (post.status) {
             ScheduleStatus.PUBLISHED -> {
-                ScheduleNotificationHelper.showPostponePublished(applicationContext, post)
+                ScheduleNotificationHelper.showBufferPublished(applicationContext, post)
                 Result.success()
             }
             ScheduleStatus.NEEDS_ACTION -> {
@@ -46,27 +42,25 @@ class PostponePublishCheckWorker(
         private const val VERIFY_DELAY_MS = 2 * 60 * 1000L
 
         fun enqueue(context: Context, post: ScheduledPost) {
-            if (post.provider != ScheduleProvider.POSTPONE ||
-                post.status != ScheduleStatus.SCHEDULED ||
-                post.scheduledAt == null
-            ) return
+            if (post.provider != ScheduleProvider.BUFFER || post.status != ScheduleStatus.SCHEDULED || post.scheduledAt == null) return
             val delay = (post.scheduledAt + VERIFY_DELAY_MS - System.currentTimeMillis()).coerceAtLeast(0L)
-            val request = OneTimeWorkRequestBuilder<PostponePublishCheckWorker>()
+            val request = OneTimeWorkRequestBuilder<BufferPublishCheckWorker>()
                 .setInputData(workDataOf(KEY_SCHEDULE_ID to post.id))
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
                 .build()
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-                "postpone-publish-check-${post.id}",
-                ExistingWorkPolicy.REPLACE,
-                request,
+                "buffer-publish-check-${post.id}", ExistingWorkPolicy.REPLACE, request,
             )
         }
 
         fun cancel(context: Context, scheduleId: String) {
-            WorkManager.getInstance(context.applicationContext)
-                .cancelUniqueWork("postpone-publish-check-$scheduleId")
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork("buffer-publish-check-$scheduleId")
+        }
+
+        fun cancelLegacyPostponeWork(context: Context, scheduleId: String) {
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork("postpone-publish-check-$scheduleId")
         }
     }
 }

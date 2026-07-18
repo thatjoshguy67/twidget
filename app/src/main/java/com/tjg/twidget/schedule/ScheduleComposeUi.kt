@@ -274,11 +274,6 @@ internal class ScheduleComposeUi(
                 }
             }
             is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
-            is PostponeLibraryMedia -> {
-                val url = source.url.orEmpty()
-                if (url.isBlank()) image.setImageResource(OneUiIconR.drawable.ic_oui_image_outline)
-                else ProfileImageLoader.loadMediaInto(activity, image, url, activity.composeDp(12))
-            }
         }
     }
 

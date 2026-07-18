@@ -22,12 +22,13 @@ object ScheduleDeepLink {
 
 object ScheduleNotificationHelper {
     const val CHANNEL_ID = "scheduled_post_reminders"
-    const val POSTPONE_STATUS_CHANNEL_ID = "postpone_post_status"
+    const val BUFFER_STATUS_CHANNEL_ID = "buffer_post_status"
     private const val CHANNEL_NAME = "Scheduled tweet reminders"
-    private const val POSTPONE_STATUS_CHANNEL_NAME = "Postpone publishing"
+    private const val BUFFER_STATUS_CHANNEL_NAME = "Buffer publishing"
 
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.deleteNotificationChannel("postpone_post_status")
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = "Reminders to finish and publish locally scheduled tweets"
@@ -37,11 +38,11 @@ object ScheduleNotificationHelper {
         )
         manager.createNotificationChannel(
             NotificationChannel(
-                POSTPONE_STATUS_CHANNEL_ID,
-                POSTPONE_STATUS_CHANNEL_NAME,
+                BUFFER_STATUS_CHANNEL_ID,
+                BUFFER_STATUS_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Confirms when Postpone publishes a scheduled tweet"
+                description = "Confirms when Buffer publishes a scheduled tweet"
             },
         )
     }
@@ -73,7 +74,7 @@ object ScheduleNotificationHelper {
         manager.cancel(notificationId(scheduleId))
     }
 
-    fun showPostponePublished(context: Context, post: ScheduledPost): Boolean {
+    fun showBufferPublished(context: Context, post: ScheduledPost): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -83,9 +84,9 @@ object ScheduleNotificationHelper {
         val preview = post.thread.firstOrNull()?.text?.takeIf(String::isNotBlank)
             ?: context.getString(R.string.schedule_media_post)
         val open = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_SCHEDULE, 2)
-        val notification = Notification.Builder(context, POSTPONE_STATUS_CHANNEL_ID)
+        val notification = Notification.Builder(context, BUFFER_STATUS_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_send)
-            .setContentTitle(context.getString(R.string.schedule_postpone_published_title))
+            .setContentTitle(context.getString(R.string.schedule_buffer_published_title))
             .setContentText(preview)
             .setStyle(Notification.BigTextStyle().bigText(preview))
             .setContentIntent(open)

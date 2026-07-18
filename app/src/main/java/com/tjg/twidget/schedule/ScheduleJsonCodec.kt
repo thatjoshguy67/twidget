@@ -49,20 +49,16 @@ internal object ScheduleJsonCodec {
             "url" to json(url),
             "mimeType" to json(mimeType),
         )
-        is PostponeLibraryMedia -> jsonObject(
-            "type" to json("postpone_library"),
-            "id" to json(id),
-            "name" to json(name),
-            "url" to json(url),
-            "mimeType" to json(mimeType),
-        )
     }
 
     private fun postFromValue(value: JsonValue.ObjectValue): ScheduledPost {
         val createdAt = value.long("createdAt")
         return ScheduledPost(
             id = value.string("id"),
-            provider = enumValueOf(value.string("provider")),
+            provider = when (value.string("provider")) {
+                "POSTPONE" -> ScheduleProvider.LOCAL_REMINDER
+                else -> enumValueOf(value.string("provider"))
+            },
             status = enumValueOf(value.string("status")),
             accountId = value.optionalString("accountId"),
             accountUsername = value.string("accountUsername"),
@@ -95,10 +91,8 @@ internal object ScheduleJsonCodec {
             url = value.string("url"),
             mimeType = value.optionalString("mimeType"),
         )
-        "postpone_library" -> PostponeLibraryMedia(
-            id = value.string("id"),
-            name = value.string("name"),
-            url = value.optionalString("url"),
+        "postpone_library" -> PublicUrlMedia(
+            url = value.optionalString("url").orEmpty(),
             mimeType = value.optionalString("mimeType"),
         )
         else -> error("Unknown media source type")

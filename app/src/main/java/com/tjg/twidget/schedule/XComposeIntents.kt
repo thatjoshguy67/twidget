@@ -97,7 +97,6 @@ object XComposeIntents {
         val remoteLinks = item.media.mapNotNull {
             when (it) {
                 is PublicUrlMedia -> it.url
-                is PostponeLibraryMedia -> it.url
                 is LocalUriMedia -> null
             }
         }

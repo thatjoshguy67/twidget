@@ -421,7 +421,6 @@
     <string name="schedule_more_actions">More actions</string>
     <string name="schedule_more">More</string>
     <string name="schedule_take_photo">Add photo or video</string>
-    <string name="schedule_camera_local_only">Camera attachments are available for local reminders</string>
     <string name="schedule_camera_unavailable">No camera app is available</string>
     <string name="schedule_character_limit_over">Character limit exceeded · %1$d over</string>
     <string name="schedule_character_limit_error">Shorten the highlighted text before saving</string>
@@ -447,6 +446,8 @@
     <string name="schedule_thread_item_description">Text for thread item %1$d</string>
     <string name="schedule_add_local_media">Add local media</string>
     <string name="schedule_media_permission_failed">Twidget couldn’t retain access to that media. Choose another file.</string>
+    <string name="schedule_attach_media">Attach media</string>
+    <string name="schedule_media_from_device">Choose from device</string>
     <string name="schedule_add_public_url">Add public URL</string>
     <string name="schedule_content_library">Content library</string>
     <string name="schedule_clear_media">Clear media</string>

@@ -225,7 +225,17 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             launchMediaPicker()
             return
         }
-        showPublicUrlDialog()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.schedule_attach_media)
+            .setItems(
+                arrayOf(
+                    getString(R.string.schedule_media_from_device),
+                    getString(R.string.schedule_add_public_url),
+                ),
+            ) { _, which ->
+                if (which == 0) launchMediaPicker() else showPublicUrlDialog()
+            }
+            .show()
     }
 
     /**
@@ -254,10 +264,6 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         mediaTarget = index
         val target = editorItems.getOrNull(index) ?: return
         if (target.media.size >= SchedulePolicy.MAX_MEDIA_PER_ITEM) return
-        if (editorProvider != ScheduleProvider.LOCAL_REMINDER) {
-            toast(R.string.schedule_camera_local_only)
-            return
-        }
         val directory = File(filesDir, "scheduled-media").apply { mkdirs() }
         val file = File(directory, "camera-${UUID.randomUUID()}.jpg")
         val uri = FileProvider.getUriForFile(this, "$packageName.update_files", file)

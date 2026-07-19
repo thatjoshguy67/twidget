@@ -18,6 +18,7 @@ class ScheduleCoordinator(
     private val bufferClient: BufferClient = BufferClient(context),
 ) {
     private val appContext = context.applicationContext
+    private val mediaUploader = BufferMediaUploader(context, bufferClient)
 
     fun saveDraft(post: ScheduledPost, nowMillis: Long = System.currentTimeMillis()): ScheduledPost {
         val previous = store.get(post.id)
@@ -42,11 +43,17 @@ class ScheduleCoordinator(
         if (post.provider == ScheduleProvider.LOCAL_REMINDER) {
             return ScheduleCoordinatorResult(saveDraft(post, nowMillis))
         }
-        val result = bufferClient.saveDraft(post)
-        if (result.isSuccess) {
-            val draft = post.copy(
+        val prepared = mediaUploader.withUploadedMedia(post)
+        val readyPost = prepared.post
+        val result: BufferResult<String> = if (readyPost != null) {
+            bufferClient.saveDraft(readyPost)
+        } else {
+            BufferResult(errors = prepared.errors.map(::BufferError))
+        }
+        if (result.isSuccess && readyPost != null) {
+            val draft = readyPost.copy(
                 status = ScheduleStatus.DRAFT,
-                remotePostId = result.value ?: post.remotePostId,
+                remotePostId = result.value ?: readyPost.remotePostId,
                 remoteSubmissionId = null,
                 errorMessage = null,
                 updatedAt = nowMillis,
@@ -150,10 +157,12 @@ class ScheduleCoordinator(
             localScheduler.cancel(it.id)
             ScheduleNotificationHelper.cancel(appContext, it.id)
         }
-        val result = if (post.remotePostId.isNullOrBlank()) {
-            bufferClient.schedulePost(post)
-        } else {
-            bufferClient.updatePost(post)
+        val prepared = mediaUploader.withUploadedMedia(post)
+        val readyPost = prepared.post
+        val result: BufferResult<String> = when {
+            readyPost == null -> BufferResult(errors = prepared.errors.map(::BufferError))
+            readyPost.remotePostId.isNullOrBlank() -> bufferClient.schedulePost(readyPost)
+            else -> bufferClient.updatePost(readyPost)
         }
         if (!result.isSuccess) {
             if (post.remotePostId.isNullOrBlank()) {
@@ -171,9 +180,10 @@ class ScheduleCoordinator(
             }
             return persistFailure(post, result.errors.map { it.message }, nowMillis)
         }
-        val scheduled = post.copy(
+        val submitted = readyPost ?: post
+        val scheduled = submitted.copy(
             status = ScheduleStatus.SCHEDULED,
-            remotePostId = result.value ?: post.remotePostId,
+            remotePostId = result.value ?: submitted.remotePostId,
             remoteSubmissionId = null,
             errorMessage = null,
             pinned = false,

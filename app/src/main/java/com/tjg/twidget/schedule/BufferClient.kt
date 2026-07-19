@@ -36,6 +36,12 @@ data class BufferPost(
     val createdAt: Long?,
 )
 
+data class BufferPreSignedUpload(
+    val url: String,
+    val key: String,
+    val bucket: String,
+)
+
 class BufferClient(
     context: Context,
     private val endpoint: String = API_URL,
@@ -118,6 +124,37 @@ class BufferClient(
         return BufferResult(posts)
     }
 
+    fun organizationIdForChannel(channelId: String): BufferResult<String> {
+        val channels = listTwitterChannels()
+        if (!channels.isSuccess) return BufferResult(errors = channels.errors)
+        val channel = channels.value.orEmpty().firstOrNull { it.id == channelId }
+            ?: return failure("The selected Buffer channel is no longer connected")
+        return BufferResult(channel.organizationId)
+    }
+
+    fun preSignedUpload(
+        organizationId: String,
+        fileName: String,
+        mimeType: String,
+    ): BufferResult<BufferPreSignedUpload> = execute(
+        PRESIGNED_UPLOAD_QUERY,
+        JSONObject().put(
+            "input",
+            JSONObject()
+                .put("organizationId", organizationId)
+                .put("fileName", fileName)
+                .put("mimeType", mimeType)
+                .put("uploadType", "postAsset"),
+        ),
+    ) { data ->
+        val payload = data.getJSONObject("s3PreSignedURL")
+        BufferPreSignedUpload(
+            url = payload.getString("url"),
+            key = payload.getString("key"),
+            bucket = payload.getString("bucket"),
+        )
+    }
+
     fun schedulePost(post: ScheduledPost): BufferResult<String> = mutatePost(post, false, false)
 
     fun saveDraft(post: ScheduledPost): BufferResult<String> = mutatePost(
@@ -198,6 +235,8 @@ class BufferClient(
             "mutation Create(\$input: CreatePostInput!) { createPost(input: \$input) { ... on PostActionSuccess { post { id } } ... on InvalidInputError { message } ... on UnauthorizedError { message } ... on UnexpectedError { message } ... on RestProxyError { message } ... on LimitReachedError { message } } }"
         private const val EDIT_MUTATION =
             "mutation Edit(\$input: EditPostInput!) { editPost(input: \$input) { ... on PostActionSuccess { post { id } } ... on InvalidInputError { message } ... on UnauthorizedError { message } ... on UnexpectedError { message } ... on RestProxyError { message } ... on LimitReachedError { message } ... on NotFoundError { message } } }"
+        private const val PRESIGNED_UPLOAD_QUERY =
+            "query PreSignedUpload(\$input: S3PreSignedURLInput!) { s3PreSignedURL(input: \$input) { url key bucket } }"
         private const val DELETE_MUTATION =
             "mutation Delete(\$input: DeletePostInput!) { deletePost(input: \$input) { ... on DeletePostSuccess { id } ... on VoidMutationError { message } } }"
     }

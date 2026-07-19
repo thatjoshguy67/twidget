@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+    <!-- Monochrome notification treatment of twidget-fg.svg. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M129.5,251A34.5,34.5 0,0 0,95 285.5L95,333.5A34.5,34.5 0,0 0,129.5 368A34.5,34.5 0,0 0,164 333.5L164,285.5A34.5,34.5 0,0 0,129.5 251Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M250.5,131A34.5,34.5 0,0 0,216 165.5L216,333.5A34.5,34.5 0,0 0,250.5 368A34.5,34.5 0,0 0,285 333.5L285,165.5A34.5,34.5 0,0 0,250.5 131Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M371.5,187A34.5,34.5 0,0 0,337 221.5L337,333.5A34.5,34.5 0,0 0,371.5 368A34.5,34.5 0,0 0,406 333.5L406,221.5A34.5,34.5 0,0 0,371.5 187Z" />
+</vector>

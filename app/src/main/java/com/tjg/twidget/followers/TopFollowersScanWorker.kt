@@ -28,7 +28,9 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         val apiKey = SecureCredentialStore.read(applicationContext, SecureCredentialStore.TWITTERAPIS_API_KEY)
         if (apiKey.isBlank()) return fail(username, "Add a TwitterAPIs key in Advanced settings")
 
+        TopFollowersActiveScans.started(username)
         var state = TopFollowersStore.read(applicationContext, username).copy(scanning = true, error = "")
+        publish(username, state)
         val latestState = AtomicReference(state)
         val scanActive = AtomicBoolean(true)
         val visibilityRegistration = TwidgetAppVisibility.addVisibilityListener { visible ->
@@ -41,12 +43,30 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
             }
         }
         return try {
+            var transientFailures = 0
             while (!isStopped) {
                 promoteToForegroundIfAppIsHidden(username, state)
                 if (state.pages >= MAX_PAGES_PER_SCAN) {
                     return fail(username, "Stopped at the $5 safety limit", state)
                 }
-                val page = TwitterApisClient.fetchFollowers(username, state.cursor, apiKey)
+                val page = try {
+                    TwitterApisClient.fetchFollowers(username, state.cursor, apiKey)
+                } catch (error: HttpTransport.HttpException) {
+                    when (error.code) {
+                        401 -> return fail(username, "TwitterAPIs rejected the API key", state)
+                        402 -> return fail(username, "TwitterAPIs credit balance is empty", state)
+                        404 -> return fail(username, "Follower list unavailable or account is private", state)
+                        400 -> return fail(username, "TwitterAPIs rejected this username", state)
+                    }
+                    transientFailures += 1
+                    if (!waitForTransientRetry(transientFailures)) return retryLater(username, state)
+                    continue
+                } catch (_: Exception) {
+                    transientFailures += 1
+                    if (!waitForTransientRetry(transientFailures)) return retryLater(username, state)
+                    continue
+                }
+                transientFailures = 0
                 if (page.users.isEmpty()) {
                     return complete(username, state)
                 }
@@ -67,23 +87,17 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 promoteToForegroundIfAppIsHidden(username, state)
                 // The cursor makes page requests sequential already. Do not add
                 // an artificial delay: TwitterAPIs advertises no platform rate
-                // cap, and WorkManager's 429 retry path remains the safety net.
+                // cap. Transient failures are retried without dropping the live
+                // progress notification.
                 notifyUpdated(username)
             }
-            Result.retry()
-        } catch (error: HttpTransport.HttpException) {
-            when (error.code) {
-                401 -> fail(username, "TwitterAPIs rejected the API key", state)
-                402 -> fail(username, "TwitterAPIs credit balance is empty", state)
-                404 -> fail(username, "Follower list unavailable or account is private", state)
-                400 -> fail(username, "TwitterAPIs rejected this username", state)
-                else -> Result.retry()
-            }
+            retryLater(username, state)
         } catch (_: Exception) {
-            Result.retry()
+            retryLater(username, state)
         } finally {
             scanActive.set(false)
             visibilityRegistration.close()
+            TopFollowersActiveScans.finished(username)
         }
     }
 
@@ -94,6 +108,27 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         ).get()
     }
 
+    private fun waitForTransientRetry(attempt: Int): Boolean {
+        val delayMs = TopFollowersRetryPolicy.delayMs(attempt) ?: return false
+        val deadline = System.currentTimeMillis() + delayMs
+        while (!isStopped) {
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) return true
+            Thread.sleep(remaining.coerceAtMost(RETRY_SLEEP_SLICE_MS))
+        }
+        return false
+    }
+
+    private fun retryLater(username: String, prior: TopFollowersState): Result {
+        // WorkManager removes a worker's foreground notification during its
+        // backoff period. Reflect that pause in persisted UI state so the card
+        // never claims an inactive scan is still progressing without a live
+        // notification. The next attempt publishes scanning=true immediately.
+        publish(username, prior.copy(scanning = false, error = ""))
+        TopFollowersNotificationHelper.cancelProgress(applicationContext, username)
+        return Result.retry()
+    }
+
     private fun complete(username: String, prior: TopFollowersState): Result {
         val completed = prior.copy(
             scanning = false,
@@ -102,6 +137,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
             completedAt = System.currentTimeMillis(),
         )
         publish(username, completed)
+        TopFollowersNotificationHelper.cancelProgress(applicationContext, username)
         if (!TwidgetAppVisibility.isVisible()) {
             TopFollowersNotificationHelper.showComplete(applicationContext, username, completed)
         }
@@ -113,6 +149,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
             scanning = false,
             error = message,
         ))
+        TopFollowersNotificationHelper.cancelProgress(applicationContext, username)
         return Result.failure()
     }
 
@@ -131,8 +168,21 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         private const val KEY_USERNAME = "username"
         private const val MAX_PAGES_PER_SCAN = 6250 // $5 at the documented $0.0008/read.
         private const val TOP_LIMIT = 5
+        private const val RETRY_SLEEP_SLICE_MS = 500L
         const val ACTION_UPDATED = "com.tjg.twidget.TOP_FOLLOWERS_UPDATED"
         const val EXTRA_USERNAME = "username"
+
+        fun cancel(context: Context, username: String) {
+            val clean = username.trim().trimStart('@')
+            if (clean.isBlank()) return
+            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(workName(clean))
+            val stopped = TopFollowersStore.read(context, clean).copy(scanning = false, error = "")
+            TopFollowersStore.write(context, clean, stopped)
+            TopFollowersNotificationHelper.cancelProgress(context, clean)
+            context.applicationContext.sendBroadcast(
+                Intent(ACTION_UPDATED).setPackage(context.packageName).putExtra(EXTRA_USERNAME, clean),
+            )
+        }
 
         fun enqueue(context: Context, username: String, restart: Boolean): TopFollowersScanStart {
             val clean = username.trim().trimStart('@')
@@ -149,11 +199,37 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 60, TimeUnit.SECONDS)
                 .build()
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-                "twidget-top-followers-${clean.lowercase(Locale.US)}",
+                workName(clean),
                 if (restart) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
                 request,
             )
             return TopFollowersScanStart.STARTED
         }
+
+        private fun workName(username: String) =
+            "twidget-top-followers-${username.lowercase(Locale.US)}"
     }
+}
+
+internal object TopFollowersRetryPolicy {
+    private val delaysMs = longArrayOf(2_000L, 4_000L, 8_000L, 16_000L, 30_000L)
+
+    fun delayMs(attempt: Int): Long? = delaysMs.getOrNull(attempt - 1)
+}
+
+/** Process-local truth used to avoid rendering stale persisted scanning state after process death. */
+internal object TopFollowersActiveScans {
+    private val usernames = mutableSetOf<String>()
+
+    @Synchronized fun started(username: String) {
+        usernames += key(username)
+    }
+
+    @Synchronized fun finished(username: String) {
+        usernames -= key(username)
+    }
+
+    @Synchronized fun isActive(username: String): Boolean = key(username) in usernames
+
+    private fun key(username: String) = username.trim().trimStart('@').lowercase(Locale.US)
 }

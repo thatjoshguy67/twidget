@@ -36,7 +36,7 @@ object TopFollowersNotificationHelper {
         val notificationMax = total?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
         val notificationProgress = notificationMax?.let { state.scanned.coerceIn(0, it) }
         val builder = Notification.Builder(context, PROGRESS_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_search)
+            .setSmallIcon(R.drawable.ic_twidget_notification)
             .setContentTitle(context.getString(R.string.top_followers_progress_title, username))
             .setContentText(context.getString(R.string.top_followers_scanning, state.scanned, state.pages))
             .setContentIntent(openAppIntent(context, username))
@@ -92,7 +92,7 @@ object TopFollowersNotificationHelper {
             context.getString(R.string.top_followers_notification_leader, it.name, TwidgetStore.compactNumber(it.followers))
         } ?: context.getString(R.string.top_followers_complete, state.scanned, state.pages)
         val notification = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_search)
+            .setSmallIcon(R.drawable.ic_twidget_notification)
             .setContentTitle(context.getString(R.string.top_followers_notification_title, username))
             .setContentText(detail)
             .setContentIntent(openAppIntent(context, username))
@@ -103,6 +103,11 @@ object TopFollowersNotificationHelper {
             manager.notify(completionNotificationId(username), notification)
             true
         }.getOrDefault(false)
+    }
+
+    fun cancelProgress(context: Context, username: String) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(progressNotificationId(username))
     }
 
     private fun openAppIntent(context: Context, username: String): PendingIntent = PendingIntent.getActivity(

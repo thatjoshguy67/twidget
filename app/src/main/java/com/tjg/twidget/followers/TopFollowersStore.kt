@@ -40,6 +40,13 @@ internal object TopFollowersScanPolicy {
 
     fun canStart(lastStartedDay: String, timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): Boolean =
         lastStartedDay != localDay(timestamp, zoneId)
+
+    fun canStart(
+        lastStartedDay: String,
+        previousScanComplete: Boolean,
+        timestamp: Long,
+        zoneId: ZoneId = ZoneId.systemDefault(),
+    ): Boolean = !previousScanComplete || canStart(lastStartedDay, timestamp, zoneId)
 }
 
 object TopFollowersStore {
@@ -112,8 +119,12 @@ object TopFollowersStore {
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): TopFollowersScanStart {
         val previous = read(context, username)
-        if (!TopFollowersScanPolicy.canStart(previous.lastStartedDay, now, zoneId)) {
+        if (!TopFollowersScanPolicy.canStart(previous.lastStartedDay, previous.complete, now, zoneId)) {
             return TopFollowersScanStart.ALREADY_SCANNED_TODAY
+        }
+        if (previous.lastStartedDay == TopFollowersScanPolicy.localDay(now, zoneId) && !previous.complete) {
+            write(context, username, previous.copy(scanning = true, error = ""))
+            return TopFollowersScanStart.STARTED
         }
         write(
             context,

@@ -540,7 +540,11 @@
     <string name="top_followers_start_scan">Start scan</string>
     <string name="top_followers_results_title">Your top followers</string>
     <string name="top_followers_scanning_title">Scanning</string>
+    <string name="top_followers_scanning_progress_title">Scanning · %1$d%% · Page %2$d</string>
+    <string name="top_followers_scanning_page_title">Scanning · Page %1$d</string>
     <string name="top_followers_refresh">Scan again</string>
+    <string name="top_followers_stop_scan">Stop scan</string>
+    <string name="top_followers_scan_stopped">Scan stopped. You can resume it later today.</string>
     <string name="top_followers_add_api_key">Add API key</string>
     <string name="top_followers_start">Start</string>
     <string name="top_followers_api_key_required">Add your TwitterAPIs key in Advanced settings before starting a scan.</string>

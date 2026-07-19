@@ -35,7 +35,9 @@ internal class BufferMediaUploader(
         if (locals.isEmpty()) return BufferMediaUploadResult(post)
         val organization = client.organizationIdForChannel(post.accountUsername)
         val organizationId = organization.value
-            ?: return BufferMediaUploadResult(errors = organization.errors.map(BufferError::message))
+            ?: return BufferMediaUploadResult(
+                errors = organization.errors.map { "Buffer channel lookup: ${it.message}" },
+            )
         val uploads = mutableMapOf<String, PublicUrlMedia>()
         locals.forEach { media ->
             val outcome = runCatching { upload(organizationId, media) }
@@ -65,7 +67,7 @@ internal class BufferMediaUploader(
             ?: "twidget-upload"
         val slotResult = client.preSignedUpload(organizationId, fileName, mimeType)
         val slot = slotResult.value ?: error(
-            slotResult.errors.firstOrNull()?.message ?: "Buffer did not provide an upload URL",
+            "Buffer upload slot: ${slotResult.errors.firstOrNull()?.message ?: "no upload URL returned"}",
         )
         putBytes(slot.url, mimeType, uri)
         val url = registerUpload(slot.key)

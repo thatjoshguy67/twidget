@@ -78,9 +78,7 @@ class BufferScheduleSync(
                 accountId = trackedUsername,
                 accountUsername = channel.id,
                 scheduledAt = bufferPost.dueAt,
-                thread = current?.thread ?: listOf(
-                    ScheduleThreadItem(id = "buffer-item-${bufferPost.id}", text = bufferPost.text)
-                ),
+                thread = mergedThread(current, bufferPost),
                 remotePostId = bufferPost.id,
                 remoteSubmissionId = null,
                 errorMessage = if (status == ScheduleStatus.NEEDS_ACTION) "Buffer could not publish this post" else null,
@@ -106,6 +104,20 @@ class BufferScheduleSync(
             if (store.remove(it.id)) removed++
         }
         return BufferSyncResult(imported, updated, removed)
+    }
+
+    /**
+     * The local thread stays the richer record once it exists, but media
+     * added on Buffer's side (for example from the web dashboard) is pulled
+     * in whenever the local copy has none. Multi-item local threads are left
+     * untouched because Buffer reports assets per post, not per thread item.
+     */
+    private fun mergedThread(current: ScheduledPost?, remote: BufferPost): List<ScheduleThreadItem> {
+        val thread = current?.thread ?: listOf(
+            ScheduleThreadItem(id = "buffer-item-${remote.id}", text = remote.text)
+        )
+        if (remote.media.isEmpty() || thread.size != 1 || thread.first().media.isNotEmpty()) return thread
+        return listOf(thread.first().copy(media = remote.media))
     }
 
     private fun ScheduledPost.matches(remote: BufferPost, channelId: String): Boolean {

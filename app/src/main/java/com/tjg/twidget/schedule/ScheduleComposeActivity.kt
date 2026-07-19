@@ -68,11 +68,28 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     private val localMediaPicker = registerForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(SchedulePolicy.MAX_MEDIA_PER_ITEM)
-    ) { uris ->
-        val target = editorItems.getOrNull(mediaTarget) ?: return@registerForActivityResult
+    ) { uris -> handlePickedMedia(uris) }
+
+    private val samsungGalleryPicker = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val uris = mutableListOf<Uri>()
+        val clip = data.clipData
+        if (clip != null) {
+            for (i in 0 until clip.itemCount) clip.getItemAt(i)?.uri?.let(uris::add)
+        } else {
+            data.data?.let(uris::add)
+        }
+        handlePickedMedia(uris.distinct())
+    }
+
+    private fun handlePickedMedia(uris: List<Uri>) {
+        val target = editorItems.getOrNull(mediaTarget) ?: return
         val room = SchedulePolicy.MAX_MEDIA_PER_ITEM - target.media.size
         val selected = uris.take(room.coerceAtLeast(0))
-        if (selected.isEmpty()) return@registerForActivityResult
+        if (selected.isEmpty()) return
         val targetId = target.id
         setBusy(true)
         AppExecutors.execute(
@@ -205,12 +222,32 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     internal fun onComposeAttachMedia(index: Int) {
         mediaTarget = index
         if (editorProvider == ScheduleProvider.LOCAL_REMINDER) {
-            localMediaPicker.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-            )
+            launchMediaPicker()
             return
         }
         showPublicUrlDialog()
+    }
+
+    /**
+     * Prefers Samsung Gallery's own picker on One UI devices, falling back to
+     * the Android photo picker everywhere else. Gallery is addressed by
+     * package with a standard media-pick intent rather than a hardcoded
+     * activity, so whichever picker activity Gallery exports gets resolved.
+     */
+    private fun launchMediaPicker() {
+        val samsungGallery = Intent(Intent.ACTION_GET_CONTENT).apply {
+            setPackage(SAMSUNG_GALLERY_PACKAGE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        val launched = samsungGallery.resolveActivity(packageManager) != null &&
+            runCatching { samsungGalleryPicker.launch(samsungGallery) }.isSuccess
+        if (launched) return
+        localMediaPicker.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+        )
     }
 
     internal fun onComposeTakePhoto(index: Int) {
@@ -567,5 +604,6 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         const val EXTRA_SCHEDULE_ID = "com.tjg.twidget.extra.COMPOSE_SCHEDULE_ID"
         const val EXTRA_SCHEDULED_AT = "com.tjg.twidget.extra.COMPOSE_SCHEDULED_AT"
         private const val MAX_THREAD_ITEMS = 20
+        private const val SAMSUNG_GALLERY_PACKAGE = "com.sec.android.gallery3d"
     }
 }

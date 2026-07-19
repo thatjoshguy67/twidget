@@ -16,6 +16,8 @@
             <category android:name="android.intent.category.APP_BROWSER" />
         </intent>
         <package android:name="com.twitter.android" />
+        <!-- Samsung Gallery, preferred media picker on One UI. -->
+        <package android:name="com.sec.android.gallery3d" />
     </queries>
 
     <application

@@ -18,6 +18,9 @@ import java.util.Locale
 object TopFollowersNotificationHelper {
     private const val CHANNEL_ID = "top_followers_scans"
     private const val PROGRESS_CHANNEL_ID = "top_followers_scan_progress"
+    // Public in SDK 36.1. Keeping the documented value inline lets builds made
+    // with the base API 36 SDK request promotion on 36.1+ devices as well.
+    private const val EXTRA_REQUEST_PROMOTED_ONGOING = "android.requestPromotedOngoing"
 
     fun progressForegroundInfo(context: Context, username: String, state: TopFollowersState): ForegroundInfo {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -32,7 +35,7 @@ object TopFollowersNotificationHelper {
         }
         val notificationMax = total?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
         val notificationProgress = notificationMax?.let { state.scanned.coerceIn(0, it) }
-        val notification = Notification.Builder(context, PROGRESS_CHANNEL_ID)
+        val builder = Notification.Builder(context, PROGRESS_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_search)
             .setContentTitle(context.getString(R.string.top_followers_progress_title, username))
             .setContentText(context.getString(R.string.top_followers_scanning, state.scanned, state.pages))
@@ -41,7 +44,32 @@ object TopFollowersNotificationHelper {
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setProgress(notificationMax ?: 0, notificationProgress ?: 0, total == null)
-            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            val progressStyle = Notification.ProgressStyle()
+                .setStyledByProgress(true)
+                .setProgressIndeterminate(total == null)
+            if (notificationMax != null && notificationProgress != null) {
+                progressStyle
+                    .setProgress(notificationProgress)
+                    .setProgressSegments(listOf(
+                        Notification.ProgressStyle.Segment(notificationMax)
+                            .setColor(context.getColor(R.color.oneui_accent)),
+                    ))
+                val percent = if (notificationMax == 0) 0 else
+                    (notificationProgress.toLong() * 100L / notificationMax).toInt()
+                builder.setShortCriticalText("$percent%")
+            } else {
+                builder.setShortCriticalText(TwidgetStore.compactNumber(state.scanned.toLong()))
+            }
+            builder.setStyle(progressStyle)
+        }
+
+        val notification = builder.build().apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                extras.putBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, true)
+            }
+        }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(progressNotificationId(username), notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {

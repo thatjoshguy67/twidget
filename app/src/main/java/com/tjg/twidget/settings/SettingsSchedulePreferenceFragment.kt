@@ -1,9 +1,11 @@
 package com.tjg.twidget.settings
 
 import android.os.Bundle
+import android.text.InputType
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
@@ -66,6 +68,34 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
                 })
             }
 
+            screen.addPreference(category(R.string.schedule_media_hosting))
+            screen.addPreference(Preference(context).apply {
+                key = "schedule_cloudinary_cloud_name"
+                title = getString(R.string.schedule_cloudinary_cloud_name)
+                summary = ScheduleSettingsStore.cloudinaryCloudName(context)
+                    ?: getString(R.string.schedule_cloudinary_not_set)
+                setOnPreferenceClickListener {
+                    promptCloudinaryValue(
+                        R.string.schedule_cloudinary_cloud_name,
+                        ScheduleSettingsStore.cloudinaryCloudName(context),
+                    ) { ScheduleSettingsStore.setCloudinaryCloudName(context, it) }
+                    true
+                }
+            })
+            screen.addPreference(Preference(context).apply {
+                key = "schedule_cloudinary_upload_preset"
+                title = getString(R.string.schedule_cloudinary_upload_preset)
+                summary = ScheduleSettingsStore.cloudinaryUploadPreset(context)
+                    ?: getString(R.string.schedule_cloudinary_not_set)
+                setOnPreferenceClickListener {
+                    promptCloudinaryValue(
+                        R.string.schedule_cloudinary_upload_preset,
+                        ScheduleSettingsStore.cloudinaryUploadPreset(context),
+                    ) { ScheduleSettingsStore.setCloudinaryUploadPreset(context, it) }
+                    true
+                }
+            })
+
             screen.addPreference(category(0))
             screen.addPreference(Preference(context).apply {
                 key = "schedule_disconnect_buffer"
@@ -115,6 +145,26 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
                     .show()
             }
         }
+    }
+
+    private fun promptCloudinaryValue(titleRes: Int, current: String?, onValue: (String?) -> Unit) {
+        val context = requireContext()
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        val input = EditText(context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            setText(current.orEmpty())
+            setSelection(text.length)
+            setPadding(padding, padding / 3, padding, padding / 3)
+        }
+        AlertDialog.Builder(context)
+            .setTitle(titleRes)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                onValue(input.text.toString())
+                buildScreen()
+            }
+            .show()
     }
 
     private fun confirmDisconnect() {

@@ -37,12 +37,6 @@ data class BufferPost(
     val media: List<PublicUrlMedia> = emptyList(),
 )
 
-data class BufferPreSignedUpload(
-    val url: String,
-    val key: String,
-    val bucket: String,
-)
-
 class BufferClient(
     context: Context,
     private val endpoint: String = API_URL,
@@ -126,42 +120,6 @@ class BufferClient(
         return BufferResult(posts)
     }
 
-    fun organizationIdForChannel(channelId: String): BufferResult<String> {
-        val channels = listTwitterChannels()
-        if (!channels.isSuccess) return BufferResult(errors = channels.errors)
-        val channel = channels.value.orEmpty().firstOrNull { it.id == channelId }
-            ?: return failure("The selected Buffer channel is no longer connected")
-        return BufferResult(channel.organizationId)
-    }
-
-    // The upload-slot query is authorized per client on Buffer's gateway, so
-    // this request mirrors the web dashboard's shape: its operation name, the
-    // _o routing parameter, and the webapp client headers.
-    fun preSignedUpload(
-        organizationId: String,
-        fileName: String,
-        mimeType: String,
-    ): BufferResult<BufferPreSignedUpload> = execute(
-        PRESIGNED_UPLOAD_QUERY,
-        JSONObject().put(
-            "input",
-            JSONObject()
-                .put("organizationId", organizationId)
-                .put("fileName", fileName)
-                .put("mimeType", mimeType)
-                .put("uploadType", "postAsset"),
-        ),
-        endpointOverride = "$endpoint/?_o=s3PreSignedURL",
-        extraHeaders = WEBAPP_CLIENT_HEADERS,
-    ) { data ->
-        val payload = data.getJSONObject("s3PreSignedURL")
-        BufferPreSignedUpload(
-            url = payload.getString("url"),
-            key = payload.getString("key"),
-            bucket = payload.getString("bucket"),
-        )
-    }
-
     fun schedulePost(post: ScheduledPost): BufferResult<String> = mutatePost(post, false, false)
 
     fun saveDraft(post: ScheduledPost): BufferResult<String> = mutatePost(
@@ -201,19 +159,17 @@ class BufferClient(
     private fun <T> execute(
         query: String,
         variables: JSONObject = JSONObject(),
-        endpointOverride: String? = null,
-        extraHeaders: Map<String, String> = emptyMap(),
         parser: (JSONObject) -> T,
     ): BufferResult<T> = try {
         val token = tokenOverride?.takeIf(String::isNotBlank) ?: BufferOAuth.accessToken(appContext)
         val body = JSONObject().put("query", query).put("variables", variables).toString()
         val response = HttpTransport.post(
-            endpointOverride ?: endpoint,
+            endpoint,
             body,
             mapOf(
                 "Content-Type" to "application/json; charset=utf-8",
                 "Authorization" to "Bearer $token",
-            ) + extraHeaders,
+            ),
             connectTimeoutMs = 15_000,
             readTimeoutMs = 25_000,
         )
@@ -244,12 +200,6 @@ class BufferClient(
             "mutation Create(\$input: CreatePostInput!) { createPost(input: \$input) { ... on PostActionSuccess { post { id } } ... on InvalidInputError { message } ... on UnauthorizedError { message } ... on UnexpectedError { message } ... on RestProxyError { message } ... on LimitReachedError { message } } }"
         private const val EDIT_MUTATION =
             "mutation Edit(\$input: EditPostInput!) { editPost(input: \$input) { ... on PostActionSuccess { post { id } } ... on InvalidInputError { message } ... on UnauthorizedError { message } ... on UnexpectedError { message } ... on RestProxyError { message } ... on LimitReachedError { message } ... on NotFoundError { message } } }"
-        private val WEBAPP_CLIENT_HEADERS = mapOf(
-            "x-buffer-client-id" to "webapp-publishing",
-            "x-buffer-client-name" to "webapp-publishing",
-        )
-        private const val PRESIGNED_UPLOAD_QUERY =
-            "query s3PreSignedURL(\$input: S3PreSignedURLInput!) { s3PreSignedURL(input: \$input) { url key bucket } }"
         private const val DELETE_MUTATION =
             "mutation Delete(\$input: DeletePostInput!) { deletePost(input: \$input) { ... on DeletePostSuccess { id } ... on VoidMutationError { message } } }"
     }

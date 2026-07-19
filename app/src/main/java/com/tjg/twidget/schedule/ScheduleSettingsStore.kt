@@ -29,6 +29,8 @@ object ScheduleSettingsStore {
     private const val KEY_BUFFER_MAPPINGS = "schedule_buffer_mappings"
     private const val KEY_BUFFER_CHANNEL_NAMES = "schedule_buffer_channel_names"
     private const val KEY_LEGACY_POSTPONE_MAPPINGS = "schedule_postpone_mappings"
+    private const val KEY_CLOUDINARY_CLOUD_NAME = "schedule_cloudinary_cloud_name"
+    private const val KEY_CLOUDINARY_UPLOAD_PRESET = "schedule_cloudinary_upload_preset"
 
     fun defaultProvider(context: Context): ScheduleProvider {
         val stored = prefs(context).getString(KEY_DEFAULT_PROVIDER, null)
@@ -110,6 +112,27 @@ object ScheduleSettingsStore {
                 }
             }
         }.getOrDefault(emptyMap())
+    }
+
+    fun cloudinaryCloudName(context: Context): String? =
+        prefs(context).getString(KEY_CLOUDINARY_CLOUD_NAME, null)?.trim()?.takeIf(String::isNotBlank)
+
+    fun setCloudinaryCloudName(context: Context, value: String?) {
+        setTrimmedOrRemove(context, KEY_CLOUDINARY_CLOUD_NAME, value)
+    }
+
+    fun cloudinaryUploadPreset(context: Context): String? =
+        prefs(context).getString(KEY_CLOUDINARY_UPLOAD_PRESET, null)?.trim()?.takeIf(String::isNotBlank)
+
+    fun setCloudinaryUploadPreset(context: Context, value: String?) {
+        setTrimmedOrRemove(context, KEY_CLOUDINARY_UPLOAD_PRESET, value)
+    }
+
+    private fun setTrimmedOrRemove(context: Context, preferenceKey: String, value: String?) {
+        val trimmed = value?.trim().orEmpty()
+        prefs(context).edit().apply {
+            if (trimmed.isBlank()) remove(preferenceKey) else putString(preferenceKey, trimmed)
+        }.apply()
     }
 
     fun clearBuffer(context: Context) {

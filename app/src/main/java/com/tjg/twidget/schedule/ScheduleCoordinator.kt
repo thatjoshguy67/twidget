@@ -18,7 +18,7 @@ class ScheduleCoordinator(
     private val bufferClient: BufferClient = BufferClient(context),
 ) {
     private val appContext = context.applicationContext
-    private val mediaUploader = BufferMediaUploader(context, bufferClient)
+    private val mediaUploader = BufferMediaUploader(context)
 
     fun saveDraft(post: ScheduledPost, nowMillis: Long = System.currentTimeMillis()): ScheduledPost {
         val previous = store.get(post.id)

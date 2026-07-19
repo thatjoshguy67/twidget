@@ -35,6 +35,30 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Twidget">
 
+        <!-- Samsung Modes and Routines SDK v3 integration. Modes and Routines
+             discovers this metadata and invokes the permission-protected
+             provider below. The compatibility provider is intentionally
+             action-only until discovery is verified on a real One UI device. -->
+        <meta-data
+            android:name="com.samsung.android.sdk.routines.v3.meta.ACTION"
+            android:resource="@xml/routines_actions" />
+
+        <provider
+            android:name="com.samsung.android.sdk.routines.v3.internal.RoutineSdkContentProvider"
+            android:authorities="${applicationId}.provider.routines.v3"
+            android:exported="true"
+            android:permission="com.samsung.android.permission.sdk.routines.v3.ACCESS_ROUTINES">
+            <intent-filter>
+                <action android:name="com.samsung.android.sdk.routines.v3.ROUTINE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="com.samsung.android.sdk.routines.v3.version"
+                android:value="3.1.28" />
+            <meta-data
+                android:name="com.samsung.android.sdk.routines.v3.version_code"
+                android:value="30123" />
+        </provider>
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

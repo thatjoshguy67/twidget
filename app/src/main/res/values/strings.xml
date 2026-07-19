@@ -157,6 +157,8 @@
     <string name="refresh_on_launch">Refresh on launch</string>
     <string name="refresh_interval">Refresh interval</string>
     <string name="refresh_interval_value">%1$d minutes</string>
+    <string name="routine_action_refresh">Refresh stats and widgets</string>
+    <string name="routine_action_refresh_description">Refresh every tracked account and update Twidget widgets</string>
     <string name="scheduling">Scheduling</string>
     <string name="scheduling_method">Scheduling method</string>
     <string name="enable_notifications">Enable notifications</string>

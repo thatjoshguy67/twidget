@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<actions>
+    <action
+        category="apps"
+        description="@string/routine_action_refresh_description"
+        icon="@drawable/ic_oneui_refresh"
+        label="@string/routine_action_refresh"
+        reversible="false"
+        supportStatusCheckPolicy="check_dynamically"
+        tag="twidget_refresh_stats"
+        version="1" />
+</actions>

@@ -108,6 +108,13 @@ minimal callback page forwards the short-lived response to
 `BUFFER_OAUTH_CLIENT_ID` or `-PbufferOAuthClientId=...`; no client secret is
 embedded in the Android app.
 
+Device media attached to Buffer posts is hosted on Cloudinary through an
+unsigned upload preset. Provide the shared account at build time with
+`CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_UPLOAD_PRESET` (or
+`-PcloudinaryCloudName=...`/`-PcloudinaryUploadPreset=...`); users can override
+both in Buffer settings. Only the cloud name and unsigned preset name are
+embedded — no API key or secret.
+
 GitHub Packages credentials belong in
 `~/.config/twidget/github.properties`; start from
 [`github.properties.example`](github.properties.example) and keep the populated

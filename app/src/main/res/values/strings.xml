@@ -450,6 +450,7 @@
     <string name="schedule_cloudinary_cloud_name">Cloudinary cloud name</string>
     <string name="schedule_cloudinary_upload_preset">Cloudinary upload preset</string>
     <string name="schedule_cloudinary_not_set">Not set</string>
+    <string name="schedule_cloudinary_built_in">Built-in</string>
     <string name="schedule_attach_media">Attach media</string>
     <string name="schedule_media_from_device">Choose from device</string>
     <string name="schedule_add_public_url">Add public URL</string>

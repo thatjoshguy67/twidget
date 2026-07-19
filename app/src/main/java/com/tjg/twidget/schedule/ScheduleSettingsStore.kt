@@ -1,6 +1,7 @@
 package com.tjg.twidget.schedule
 
 import android.content.Context
+import com.tjg.twidget.R
 import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.data.TwidgetStore
 import java.util.Locale
@@ -114,7 +115,12 @@ object ScheduleSettingsStore {
         }.getOrDefault(emptyMap())
     }
 
+    // The Cloudinary account ships with the build (resValue) so users get
+    // media hosting without any setup; the preference is a per-user override.
     fun cloudinaryCloudName(context: Context): String? =
+        cloudinaryCloudNameOverride(context) ?: builtInString(context, R.string.cloudinary_cloud_name)
+
+    fun cloudinaryCloudNameOverride(context: Context): String? =
         prefs(context).getString(KEY_CLOUDINARY_CLOUD_NAME, null)?.trim()?.takeIf(String::isNotBlank)
 
     fun setCloudinaryCloudName(context: Context, value: String?) {
@@ -122,11 +128,17 @@ object ScheduleSettingsStore {
     }
 
     fun cloudinaryUploadPreset(context: Context): String? =
+        cloudinaryUploadPresetOverride(context) ?: builtInString(context, R.string.cloudinary_upload_preset)
+
+    fun cloudinaryUploadPresetOverride(context: Context): String? =
         prefs(context).getString(KEY_CLOUDINARY_UPLOAD_PRESET, null)?.trim()?.takeIf(String::isNotBlank)
 
     fun setCloudinaryUploadPreset(context: Context, value: String?) {
         setTrimmedOrRemove(context, KEY_CLOUDINARY_UPLOAD_PRESET, value)
     }
+
+    private fun builtInString(context: Context, resId: Int): String? =
+        context.getString(resId).trim().takeIf(String::isNotBlank)
 
     private fun setTrimmedOrRemove(context: Context, preferenceKey: String, value: String?) {
         val trimmed = value?.trim().orEmpty()

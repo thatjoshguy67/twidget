@@ -72,12 +72,14 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
             screen.addPreference(Preference(context).apply {
                 key = "schedule_cloudinary_cloud_name"
                 title = getString(R.string.schedule_cloudinary_cloud_name)
-                summary = ScheduleSettingsStore.cloudinaryCloudName(context)
-                    ?: getString(R.string.schedule_cloudinary_not_set)
+                summary = cloudinarySummary(
+                    ScheduleSettingsStore.cloudinaryCloudNameOverride(context),
+                    ScheduleSettingsStore.cloudinaryCloudName(context),
+                )
                 setOnPreferenceClickListener {
                     promptCloudinaryValue(
                         R.string.schedule_cloudinary_cloud_name,
-                        ScheduleSettingsStore.cloudinaryCloudName(context),
+                        ScheduleSettingsStore.cloudinaryCloudNameOverride(context),
                     ) { ScheduleSettingsStore.setCloudinaryCloudName(context, it) }
                     true
                 }
@@ -85,12 +87,14 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
             screen.addPreference(Preference(context).apply {
                 key = "schedule_cloudinary_upload_preset"
                 title = getString(R.string.schedule_cloudinary_upload_preset)
-                summary = ScheduleSettingsStore.cloudinaryUploadPreset(context)
-                    ?: getString(R.string.schedule_cloudinary_not_set)
+                summary = cloudinarySummary(
+                    ScheduleSettingsStore.cloudinaryUploadPresetOverride(context),
+                    ScheduleSettingsStore.cloudinaryUploadPreset(context),
+                )
                 setOnPreferenceClickListener {
                     promptCloudinaryValue(
                         R.string.schedule_cloudinary_upload_preset,
-                        ScheduleSettingsStore.cloudinaryUploadPreset(context),
+                        ScheduleSettingsStore.cloudinaryUploadPresetOverride(context),
                     ) { ScheduleSettingsStore.setCloudinaryUploadPreset(context, it) }
                     true
                 }
@@ -146,6 +150,10 @@ class SettingsSchedulePreferenceFragment : InsetPreferenceFragment() {
             }
         }
     }
+
+    private fun cloudinarySummary(override: String?, effective: String?): String = override
+        ?: if (effective != null) getString(R.string.schedule_cloudinary_built_in)
+        else getString(R.string.schedule_cloudinary_not_set)
 
     private fun promptCloudinaryValue(titleRes: Int, current: String?, onValue: (String?) -> Unit) {
         val context = requireContext()

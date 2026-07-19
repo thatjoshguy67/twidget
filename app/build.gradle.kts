@@ -67,6 +67,12 @@ val betaNumber = providers.gradleProperty("betaNumber").orNull?.toIntOrNull() ?:
 val bufferOAuthClientId = providers.gradleProperty("bufferOAuthClientId").orNull
     ?: System.getenv("BUFFER_OAUTH_CLIENT_ID")
     ?: ""
+val cloudinaryCloudName = providers.gradleProperty("cloudinaryCloudName").orNull
+    ?: System.getenv("CLOUDINARY_CLOUD_NAME")
+    ?: ""
+val cloudinaryUploadPreset = providers.gradleProperty("cloudinaryUploadPreset").orNull
+    ?: System.getenv("CLOUDINARY_UPLOAD_PRESET")
+    ?: ""
 require(debugNumber > 0) { "prereleaseNumber must be greater than zero" }
 require(betaNumber > 0) { "betaNumber must be greater than zero" }
 
@@ -81,6 +87,8 @@ android {
         versionCode = versionMajor * 1_000_000 + versionMinor * 1_000 + versionPatch
         versionName = baseVersionName
         resValue("string", "buffer_oauth_client_id", bufferOAuthClientId)
+        resValue("string", "cloudinary_cloud_name", cloudinaryCloudName)
+        resValue("string", "cloudinary_upload_preset", cloudinaryUploadPreset)
         resValue(
             "string",
             "buffer_oauth_redirect_uri",

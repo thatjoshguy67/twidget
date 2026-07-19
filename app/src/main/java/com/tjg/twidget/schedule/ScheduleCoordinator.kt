@@ -63,7 +63,7 @@ class ScheduleCoordinator(
             return ScheduleCoordinatorResult(draft)
         }
         if (!post.remotePostId.isNullOrBlank()) {
-            return persistFailure(post, result.errors.map { it.message }, nowMillis)
+            return persistFailure(readyPost ?: post, result.errors.map { it.message }, nowMillis)
         }
         val localUsername = post.accountId?.takeIf(String::isNotBlank)
             ?: TwidgetStore.settings(appContext).username
@@ -178,7 +178,7 @@ class ScheduleCoordinator(
                 val fallback = scheduleLocal(local, nowMillis)
                 if (fallback.isSuccess) return fallback.copy(fellBackToLocal = true)
             }
-            return persistFailure(post, result.errors.map { it.message }, nowMillis)
+            return persistFailure(readyPost ?: post, result.errors.map { it.message }, nowMillis)
         }
         val submitted = readyPost ?: post
         val scheduled = submitted.copy(

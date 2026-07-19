@@ -23,7 +23,7 @@ class BufferGraphQlCodecTest {
             ),
         )
 
-        val input = BufferGraphQlCodec.postInput(post, saveToDraft = false)
+        val input = BufferGraphQlCodec.createPostInput(post, saveToDraft = false)
 
         assertEquals("channel-123", input.getString("channelId"))
         assertEquals("customScheduled", input.getString("mode"))
@@ -46,7 +46,23 @@ class BufferGraphQlCodecTest {
             thread = listOf(ScheduleThreadItem(text = "Draft")),
         )
 
-        assertTrue(BufferGraphQlCodec.postInput(post, saveToDraft = true).getBoolean("saveToDraft"))
+        assertTrue(BufferGraphQlCodec.createPostInput(post, saveToDraft = true).getBoolean("saveToDraft"))
+    }
+
+    @Test
+    fun editInputUsesPostIdWithoutCreateOnlyChannelId() {
+        val post = ScheduledPost(
+            provider = ScheduleProvider.BUFFER,
+            accountUsername = "channel-123",
+            scheduledAt = 4_000_000_000_000L,
+            thread = listOf(ScheduleThreadItem(text = "Updated draft")),
+            remotePostId = "post-456",
+        )
+
+        val input = BufferGraphQlCodec.editPostInput(post, saveToDraft = true)
+
+        assertEquals("post-456", input.getString("id"))
+        assertTrue(!input.has("channelId"))
     }
 
     @Test
@@ -58,6 +74,6 @@ class BufferGraphQlCodecTest {
             thread = listOf(ScheduleThreadItem(text = "Photo", media = listOf(LocalUriMedia("content://photo")))),
         )
 
-        assertTrue(runCatching { BufferGraphQlCodec.postInput(post, saveToDraft = false) }.isFailure)
+        assertTrue(runCatching { BufferGraphQlCodec.createPostInput(post, saveToDraft = false) }.isFailure)
     }
 }

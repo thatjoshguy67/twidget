@@ -146,8 +146,11 @@ class BufferClient(
         require(post.provider == ScheduleProvider.BUFFER) { "Post must use the Buffer provider" }
         require(post.accountUsername.isNotBlank()) { "Choose a Buffer X channel" }
         requireNotNull(post.scheduledAt) { "A scheduled time is required" }
-        val input = BufferGraphQlCodec.postInput(post, saveToDraft)
-        if (update) input.put("id", requireNotNull(post.remotePostId) { "A Buffer post ID is required" })
+        val input = if (update) {
+            BufferGraphQlCodec.editPostInput(post, saveToDraft)
+        } else {
+            BufferGraphQlCodec.createPostInput(post, saveToDraft)
+        }
         val operation = if (update) EDIT_MUTATION else CREATE_MUTATION
         execute(operation, JSONObject().put("input", input)) { data ->
             val payload = data.getJSONObject(if (update) "editPost" else "createPost")
@@ -206,11 +209,19 @@ class BufferClient(
 }
 
 internal object BufferGraphQlCodec {
-    fun postInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject {
+    fun createPostInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject =
+        contentInput(post, saveToDraft).put("channelId", post.accountUsername)
+
+    fun editPostInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject =
+        contentInput(post, saveToDraft).put(
+            "id",
+            requireNotNull(post.remotePostId) { "A Buffer post ID is required" },
+        )
+
+    private fun contentInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject {
         val first = post.thread.firstOrNull() ?: error("At least one thread item is required")
         val input = JSONObject()
             .put("text", first.text)
-            .put("channelId", post.accountUsername)
             .put("schedulingType", "automatic")
             .put("mode", "customScheduled")
             .put("dueAt", Instant.ofEpochMilli(requireNotNull(post.scheduledAt)).toString())

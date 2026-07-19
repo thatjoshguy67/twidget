@@ -35,8 +35,10 @@ The selected data source determines where requests go:
   Profile results, follower rankings, and resumable scan progress remain
   on-device; the key and results are not sent through the Twidget bridge.
 - **Buffer scheduling:** after the user authorizes Twidget with Buffer OAuth,
-  the app sends the text, publishing time, selected Buffer X channel, and any
-  public media URLs for posts explicitly scheduled with Buffer. OAuth access
+  the app uploads device-local attachments for posts explicitly saved or
+  scheduled with Buffer to the app maintainer's Cloudinary account, then sends
+  the text, publishing time, selected Buffer X channel, and resulting public
+  media URLs to Buffer. OAuth access
   and refresh tokens stay encrypted on the device. Local reminder drafts are
   not sent to Buffer.
 - **Updates:** the About screen checks this repository's GitHub Releases API;

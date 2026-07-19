@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0 # full history so the changelog diff has a baseline
 
-      - name: Validate version against gradle versionName
+      - name: Validate release metadata
         run: |
           VERSION="${{ github.event.inputs.version }}"
           if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -53,6 +53,16 @@ jobs:
           GRADLE_VERSION=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
           if [ "$VERSION" != "$GRADLE_VERSION" ]; then
             echo "::error::Input version $VERSION does not match versionName $GRADLE_VERSION in version.properties"
+            exit 1
+          fi
+          BRIDGE_VERSION=$(jq -r '.version' bridge/package.json)
+          BRIDGE_LOCK_VERSION=$(jq -r '.packages[""].version' bridge/package-lock.json)
+          if [ "$BRIDGE_VERSION" != "$VERSION" ] || [ "$BRIDGE_LOCK_VERSION" != "$VERSION" ]; then
+            echo "::error::Bridge package metadata ($BRIDGE_VERSION / $BRIDGE_LOCK_VERSION) does not match release $VERSION"
+            exit 1
+          fi
+          if ! grep -Fq "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section for [$VERSION]."
             exit 1
           fi
           TAG="twidget-v$VERSION"
@@ -92,6 +102,15 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
         run: ./gradlew testReleaseUnitTest assembleRelease lintVitalRelease --no-daemon --stacktrace
+
+      - name: Verify signed release APK
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::Unable to locate apksigner in the Android SDK"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 
       - name: Create tag if missing
         run: |

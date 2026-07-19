@@ -3,6 +3,7 @@ package com.tjg.twidget.notices
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.text.method.LinkMovementMethod
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -53,9 +54,15 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
         findViewById<TextView>(R.id.notice_detail_meta).text = releaseMeta(notice)
         findViewById<TextView>(R.id.notice_detail_beta).visibility =
             if (notice.prerelease) View.VISIBLE else View.GONE
-        findViewById<TextView>(R.id.notice_detail_body).text =
-            ReleaseNoticeText.plainText(notice.body)
-                .ifBlank { getString(R.string.notices_no_details) }
+        findViewById<TextView>(R.id.notice_detail_body).apply {
+            text = if (notice.body.isBlank()) {
+                getString(R.string.notices_no_details)
+            } else {
+                ReleaseNoticeMarkdown.render(this@NoticeDetailActivity, notice.body)
+            }
+            movementMethod = LinkMovementMethod.getInstance()
+            highlightColor = android.graphics.Color.TRANSPARENT
+        }
         findViewById<AppCompatButton>(R.id.notice_detail_release_button).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(notice.url)))
         }

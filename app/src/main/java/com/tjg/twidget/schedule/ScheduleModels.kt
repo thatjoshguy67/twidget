@@ -96,6 +96,8 @@ object ScheduleTrashPolicy {
 }
 
 object ScheduleQueuePolicy {
+    const val MAX_CARD_MEDIA = 4
+
     fun canPin(status: ScheduleStatus): Boolean = status in setOf(
         ScheduleStatus.DRAFT,
         ScheduleStatus.SCHEDULED,
@@ -119,6 +121,12 @@ object ScheduleQueuePolicy {
                 !bufferChannelId.isNullOrBlank() &&
                 post.accountUsername == bufferChannelId
     }
+
+    fun cardMedia(post: ScheduledPost): List<ScheduleMediaSource> =
+        post.thread.asSequence()
+            .flatMap { it.media.asSequence() }
+            .take(MAX_CARD_MEDIA)
+            .toList()
 }
 
 object ScheduleNotificationPolicy {
@@ -126,6 +134,11 @@ object ScheduleNotificationPolicy {
         previous?.provider == ScheduleProvider.BUFFER &&
             previous.status == ScheduleStatus.SCHEDULED &&
             nextStatus == ScheduleStatus.PUBLISHED
+
+    fun shouldNotifyBufferFailed(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
+        previous?.provider == ScheduleProvider.BUFFER &&
+            previous.status == ScheduleStatus.SCHEDULED &&
+            nextStatus == ScheduleStatus.NEEDS_ACTION
 }
 
 enum class ScheduleValidationCode {

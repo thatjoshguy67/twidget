@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -20,8 +21,10 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.GridLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -41,12 +44,11 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.OneUiSpinner
+import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
-import dev.oneuiproject.oneui.design.R as OneUiDesignR
 import dev.oneuiproject.oneui.layout.ToolbarLayout
-import dev.oneuiproject.oneui.widget.CardItemView
 import dev.oneuiproject.oneui.widget.RoundedLinearLayout
 import dev.oneuiproject.oneui.widget.RoundedNestedScrollView
 import dev.oneuiproject.oneui.widget.RoundedTabLayout
@@ -715,63 +717,151 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun queueCard(post: ScheduledPost): View = card().apply {
-            setPadding(0, 0, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { setMargins(scheduleDp(6), scheduleDp(4), scheduleDp(6), scheduleDp(12)) }
-            val ready = post.status == ScheduleStatus.NEEDS_ACTION
-            val selected = post.id in selectedQueueIds
-            val cardItem = CardItemView(this@ScheduleQueueHostActivity).apply {
-                title = queueCardTitle(post)
-                val body = post.thread.firstOrNull()?.text?.take(110)?.ifBlank {
-                    getString(R.string.schedule_media_post)
-                } ?: getString(R.string.schedule_empty_post)
-                val mediaCount = post.thread.sumOf { it.media.size }
-                val mediaSummary = if (mediaCount == 0) body else "$body\n" + if (mediaCount == 1) {
-                    getString(R.string.schedule_one_image_attached)
-                } else {
-                    getString(R.string.schedule_images_attached, mediaCount)
-                }
-                summary = buildString {
-                    append(
-                        if (
-                            post.provider == ScheduleProvider.BUFFER &&
-                            post.status == ScheduleStatus.SCHEDULED
-                        ) {
-                            "$mediaSummary\n${getString(R.string.schedule_buffer_auto_summary)}"
-                        } else {
-                            mediaSummary
-                        },
-                    )
-                    if (viewingTrash) {
-                        trashDaysLeft(post.deletedAt)?.let { days ->
-                            append('\n')
-                            append(getString(R.string.schedule_trash_days_left, days))
-                        }
-                    }
-                }
-                getTitleView().apply {
-                    maxLines = 1
-                    typeface = TwidgetFonts.oneUiSans(
-                        context,
-                        if (ready) 700 else 400,
-                    )
-                }
-                getSummaryView().maxLines = 2
-                bindQueueCardLeadingIcon(this, post, ready, selected)
-                if (!viewingTrash) {
-                    bindQueueCardEndActions(this, post)
-                }
+        background = ContextCompat.getDrawable(context, R.drawable.metric_card_clickable_bg)
+        setPadding(scheduleDp(18), scheduleDp(16), scheduleDp(18), scheduleDp(18))
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { setMargins(scheduleDp(6), scheduleDp(4), scheduleDp(6), scheduleDp(12)) }
+        isFocusable = true
+        contentDescription = post.thread.firstOrNull()?.text
+
+        addView(queueCardHeader(post))
+        addView(TextView(this@ScheduleQueueHostActivity).apply {
+            text = post.thread.firstOrNull()?.text?.ifBlank {
+                getString(R.string.schedule_media_post)
+            } ?: getString(R.string.schedule_empty_post)
+            textSize = 16f
+            typeface = TwidgetFonts.oneUiSans(context, 400)
+            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+            maxLines = 4
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setLineSpacing(scheduleDp(2).toFloat(), 1f)
+            setPadding(0, scheduleDp(14), 0, 0)
+        })
+
+        val media = ScheduleQueuePolicy.cardMedia(post)
+        if (media.isNotEmpty()) addView(queueCardMediaRow(media))
+
+        if (viewingTrash) {
+            trashDaysLeft(post.deletedAt)?.let { days ->
+                addView(metaText(getString(R.string.schedule_trash_days_left, days)))
             }
-            addView(cardItem)
-            attachQueueCardInteractions(cardItem, post)
-            post.errorMessage?.takeIf(String::isNotBlank)?.let {
-                addView(metaText(getString(R.string.schedule_error_detail, it)).apply {
-                    setTextColor(ContextCompat.getColor(context, R.color.metric_red))
+        }
+        post.errorMessage?.takeIf(String::isNotBlank)?.let {
+            addView(metaText(getString(R.string.schedule_error_detail, it)).apply {
+                setTextColor(ContextCompat.getColor(context, R.color.metric_red))
+                setPadding(0, scheduleDp(12), 0, 0)
+            })
+        }
+        attachQueueCardInteractions(this, post)
+    }
+
+    private fun queueCardHeader(post: ScheduledPost): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        if (queueSelectionMode) {
+            addView(ImageView(this@ScheduleQueueHostActivity).apply {
+                setImageResource(
+                    if (post.id in selectedQueueIds) {
+                        OneUiIconR.drawable.ic_oui_checkbox_checked
+                    } else {
+                        OneUiIconR.drawable.ic_oui_checkbox_unchecked
+                    },
+                )
+                imageTintList = ColorStateList.valueOf(
+                    ContextCompat.getColor(context, R.color.oneui_accent),
+                )
+                contentDescription = null
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                setPadding(0, scheduleDp(4), scheduleDp(10), scheduleDp(4))
+            }, LinearLayout.LayoutParams(scheduleDp(32), scheduleDp(32)))
+        }
+        addView(TextView(this@ScheduleQueueHostActivity).apply {
+            text = queueCardTitle(post)
+            textSize = 14f
+            typeface = TwidgetFonts.oneUiSans(context, 400)
+            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        if (!viewingTrash && !queueSelectionMode) addView(queueCardActions(post))
+    }
+
+    private fun queueCardActions(post: ScheduledPost): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        if (post.status == ScheduleStatus.NEEDS_ACTION) {
+            addView(
+                queueQuickActionButton(
+                    iconRes = OneUiIconR.drawable.ic_oui_copy_outline,
+                    contentDescription = getString(R.string.schedule_copy_text),
+                ) {
+                    showHandoff(
+                        XComposeIntents.copyText(
+                            this@ScheduleQueueHostActivity,
+                            post.thread.firstOrNull()?.text.orEmpty(),
+                        ),
+                    )
+                },
+            )
+            addView(
+                queueQuickActionButton(
+                    iconRes = OneUiIconR.drawable.ic_oui_send,
+                    contentDescription = getString(R.string.schedule_post_now),
+                ) { postReady(post) },
+            )
+        } else if (ScheduleQueuePolicy.canPin(post.status)) {
+            addView(
+                queueQuickActionButton(
+                    iconRes = if (post.pinned) {
+                        OneUiIconR.drawable.ic_oui_pin
+                    } else {
+                        OneUiIconR.drawable.ic_oui_pin_outline
+                    },
+                    contentDescription = getString(
+                        if (post.pinned) R.string.schedule_unpin else R.string.schedule_pin,
+                    ),
+                ) { togglePin(post) },
+            )
+        }
+    }
+
+    private fun queueCardMediaRow(media: List<ScheduleMediaSource>): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.START
+            setPadding(0, scheduleDp(16), 0, 0)
+            repeat(ScheduleQueuePolicy.MAX_CARD_MEDIA) { index ->
+                val tile = media.getOrNull(index)?.let(::queueCardMediaPreview)
+                    ?: View(this@ScheduleQueueHostActivity)
+                addView(tile, LinearLayout.LayoutParams(
+                    0,
+                    scheduleDp(72),
+                    1f,
+                ).apply {
+                    if (index < ScheduleQueuePolicy.MAX_CARD_MEDIA - 1) marginEnd = scheduleDp(8)
                 })
             }
-    }
+        }
+
+    private fun queueCardMediaPreview(source: ScheduleMediaSource): ImageView =
+        ImageView(this).apply {
+            background = ContextCompat.getDrawable(context, R.drawable.schedule_media_preview_bg)
+            outlineProvider = ViewOutlineProvider.BACKGROUND
+            clipToOutline = true
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = getString(R.string.schedule_local_media)
+            when (source) {
+                is LocalUriMedia -> runCatching { setImageURI(Uri.parse(source.uri)) }
+                is PublicUrlMedia -> ProfileImageLoader.loadRoundedInto(
+                    this@ScheduleQueueHostActivity,
+                    this,
+                    source.url,
+                    scheduleDp(14),
+                )
+            }
+        }
 
     private fun postReady(post: ScheduledPost) {
         if (post.thread.size > 1) {
@@ -850,34 +940,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         else -> queueDateTitle(post.scheduledAt)
     }
 
-    private fun bindQueueCardLeadingIcon(
-        cardItem: CardItemView,
-        post: ScheduledPost,
-        ready: Boolean,
-        selected: Boolean,
-    ) {
-        when {
-            queueSelectionMode -> {
-                val iconRes = if (selected) {
-                    OneUiIconR.drawable.ic_oui_checkbox_checked
-                } else {
-                    OneUiIconR.drawable.ic_oui_checkbox_unchecked
-                }
-                cardItem.icon = ContextCompat.getDrawable(cardItem.context, iconRes)
-                cardItem.iconSize = scheduleDp(22)
-                cardItem.getIconImageView().imageTintList = ColorStateList.valueOf(
-                    ContextCompat.getColor(this, R.color.oneui_accent),
-                )
-            }
-            ready -> cardItem.icon = null
-            else -> {
-                cardItem.icon = null
-            }
-        }
-    }
-
-    private fun attachQueueCardInteractions(cardItem: CardItemView, post: ScheduledPost) {
-        val anchor = cardItem.findViewById<View>(OneUiDesignR.id.cardview_container) ?: return
+    private fun attachQueueCardInteractions(anchor: View, post: ScheduledPost) {
         if (viewingTrash) {
             if (queueSelectionMode) {
                 anchor.setOnClickListener { toggleQueueSelection(post.id) }
@@ -905,92 +968,18 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             return
         }
 
-        anchor.setOnClickListener { openEditor(post) }
+        anchor.setOnClickListener {
+            if (post.status == ScheduleStatus.NEEDS_ACTION) renderChecklist(post) else openEditor(post)
+        }
         anchor.setOnLongClickListener {
             enterQueueSelection(post.id)
             true
         }
     }
 
-    private fun bindQueueCardEndActions(
-        cardItem: CardItemView,
-        post: ScheduledPost,
-    ) {
-        cardItem.getEndImageView().visibility = View.GONE
-        val endView = cardItem.findViewById<View>(OneUiDesignR.id.end_view) ?: return
-        val parent = endView.parent as? ViewGroup ?: return
-        val index = parent.indexOfChild(endView)
-        if (index < 0) return
-        val layoutParams = endView.layoutParams
-        parent.removeView(endView)
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            isClickable = true
-            setOnTouchListener { _, _ -> true }
-            if (post.status == ScheduleStatus.NEEDS_ACTION) {
-                if (post.thread.any { it.media.isNotEmpty() }) {
-                    addView(
-                        queueQuickActionButton(
-                            iconRes = OneUiIconR.drawable.ic_oui_download,
-                            contentDescription = getString(R.string.schedule_download_media),
-                        ) { downloadPostMedia(post) },
-                    )
-                }
-                addView(
-                    queueQuickActionButton(
-                        iconRes = OneUiIconR.drawable.ic_oui_copy_outline,
-                        contentDescription = getString(R.string.schedule_copy_text),
-                    ) {
-                        showHandoff(
-                            XComposeIntents.copyText(
-                                this@ScheduleQueueHostActivity,
-                                post.thread.firstOrNull()?.text.orEmpty(),
-                            ),
-                        )
-                    },
-                )
-                addView(
-                    queueQuickActionButton(
-                        iconRes = OneUiIconR.drawable.ic_oui_send,
-                        contentDescription = getString(R.string.schedule_post_now),
-                    ) { postReady(post) },
-                )
-            } else if (queueSelectionMode) {
-                addView(
-                    queueQuickActionButton(
-                        iconRes = OneUiIconR.drawable.ic_oui_edit_outline,
-                        contentDescription = getString(R.string.schedule_edit),
-                    ) {
-                        exitQueueSelection()
-                        openEditor(post)
-                    },
-                )
-            } else if (ScheduleQueuePolicy.canPin(post.status)) {
-                addView(
-                    queueQuickActionButton(
-                        iconRes = if (post.pinned) {
-                            OneUiIconR.drawable.ic_oui_pin
-                        } else {
-                            OneUiIconR.drawable.ic_oui_pin_outline
-                        },
-                        contentDescription = if (post.pinned) {
-                            getString(R.string.schedule_unpin)
-                        } else {
-                            getString(R.string.schedule_pin)
-                        },
-                        accent = post.pinned,
-                    ) { togglePin(post) },
-                )
-            }
-        }
-        parent.addView(actions, index, layoutParams)
-    }
-
     private fun queueQuickActionButton(
         @DrawableRes iconRes: Int,
         contentDescription: String,
-        accent: Boolean = false,
         onClick: (AppCompatImageButton) -> Unit,
     ): AppCompatImageButton = AppCompatImageButton(this).apply {
         setImageResource(iconRes)
@@ -1000,12 +989,9 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             ContextCompat.getDrawable(context, value.resourceId)
         }
         imageTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(
-                context,
-                if (accent) R.color.oneui_accent else R.color.oneui_text_secondary,
-            ),
+            ContextCompat.getColor(context, R.color.oneui_text_primary),
         )
-        setPadding(scheduleDp(10), scheduleDp(10), scheduleDp(10), scheduleDp(10))
+        setPadding(scheduleDp(8), scheduleDp(8), scheduleDp(8), scheduleDp(8))
         layoutParams = LinearLayout.LayoutParams(scheduleDp(40), scheduleDp(40))
         setOnClickListener { onClick(this) }
     }
@@ -1211,11 +1197,9 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun queueDateTitle(value: Long?): String = value?.let {
         val locale = Locale.getDefault()
         val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
-        val month = date.format(DateTimeFormatter.ofPattern("MMM", locale))
-        val time = date.format(DateTimeFormatter.ofPattern("h:mma", locale))
-            .replace(" ", "")
-            .lowercase(locale)
-        "$month ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} - $time"
+        val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
+        val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
+        "$weekdayAndMonth ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} at $time"
     } ?: getString(R.string.schedule_no_time)
 
     private fun ordinalSuffix(day: Int): String = when {

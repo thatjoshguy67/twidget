@@ -24,13 +24,9 @@ class BufferPublishCheckWorker(context: Context, workerParams: WorkerParameters)
         if (!sync.isSuccess) return Result.retry()
         val post = store.get(id) ?: return Result.success()
         return when (post.status) {
-            // BufferScheduleSync owns transition notifications so a manual refresh and this
-            // worker cannot alert twice for the same successful publish.
-            ScheduleStatus.PUBLISHED -> Result.success()
-            ScheduleStatus.NEEDS_ACTION -> {
-                ScheduleNotificationHelper.showReminder(applicationContext, post)
-                Result.success()
-            }
+            // BufferScheduleSync owns terminal transition notifications so a manual
+            // refresh and this worker cannot alert twice for the same outcome.
+            ScheduleStatus.PUBLISHED, ScheduleStatus.NEEDS_ACTION -> Result.success()
             ScheduleStatus.SCHEDULED -> Result.retry()
             else -> Result.success()
         }

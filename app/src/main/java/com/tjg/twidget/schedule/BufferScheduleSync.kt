@@ -105,14 +105,16 @@ class BufferScheduleSync(
             if (ScheduleNotificationPolicy.shouldNotifyBufferPublished(current, status)) {
                 ScheduleNotificationHelper.showBufferPublished(appContext, local)
             }
+            if (ScheduleNotificationPolicy.shouldNotifyBufferFailed(current, status)) {
+                ScheduleNotificationHelper.showBufferFailed(appContext, local)
+            }
             if (status == ScheduleStatus.SCHEDULED) BufferPublishCheckWorker.enqueue(appContext, local)
             if (current == null) imported++ else updated++
         }
 
         var removed = 0
         existing.filter {
-            it.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.DRAFT) &&
-                it.remotePostId != null && it.remotePostId !in seen
+            shouldRemoveMissing(it, seen, now)
         }.forEach {
             if (store.remove(it.id)) removed++
         }
@@ -143,5 +145,21 @@ class BufferScheduleSync(
     companion object {
         private const val TERMINAL_LOOKAHEAD_MS = 5 * 60 * 1000L
         internal fun remoteLocalId(postId: String): String = "buffer-post-$postId"
+
+        /**
+         * A just-due post can briefly disappear from Buffer's active list before it
+         * appears in the sent/error list. Keep it locally so the publish checker can
+         * retry and observe the terminal transition instead of losing its notification.
+         */
+        internal fun shouldRemoveMissing(post: ScheduledPost, seen: Set<String>, now: Long): Boolean {
+            val remoteId = post.remotePostId ?: return false
+            if (remoteId in seen) return false
+            return when (post.status) {
+                ScheduleStatus.DRAFT -> true
+                ScheduleStatus.SCHEDULED ->
+                    post.scheduledAt?.let { it > now + TERMINAL_LOOKAHEAD_MS } == true
+                else -> false
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.tjg.twidget.schedule
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,6 +39,32 @@ class ScheduleQueuePolicyTest {
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferPublished(draft, ScheduleStatus.PUBLISHED))
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferPublished(local, ScheduleStatus.PUBLISHED))
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferPublished(scheduled, ScheduleStatus.SCHEDULED))
+    }
+
+    @Test
+    fun failedNotificationOnlyFiresOnScheduledBufferTransition() {
+        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+            .copy(status = ScheduleStatus.SCHEDULED)
+        val alreadyFailed = scheduled.copy(status = ScheduleStatus.NEEDS_ACTION)
+        val local = scheduled.copy(provider = ScheduleProvider.LOCAL_REMINDER)
+
+        assertTrue(ScheduleNotificationPolicy.shouldNotifyBufferFailed(scheduled, ScheduleStatus.NEEDS_ACTION))
+        assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(alreadyFailed, ScheduleStatus.NEEDS_ACTION))
+        assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(local, ScheduleStatus.NEEDS_ACTION))
+        assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(scheduled, ScheduleStatus.PUBLISHED))
+    }
+
+    @Test
+    fun cardMediaKeepsTheFirstFourAttachmentsAcrossAThread() {
+        val media = (1..6).map { PublicUrlMedia("https://example.com/$it.jpg") }
+        val post = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
+            thread = listOf(
+                ScheduleThreadItem(text = "First", media = media.take(2)),
+                ScheduleThreadItem(text = "Second", media = media.drop(2)),
+            ),
+        )
+
+        assertEquals(media.take(4), ScheduleQueuePolicy.cardMedia(post))
     }
 
     private fun post(provider: ScheduleProvider, accountId: String, accountUsername: String) = ScheduledPost(

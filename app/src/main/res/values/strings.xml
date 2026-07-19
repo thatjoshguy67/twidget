@@ -197,8 +197,6 @@
     <string name="analytics_trend">Trend</string>
     <string name="analytics_all_metrics">All imported metrics</string>
     <string name="notices_title">Notices</string>
-    <string name="notices_github_releases">GitHub release notes</string>
-    <string name="notices_last_updated">Updated %1$s</string>
     <string name="notices_load_failed">Couldn’t refresh release notes.</string>
     <string name="notices_showing_cache">Showing the last successfully downloaded notices.</string>
     <string name="notices_beta">BETA</string>
@@ -412,14 +410,14 @@
     <string name="schedule_ready_now">Ready to post now</string>
     <string name="schedule_post_now">Post</string>
     <string name="schedule_paste_in_x">Tweet copied. Paste it into X’s composer.</string>
-    <string name="schedule_buffer_auto_summary">Posts automatically at the scheduled time via Buffer</string>
     <string name="schedule_buffer_published_title">Tweet posted successfully</string>
+    <string name="schedule_buffer_failed_title">Buffer couldn’t post your tweet</string>
+    <string name="schedule_buffer_failed_fallback">Buffer reported a publishing error.</string>
+    <string name="schedule_buffer_failed_detail">%1$s\n\nPost: %2$s</string>
     <string name="schedule_local_reminder_title">It’s time to post your scheduled tweet</string>
     <string name="schedule_queue_local_account">@%1$s · Local drafts</string>
     <string name="schedule_queue_buffer_account">@%1$s · Buffer</string>
     <string name="schedule_queue_buffer_pending">Buffer X channel</string>
-    <string name="schedule_one_image_attached">1 image attached</string>
-    <string name="schedule_images_attached">%1$d images attached</string>
     <string name="schedule_more_actions">More actions</string>
     <string name="schedule_more">More</string>
     <string name="schedule_take_photo">Add photo or video</string>

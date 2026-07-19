@@ -42,7 +42,7 @@ object ScheduleNotificationHelper {
                 BUFFER_STATUS_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Confirms when Buffer publishes a scheduled tweet"
+                description = "Reports successful and failed Buffer publishing attempts"
             },
         )
     }
@@ -85,13 +85,46 @@ object ScheduleNotificationHelper {
             ?: context.getString(R.string.schedule_media_post)
         val open = scheduleQueuePendingIntent(context, 2)
         val notification = Notification.Builder(context, BUFFER_STATUS_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_send)
+            .setSmallIcon(R.drawable.ic_twidget_notification)
             .setContentTitle(context.getString(R.string.schedule_buffer_published_title))
             .setContentText(preview)
             .setStyle(Notification.BigTextStyle().bigText(preview))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_STATUS)
+            .build()
+        return try {
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(notificationId(post.id), notification)
+            true
+        } catch (_: SecurityException) {
+            false
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
+
+    fun showBufferFailed(context: Context, post: ScheduledPost): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        ensureChannel(context)
+        val error = post.errorMessage?.takeIf(String::isNotBlank)
+            ?: context.getString(R.string.schedule_buffer_failed_fallback)
+        val preview = post.thread.firstOrNull()?.text?.takeIf(String::isNotBlank)
+            ?: context.getString(R.string.schedule_media_post)
+        val detail = context.getString(R.string.schedule_buffer_failed_detail, error, preview)
+        val open = schedulePendingIntent(context, post.id, ScheduleDeepLink.ACTION_OPEN_SCHEDULE, 3)
+        val notification = Notification.Builder(context, BUFFER_STATUS_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_twidget_notification)
+            .setContentTitle(context.getString(R.string.schedule_buffer_failed_title))
+            .setContentText(error)
+            .setStyle(Notification.BigTextStyle().bigText(detail))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_ERROR)
             .build()
         return try {
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)

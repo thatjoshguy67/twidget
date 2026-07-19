@@ -44,4 +44,24 @@ class ReleaseNoticeTextTest {
             ReleaseNoticeText.plainText(markdown),
         )
     }
+
+    @Test
+    fun styledMarkdownClassifiesReleaseNoteBlocks() {
+        val heading = ReleaseNoticeMarkdown.parseLine("### Added")
+        val bullet = ReleaseNoticeMarkdown.parseLine("  - Nested improvement")
+        val ordered = ReleaseNoticeMarkdown.parseLine("2. Second step")
+        val quote = ReleaseNoticeMarkdown.parseLine("> Important note")
+        val paragraph = ReleaseNoticeMarkdown.parseLine("Regular paragraph")
+
+        assertEquals(ReleaseNoticeMarkdown.LineKind.HEADING, heading.kind)
+        assertEquals(3, heading.level)
+        assertEquals("Added", heading.content)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.BULLET, bullet.kind)
+        assertEquals(1, bullet.depth)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.ORDERED, ordered.kind)
+        assertEquals("2.", ordered.marker)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.QUOTE, quote.kind)
+        assertEquals("Important note", quote.content)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.PARAGRAPH, paragraph.kind)
+    }
 }

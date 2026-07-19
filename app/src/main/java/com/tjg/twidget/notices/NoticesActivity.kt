@@ -29,7 +29,6 @@ class NoticesActivity : FoldablePopOverActivity() {
     private lateinit var refresh: SwipeRefreshLayout
     private var generation = 0
     private var notices = emptyList<ReleaseNotice>()
-    private var cachedAt = 0L
     private var errorMessage: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +45,6 @@ class NoticesActivity : FoldablePopOverActivity() {
 
         ReleaseNoticesStore.cached(this).let {
             notices = it.notices
-            cachedAt = it.cachedAt
         }
         ReleaseNoticesStore.markCurrentAsSeen(this)
         render()
@@ -80,7 +78,6 @@ class NoticesActivity : FoldablePopOverActivity() {
                 refresh.isRefreshing = false
                 result.onSuccess {
                     notices = it
-                    cachedAt = System.currentTimeMillis()
                 }.onFailure {
                     errorMessage = getString(R.string.notices_load_failed)
                 }
@@ -91,14 +88,6 @@ class NoticesActivity : FoldablePopOverActivity() {
 
     private fun render() {
         content.removeAllViews()
-        content.addView(sectionTitle(getString(R.string.notices_github_releases)))
-        if (cachedAt > 0) {
-            val updated = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-                .format(Instant.ofEpochMilli(cachedAt).atZone(ZoneId.systemDefault()))
-            content.addView(metaText(getString(R.string.notices_last_updated, updated)).apply {
-                setPadding(dp(24), 0, dp(24), dp(10))
-            })
-        }
         errorMessage?.let {
             content.addView(card().apply {
                 addView(titleText(it))
@@ -184,14 +173,6 @@ class NoticesActivity : FoldablePopOverActivity() {
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { setMargins(dp(6), 0, dp(6), dp(10)) }
-    }
-
-    private fun sectionTitle(value: String): TextView = TextView(this).apply {
-        text = value
-        textSize = 19f
-        typeface = TwidgetFonts.oneUiSans(context, 700)
-        setTextColor(getColor(R.color.oneui_text_primary))
-        setPadding(dp(24), dp(14), dp(24), dp(8))
     }
 
     private fun titleText(value: String): TextView = TextView(this).apply {

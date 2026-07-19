@@ -2,18 +2,33 @@
 
 All notable changes to Twidget are documented here.
 
-## Unreleased
+## [1.1.1] - 2026-07-19
+
+Maintenance release focused on Buffer scheduling, dependable long-running
+follower scans, and better integration with Samsung devices.
 
 ### Changed
 
 - Reorganized the app's source tree from one flat package into feature packages (analytics, schedule, settings, widget, and friends). Existing home and lock screen widgets keep working: the original widget provider component names stay registered.
 - Replaced Postpone cloud scheduling and API-key onboarding with Buffer OAuth, encrypted refresh-token rotation, connected X-channel mapping, and Buffer-backed draft and schedule syncing.
+- Long-running top-follower scans now continue as foreground work after the app leaves the screen and surface progress through Android Live Updates on supported devices.
+- Redesigned scheduled-tweet cards with clearer date and action rows, more readable post text, and responsive media thumbnails.
 
 ### Added
 
 - Buffer drafts and scheduled posts can now attach local images and videos; Twidget hosts them with its built-in Cloudinary configuration before syncing them to Buffer.
 - The native composer now uses Android's active keyboard for spell checking, autocorrection, and word suggestions.
 - Drafts can be pinned with quick actions, a long-press context menu, and bulk pin/unpin/delete selection mode.
+- Samsung Modes and Routines can trigger an immediate Twidget refresh.
+
+### Fixed
+
+- Hardened Buffer request throttling, media synchronization, refresh-token handling, and background schedule updates.
+- Buffer publishing now sends a confirmation notification after a successful post and an error notification with details when publishing fails.
+- Made top-follower scans resumable and more reliable when the app is backgrounded or interrupted.
+- Improved adaptive dashboard layouts, chart spacing, widget sizing, and blank-state handling across phones, tablets, and non-One UI launchers.
+
+[1.1.1]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.0-beta.1...twidget-v1.1.1
 
 ## [1.1.0] - 2026-07-14
 

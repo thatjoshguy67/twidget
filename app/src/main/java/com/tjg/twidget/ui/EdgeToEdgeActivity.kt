@@ -93,8 +93,30 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
 
 internal object TwidgetAppVisibility {
     private var visibleActivities = 0
+    private val listeners = linkedSetOf<(Boolean) -> Unit>()
 
-    @Synchronized fun activityStarted() { visibleActivities++ }
-    @Synchronized fun activityStopped() { visibleActivities = (visibleActivities - 1).coerceAtLeast(0) }
+    fun activityStarted() {
+        val listenersToNotify = synchronized(this) {
+            val becameVisible = visibleActivities == 0
+            visibleActivities++
+            if (becameVisible) listeners.toList() else emptyList()
+        }
+        listenersToNotify.forEach { it(true) }
+    }
+
+    fun activityStopped() {
+        val listenersToNotify = synchronized(this) {
+            val wasVisible = visibleActivities > 0
+            visibleActivities = (visibleActivities - 1).coerceAtLeast(0)
+            if (wasVisible && visibleActivities == 0) listeners.toList() else emptyList()
+        }
+        listenersToNotify.forEach { it(false) }
+    }
+
+    fun addVisibilityListener(listener: (Boolean) -> Unit): AutoCloseable {
+        synchronized(this) { listeners += listener }
+        return AutoCloseable { synchronized(this) { listeners -= listener } }
+    }
+
     @Synchronized fun isVisible(): Boolean = visibleActivities > 0
 }

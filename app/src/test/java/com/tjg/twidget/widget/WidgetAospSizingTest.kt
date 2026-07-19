@@ -50,11 +50,11 @@ class WidgetAospSizingTest {
     }
 
     @Test
-    fun `responsive variant for current allocation uses exact artwork size`() {
-        val current = TwidgetWidget.responsiveSpecs(currentWidth = 320, currentHeight = 280)
+    fun `large fallback remains bounded so exact allocation fits bitmap budget`() {
+        val current = TwidgetWidget.responsiveSpecs()
             .single { it.minWidth == 231 && it.minHeight == 111 }
 
-        assertEquals(320, current.renderWidth)
-        assertEquals(280, current.renderHeight)
+        assertEquals(360, current.renderWidth)
+        assertEquals(210, current.renderHeight)
     }
 }

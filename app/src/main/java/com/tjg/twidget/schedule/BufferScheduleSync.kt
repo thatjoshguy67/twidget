@@ -18,52 +18,65 @@ class BufferScheduleSync(
 ) {
     private val appContext = context.applicationContext
 
-    fun sync(): BufferSyncResult {
+    fun sync(userInitiated: Boolean = false): BufferSyncResult {
         if (!BufferOAuth.isConnected(appContext)) {
             return BufferSyncResult()
         }
+        BufferRequestThrottle.blockingMessage(appContext)?.let {
+            return BufferSyncResult(errors = listOf(it))
+        }
+        if (!BufferRequestThrottle.beginSync(appContext, userInitiated)) return BufferSyncResult()
         val trackedUsername = TwidgetStore.settings(appContext).username.trim().trimStart('@')
         if (trackedUsername.isBlank()) return BufferSyncResult(errors = listOf("No default X account is configured"))
-        val channels = client.listTwitterChannels()
-        if (!channels.isSuccess) return BufferSyncResult(errors = channels.errors.map { it.message })
-        val connected = channels.value.orEmpty()
         val mappedId = ScheduleSettingsStore.bufferChannelFor(appContext, trackedUsername)
-        val channel = connected.firstOrNull { it.id == mappedId }
-            ?: connected.singleOrNull()
-            ?: connected.firstOrNull {
-                ScheduleAccountMapping.normalize(it.name) == ScheduleAccountMapping.normalize(trackedUsername) ||
-                    ScheduleAccountMapping.normalize(it.displayName.orEmpty()) == ScheduleAccountMapping.normalize(trackedUsername)
-            }
-            ?: return BufferSyncResult(errors = listOf("Choose the default Buffer X channel in Settings"))
-        if (mappedId != channel.id) {
-            ScheduleSettingsStore.setBufferChannel(appContext, trackedUsername, channel)
+        val mappedOrganizationId = ScheduleSettingsStore.bufferOrganizationFor(appContext, trackedUsername)
+        val channelId: String
+        val organizationId: String
+        if (!mappedId.isNullOrBlank() && !mappedOrganizationId.isNullOrBlank()) {
+            channelId = mappedId
+            organizationId = mappedOrganizationId
         } else {
-            ScheduleSettingsStore.rememberBufferChannel(appContext, trackedUsername, channel)
+            val channels = client.listTwitterChannels()
+            if (!channels.isSuccess) return BufferSyncResult(errors = channels.errors.map { it.message })
+            val connected = channels.value.orEmpty()
+            val channel = connected.firstOrNull { it.id == mappedId }
+                ?: connected.singleOrNull()
+                ?: connected.firstOrNull {
+                    ScheduleAccountMapping.normalize(it.name) == ScheduleAccountMapping.normalize(trackedUsername) ||
+                        ScheduleAccountMapping.normalize(it.displayName.orEmpty()) == ScheduleAccountMapping.normalize(trackedUsername)
+                }
+                ?: return BufferSyncResult(errors = listOf("Choose the default Buffer X channel in Settings"))
+            ScheduleSettingsStore.setBufferChannel(appContext, trackedUsername, channel)
+            channelId = channel.id
+            organizationId = channel.organizationId
         }
 
         val existing = store.list().filter {
-            it.provider == ScheduleProvider.BUFFER && it.accountUsername == channel.id
+            it.provider == ScheduleProvider.BUFFER && it.accountUsername == channelId
         }
-        val active = client.listPosts(channel.organizationId, channel.id, listOf("scheduled", "draft"))
+        val active = client.listPosts(organizationId, channelId, listOf("scheduled", "draft"))
         if (!active.isSuccess) return BufferSyncResult(errors = active.errors.map { it.message })
+        val now = System.currentTimeMillis()
         val confirmationStart = existing
-            .filter { it.status == ScheduleStatus.SCHEDULED }
+            .filter {
+                it.status == ScheduleStatus.SCHEDULED &&
+                    it.scheduledAt?.let { dueAt -> dueAt <= now + TERMINAL_LOOKAHEAD_MS } == true
+            }
             .mapNotNull(ScheduledPost::scheduledAt)
             .minOrNull()
             ?.minus(24 * 60 * 60 * 1000L)
         val terminal = confirmationStart?.let {
-            client.listPosts(channel.organizationId, channel.id, listOf("sent", "error"), it)
+            client.listPosts(organizationId, channelId, listOf("sent", "error"), it)
         } ?: BufferResult(emptyList())
         if (!terminal.isSuccess) return BufferSyncResult(errors = terminal.errors.map { it.message })
         val remotePosts = active.value.orEmpty() + terminal.value.orEmpty()
-        val now = System.currentTimeMillis()
         var imported = 0
         var updated = 0
         val seen = mutableSetOf<String>()
         remotePosts.forEach { bufferPost ->
             seen += bufferPost.id
             val current = existing.firstOrNull { it.remotePostId == bufferPost.id }
-                ?: existing.firstOrNull { it.matches(bufferPost, channel.id) }
+                ?: existing.firstOrNull { it.matches(bufferPost, channelId) }
             val status = when (bufferPost.status.lowercase()) {
                 "draft" -> ScheduleStatus.DRAFT
                 "scheduled", "sending" -> ScheduleStatus.SCHEDULED
@@ -76,7 +89,7 @@ class BufferScheduleSync(
                 provider = ScheduleProvider.BUFFER,
                 status = status,
                 accountId = trackedUsername,
-                accountUsername = channel.id,
+                accountUsername = channelId,
                 scheduledAt = bufferPost.dueAt,
                 thread = mergedThread(current, bufferPost),
                 remotePostId = bufferPost.id,
@@ -128,6 +141,7 @@ class BufferScheduleSync(
     }
 
     companion object {
+        private const val TERMINAL_LOOKAHEAD_MS = 5 * 60 * 1000L
         internal fun remoteLocalId(postId: String): String = "buffer-post-$postId"
     }
 }

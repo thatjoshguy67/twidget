@@ -386,7 +386,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 }
             },
         ) {
-            val result = BufferScheduleSync(this).sync()
+            val result = BufferScheduleSync(this).sync(userInitiated = userInitiated)
             runOnUiThread {
                 syncing = false
                 refresh.isRefreshing = false

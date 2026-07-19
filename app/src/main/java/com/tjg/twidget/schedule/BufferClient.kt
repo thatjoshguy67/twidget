@@ -164,6 +164,7 @@ class BufferClient(
         variables: JSONObject = JSONObject(),
         parser: (JSONObject) -> T,
     ): BufferResult<T> = try {
+        BufferRequestThrottle.blockingMessage(appContext)?.let { error(it) }
         val token = tokenOverride?.takeIf(String::isNotBlank) ?: BufferOAuth.accessToken(appContext)
         val body = JSONObject().put("query", query).put("variables", variables).toString()
         val response = HttpTransport.post(
@@ -176,6 +177,10 @@ class BufferClient(
             connectTimeoutMs = 15_000,
             readTimeoutMs = 25_000,
         )
+        BufferRequestThrottle.observe(appContext, response)
+        if (response.code == 429) {
+            error(BufferRequestThrottle.blockingMessage(appContext) ?: "Buffer request limit reached. Try again later.")
+        }
         val root = runCatching { JSONObject(response.body) }.getOrElse { JSONObject() }
         if (response.code !in 200..299) {
             error(root.firstError() ?: "Buffer HTTP ${response.code}")

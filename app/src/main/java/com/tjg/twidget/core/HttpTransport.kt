@@ -9,7 +9,15 @@ import java.nio.charset.StandardCharsets
 
 /** Shared HTTP helpers for short-lived JSON requests across Twidget clients. */
 internal object HttpTransport {
-    data class Response(val code: Int, val body: String)
+    data class Response(
+        val code: Int,
+        val body: String,
+        val headers: Map<String, List<String>> = emptyMap(),
+    ) {
+        fun headerValues(name: String): List<String> = headers.entries
+            .firstOrNull { it.key.equals(name, ignoreCase = true) }
+            ?.value.orEmpty()
+    }
 
     class HttpException(val code: Int, message: String) : IllegalStateException(message)
 
@@ -52,9 +60,12 @@ internal object HttpTransport {
             connection.outputStream.use { it.write(body.toByteArray(StandardCharsets.UTF_8)) }
         }
         val code = connection.responseCode
+        val responseHeaders = connection.headerFields
+            .filterKeys { it != null }
+            .mapKeys { requireNotNull(it.key) }
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
         val text = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
-        return Response(code, text)
+        return Response(code, text, responseHeaders)
     }
 
     fun requireSuccess(response: Response, errorPrefix: String): String {

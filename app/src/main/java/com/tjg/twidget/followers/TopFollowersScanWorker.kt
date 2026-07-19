@@ -11,12 +11,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.providers.TwitterApisClient
 import com.tjg.twidget.ui.TwidgetAppVisibility
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result {
@@ -26,6 +29,17 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         if (apiKey.isBlank()) return fail(username, "Add a TwitterAPIs key in Advanced settings")
 
         var state = TopFollowersStore.read(applicationContext, username).copy(scanning = true, error = "")
+        val latestState = AtomicReference(state)
+        val scanActive = AtomicBoolean(true)
+        val visibilityRegistration = TwidgetAppVisibility.addVisibilityListener { visible ->
+            if (visible || !scanActive.get()) return@addVisibilityListener
+            val stateWhenHidden = latestState.get()
+            AppExecutors.execute(
+                onRejected = { promoteToForegroundIfAppIsHidden(username, stateWhenHidden) },
+            ) {
+                if (scanActive.get()) promoteToForegroundIfAppIsHidden(username, latestState.get())
+            }
+        }
         return try {
             while (!isStopped) {
                 promoteToForegroundIfAppIsHidden(username, state)
@@ -47,6 +61,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                     scanned = state.scanned + page.users.size,
                     scanning = true,
                 )
+                latestState.set(state)
                 if (page.nextCursor.isBlank()) return complete(username, state)
                 TopFollowersStore.write(applicationContext, username, state)
                 promoteToForegroundIfAppIsHidden(username, state)
@@ -66,6 +81,9 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
             }
         } catch (_: Exception) {
             Result.retry()
+        } finally {
+            scanActive.set(false)
+            visibilityRegistration.close()
         }
     }
 

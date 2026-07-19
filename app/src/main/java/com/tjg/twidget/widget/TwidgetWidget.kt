@@ -109,28 +109,40 @@ open class TwidgetWidget : AppWidgetProvider() {
                     responsiveBitmapBytes[key] = bitmapBytes
                 }
 
-                responsiveSpecs(artworkWidth, artworkHeight).forEach { spec ->
-                    addResponsiveView(
-                        key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat()),
-                        width = spec.renderWidth,
-                        height = spec.renderHeight,
-                        responsiveMode = spec.mode,
-                    )
-                }
-                // Exact launcher allocations override the fallback buckets.
+                // Exact launcher allocations take priority over fallback buckets.
                 // This prevents fitCenter from introducing horizontal gutters
                 // when an OEM's cells have an unusual aspect ratio, while the
                 // fallback entries remain available for an immediate layout
                 // switch during resize before the options callback arrives.
-                widgetSizes(options).forEach { size ->
-                    val width = size.width.toInt().coerceAtLeast(1)
-                    val height = size.height.toInt().coerceAtLeast(1)
-                    addResponsiveView(
-                        key = size,
-                        width = width,
-                        height = height,
-                        responsiveMode = layoutModeForAosp(width, height),
-                    )
+                // Add exact sizes first: large bitmaps can exhaust the
+                // RemoteViews bitmap budget, and dropping the current exact
+                // allocation leaves Pixel Launcher stretching a smaller
+                // fallback inside a large card.
+                widgetSizes(options)
+                    .sortedBy { size ->
+                        kotlin.math.abs(size.width - artworkWidth) +
+                            kotlin.math.abs(size.height - artworkHeight)
+                    }
+                    .forEach { size ->
+                        val width = size.width.toInt().coerceAtLeast(1)
+                        val height = size.height.toInt().coerceAtLeast(1)
+                        addResponsiveView(
+                            key = size,
+                            width = width,
+                            height = height,
+                            responsiveMode = layoutModeForAosp(width, height),
+                        )
+                    }
+                responsiveSpecs().forEach { spec ->
+                    val key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())
+                    if (!responsiveViews.containsKey(key)) {
+                        addResponsiveView(
+                            key = key,
+                            width = spec.renderWidth,
+                            height = spec.renderHeight,
+                            responsiveMode = spec.mode,
+                        )
+                    }
                 }
                 RemoteViews(responsiveViews)
             } else {
@@ -215,22 +227,12 @@ open class TwidgetWidget : AppWidgetProvider() {
             val mode: Int,
         )
 
-        fun responsiveSpecs(currentWidth: Int? = null, currentHeight: Int? = null): List<ResponsiveSpec> = listOf(
+        fun responsiveSpecs(): List<ResponsiveSpec> = listOf(
             ResponsiveSpec(110, 40, 179, 72, LAYOUT_MODE_COMPACT_2X1),
             ResponsiveSpec(231, 40, 360, 72, LAYOUT_MODE_COMPACT_STRIP),
             ResponsiveSpec(110, 111, 179, 179, LAYOUT_MODE_LARGE),
             ResponsiveSpec(231, 111, 360, 210, LAYOUT_MODE_LARGE),
-        ).map { spec ->
-            if (currentWidth != null && currentHeight != null &&
-                currentWidth >= spec.minWidth && currentHeight >= spec.minHeight &&
-                (spec.minWidth > 110 || currentWidth < 231) &&
-                (spec.minHeight > 40 || currentHeight < 111)
-            ) {
-                spec.copy(renderWidth = currentWidth, renderHeight = currentHeight)
-            } else {
-                spec
-            }
-        }
+        )
 
         @Suppress("DEPRECATION")
         private fun widgetSizes(options: Bundle): List<SizeF> =

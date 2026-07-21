@@ -2,7 +2,7 @@
 
 All notable changes to Twidget are documented here.
 
-## [1.1.1] - 2026-07-19
+## [1.1.1] - Unreleased
 
 Minor release. Improvements to scheduling, top followers and laying groundwork for future updates.
 
@@ -32,7 +32,7 @@ Minor release. Improvements to scheduling, top followers and laying groundwork f
 - Prevented cancelled top-follower scans from committing an in-flight page, promoted scans to foreground work immediately, and validated nonexistent handles inline during onboarding.
 - Improved adaptive dashboard layouts, chart spacing, widget sizing, and blank-state handling across phones, tablets, and non-One UI launchers.
 
-[1.1.1]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.0-beta.1...twidget-v1.1.1
+[1.1.1]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.0...twidget-v1.1.1
 
 ## [1.1.0] - 2026-07-14
 

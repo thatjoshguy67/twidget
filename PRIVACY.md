@@ -33,9 +33,11 @@ The selected data source determines where requests go:
   the selected public X/Twitter username directly to TwitterAPIs using either
   Twidget's included trial key or a user-supplied key. Selecting TwitterAPIs as
   the profile data source requires a user-supplied key. Personal keys are
-  encrypted at rest and take priority over the included key. Profile results,
-  follower rankings, and resumable scan progress remain on-device; keys and
-  results are not sent through the Twidget bridge.
+  encrypted at rest and take priority over the included key. Profile results
+  and resumable scan progress remain on-device, and API keys are never sent
+  through the Twidget bridge. When shared history is enabled, only the completed
+  public Top Followers ranking and its scan metadata may be contributed to the
+  bridge as described below.
 - **Buffer scheduling:** after the user authorizes Twidget with Buffer OAuth,
   the app uploads device-local attachments for posts explicitly saved or
   scheduled with Buffer to the app maintainer's Cloudinary account, then sends

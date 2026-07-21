@@ -38,6 +38,23 @@ class TopFollowersScanPolicyTest {
     }
 
     @Test
+    fun personalKeyDisablesTheAppDailyLimit() {
+        val morning = millis(2026, 7, 18, 8, 0)
+        val evening = millis(2026, 7, 18, 20, 0)
+        val day = TopFollowersScanPolicy.localDay(morning, london)
+
+        assertTrue(
+            TopFollowersScanPolicy.canStart(
+                day,
+                previousScanComplete = true,
+                timestamp = evening,
+                zoneId = london,
+                dailyLimitEnabled = false,
+            ),
+        )
+    }
+
+    @Test
     fun localDayUsesTheAccountDeviceTimezoneNotUtc() {
         val losAngeles = ZoneId.of("America/Los_Angeles")
         val localLateEvening = LocalDateTime.of(2026, 7, 18, 23, 30)

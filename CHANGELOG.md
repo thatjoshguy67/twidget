@@ -16,6 +16,7 @@ follower scans, and better integration with Samsung devices.
 
 ### Added
 
+- Added an included, rate-limited TwitterAPIs trial for one Top Followers scan per account each day; personal keys in Advanced settings take priority and remove Twidget's daily limit.
 - Buffer drafts and scheduled posts can now attach local images and videos; Twidget hosts them with its built-in Cloudinary configuration before syncing them to Buffer.
 - The native composer now uses Android's active keyboard for spell checking, autocorrection, and word suggestions.
 - Drafts can be pinned with quick actions, a long-press context menu, and bulk pin/unpin/delete selection mode.

@@ -32,6 +32,7 @@ data class TopFollowersState(
 enum class TopFollowersScanStart {
     STARTED,
     ALREADY_SCANNED_TODAY,
+    NO_API_KEY,
 }
 
 internal object TopFollowersScanPolicy {
@@ -46,7 +47,8 @@ internal object TopFollowersScanPolicy {
         previousScanComplete: Boolean,
         timestamp: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
-    ): Boolean = !previousScanComplete || canStart(lastStartedDay, timestamp, zoneId)
+        dailyLimitEnabled: Boolean = true,
+    ): Boolean = !dailyLimitEnabled || !previousScanComplete || canStart(lastStartedDay, timestamp, zoneId)
 }
 
 object TopFollowersStore {
@@ -115,11 +117,19 @@ object TopFollowersStore {
     fun tryStartScan(
         context: Context,
         username: String,
+        dailyLimitEnabled: Boolean = true,
         now: Long = System.currentTimeMillis(),
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): TopFollowersScanStart {
         val previous = read(context, username)
-        if (!TopFollowersScanPolicy.canStart(previous.lastStartedDay, previous.complete, now, zoneId)) {
+        if (!TopFollowersScanPolicy.canStart(
+                previous.lastStartedDay,
+                previous.complete,
+                now,
+                zoneId,
+                dailyLimitEnabled,
+            )
+        ) {
             return TopFollowersScanStart.ALREADY_SCANNED_TODAY
         }
         if (previous.lastStartedDay == TopFollowersScanPolicy.localDay(now, zoneId) && !previous.complete) {

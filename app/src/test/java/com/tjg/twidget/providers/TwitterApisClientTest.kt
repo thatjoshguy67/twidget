@@ -9,6 +9,23 @@ import org.junit.Test
 
 class TwitterApisClientTest {
     @Test
+    fun personalKeyTakesPriorityOverAppTrialKey() {
+        val access = TwitterApisClient.selectTopFollowersAccess(" personal ", " trial ")
+
+        assertEquals("personal", access?.apiKey)
+        assertEquals(TwitterApisAccessSource.PERSONAL, access?.source)
+    }
+
+    @Test
+    fun appTrialKeyIsUsedOnlyWhenPersonalKeyIsBlank() {
+        val access = TwitterApisClient.selectTopFollowersAccess("  ", " trial ")
+
+        assertEquals("trial", access?.apiKey)
+        assertEquals(TwitterApisAccessSource.APP_DEFAULT, access?.source)
+        assertEquals(null, TwitterApisClient.selectTopFollowersAccess("", ""))
+    }
+
+    @Test
     fun parsesProfileMetrics() {
         val profile = TwitterApisClient.parseProfile(
             """{"data":{"username":"person","name":"Person","followers_count":9000,"following_count":25,"tweet_count":300,"favourites_count":40,"profile_image_url":"https://pbs.twimg.com/a_normal.jpg","is_blue_verified":true,"protected":false}}""",

@@ -38,7 +38,7 @@ Twitter widget app, with extra stats
 
 - Dashboard for all your Twitter account stats. Followers, following, impressions, engagement, etc...
 - View your best and worst tweets of the week.
-- Find the largest public accounts following you with an optional bring-your-own-key TwitterAPIs scan.
+- Find the largest public accounts following you with a rate-limited TwitterAPIs trial or your own key.
 - Local or cloud based stats history
 - Track multiple accounts
 - One UI style app design
@@ -53,9 +53,9 @@ Twidget can fetch stats a few ways.
 2. **Twidget bridge** — an externally hosted instance of [`bridge/`](bridge/). Currently uses FxTwitter first and falls back to Rettiwt for profile lookups when possible. Caches fetched results for other Twidget users.
 3. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself with any Node 22 host. Point Twidget at it under Settings → Advanced → Self-hosted bridge. Bridge routes include `GET /user/:username` and `GET /analytics/:username`. Set `BRIDGE_API_TOKEN` on self-hosted instances; the shared Twidget bridge remains token-free by design.
 4. **Official X API (bring your own credentials)** — for direct official profile stats. Bring your own API keys and fetch data directly from X using their V2 API. This is not cheap, so only paying X API users can utilise this option. Twidget does not provide this. 
-5. **TwitterAPIs (bring your own key)** — an optional paid provider for direct profile stats and manual top-follower scans. Ordinary post analytics continue to use Twidget's existing analytics paths.
+5. **TwitterAPIs** — Twidget's included app key provides a rate-limited Top Followers trial. Add your own key for direct profile stats and no Twidget daily scan limit. Ordinary post analytics continue to use Twidget's existing analytics paths.
 
-The **Your Top Followers** dashboard card optionally uses [TwitterAPIs](https://twitterapis.com) to enumerate a public account's followers. Its key is entered under Settings → Advanced, encrypted on-device, and sent only to TwitterAPIs. Scans are manual, resumable, and capped at 6,250 paid pages per run (the provider's documented $5 at $0.0008 per read). Protected accounts are not supported.
+The **Your Top Followers** dashboard card uses [TwitterAPIs](https://twitterapis.com) to enumerate a public account's followers. The included app key permits one completed scan per account per local day. A personal key entered under Settings → Advanced takes priority, is encrypted on-device, and removes Twidget's daily limit; TwitterAPIs charges and provider limits still apply. Scans are manual, resumable, and capped at 6,250 paid pages per run (the provider's documented $5 at $0.0008 per read). Protected accounts are not supported.
 
 > Shared history is opt-in. The [`bridge/`](bridge/) stores only accounts explicitly registered through the history route. Normal profile lookups do not create persistent records. 
 

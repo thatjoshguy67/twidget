@@ -83,7 +83,12 @@ jobs:
           BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
           CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
+          TWITTERAPIS_DEFAULT_API_KEY: ${{ secrets.TWITTERAPIS_DEFAULT_API_KEY }}
         run: |
+          if [ -z "$TWITTERAPIS_DEFAULT_API_KEY" ]; then
+            echo "::error::TWITTERAPIS_DEFAULT_API_KEY is not configured"
+            exit 1
+          fi
           ./gradlew testBetaUnitTest assembleBeta lintVitalBeta \
             -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
 

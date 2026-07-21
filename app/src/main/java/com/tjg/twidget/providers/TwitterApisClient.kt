@@ -1,5 +1,7 @@
 package com.tjg.twidget.providers
 
+import android.content.Context
+import com.tjg.twidget.R
 import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.SecureCredentialStore
@@ -10,15 +12,41 @@ import org.json.JSONObject
 
 data class TopFollowersPage(val users: List<TopFollower>, val nextCursor: String)
 
+enum class TwitterApisAccessSource {
+    PERSONAL,
+    APP_DEFAULT,
+}
+
+data class TwitterApisAccess(
+    val apiKey: String,
+    val source: TwitterApisAccessSource,
+)
+
 object TwitterApisClient {
     const val WEBSITE_URL = "https://twitterapis.com"
     private const val ENDPOINT = "https://api.twitterapis.com/twitter/user/followers_v2"
     private const val PROFILE_ENDPOINT = "https://api.twitterapis.com/twitter/user/info"
 
-    fun hasCredentials(context: android.content.Context): Boolean =
+    /** Full profile-provider access remains bring-your-own-key only. */
+    fun hasCredentials(context: Context): Boolean =
         SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY).isNotBlank()
 
-    fun fetchProfile(context: android.content.Context, username: String): ProfileStats {
+    fun hasTopFollowersAccess(context: Context): Boolean = topFollowersAccess(context) != null
+
+    fun topFollowersAccess(context: Context): TwitterApisAccess? = selectTopFollowersAccess(
+        personalKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY),
+        appDefaultKey = context.getString(R.string.twitterapis_default_api_key),
+    )
+
+    internal fun selectTopFollowersAccess(personalKey: String, appDefaultKey: String): TwitterApisAccess? {
+        val personal = personalKey.trim()
+        if (personal.isNotBlank()) return TwitterApisAccess(personal, TwitterApisAccessSource.PERSONAL)
+        return appDefaultKey.trim().takeIf(String::isNotBlank)?.let {
+            TwitterApisAccess(it, TwitterApisAccessSource.APP_DEFAULT)
+        }
+    }
+
+    fun fetchProfile(context: Context, username: String): ProfileStats {
         val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
         require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }
         val url = "$PROFILE_ENDPOINT?username=${encode(username.trim().trimStart('@'))}"

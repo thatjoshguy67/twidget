@@ -13,8 +13,8 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.HttpTransport
-import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.providers.TwitterApisClient
+import com.tjg.twidget.providers.TwitterApisAccessSource
 import com.tjg.twidget.ui.TwidgetAppVisibility
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -25,8 +25,13 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
     override fun doWork(): Result {
         val username = inputData.getString(KEY_USERNAME)?.trim()?.trimStart('@').orEmpty()
         if (username.isBlank()) return Result.success()
-        val apiKey = SecureCredentialStore.read(applicationContext, SecureCredentialStore.TWITTERAPIS_API_KEY)
-        if (apiKey.isBlank()) return fail(username, "Add a TwitterAPIs key in Advanced settings")
+        val access = TwitterApisClient.topFollowersAccess(applicationContext)
+            ?: return fail(username, "TwitterAPIs access is not configured")
+        if (inputData.getBoolean(KEY_PERSONAL_ACCESS_REQUIRED, false) &&
+            access.source != TwitterApisAccessSource.PERSONAL
+        ) {
+            return fail(username, "Your personal TwitterAPIs key was removed; start the scan again")
+        }
 
         TopFollowersActiveScans.started(username)
         var state = TopFollowersStore.read(applicationContext, username).copy(scanning = true, error = "")
@@ -50,7 +55,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
                     return fail(username, "Stopped at the $5 safety limit", state)
                 }
                 val page = try {
-                    TwitterApisClient.fetchFollowers(username, state.cursor, apiKey)
+                    TwitterApisClient.fetchFollowers(username, state.cursor, access.apiKey)
                 } catch (error: HttpTransport.HttpException) {
                     when (error.code) {
                         401 -> return fail(username, "TwitterAPIs rejected the API key", state)
@@ -166,6 +171,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
 
     companion object {
         private const val KEY_USERNAME = "username"
+        private const val KEY_PERSONAL_ACCESS_REQUIRED = "personal_access_required"
         private const val MAX_PAGES_PER_SCAN = 6250 // $5 at the documented $0.0008/read.
         private const val TOP_LIMIT = 5
         private const val RETRY_SLEEP_SLICE_MS = 500L
@@ -187,14 +193,28 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         fun enqueue(context: Context, username: String, restart: Boolean): TopFollowersScanStart {
             val clean = username.trim().trimStart('@')
             if (clean.isBlank()) return TopFollowersScanStart.ALREADY_SCANNED_TODAY
+            val access = TwitterApisClient.topFollowersAccess(context)
+                ?: return TopFollowersScanStart.NO_API_KEY
             val startResult = if (restart) {
-                TopFollowersStore.tryStartScan(context, clean)
+                TopFollowersStore.tryStartScan(
+                    context,
+                    clean,
+                    dailyLimitEnabled = access.source == TwitterApisAccessSource.APP_DEFAULT,
+                )
             } else {
                 TopFollowersScanStart.STARTED
             }
             if (startResult != TopFollowersScanStart.STARTED) return startResult
             val request = OneTimeWorkRequestBuilder<TopFollowersScanWorker>()
-                .setInputData(Data.Builder().putString(KEY_USERNAME, clean).build())
+                .setInputData(
+                    Data.Builder()
+                        .putString(KEY_USERNAME, clean)
+                        .putBoolean(
+                            KEY_PERSONAL_ACCESS_REQUIRED,
+                            access.source == TwitterApisAccessSource.PERSONAL,
+                        )
+                        .build(),
+                )
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 60, TimeUnit.SECONDS)
                 .build()

@@ -29,11 +29,13 @@ The selected data source determines where requests go:
 - **Self-hosted bridge:** the app contacts the URL configured by the user.
 - **Official X API:** the app contacts X directly using credentials supplied by
   the user.
-- **TwitterAPIs:** when selected as the data source, or when a top-followers
-  scan is manually started, the app sends the selected public X/Twitter username
-  and the user's encrypted-at-rest TwitterAPIs key directly to TwitterAPIs.
-  Profile results, follower rankings, and resumable scan progress remain
-  on-device; the key and results are not sent through the Twidget bridge.
+- **TwitterAPIs:** when a top-followers scan is manually started, the app sends
+  the selected public X/Twitter username directly to TwitterAPIs using either
+  Twidget's included trial key or a user-supplied key. Selecting TwitterAPIs as
+  the profile data source requires a user-supplied key. Personal keys are
+  encrypted at rest and take priority over the included key. Profile results,
+  follower rankings, and resumable scan progress remain on-device; keys and
+  results are not sent through the Twidget bridge.
 - **Buffer scheduling:** after the user authorizes Twidget with Buffer OAuth,
   the app uploads device-local attachments for posts explicitly saved or
   scheduled with Buffer to the app maintainer's Cloudinary account, then sends

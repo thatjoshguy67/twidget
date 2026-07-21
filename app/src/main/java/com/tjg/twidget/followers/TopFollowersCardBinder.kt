@@ -23,10 +23,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import com.tjg.twidget.R
-import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.settings.SettingsAdvancedActivity
+import com.tjg.twidget.providers.TwitterApisClient
+import com.tjg.twidget.providers.TwitterApisAccessSource
 import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import dev.oneuiproject.oneui.R as OneUiIconR
@@ -264,18 +265,26 @@ internal class TopFollowersCardBinder(
     }
 
     private fun showStartDialog(account: String) {
+        val personalKey = TwitterApisClient.topFollowersAccess(activity)?.source ==
+            TwitterApisAccessSource.PERSONAL
         AlertDialog.Builder(activity)
             .setTitle(R.string.top_followers_scan_title)
-            .setMessage(R.string.top_followers_scan_message)
+            .setMessage(
+                if (personalKey) R.string.top_followers_scan_message_personal
+                else R.string.top_followers_scan_message_trial,
+            )
             // AppCompat lays buttons out neutral, negative, positive in LTR.
             .setNeutralButton(R.string.cancel, null)
-            .setNegativeButton(R.string.top_followers_add_api_key) { _, _ -> openApiKeySettings() }
+            .setNegativeButton(
+                if (personalKey) R.string.top_followers_manage_api_key
+                else R.string.top_followers_add_api_key,
+            ) { _, _ -> openApiKeySettings() }
             .setPositiveButton(R.string.top_followers_start) { _, _ -> startScan(account) }
             .show()
     }
 
     private fun startScan(account: String) {
-        if (SecureCredentialStore.read(activity, SecureCredentialStore.TWITTERAPIS_API_KEY).isBlank()) {
+        if (!TwitterApisClient.hasTopFollowersAccess(activity)) {
             Toast.makeText(activity, R.string.top_followers_api_key_required, Toast.LENGTH_LONG).show()
             openApiKeySettings()
             return
@@ -287,6 +296,10 @@ internal class TopFollowersCardBinder(
             }
             TopFollowersScanStart.ALREADY_SCANNED_TODAY ->
                 Toast.makeText(activity, R.string.top_followers_daily_limit, Toast.LENGTH_LONG).show()
+            TopFollowersScanStart.NO_API_KEY -> {
+                Toast.makeText(activity, R.string.top_followers_api_key_required, Toast.LENGTH_LONG).show()
+                openApiKeySettings()
+            }
         }
     }
 

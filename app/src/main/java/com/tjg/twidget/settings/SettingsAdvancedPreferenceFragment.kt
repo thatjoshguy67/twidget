@@ -68,7 +68,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
             title = getString(R.string.twitterapis_api_key)
             val current = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
             text = current
-            summary = maskedToken(current)
+            summary = twitterApisKeySummary(current)
             setOnBindEditTextListener {
                 it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 it.setSelectAllOnFocus(true)
@@ -79,7 +79,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
                     context,
                     mapOf(SecureCredentialStore.TWITTERAPIS_API_KEY to apiKey),
                 )
-                preference.summary = maskedToken(apiKey)
+                preference.summary = twitterApisKeySummary(apiKey)
                 true
             }
         })
@@ -173,6 +173,12 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
 
         screen.addBottomInset()
         preferenceScreen = screen
+    }
+
+    private fun twitterApisKeySummary(personalKey: String): String = when {
+        personalKey.isNotBlank() -> getString(R.string.twitterapis_personal_key_active, maskedToken(personalKey))
+        TwitterApisClient.hasTopFollowersAccess(requireContext()) -> getString(R.string.twitterapis_trial_key_active)
+        else -> getString(R.string.twitterapis_no_key_available)
     }
 
     private fun category(title: Int) = PreferenceCategory(requireContext()).apply {

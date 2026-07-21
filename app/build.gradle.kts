@@ -73,6 +73,9 @@ val cloudinaryCloudName = providers.gradleProperty("cloudinaryCloudName").orNull
 val cloudinaryUploadPreset = providers.gradleProperty("cloudinaryUploadPreset").orNull
     ?: System.getenv("CLOUDINARY_UPLOAD_PRESET")
     ?: ""
+val twitterApisDefaultApiKey = providers.gradleProperty("twitterApisDefaultApiKey").orNull
+    ?: System.getenv("TWITTERAPIS_DEFAULT_API_KEY")
+    ?: ""
 require(debugNumber > 0) { "prereleaseNumber must be greater than zero" }
 require(betaNumber > 0) { "betaNumber must be greater than zero" }
 
@@ -89,6 +92,7 @@ android {
         resValue("string", "buffer_oauth_client_id", bufferOAuthClientId)
         resValue("string", "cloudinary_cloud_name", cloudinaryCloudName)
         resValue("string", "cloudinary_upload_preset", cloudinaryUploadPreset)
+        resValue("string", "twitterapis_default_api_key", twitterApisDefaultApiKey)
         resValue(
             "string",
             "buffer_oauth_redirect_uri",

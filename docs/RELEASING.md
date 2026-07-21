@@ -11,6 +11,11 @@ the Git repository.
   `~/.config/twidget/github.properties` with owner-only permissions.
 - GitHub Actions stores the base64-encoded release keystore, signing passwords,
   and package-registry credentials as encrypted repository secrets.
+- GitHub Actions stores the bundled Top Followers trial credential as the
+  encrypted repository secret `TWITTERAPIS_DEFAULT_API_KEY`. It is injected as
+  an Android string resource at build time and must never be committed or
+  printed. Because any credential bundled in an APK can be extracted, its
+  TwitterAPIs account must also enforce a strict provider-side spend/quota cap.
 - GitHub Actions stores the Discord release-channel webhook as the encrypted
   repository secret `DISCORD_RELEASE_WEBHOOK_URL`. Stable and beta workflows
   post through it only after their GitHub Release is published; the Debug Build
@@ -30,6 +35,17 @@ keyPassword=...
 
 For a one-off alternative location, pass
 `-PtwidgetSigningProperties=/absolute/path/to/keystore.properties`.
+
+Set or rotate the trial key without putting it in shell history:
+
+```bash
+gh secret set TWITTERAPIS_DEFAULT_API_KEY --repo thatjoshguy67/twidget
+```
+
+For a local trial-enabled build, set `TWITTERAPIS_DEFAULT_API_KEY` in the
+calling environment or pass `-PtwitterApisDefaultApiKey` from a protected local
+configuration. Builds without it remain valid for contributors, but show that
+trial access is unavailable.
 
 ## Stable release checklist
 

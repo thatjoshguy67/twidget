@@ -1,10 +1,68 @@
 package com.tjg.twidget.schedule
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BufferGraphQlCodecTest {
+    @Test
+    fun bufferAssetsKeepOriginalForPublishingAndThumbnailForDisplay() {
+        val media = bufferMediaList(
+            JSONArray().put(
+                JSONObject()
+                    .put("source", "https://buffer.example.com/original.mp4")
+                    .put("thumbnail", "https://buffer.example.com/preview.jpg")
+                    .put("mimeType", "video/mp4"),
+            ),
+        ).single()
+
+        assertEquals("https://buffer.example.com/original.mp4", media.url)
+        assertEquals("https://buffer.example.com/preview.jpg", media.previewUrl)
+        assertEquals("https://buffer.example.com/preview.jpg", media.displayUrl)
+    }
+
+    @Test
+    fun bufferThumbnailFallsBackAsOriginalWhenSourceIsMissing() {
+        val media = bufferMediaList(
+            JSONArray().put(JSONObject().put("thumbnail", "https://buffer.example.com/image.jpg")),
+        ).single()
+
+        assertEquals("https://buffer.example.com/image.jpg", media.url)
+        assertEquals(null, media.previewUrl)
+        assertEquals(media.url, media.displayUrl)
+    }
+
+    @Test
+    fun bufferThreadMetadataKeepsMediaOnTheOwningReply() {
+        val metadata = JSONObject().put(
+            "thread",
+            JSONArray()
+                .put(JSONObject().put("text", "Root").put("assets", JSONArray()))
+                .put(
+                    JSONObject()
+                        .put("text", "Reply")
+                        .put(
+                            "assets",
+                            JSONArray().put(
+                                JSONObject()
+                                    .put("source", "https://buffer.example.com/reply.png")
+                                    .put("thumbnail", "https://buffer.example.com/reply-preview.png")
+                                    .put("mimeType", "image/png"),
+                            ),
+                        ),
+                ),
+        )
+
+        val thread = bufferThreadItems(metadata)
+
+        assertEquals(listOf("Root", "Reply"), thread.map(BufferThreadItem::text))
+        assertTrue(thread.first().media.isEmpty())
+        assertEquals("https://buffer.example.com/reply.png", thread[1].media.single().url)
+        assertEquals("https://buffer.example.com/reply-preview.png", thread[1].media.single().displayUrl)
+    }
+
     @Test
     fun scheduledThreadUsesBufferCreatePostInput() {
         val post = ScheduledPost(

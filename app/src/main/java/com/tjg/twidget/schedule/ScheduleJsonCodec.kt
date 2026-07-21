@@ -48,6 +48,7 @@ internal object ScheduleJsonCodec {
             "type" to json("public_url"),
             "url" to json(url),
             "mimeType" to json(mimeType),
+            "previewUrl" to json(previewUrl),
         )
     }
 
@@ -90,6 +91,7 @@ internal object ScheduleJsonCodec {
         "public_url" -> PublicUrlMedia(
             url = value.string("url"),
             mimeType = value.optionalString("mimeType"),
+            previewUrl = value.optionalString("previewUrl"),
         )
         "postpone_library" -> PublicUrlMedia(
             url = value.optionalString("url").orEmpty(),

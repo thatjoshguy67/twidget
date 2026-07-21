@@ -20,7 +20,11 @@ class ScheduleJsonCodecTest {
                     text = "Quotes \" and newlines\nsurvive",
                     media = listOf(
                         LocalUriMedia("content://media/1", "photo.jpg", "image/jpeg"),
-                        PublicUrlMedia("https://example.com/photo.png", "image/png"),
+                        PublicUrlMedia(
+                            "https://example.com/photo.png",
+                            "image/png",
+                            "https://example.com/photo-preview.png",
+                        ),
                         PublicUrlMedia("https://cdn.example.com/library.gif", "image/gif"),
                     ),
                 )

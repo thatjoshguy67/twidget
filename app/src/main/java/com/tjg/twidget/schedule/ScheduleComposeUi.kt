@@ -273,7 +273,12 @@ internal class ScheduleComposeUi(
                         .onFailure { showMediaPlaceholder(image) }
                 }
             }
-            is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(activity, image, source.url, activity.composeDp(12))
+            is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(
+                activity,
+                image,
+                source.displayUrl,
+                activity.composeDp(12),
+            )
         }
     }
 

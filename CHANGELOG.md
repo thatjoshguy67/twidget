@@ -28,6 +28,7 @@ Minor release. Improvements to scheduling, top followers and laying groundwork f
 
 - Hardened Buffer request throttling, media synchronization, refresh-token handling, and background schedule updates.
 - Buffer publishing now sends a confirmation notification after a successful post and an error notification with details when publishing fails.
+- Buffer refreshes now preserve per-item media added to X threads in Buffer and use Buffer thumbnails for reliable in-app previews.
 - Made top-follower scans resumable and more reliable when the app is backgrounded or interrupted.
 - Prevented cancelled top-follower scans from committing an in-flight page, promoted scans to foreground work immediately, and validated nonexistent handles inline during onboarding.
 - Improved adaptive dashboard layouts, chart spacing, widget sizing, and blank-state handling across phones, tablets, and non-One UI launchers.

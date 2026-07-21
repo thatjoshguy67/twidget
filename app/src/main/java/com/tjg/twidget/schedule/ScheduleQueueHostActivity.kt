@@ -857,7 +857,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 is PublicUrlMedia -> ProfileImageLoader.loadRoundedInto(
                     this@ScheduleQueueHostActivity,
                     this,
-                    source.url,
+                    source.displayUrl,
                     scheduleDp(14),
                 )
             }

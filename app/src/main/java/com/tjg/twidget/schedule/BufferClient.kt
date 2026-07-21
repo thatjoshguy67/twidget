@@ -35,6 +35,12 @@ data class BufferPost(
     val dueAt: Long?,
     val createdAt: Long?,
     val media: List<PublicUrlMedia> = emptyList(),
+    val thread: List<BufferThreadItem> = emptyList(),
+)
+
+data class BufferThreadItem(
+    val text: String,
+    val media: List<PublicUrlMedia> = emptyList(),
 )
 
 class BufferClient(
@@ -106,7 +112,8 @@ class BufferClient(
                         status = post.getString("status"),
                         dueAt = post.optIsoMillis("dueAt"),
                         createdAt = post.optIsoMillis("createdAt"),
-                        media = post.optJSONArray("assets").toMediaList(),
+                        media = bufferMediaList(post.optJSONArray("assets")),
+                        thread = bufferThreadItems(post.optJSONObject("metadata")),
                     )
                 }
                 values to result.getJSONObject("pageInfo").let { info ->
@@ -203,7 +210,7 @@ class BufferClient(
         private const val CHANNELS_QUERY =
             "query Channels(\$organizationId: OrganizationId!) { channels(input: { organizationId: \$organizationId }) { id name displayName service avatar isQueuePaused } }"
         private const val POSTS_QUERY =
-            "query Posts(\$organizationId: OrganizationId!, \$channelId: ChannelId!, \$statuses: [PostStatus!], \$startDate: DateTime, \$after: String) { posts(first: 50, after: \$after, input: { organizationId: \$organizationId, filter: { channelIds: [\$channelId], status: \$statuses, startDate: \$startDate }, sort: [{ field: dueAt, direction: asc }] }) { edges { node { id channelId text status dueAt createdAt assets { __typename mimeType thumbnail source } } } pageInfo { hasNextPage endCursor } } }"
+            "query Posts(\$organizationId: OrganizationId!, \$channelId: ChannelId!, \$statuses: [PostStatus!], \$startDate: DateTime, \$after: String) { posts(first: 50, after: \$after, input: { organizationId: \$organizationId, filter: { channelIds: [\$channelId], status: \$statuses, startDate: \$startDate }, sort: [{ field: dueAt, direction: asc }] }) { edges { node { id channelId text status dueAt createdAt assets { __typename mimeType thumbnail source } metadata { ... on TwitterPostMetadata { thread { text assets { __typename mimeType thumbnail source } } } } } } pageInfo { hasNextPage endCursor } } }"
         private const val CREATE_MUTATION =
             "mutation Create(\$input: CreatePostInput!) { createPost(input: \$input) { ... on PostActionSuccess { post { id } } ... on InvalidInputError { message } ... on UnauthorizedError { message } ... on UnexpectedError { message } ... on RestProxyError { message } ... on LimitReachedError { message } } }"
         private const val EDIT_MUTATION =
@@ -257,13 +264,30 @@ internal object BufferGraphQlCodec {
 
 private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map(::getJSONObject)
 
-private fun JSONArray?.toMediaList(): List<PublicUrlMedia> {
-    if (this == null) return emptyList()
-    return (0 until length()).mapNotNull { index ->
-        val asset = optJSONObject(index) ?: return@mapNotNull null
-        val url = asset.optString("source").ifBlank { asset.optString("thumbnail") }
+internal fun bufferMediaList(assets: JSONArray?): List<PublicUrlMedia> {
+    if (assets == null) return emptyList()
+    return (0 until assets.length()).mapNotNull { index ->
+        val asset = assets.optJSONObject(index) ?: return@mapNotNull null
+        val source = asset.optString("source").trim()
+        val thumbnail = asset.optString("thumbnail").trim()
+        val url = source.ifBlank { thumbnail }
         if (url.isBlank()) return@mapNotNull null
-        PublicUrlMedia(url = url, mimeType = asset.optString("mimeType").ifBlank { null })
+        PublicUrlMedia(
+            url = url,
+            mimeType = asset.optString("mimeType").ifBlank { null },
+            previewUrl = thumbnail.takeIf { it.isNotBlank() && it != url },
+        )
+    }
+}
+
+internal fun bufferThreadItems(metadata: JSONObject?): List<BufferThreadItem> {
+    val thread = metadata?.optJSONArray("thread") ?: return emptyList()
+    return (0 until thread.length()).mapNotNull { index ->
+        val item = thread.optJSONObject(index) ?: return@mapNotNull null
+        BufferThreadItem(
+            text = item.optString("text"),
+            media = bufferMediaList(item.optJSONArray("assets")),
+        )
     }
 }
 

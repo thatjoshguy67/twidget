@@ -61,7 +61,10 @@ data class LocalUriMedia(
 data class PublicUrlMedia(
     val url: String,
     override val mimeType: String? = null,
-) : ScheduleMediaSource()
+    val previewUrl: String? = null,
+) : ScheduleMediaSource() {
+    val displayUrl: String get() = previewUrl?.takeIf(String::isNotBlank) ?: url
+}
 
 data class ScheduleThreadItem(
     val id: String = UUID.randomUUID().toString(),

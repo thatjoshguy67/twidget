@@ -304,6 +304,16 @@
     <string name="add_to_home_screen">Add to home screen</string>
     <string name="skip">Skip</string>
     <string name="onboarding_overview_summary">Twidget keeps your follower count, recent changes, and One UI home screen widgets in sync from one profile.</string>
+    <string name="onboarding_permissions_title">Permissions</string>
+    <string name="onboarding_required_permissions">Required permissions</string>
+    <string name="onboarding_permission_notifications_title">Notifications</string>
+    <string name="onboarding_permission_notifications_summary">Shows scan progress, publishing results, and scheduled-post reminders.</string>
+    <string name="onboarding_permission_alarms_title">Alarms and reminders</string>
+    <string name="onboarding_permission_alarms_summary">Delivers locally scheduled post reminders at the selected time.</string>
+    <string name="onboarding_permission_allowed">Allowed</string>
+    <string name="onboarding_permission_required">Tap to allow</string>
+    <string name="onboarding_allow_permissions">Allow permissions</string>
+    <string name="onboarding_permission_settings_failed">Couldn’t open this permission’s system settings.</string>
     <string name="onboarding_profile_title">Enter your handle</string>
     <string name="onboarding_profile_summary">Don\'t worry, you can add more later</string>
     <string name="onboarding_scheduling_title">Choose how to post</string>

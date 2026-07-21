@@ -2,13 +2,19 @@ package com.tjg.twidget.main
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.Manifest
+import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.text.Editable
 import android.text.InputFilter
 import android.text.TextWatcher
@@ -24,8 +30,10 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
+import androidx.core.app.NotificationManagerCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.HttpTransport
@@ -55,10 +63,22 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private val previewHandler = Handler(Looper.getMainLooper())
     private var asyncGeneration = 0L
     private var bufferConnectStarted = false
+    private var notificationPermissionRequested = false
+    private var permissionSequenceInProgress = false
+    private var exactAlarmRequestStarted = false
+    private val notificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        notificationPermissionRequested = true
+        renderPermissionState()
+        updateButtons()
+        if (granted) continuePermissionSequence()
+    }
     private val stepBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
             when (step) {
-                STEP_PROFILE -> goToStep(STEP_OVERVIEW)
+                STEP_PERMISSIONS -> goToStep(STEP_OVERVIEW)
+                STEP_PROFILE -> goToStep(STEP_PERMISSIONS)
                 STEP_SCHEDULING -> goToStep(STEP_PROFILE)
                 STEP_WIDGETS -> goToStep(STEP_SCHEDULING)
                 STEP_DONE -> goToStep(STEP_WIDGETS)
@@ -80,6 +100,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         onBackPressedDispatcher.addCallback(this, stepBackCallback)
         setupInput()
         setupButtons()
+        setupPermissionRows()
         setupShareHistoryCheckbox()
         renderStep(animate = false)
     }
@@ -94,6 +115,17 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (step == STEP_PERMISSIONS) {
+            renderPermissionState()
+            updateButtons()
+            if (permissionSequenceInProgress) {
+                val state = permissionState()
+                when {
+                    state.allGranted -> goToStep(STEP_PROFILE)
+                    state.notificationsGranted && !exactAlarmRequestStarted -> requestExactAlarmPermission()
+                }
+            }
+        }
         if (bufferConnectStarted && BufferOAuth.isConnected(this)) {
             bufferConnectStarted = false
             configureBufferChannel()
@@ -101,6 +133,10 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     }
 
     private fun goToStep(next: Int) {
+        if (next != STEP_PERMISSIONS) {
+            permissionSequenceInProgress = false
+            exactAlarmRequestStarted = false
+        }
         step = next
         renderStep(animate = true)
     }
@@ -130,7 +166,14 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private fun setupButtons() {
         findViewById<AppCompatButton>(R.id.primary_button).setOnClickListener {
             when (step) {
-                STEP_OVERVIEW -> goToStep(STEP_PROFILE)
+                STEP_OVERVIEW -> goToStep(STEP_PERMISSIONS)
+                STEP_PERMISSIONS -> if (permissionState().allGranted) {
+                    goToStep(STEP_PROFILE)
+                } else {
+                    permissionSequenceInProgress = true
+                    exactAlarmRequestStarted = false
+                    requestNextPermission()
+                }
                 STEP_PROFILE -> submitProfile()
                 STEP_SCHEDULING -> connectBuffer()
                 STEP_WIDGETS -> {
@@ -148,6 +191,80 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 }
                 STEP_WIDGETS -> goToStep(STEP_DONE)
             }
+        }
+    }
+
+    private fun setupPermissionRows() {
+        findViewById<View>(R.id.permission_notifications_row).setOnClickListener {
+            requestNotificationPermission()
+        }
+        findViewById<View>(R.id.permission_alarms_row).setOnClickListener {
+            requestExactAlarmPermission()
+        }
+    }
+
+    private fun permissionState(): OnboardingPermissionState = OnboardingPermissionState(
+        notificationsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED &&
+                NotificationManagerCompat.from(this).areNotificationsEnabled()),
+        exactAlarmsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            getSystemService(AlarmManager::class.java).canScheduleExactAlarms(),
+    )
+
+    private fun renderPermissionState() {
+        if (step != STEP_PERMISSIONS) return
+        val state = permissionState()
+        updatePermissionStatus(R.id.permission_notifications_status, state.notificationsGranted)
+        updatePermissionStatus(R.id.permission_alarms_status, state.exactAlarmsGranted)
+    }
+
+    private fun updatePermissionStatus(viewId: Int, granted: Boolean) {
+        findViewById<TextView>(viewId).apply {
+            text = getString(if (granted) R.string.onboarding_permission_allowed else R.string.onboarding_permission_required)
+            setTextColor(getColor(R.color.oneui_text_secondary))
+        }
+    }
+
+    private fun continuePermissionSequence() {
+        if (!permissionSequenceInProgress) return
+        if (permissionState().allGranted) {
+            goToStep(STEP_PROFILE)
+        } else {
+            requestNextPermission()
+        }
+    }
+
+    private fun requestNextPermission() {
+        when (nextOnboardingPermissionAction(permissionState())) {
+            OnboardingPermissionAction.NOTIFICATIONS -> requestNotificationPermission()
+            OnboardingPermissionAction.EXACT_ALARMS -> requestExactAlarmPermission()
+            OnboardingPermissionAction.COMPLETE -> continuePermissionSequence()
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val runtimeGranted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!runtimeGranted && !notificationPermissionRequested) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+        )
+    }
+
+    private fun requestExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || permissionState().exactAlarmsGranted) return
+        exactAlarmRequestStarted = true
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")),
+            )
+        }.onFailure {
+            Toast.makeText(this, R.string.onboarding_permission_settings_failed, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -171,6 +288,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private fun renderStep(animate: Boolean = false) {
         val steps = mapOf(
             STEP_OVERVIEW to R.id.step_overview,
+            STEP_PERMISSIONS to R.id.step_permissions,
             STEP_PROFILE to R.id.step_profile,
             STEP_SCHEDULING to R.id.step_scheduling,
             STEP_WIDGETS to R.id.step_widgets,
@@ -193,6 +311,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         previewFloatAnimator = null
         if (step == STEP_WIDGETS) showWidgetPreview()
         if (step == STEP_DONE) showDoneProfileAvatar()
+        if (step == STEP_PERMISSIONS) renderPermissionState()
         settleBackground(animate)
         if (animate) {
             // The "all set" title rises further and slower, settling into the
@@ -251,7 +370,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun updateButtons() {
         stepBackCallback.isEnabled = !isStarting && !addAccountMode && when (step) {
-            STEP_PROFILE, STEP_SCHEDULING, STEP_DONE -> true
+            STEP_PERMISSIONS, STEP_PROFILE, STEP_SCHEDULING, STEP_DONE -> true
             STEP_WIDGETS -> !startedOnWidgetStep
             else -> false
         }
@@ -261,6 +380,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 isStarting && step == STEP_PROFILE -> getString(R.string.onboarding_checking_account)
                 isStarting -> getString(R.string.starting_twidget)
                 step == STEP_OVERVIEW -> getString(R.string.get_started)
+                step == STEP_PERMISSIONS && !permissionState().allGranted ->
+                    getString(R.string.onboarding_allow_permissions)
+                step == STEP_PERMISSIONS -> getString(R.string.continue_button)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
                 step == STEP_PROFILE -> getString(R.string.continue_button)
                 step == STEP_SCHEDULING -> getString(R.string.onboarding_connect_buffer)
@@ -553,10 +675,11 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         const val EXTRA_ADD_ACCOUNT = "com.tjg.twidget.extra.ADD_ACCOUNT"
         const val EXTRA_SHOW_WIDGET_STEP = "com.tjg.twidget.extra.SHOW_WIDGET_STEP"
         private const val STEP_OVERVIEW = 0
-        private const val STEP_PROFILE = 1
-        private const val STEP_SCHEDULING = 2
-        private const val STEP_WIDGETS = 3
-        private const val STEP_DONE = 4
+        private const val STEP_PERMISSIONS = 1
+        private const val STEP_PROFILE = 2
+        private const val STEP_SCHEDULING = 3
+        private const val STEP_WIDGETS = 4
+        private const val STEP_DONE = 5
     }
 }
 
@@ -564,3 +687,18 @@ internal fun onboardingAccountIsMissing(error: Throwable?): Boolean =
     error is HttpTransport.HttpException && error.code == 404
 
 internal fun shouldShowOnboardingHistoryOption(addAccountMode: Boolean): Boolean = !addAccountMode
+
+internal data class OnboardingPermissionState(
+    val notificationsGranted: Boolean,
+    val exactAlarmsGranted: Boolean,
+) {
+    val allGranted: Boolean get() = notificationsGranted && exactAlarmsGranted
+}
+
+internal enum class OnboardingPermissionAction { NOTIFICATIONS, EXACT_ALARMS, COMPLETE }
+
+internal fun nextOnboardingPermissionAction(state: OnboardingPermissionState): OnboardingPermissionAction = when {
+    !state.notificationsGranted -> OnboardingPermissionAction.NOTIFICATIONS
+    !state.exactAlarmsGranted -> OnboardingPermissionAction.EXACT_ALARMS
+    else -> OnboardingPermissionAction.COMPLETE
+}

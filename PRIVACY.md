@@ -58,7 +58,11 @@ Shared history is opt-in. Ordinary direct FxTwitter lookups do not register an
 account in the hosted history pool. When sharing is enabled, the bridge may
 store the X/Twitter username, public account metrics, metric provenance, and
 daily sample timestamps so participating users can receive real historical
-data. Client-supplied historical backfill is disabled by default.
+data. A completed Top Followers scan may also contribute the five public
+accounts in its ranking, their public profile fields, and scan metadata; other
+participating installs can reuse that result. Non-participating installs do
+not upload or request shared Top Followers results. Client-supplied historical
+backfill is disabled by default.
 
 The bridge can use PostgreSQL for history and Redis for shared request limits,
 caches, registration budgets, and scheduled-job locks. Retention and inactive

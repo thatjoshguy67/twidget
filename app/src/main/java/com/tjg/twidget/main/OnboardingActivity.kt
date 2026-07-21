@@ -30,6 +30,8 @@ import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.followers.TopFollowersBridgeCache
+import com.tjg.twidget.followers.TopFollowersStore
 import com.tjg.twidget.providers.FxTwitterClient
 import com.tjg.twidget.schedule.BufferChannel
 import com.tjg.twidget.schedule.BufferClient
@@ -152,6 +154,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     // Saved immediately on toggle: the widgets step has no explicit finish
     // action — users leave via the pin dialog, Continue, or back.
     private fun setupShareHistoryCheckbox() {
+        val visible = shouldShowOnboardingHistoryOption(addAccountMode)
+        findViewById<View>(R.id.share_history_option).visibility = if (visible) View.VISIBLE else View.GONE
+        if (!visible) return
         findViewById<CheckBox>(R.id.share_history_checkbox).apply {
             isChecked = TwidgetStore.settings(this@OnboardingActivity).shareHistory
             setOnCheckedChangeListener { _, isChecked ->
@@ -402,6 +407,11 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                     TwidgetStore.completeOnboarding(this, username)
                 }
                 TwidgetStore.saveStats(this, stats)
+                runCatching {
+                    TopFollowersBridgeCache.fetch(this, username)
+                }.getOrNull()?.let { cached ->
+                    TopFollowersStore.write(this, username, cached)
+                }
                 TwidgetWidget.updateAll(this)
             }
             postUiIfCurrent(generation) {
@@ -552,3 +562,5 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
 internal fun onboardingAccountIsMissing(error: Throwable?): Boolean =
     error is HttpTransport.HttpException && error.code == 404
+
+internal fun shouldShowOnboardingHistoryOption(addAccountMode: Boolean): Boolean = !addAccountMode

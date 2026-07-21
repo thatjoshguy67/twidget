@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "check": "node --check src/server.js && node --check src/infrastructure.js && node --check src/analytics-import.js && node --check scripts/migrate-history-to-postgres.mjs",
+    "check": "node --check src/server.js && node --check src/infrastructure.js && node --check src/analytics-import.js && node --check src/top-followers.js && node --check scripts/migrate-history-to-postgres.mjs",
     "history:migrate": "node scripts/migrate-history-to-postgres.mjs",
     "test": "node --test"
   },

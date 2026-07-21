@@ -4,23 +4,24 @@ All notable changes to Twidget are documented here.
 
 ## [1.1.1] - 2026-07-19
 
-Maintenance release focused on Buffer scheduling, dependable long-running
-follower scans, and better integration with Samsung devices.
+Minor release. Improvements to scheduling, top followers and laying groundwork for future updates.
 
 ### Changed
 
-- Reorganized the app's source tree from one flat package into feature packages (analytics, schedule, settings, widget, and friends). Existing home and lock screen widgets keep working: the original widget provider component names stay registered.
+- Reorganized the app's source tree from one flat package into neatly organised folders. For better maintainability.
 - Replaced Postpone cloud scheduling and API-key onboarding with Buffer OAuth, encrypted refresh-token rotation, connected X-channel mapping, and Buffer-backed draft and schedule syncing.
 - Long-running top-follower scans now continue as foreground work after the app leaves the screen and surface progress through Android Live Updates on supported devices.
 - Redesigned scheduled-tweet cards with clearer date and action rows, more readable post text, and responsive media thumbnails.
+- Kept the shared-history choice in initial onboarding only, so adding another account cannot accidentally change the install-wide privacy setting.
 
 ### Added
 
 - Added an included, rate-limited TwitterAPIs trial for one Top Followers scan per account each day; personal keys in Advanced settings take priority and remove Twidget's daily limit.
-- Buffer drafts and scheduled posts can now attach local images and videos; Twidget hosts them with its built-in Cloudinary configuration before syncing them to Buffer.
+- Participating shared-history installs now contribute completed Top Followers rankings to the bridge and reuse an existing ranking when that account is added elsewhere.
+- Buffer drafts and scheduled posts can now attach local images and videos; Twidget hosts them with its built-in cloud configuration before syncing them to Buffer.
 - The native composer now uses Android's active keyboard for spell checking, autocorrection, and word suggestions.
 - Drafts can be pinned with quick actions, a long-press context menu, and bulk pin/unpin/delete selection mode.
-- Samsung Modes and Routines can trigger an immediate Twidget refresh.
+- Started work integrating Twidget into Modes and Routines on Galaxy devices. Barebones for now, but more features coming in the future.
 
 ### Fixed
 

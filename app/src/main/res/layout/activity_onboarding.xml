@@ -131,27 +131,34 @@
                         android:textSize="14sp"
                         android:visibility="gone" />
 
-                    <CheckBox
-                        android:id="@+id/share_history_checkbox"
+                    <LinearLayout
+                        android:id="@+id/share_history_option"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="36dp"
-                        android:fontFamily="sec"
-                        android:text="@string/share_history"
-                        android:textColor="?android:textColorPrimary"
-                        android:textSize="15sp" />
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:fontFamily="sec"
-                        android:lineSpacingExtra="2dp"
-                        android:paddingStart="34dp"
-                        android:paddingEnd="0dp"
-                        android:text="@string/share_history_onboarding_summary"
-                        android:textColor="?android:textColorSecondary"
-                        android:textSize="13sp" />
+                        <CheckBox
+                            android:id="@+id/share_history_checkbox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sec"
+                            android:text="@string/share_history"
+                            android:textColor="?android:textColorPrimary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="sec"
+                            android:lineSpacingExtra="2dp"
+                            android:paddingStart="34dp"
+                            android:paddingEnd="0dp"
+                            android:text="@string/share_history_onboarding_summary"
+                            android:textColor="?android:textColorSecondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Step 3 · Scheduling -->

@@ -96,6 +96,40 @@ test("bridge security and health defaults", async (t) => {
   });
   assert.equal(removedLegacyBackfill.status, 404);
 
+  const registeredHistory = await fetch(`${base}/history/example`, {
+    headers: { Authorization: "Bearer test-token" },
+  });
+  assert.equal(registeredHistory.status, 200);
+
+  const savedTopFollowers = await fetch(`${base}/history/example/top-followers`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer test-token",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      scanned: 100,
+      pages: 2,
+      top: [{
+        id: "42",
+        username: "topfan",
+        name: "Top Fan",
+        followers: 9001,
+        verified: false,
+        avatar: "https://example.com/avatar.jpg",
+      }],
+    }),
+  });
+  assert.equal(savedTopFollowers.status, 201);
+
+  const sharedTopFollowers = await fetch(`${base}/history/example/top-followers`, {
+    headers: { Authorization: "Bearer test-token" },
+  });
+  assert.equal(sharedTopFollowers.status, 200);
+  const sharedTopFollowersBody = await sharedTopFollowers.json();
+  assert.equal(sharedTopFollowersBody.scanned, 100);
+  assert.equal(sharedTopFollowersBody.top[0].username, "topfan");
+
   const unauthorizedDelete = await fetch(`${base}/admin/history/example`, { method: "DELETE" });
   assert.equal(unauthorizedDelete.status, 401);
 

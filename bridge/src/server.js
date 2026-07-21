@@ -7,6 +7,7 @@ import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
 import { bangerScore } from "./banger-score.js";
 import { prepareAnalyticsImport } from "./analytics-import.js";
+import { prepareTopFollowersCache } from "./top-followers.js";
 import {
   LocalFixedWindowLimiter,
   LocalHistoryRepository,
@@ -371,6 +372,48 @@ app.get("/history/:username", async (req, res) => {
     }
   }
   res.json({ userName: username, history: await historyFor(username, { touch: true }) });
+});
+
+app.get("/history/:username/top-followers", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const key = username.toLowerCase();
+  if (!(await historyRepository.hasAccount(key))) {
+    res.status(404).json({ error: "top_followers_not_cached" });
+    return;
+  }
+  await historyRepository.getHistory(key, { touch: true });
+  const cached = (await historyRepository.getMeta(key)).topFollowers;
+  if (!cached || !Array.isArray(cached.top) || !cached.top.length) {
+    res.status(404).json({ error: "top_followers_not_cached" });
+    return;
+  }
+  res.json({ userName: username, ...cached });
+});
+
+app.post("/history/:username/top-followers", historyJsonBody, async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const key = username.toLowerCase();
+  if (!(await historyRepository.hasAccount(key))) {
+    res.status(409).json({ error: "history_account_not_registered" });
+    return;
+  }
+  const cached = prepareTopFollowersCache(req.body);
+  if (!cached) {
+    res.status(400).json({ error: "invalid_top_followers" });
+    return;
+  }
+  const meta = await historyRepository.getMeta(key);
+  await historyRepository.setMeta(key, { ...meta, topFollowers: cached });
+  await historyRepository.getHistory(key, { touch: true });
+  res.status(201).json({ userName: username, ...cached });
 });
 
 app.post("/history/:username/analytics-import", historyJsonBody, async (req, res) => {

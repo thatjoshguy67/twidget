@@ -89,6 +89,13 @@ marks legacy Wayback zero fields unknown, keeps positive archive values known,
 and preserves genuine observed zero values from live/client samples. Sample
 `src` records `live`, `client`, or `wayback` provenance where available.
 
+Participating clients may also attach the latest completed Top Followers
+ranking to an already registered public account through
+`POST /history/:username/top-followers`. Other participating clients read it
+with `GET /history/:username/top-followers`. The bridge bounds the payload to
+five validated public profiles and stores it in the account metadata; these
+routes do not create history-pool accounts on their own.
+
 For the first deployment onto an existing PostgreSQL store, keep the bridge at
 one replica and take a database backup. Startup takes a PostgreSQL advisory
 transaction lock, adds the four nullable columns, backfills them, and only then

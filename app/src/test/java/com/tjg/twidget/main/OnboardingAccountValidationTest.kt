@@ -12,4 +12,10 @@ class OnboardingAccountValidationTest {
         assertFalse(onboardingAccountIsMissing(HttpTransport.HttpException(500, "offline")))
         assertFalse(onboardingAccountIsMissing(IllegalStateException("bad response")))
     }
+
+    @Test
+    fun historySharingChoiceIsOnlyShownDuringInitialOnboarding() {
+        assertTrue(shouldShowOnboardingHistoryOption(addAccountMode = false))
+        assertFalse(shouldShowOnboardingHistoryOption(addAccountMode = true))
+    }
 }

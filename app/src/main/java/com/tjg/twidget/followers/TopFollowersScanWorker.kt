@@ -141,6 +141,7 @@ class TopFollowersScanWorker(context: Context, params: WorkerParameters) : Worke
         if (!TwidgetAppVisibility.isVisible()) {
             TopFollowersNotificationHelper.showComplete(applicationContext, username, completed)
         }
+        runCatching { TopFollowersBridgeCache.publish(applicationContext, username, completed) }
         return Result.success()
     }
 

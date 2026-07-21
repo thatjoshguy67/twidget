@@ -27,6 +27,7 @@ data class TopFollowersState(
     val startedAt: Long = 0L,
     val lastStartedDay: String = "",
     val completedAt: Long = 0L,
+    val activeRunId: String = "",
 )
 
 enum class TopFollowersScanStart {
@@ -82,6 +83,7 @@ object TopFollowersStore {
                 startedAt = root.optLong("startedAt"),
                 lastStartedDay = root.optString("lastStartedDay"),
                 completedAt = root.optLong("completedAt"),
+                activeRunId = root.optString("activeRunId"),
             )
         }.getOrDefault(TopFollowersState())
     }
@@ -109,6 +111,7 @@ object TopFollowersStore {
             put("startedAt", state.startedAt)
             put("lastStartedDay", state.lastStartedDay)
             put("completedAt", state.completedAt)
+            put("activeRunId", state.activeRunId)
         }
         prefs(context).edit().putString(key(username), root.toString()).apply()
     }
@@ -117,6 +120,7 @@ object TopFollowersStore {
     fun tryStartScan(
         context: Context,
         username: String,
+        runId: String,
         dailyLimitEnabled: Boolean = true,
         now: Long = System.currentTimeMillis(),
         zoneId: ZoneId = ZoneId.systemDefault(),
@@ -133,7 +137,7 @@ object TopFollowersStore {
             return TopFollowersScanStart.ALREADY_SCANNED_TODAY
         }
         if (previous.lastStartedDay == TopFollowersScanPolicy.localDay(now, zoneId) && !previous.complete) {
-            write(context, username, previous.copy(scanning = true, error = ""))
+            write(context, username, previous.copy(scanning = true, error = "", activeRunId = runId))
             return TopFollowersScanStart.STARTED
         }
         write(
@@ -143,9 +147,34 @@ object TopFollowersStore {
                 scanning = true,
                 startedAt = now,
                 lastStartedDay = TopFollowersScanPolicy.localDay(now, zoneId),
+                activeRunId = runId,
             ),
         )
         return TopFollowersScanStart.STARTED
+    }
+
+    @Synchronized
+    fun isRunCurrent(context: Context, username: String, runId: String): Boolean =
+        runId.isNotBlank() && read(context, username).activeRunId == runId
+
+    @Synchronized
+    fun writeForRun(
+        context: Context,
+        username: String,
+        runId: String,
+        state: TopFollowersState,
+        finished: Boolean = false,
+    ): Boolean {
+        if (!isRunCurrent(context, username, runId)) return false
+        write(context, username, state.copy(activeRunId = if (finished) "" else runId))
+        return true
+    }
+
+    @Synchronized
+    fun stopScan(context: Context, username: String): TopFollowersState {
+        val stopped = read(context, username).copy(scanning = false, error = "", activeRunId = "")
+        write(context, username, stopped)
+        return stopped
     }
 
     private fun key(username: String) = username.trim().trimStart('@').lowercase(Locale.US)

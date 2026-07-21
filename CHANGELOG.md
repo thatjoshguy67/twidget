@@ -27,6 +27,7 @@ follower scans, and better integration with Samsung devices.
 - Hardened Buffer request throttling, media synchronization, refresh-token handling, and background schedule updates.
 - Buffer publishing now sends a confirmation notification after a successful post and an error notification with details when publishing fails.
 - Made top-follower scans resumable and more reliable when the app is backgrounded or interrupted.
+- Prevented cancelled top-follower scans from committing an in-flight page, promoted scans to foreground work immediately, and validated nonexistent handles inline during onboarding.
 - Improved adaptive dashboard layouts, chart spacing, widget sizing, and blank-state handling across phones, tablets, and non-One UI launchers.
 
 [1.1.1]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.0-beta.1...twidget-v1.1.1

@@ -21,14 +21,16 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.providers.RettiwtClient
+import com.tjg.twidget.providers.FxTwitterClient
 import com.tjg.twidget.schedule.BufferChannel
 import com.tjg.twidget.schedule.BufferClient
 import com.tjg.twidget.schedule.BufferOAuth
@@ -115,6 +117,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    hideUsernameError()
                     updateButtons()
                 }
                 override fun afterTextChanged(s: Editable?) = Unit
@@ -250,6 +253,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         val showSecondary = step == STEP_SCHEDULING || step == STEP_WIDGETS
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
+                isStarting && step == STEP_PROFILE -> getString(R.string.onboarding_checking_account)
                 isStarting -> getString(R.string.starting_twidget)
                 step == STEP_OVERVIEW -> getString(R.string.get_started)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
@@ -370,50 +374,63 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private fun submitProfile() {
         val username = cleanUsername()
         if (!username.isValidUsername()) {
-            findViewById<EditText>(R.id.username_input).error = getString(R.string.onboarding_username_error)
+            showUsernameError(R.string.onboarding_username_error)
             return
         }
-        if (addAccountMode) {
-            isStarting = true
-            updateButtons()
-            TwidgetStore.addOnboardingAccount(this, username)
-            val generation = ++asyncGeneration
-            AppExecutors.execute(onRejected = {
-                isStarting = false
-                updateButtons()
-                Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
-            }) {
-                val result = runCatching {
-                    TwidgetStore.saveStats(this, RettiwtClient.refresh(this, username))
-                    TwidgetWidget.updateAll(this)
-                }
-                postUiIfCurrent(generation) {
-                    if (result.isFailure) {
-                        Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
-                    }
-                    finish()
-                }
-            }
-            return
-        }
-        TwidgetStore.completeOnboarding(this, username)
+        hideUsernameError()
+        isStarting = true
+        updateButtons()
         val generation = ++asyncGeneration
         AppExecutors.execute(onRejected = {
-            Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+            postUiIfCurrent(generation) {
+                isStarting = false
+                updateButtons()
+                Toast.makeText(this, R.string.onboarding_account_check_failed, Toast.LENGTH_LONG).show()
+            }
         }) {
             val result = runCatching {
-                TwidgetStore.saveStats(this, RettiwtClient.refresh(this, username))
+                FxTwitterClient.fetchProfile(username).also { profile ->
+                    if (!profile.userName.equals(username, ignoreCase = true)) {
+                        throw HttpTransport.HttpException(404, "FxTwitter returned a different account")
+                    }
+                }
+            }
+            result.onSuccess { stats ->
+                if (addAccountMode) {
+                    TwidgetStore.addOnboardingAccount(this, username)
+                } else {
+                    TwidgetStore.completeOnboarding(this, username)
+                }
+                TwidgetStore.saveStats(this, stats)
                 TwidgetWidget.updateAll(this)
             }
             postUiIfCurrent(generation) {
-                if (result.isFailure) {
-                    Toast.makeText(this, R.string.sync_failed, Toast.LENGTH_SHORT).show()
-                } else if (step == STEP_DONE) {
-                    showDoneProfileAvatar()
+                isStarting = false
+                updateButtons()
+                val error = result.exceptionOrNull()
+                when {
+                    error == null && addAccountMode -> finish()
+                    error == null -> goToStep(STEP_SCHEDULING)
+                    onboardingAccountIsMissing(error) -> showUsernameError(R.string.onboarding_account_not_found)
+                    else -> Toast.makeText(
+                        this,
+                        R.string.onboarding_account_check_failed,
+                        Toast.LENGTH_LONG,
+                    ).show()
                 }
             }
         }
-        goToStep(STEP_SCHEDULING)
+    }
+
+    private fun showUsernameError(messageRes: Int) {
+        findViewById<TextView>(R.id.username_error).apply {
+            text = getString(messageRes)
+            visibility = View.VISIBLE
+        }
+    }
+
+    private fun hideUsernameError() {
+        findViewById<TextView>(R.id.username_error).visibility = View.GONE
     }
 
     private fun connectBuffer() {
@@ -532,3 +549,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         private const val STEP_DONE = 4
     }
 }
+
+internal fun onboardingAccountIsMissing(error: Throwable?): Boolean =
+    error is HttpTransport.HttpException && error.code == 404

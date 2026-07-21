@@ -7,13 +7,16 @@ import org.junit.Test
 class TopFollowersActiveScansTest {
     @Test
     fun activeStateIsProcessLocalAndUsernameInsensitive() {
-        TopFollowersActiveScans.finished("SammyGurus")
+        TopFollowersActiveScans.finished("SammyGurus", "old")
         assertFalse(TopFollowersActiveScans.isActive("sammygurus"))
 
-        TopFollowersActiveScans.started("@SammyGurus")
+        TopFollowersActiveScans.started("@SammyGurus", "new")
         assertTrue(TopFollowersActiveScans.isActive("sammygurus"))
 
-        TopFollowersActiveScans.finished("SAMMYGURUS")
+        TopFollowersActiveScans.finished("SAMMYGURUS", "old")
+        assertTrue(TopFollowersActiveScans.isActive("@sammygurus"))
+
+        TopFollowersActiveScans.finished("SAMMYGURUS", "new")
         assertFalse(TopFollowersActiveScans.isActive("@sammygurus"))
     }
 }

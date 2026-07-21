@@ -328,6 +328,9 @@
     <string name="x_api_secret">X API secret</string>
     <string name="onboarding_username_label">X username</string>
     <string name="onboarding_username_error">Enter a valid X username.</string>
+    <string name="onboarding_account_not_found">We couldn’t find that X account. Check the handle and try again.</string>
+    <string name="onboarding_account_check_failed">Couldn’t check that account right now. Check your connection and try again.</string>
+    <string name="onboarding_checking_account">Checking account…</string>
     <string name="continue_button">Continue</string>
     <string name="starting_twidget">Starting…</string>
     <string name="set">Set</string>
@@ -546,7 +549,6 @@
     <string name="top_followers_stop_scan">Stop scan</string>
     <string name="top_followers_scan_stopped">Scan stopped. You can resume it later today.</string>
     <string name="top_followers_add_api_key">Add API key</string>
-    <string name="top_followers_manage_api_key">Manage API key</string>
     <string name="top_followers_start">Start</string>
     <string name="top_followers_api_key_required">This build has no trial key. Add your TwitterAPIs key in Advanced settings before starting a scan.</string>
     <string name="top_followers_daily_limit">You’ve used today’s trial scan for this account. Try again tomorrow or add your own key.</string>
@@ -563,7 +565,7 @@
     <string name="scan">Scan</string>
     <string name="twitterapis_title">TwitterAPIs · Top followers</string>
     <string name="twitterapis_api_key">TwitterAPIs API key</string>
-    <string name="twitterapis_explainer">Twidget includes rate-limited trial access for Your Top Followers. Add your own key for no Twidget daily scan limit and optional TwitterAPIs profile stats. Your key is encrypted on this device and sent only to TwitterAPIs. Opening Settings does not make a paid test call.</string>
+    <string name="twitterapis_explainer">Twidget includes rate-limited trial access for Your Top Followers. Add your own key for no Twidget daily scan limit, optional profile stats, and bounded seven-day post analytics cached for six hours. Your key is encrypted on this device and sent only to TwitterAPIs. Opening Settings does not make a paid test call.</string>
     <string name="twitterapis_personal_key_active">Personal key active · %1$s</string>
     <string name="twitterapis_trial_key_active">App trial key active · One scan per account each day</string>
     <string name="twitterapis_no_key_available">No trial key in this build · Add your own key</string>

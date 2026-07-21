@@ -265,9 +265,9 @@ internal class TopFollowersCardBinder(
     }
 
     private fun showStartDialog(account: String) {
-        val personalKey = TwitterApisClient.topFollowersAccess(activity)?.source ==
-            TwitterApisAccessSource.PERSONAL
-        AlertDialog.Builder(activity)
+        val accessSource = TwitterApisClient.topFollowersAccess(activity)?.source
+        val personalKey = accessSource == TwitterApisAccessSource.PERSONAL
+        val builder = AlertDialog.Builder(activity)
             .setTitle(R.string.top_followers_scan_title)
             .setMessage(
                 if (personalKey) R.string.top_followers_scan_message_personal
@@ -275,12 +275,11 @@ internal class TopFollowersCardBinder(
             )
             // AppCompat lays buttons out neutral, negative, positive in LTR.
             .setNeutralButton(R.string.cancel, null)
-            .setNegativeButton(
-                if (personalKey) R.string.top_followers_manage_api_key
-                else R.string.top_followers_add_api_key,
-            ) { _, _ -> openApiKeySettings() }
             .setPositiveButton(R.string.top_followers_start) { _, _ -> startScan(account) }
-            .show()
+        if (shouldShowAddApiKeyAction(accessSource)) {
+            builder.setNegativeButton(R.string.top_followers_add_api_key) { _, _ -> openApiKeySettings() }
+        }
+        builder.show()
     }
 
     private fun startScan(account: String) {
@@ -356,6 +355,9 @@ internal class TopFollowersCardBinder(
     private val dividerColor get() = activity.getColor(R.color.oneui_divider)
     private val rippleColor get() = (primaryColor and 0x00FFFFFF) or 0x24000000
 }
+
+internal fun shouldShowAddApiKeyAction(source: TwitterApisAccessSource?): Boolean =
+    source != TwitterApisAccessSource.PERSONAL
 
 internal object TopFollowersProgress {
     fun percentage(scanned: Int, total: Long?): Int? {

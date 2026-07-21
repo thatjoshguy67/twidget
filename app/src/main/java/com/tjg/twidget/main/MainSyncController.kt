@@ -84,7 +84,7 @@ internal class MainSyncController(
     // Fetches fresh post analytics off the main thread when the cache is stale,
     // then repaints the current account's dashboard.
     fun maybeRefreshAnalytics(account: String) {
-        if (activity.editModeController.editMode || !AnalyticsClient.isStale(activity.analytics)) return
+        if (activity.editModeController.editMode || !AnalyticsClient.isStale(activity, activity.analytics)) return
         val key = account.lowercase(Locale.US)
         synchronized(analyticsInFlight) {
             if (!analyticsInFlight.add(key)) return

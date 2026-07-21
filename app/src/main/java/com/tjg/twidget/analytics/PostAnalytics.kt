@@ -34,8 +34,8 @@ data class PostSummary(
 
 /**
  * Reach and engagement over the recent timeline, plus the 7-day best/worst
- * posts. Sourced directly from FxTwitter or from the selected bridge and cached
- * per provider and account.
+ * posts. Sourced directly from FxTwitter or TwitterAPIs, or from the selected
+ * bridge, and cached per provider and account.
  */
 data class PostAnalytics(
     val userName: String,

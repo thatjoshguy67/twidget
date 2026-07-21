@@ -12,6 +12,12 @@ import org.json.JSONObject
 
 data class TopFollowersPage(val users: List<TopFollower>, val nextCursor: String)
 
+data class TwitterApisTimelinePage(
+    val tweets: List<JSONObject>,
+    val nextCursor: String,
+    val hasMore: Boolean,
+)
+
 enum class TwitterApisAccessSource {
     PERSONAL,
     APP_DEFAULT,
@@ -26,6 +32,7 @@ object TwitterApisClient {
     const val WEBSITE_URL = "https://twitterapis.com"
     private const val ENDPOINT = "https://api.twitterapis.com/twitter/user/followers_v2"
     private const val PROFILE_ENDPOINT = "https://api.twitterapis.com/twitter/user/info"
+    private const val TIMELINE_ENDPOINT = "https://api.twitterapis.com/twitter/user/tweets"
 
     /** Full profile-provider access remains bring-your-own-key only. */
     fun hasCredentials(context: Context): Boolean =
@@ -123,6 +130,44 @@ object TwitterApisClient {
         )
         val body = HttpTransport.requireSuccess(response, "TwitterAPIs")
         return parsePage(body)
+    }
+
+    /** Recent timeline reads are always bring-your-own-key; the app trial key is scan-only. */
+    fun fetchTimelinePage(context: Context, username: String, cursor: String): TwitterApisTimelinePage {
+        val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
+        require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }
+        val url = buildString {
+            append(TIMELINE_ENDPOINT)
+                .append("?userName=")
+                .append(encode(username.trim().trimStart('@')))
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+        }
+        val response = HttpTransport.get(
+            url,
+            headers = mapOf("Authorization" to "Bearer ${apiKey.trim()}"),
+            userAgent = "Twidget (Android)",
+        )
+        return parseTimelinePage(HttpTransport.requireSuccess(response, "TwitterAPIs"))
+    }
+
+    internal fun parseTimelinePage(body: String): TwitterApisTimelinePage {
+        val root = JSONObject(body)
+        val container = root.optJSONObject("data") ?: root
+        val array = container.optJSONArray("tweets") ?: root.optJSONArray("tweets")
+        val tweets = buildList {
+            if (array != null) for (index in 0 until array.length()) {
+                array.optJSONObject(index)?.let(::add)
+            }
+        }
+        val nextCursor = sequenceOf(container, root)
+            .map { it.optString("next_cursor").ifBlank { it.optString("nextCursor") } }
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
+        val hasMore = sequenceOf(container, root)
+            .firstOrNull { it.has("has_more") || it.has("hasMore") }
+            ?.let { it.optBoolean("has_more", it.optBoolean("hasMore")) }
+            ?: nextCursor.isNotBlank()
+        return TwitterApisTimelinePage(tweets, nextCursor, hasMore)
     }
 
     internal fun parsePage(body: String): TopFollowersPage {

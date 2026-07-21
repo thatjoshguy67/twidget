@@ -119,6 +119,18 @@
                         android:textColorHint="?android:textColorSecondary"
                         android:textSize="19sp" />
 
+                    <TextView
+                        android:id="@+id/username_error"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="sec"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:textColor="@color/metric_red"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
                     <CheckBox
                         android:id="@+id/share_history_checkbox"
                         android:layout_width="match_parent"

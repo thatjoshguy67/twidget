@@ -105,6 +105,28 @@ class TwitterApisClientTest {
     }
 
     @Test
+    fun parsesTimelinePageAndExplicitCompletionFlag() {
+        val page = TwitterApisClient.parseTimelinePage(
+            """{"tweets":[{"id":"1","text":"Hello"}],"has_more":false,"next_cursor":"cursor"}""",
+        )
+
+        assertEquals(listOf("1"), page.tweets.map { it.optString("id") })
+        assertEquals("cursor", page.nextCursor)
+        assertFalse(page.hasMore)
+    }
+
+    @Test
+    fun parsesNestedTimelineAndCamelCasePagination() {
+        val page = TwitterApisClient.parseTimelinePage(
+            """{"data":{"tweets":[{"id":"2"}],"hasMore":true,"nextCursor":"next"}}""",
+        )
+
+        assertEquals("2", page.tweets.single().optString("id"))
+        assertEquals("next", page.nextCursor)
+        assertTrue(page.hasMore)
+    }
+
+    @Test
     fun rankingKeepsLargestUniqueAccounts() {
         val users = listOf(
             follower("1", "small", 10),

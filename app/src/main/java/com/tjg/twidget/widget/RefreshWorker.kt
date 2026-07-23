@@ -1,0 +1,101 @@
+package com.tjg.twidget.widget
+
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkManager
+import androidx.work.Worker
+import androidx.work.WorkerParameters
+import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.providers.RettiwtClient
+import java.util.concurrent.TimeUnit
+
+/**
+ * Background sync behind the "Refresh interval" setting. Widget providers only
+ * re-render cached stats on their own update cycle; this worker is what
+ * actually fetches fresh numbers.
+ */
+class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+    override fun doWork(): Result {
+        val context = applicationContext
+        if (!TwidgetStore.isOnboarded(context)) return Result.success()
+
+        var anySuccess = false
+        accountsToSync(context).forEach { account ->
+            runCatching {
+                TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
+                anySuccess = true
+            }
+        }
+        if (anySuccess) {
+            TwidgetWidget.updateAll(context)
+            LockScreenFollowerServiceBoxReceiver.refresh(context)
+        }
+        return if (anySuccess) Result.success() else Result.retry()
+    }
+
+    // Every tracked account plus any legacy widget-pinned account that is no
+    // longer in the account list.
+    private fun accountsToSync(context: Context): List<String> {
+        val manager = AppWidgetManager.getInstance(context)
+        val widgetIds = listOf(
+            com.tjg.twidget.TwidgetWidget::class.java,
+            com.tjg.twidget.LockScreenFollowerSmallWidget::class.java,
+            com.tjg.twidget.LockScreenFollowerWideWidget::class.java,
+        ).flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
+        val accounts = TwidgetStore.accounts(context) +
+            widgetIds.map { TwidgetStore.widgetSettings(context, it).accountUsername } +
+            TwidgetStore.settings(context).username
+        return accounts
+            .map { it.trim().trimStart('@') }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+    }
+
+    companion object {
+        private const val WORK_NAME = "twidget_periodic_refresh"
+        private const val IMMEDIATE_WORK_NAME = "twidget_widget_refresh"
+
+        /**
+         * AppWidgetProvider's update callback is an independent fallback for
+         * OEMs that defer or drop periodic WorkManager jobs. Deduplicate these
+         * requests because all enabled widget providers may be updated in the
+         * same system tick.
+         */
+        fun requestRefresh(context: Context) {
+            val request = OneTimeWorkRequest.Builder(RefreshWorker::class.java)
+                .setConstraints(networkConstraints())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                IMMEDIATE_WORK_NAME,
+                ExistingWorkPolicy.KEEP,
+                request,
+            )
+        }
+
+        /** Idempotent; call whenever the interval setting may have changed. */
+        fun schedule(context: Context) {
+            val minutes = TwidgetStore.settings(context).refreshIntervalMinutes
+                .coerceAtLeast(15) // WorkManager's minimum periodic interval
+                .toLong()
+            val request = PeriodicWorkRequest.Builder(RefreshWorker::class.java, minutes, TimeUnit.MINUTES)
+                .setConstraints(networkConstraints())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.UPDATE,
+                request,
+            )
+        }
+
+        private fun networkConstraints(): Constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+    }
+}

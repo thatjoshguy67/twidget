@@ -9,6 +9,7 @@
     <color name="oneui_text_secondary">#a3a3a7</color>
     <color name="oneui_accent">#4da2ff</color>
     <color name="oneui_accent_translucent">#334da2ff</color>
+    <color name="top_followers_skeleton">#29292c</color>
     <color name="schedule_character_limit">#FF6B6B</color>
     <color name="schedule_toolbar_floating">#E817171A</color>
     <color name="schedule_toolbar_floating_stroke">#33FFFFFF</color>

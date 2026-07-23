@@ -70,7 +70,158 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <!-- Step 2 · Handle -->
+                <!-- Step 2 · Permissions -->
+                <LinearLayout
+                    android:id="@+id/step_permissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingTop="54dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sec"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:text="@string/onboarding_permissions_title"
+                        android:textColor="?android:textColorPrimary"
+                        android:textSize="32sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="52dp"
+                        android:fontFamily="sec"
+                        android:text="@string/onboarding_required_permissions"
+                        android:textColor="?android:textColorPrimary"
+                        android:textSize="16sp" />
+
+                    <LinearLayout
+                        android:id="@+id/permission_notifications_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="96dp"
+                        android:orientation="horizontal"
+                        android:paddingStart="8dp"
+                        android:paddingTop="12dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="12dp">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_oui_notification_outline"
+                            app:tint="?android:textColorPrimary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="20dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sec"
+                                android:text="@string/onboarding_permission_notifications_title"
+                                android:textColor="?android:textColorPrimary"
+                                android:textSize="18sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="sec"
+                                android:lineSpacingExtra="2dp"
+                                android:text="@string/onboarding_permission_notifications_summary"
+                                android:textColor="?android:textColorSecondary"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/permission_notifications_status"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="5dp"
+                                android:fontFamily="sec"
+                                android:text="@string/onboarding_permission_required"
+                                android:textColor="?android:textColorSecondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/permission_alarms_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:minHeight="96dp"
+                        android:orientation="horizontal"
+                        android:paddingStart="8dp"
+                        android:paddingTop="12dp"
+                        android:paddingEnd="8dp"
+                        android:paddingBottom="12dp">
+
+                        <ImageView
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_oui_alarm_outline"
+                            app:tint="?android:textColorPrimary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="20dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sec"
+                                android:text="@string/onboarding_permission_alarms_title"
+                                android:textColor="?android:textColorPrimary"
+                                android:textSize="18sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:fontFamily="sec"
+                                android:lineSpacingExtra="2dp"
+                                android:text="@string/onboarding_permission_alarms_summary"
+                                android:textColor="?android:textColorSecondary"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/permission_alarms_status"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="5dp"
+                                android:fontFamily="sec"
+                                android:text="@string/onboarding_permission_required"
+                                android:textColor="?android:textColorSecondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Step 3 · Handle -->
                 <LinearLayout
                     android:id="@+id/step_profile"
                     android:layout_width="match_parent"
@@ -119,30 +270,82 @@
                         android:textColorHint="?android:textColorSecondary"
                         android:textSize="19sp" />
 
-                    <CheckBox
-                        android:id="@+id/share_history_checkbox"
+                    <TextView
+                        android:id="@+id/username_error"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="sec"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:textColor="@color/metric_red"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/share_history_option"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="36dp"
+                        android:orientation="vertical">
+
+                        <CheckBox
+                            android:id="@+id/share_history_checkbox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sec"
+                            android:text="@string/share_history"
+                            android:textColor="?android:textColorPrimary"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:fontFamily="sec"
+                            android:lineSpacingExtra="2dp"
+                            android:paddingStart="34dp"
+                            android:paddingEnd="0dp"
+                            android:text="@string/share_history_onboarding_summary"
+                            android:textColor="?android:textColorSecondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Step 4 · Scheduling -->
+                <LinearLayout
+                    android:id="@+id/step_scheduling"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingTop="96dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:fontFamily="sec"
-                        android:text="@string/share_history"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:text="@string/onboarding_scheduling_title"
                         android:textColor="?android:textColorPrimary"
-                        android:textSize="15sp" />
+                        android:textSize="30sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
+                        android:layout_marginTop="12dp"
                         android:fontFamily="sec"
-                        android:lineSpacingExtra="2dp"
-                        android:paddingStart="34dp"
-                        android:paddingEnd="0dp"
-                        android:text="@string/share_history_onboarding_summary"
+                        android:gravity="center"
+                        android:lineSpacingExtra="3dp"
+                        android:text="@string/onboarding_scheduling_summary"
                         android:textColor="?android:textColorSecondary"
-                        android:textSize="13sp" />
+                        android:textSize="15sp" />
                 </LinearLayout>
 
-                <!-- Step 3 · Add widget -->
+                <!-- Step 5 · Add widget -->
                 <LinearLayout
                     android:id="@+id/step_widgets"
                     android:layout_width="match_parent"
@@ -196,7 +399,7 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- Step 4 · Done (title centred; fades up into place) -->
+                <!-- Step 6 · Done (title centred; fades up into place) -->
                 <LinearLayout
                     android:id="@+id/step_done"
                     android:layout_width="match_parent"

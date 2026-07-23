@@ -5,7 +5,9 @@
     android:id="@+id/about_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/about_gradient_bg">
+    android:background="@drawable/about_gradient_bg"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <!-- Fades in over the gradient as the header collapses, so scrolling
          settles the page onto the plain One UI background. -->
@@ -21,6 +23,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:elevation="0dp"
         android:stateListAnimator="@null"
         app:elevation="0dp"
@@ -33,6 +37,8 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/transparent"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             app:contentScrim="@android:color/transparent"
             app:layout_scrollFlags="exitUntilCollapsed|scroll"
             app:statusBarScrim="@android:color/transparent">
@@ -45,6 +51,9 @@
                 android:orientation="vertical"
                 android:paddingStart="24dp"
                 android:paddingEnd="24dp"
+                android:paddingBottom="16dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 app:isCustomTitle="true">
 
                 <androidx.appcompat.widget.AppCompatImageView
@@ -83,6 +92,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:layout_marginTop="12dp"
+                    android:elevation="2dp"
                     android:contentDescription="@string/checking_for_updates"
                     android:src="@drawable/oneui_spinner"
                     android:visibility="gone" />

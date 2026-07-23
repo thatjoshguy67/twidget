@@ -53,7 +53,7 @@
                 android:background="@android:color/transparent"
                 android:gravity="top|start"
                 android:hint="@string/schedule_compose_hint"
-                android:inputType="textCapSentences|textMultiLine"
+                android:inputType="textCapSentences|textMultiLine|textAutoCorrect"
                 android:minHeight="48dp"
                 android:minLines="1"
                 android:paddingStart="0dp"

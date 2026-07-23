@@ -86,7 +86,8 @@
                     android:layout_marginTop="30dp"
                     android:fontFamily="sec"
                     android:lineSpacingExtra="4dp"
-                    android:textColor="@color/oneui_text_secondary"
+                    android:linksClickable="true"
+                    android:textColor="@color/oneui_text_primary"
                     android:textIsSelectable="true"
                     android:textSize="16sp" />
 

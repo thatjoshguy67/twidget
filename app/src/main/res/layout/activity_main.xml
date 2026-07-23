@@ -32,8 +32,27 @@
             <FrameLayout
                 android:id="@+id/main_content_host"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent">
+
+                <include
+                    android:id="@+id/main_launch_skeleton"
+                    layout="@layout/main_launch_skeleton" />
+            </FrameLayout>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        <FrameLayout
+            android:id="@+id/main_schedule_host"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <ViewStub
+                android:id="@+id/schedule_page_stub"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:inflatedId="@id/schedule_queue_container"
+                android:layout="@layout/schedule_page" />
+        </FrameLayout>
 
         <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
             android:id="@+id/schedule_fab"

@@ -4,7 +4,7 @@
     android:id="@+id/notice_detail_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/oneui_bg">
+    android:background="?attr/twidgetBackground">
 
     <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
         android:id="@+id/notice_detail_scroll"
@@ -33,7 +33,7 @@
                 android:id="@+id/notice_detail_content"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/oneui_bg"
+                android:background="?attr/twidgetBackground"
                 android:orientation="vertical"
                 android:paddingStart="@dimen/notice_detail_content_padding"
                 android:paddingTop="26dp"
@@ -53,7 +53,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="sec"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="28sp"
                         android:textStyle="bold" />
 
@@ -64,7 +64,7 @@
                         android:layout_marginStart="10dp"
                         android:fontFamily="sec"
                         android:text="@string/notices_beta"
-                        android:textColor="@color/oneui_accent"
+                        android:textColor="?attr/colorPrimary"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         android:visibility="gone" />
@@ -76,7 +76,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:fontFamily="sec"
-                    android:textColor="@color/oneui_text_secondary"
+                    android:textColor="?attr/twidgetTextSecondary"
                     android:textSize="15sp" />
 
                 <TextView
@@ -87,7 +87,7 @@
                     android:fontFamily="sec"
                     android:lineSpacingExtra="4dp"
                     android:linksClickable="true"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textIsSelectable="true"
                     android:textSize="16sp" />
 
@@ -95,7 +95,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="28dp"
-                    android:background="@color/oneui_divider" />
+                    android:background="?attr/twidgetDivider" />
 
                 <androidx.appcompat.widget.AppCompatButton
                     android:id="@+id/notice_detail_release_button"
@@ -106,7 +106,7 @@
                     android:fontFamily="sec"
                     android:text="@string/notices_view_on_github"
                     android:textAllCaps="false"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 

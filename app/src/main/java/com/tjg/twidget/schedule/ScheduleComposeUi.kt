@@ -1,5 +1,10 @@
 package com.tjg.twidget.schedule
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -244,7 +249,7 @@ internal class ScheduleComposeUi(
         text.getSpans(0, text.length, ComposerTokenSpan::class.java).forEach(text::removeSpan)
         COMPOSER_TOKEN_PATTERN.findAll(text).forEach { match ->
             text.setSpan(
-                ComposerTokenSpan(activity.getColor(R.color.oneui_accent)),
+                ComposerTokenSpan(activity.oneUiAccent()),
                 match.range.first,
                 match.range.last + 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,

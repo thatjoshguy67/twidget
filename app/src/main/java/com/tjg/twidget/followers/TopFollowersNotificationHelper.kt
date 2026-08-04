@@ -1,5 +1,10 @@
 package com.tjg.twidget.followers
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -54,7 +59,7 @@ object TopFollowersNotificationHelper {
                     .setProgress(notificationProgress)
                     .setProgressSegments(listOf(
                         Notification.ProgressStyle.Segment(notificationMax)
-                            .setColor(context.getColor(R.color.oneui_accent)),
+                            .setColor(context.oneUiAccent()),
                     ))
                 val percent = if (notificationMax == 0) 0 else
                     (notificationProgress.toLong() * 100L / notificationMax).toInt()

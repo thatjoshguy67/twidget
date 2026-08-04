@@ -21,7 +21,7 @@
             android:layout_height="match_parent"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="36dp"
-            android:background="@color/oneui_text_secondary" />
+            android:background="?attr/twidgetTextSecondary" />
 
         <ImageView
             android:id="@+id/schedule_thread_avatar"
@@ -60,8 +60,8 @@
                 android:paddingTop="0dp"
                 android:paddingEnd="44dp"
                 android:paddingBottom="0dp"
-                android:textColor="@color/oneui_text_primary"
-                android:textColorHint="@color/oneui_text_secondary"
+                android:textColor="?attr/twidgetTextPrimary"
+                android:textColorHint="?attr/twidgetTextSecondary"
                 android:textSize="20sp" />
 
             <androidx.appcompat.widget.AppCompatImageButton

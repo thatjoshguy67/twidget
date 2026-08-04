@@ -3,7 +3,7 @@
     <item android:state_selected="true">
         <shape android:shape="rectangle">
             <corners android:radius="18dp" />
-            <solid android:color="@color/oneui_accent_translucent" />
+            <solid android:color="?attr/twidgetAccentTranslucent" />
         </shape>
     </item>
     <item>

@@ -5,7 +5,7 @@
     android:id="@+id/schedule_compose_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/oneui_bg"
+    android:background="?attr/twidgetBackground"
     app:expandable="true"
     app:expanded="false"
     app:handleInsets="false"
@@ -90,10 +90,10 @@
                     android:paddingStart="7dp"
                     android:paddingEnd="9dp"
                     android:textAllCaps="false"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    app:drawableTint="@color/oneui_text_primary" />
+                    app:drawableTint="?attr/twidgetTextPrimary" />
 
                 <androidx.appcompat.widget.AppCompatImageButton
                     android:id="@+id/schedule_compose_add_thread"

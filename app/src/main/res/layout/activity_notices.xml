@@ -5,7 +5,7 @@
     android:id="@+id/notices_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/oneui_bg"
+    android:background="?attr/twidgetBackground"
     app:expandable="true"
     app:expanded="false"
     app:handleInsets="false"

@@ -1,5 +1,10 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.animation.LayoutTransition
 import android.content.ClipData
 import android.content.res.ColorStateList
@@ -35,7 +40,9 @@ import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.followers.TopFollowersCardBinder
+import com.tjg.twidget.schedule.ScheduleAccentChrome
 import com.tjg.twidget.ui.MetricChartView
+import com.tjg.twidget.ui.ProgressiveBlurChrome
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
 import java.util.Locale
@@ -126,6 +133,14 @@ internal class MainDashboardBinder(
         // Keep the static skeleton above the dashboard until every cached card
         // has bound, then reveal the completed page in one frame.
         skeleton?.let(host::removeView)
+        ScheduleAccentChrome.apply(activity)
+        if (page is ViewGroup) {
+            ProgressiveBlurChrome.attach(
+                activity = activity,
+                anchor = page,
+                scrollView = page.findViewById(R.id.dashboard_scroll),
+            )
+        }
     }
 
     private fun bindPage(page: View, account: String) {
@@ -254,7 +269,7 @@ internal class MainDashboardBinder(
                 includeFontPadding = false
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                setTextColor(activity.oneUiTextSecondary())
                 textSize = labelTextSize
                 typeface = Typeface.create("sec", Typeface.BOLD)
                 setPadding(activity.dp(6), 0, 0, 0)
@@ -273,7 +288,7 @@ internal class MainDashboardBinder(
                 includeFontPadding = false
                 maxLines = 1
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                setTextColor(activity.getColor(R.color.oneui_text_primary))
+                setTextColor(activity.oneUiTextPrimary())
                 typeface = heavyTypeface
                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                     this, 16, valueTextSize.toInt(), 1, TypedValue.COMPLEX_UNIT_SP,
@@ -290,7 +305,7 @@ internal class MainDashboardBinder(
                     max = 100
                     progress = spec.progress.coerceIn(0, 100)
                     progressTintList = ColorStateList.valueOf(spec.accent)
-                    progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
+                    progressBackgroundTintList = ColorStateList.valueOf(activity.oneUiDivider())
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     activity.dp(6),
@@ -304,7 +319,7 @@ internal class MainDashboardBinder(
                 includeFontPadding = false
                 maxLines = if (spec.progress == null) 2 else 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                setTextColor(activity.oneUiTextSecondary())
                 textSize = detailTextSize
                 setPadding(0, activity.dp(7), 0, 0)
             }, LinearLayout.LayoutParams(
@@ -386,7 +401,7 @@ internal class MainDashboardBinder(
             background = GradientDrawable().apply {
                 cornerRadius = activity.dp(22).toFloat()
                 setColor(Color.TRANSPARENT)
-                setStroke(activity.dp(2), activity.getColor(R.color.oneui_accent), activity.dp(10).toFloat(), activity.dp(6).toFloat())
+                setStroke(activity.dp(2), activity.oneUiAccent(), activity.dp(10).toFloat(), activity.dp(6).toFloat())
             }
             alpha = 0.75f
             contentDescription = activity.getString(card.labelRes)
@@ -498,8 +513,8 @@ internal class MainDashboardBinder(
             imageTintList = ColorStateList.valueOf(activity.getColor(R.color.metric_red))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(activity.getColor(R.color.oneui_card_bg))
-                setStroke(activity.dp(1), activity.getColor(R.color.oneui_divider))
+                setColor(activity.oneUiCardBackground())
+                setStroke(activity.dp(1), activity.oneUiDivider())
             }
             setPadding(activity.dp(8), activity.dp(8), activity.dp(8), activity.dp(8))
             contentDescription = activity.getString(R.string.delete)
@@ -555,7 +570,7 @@ internal class MainDashboardBinder(
                     } else {
                         activity.getString(R.string.fewer_followers_than_following, TwidgetStore.compactNumber(-diff))
                     },
-                    accent = activity.getColor(R.color.oneui_accent),
+                    accent = activity.oneUiAccent(),
                 )
             }
             DashboardCardType.POST_RATE -> InsightSpec(
@@ -578,7 +593,7 @@ internal class MainDashboardBinder(
                 detail = if (stats.likesKnown) {
                     "${TwidgetStore.compactNumber(stats.likeCount)} ${activity.getString(R.string.likes).lowercase(Locale.US)}"
                 } else activity.getString(R.string.unknown_profile_status),
-                accent = activity.getColor(R.color.oneui_accent),
+                accent = activity.oneUiAccent(),
             )
             DashboardCardType.MILESTONE -> {
                 val milestone = nextMilestone(stats.followersCount)
@@ -589,7 +604,7 @@ internal class MainDashboardBinder(
                     label = "Milestone",
                     value = TwidgetStore.compactNumber(milestone),
                     detail = activity.getString(R.string.to_next_milestone, TwidgetStore.compactNumber(remaining), TwidgetStore.compactNumber(milestone)),
-                    accent = activity.getColor(R.color.oneui_accent),
+                    accent = activity.oneUiAccent(),
                     progress = progress,
                 )
             }
@@ -630,7 +645,7 @@ internal class MainDashboardBinder(
                         String.format(Locale.US, "1:%.1f", 1.0 / ratio.coerceAtLeast(0.01))
                     },
                     detail = "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}",
-                    accent = activity.getColor(R.color.oneui_accent),
+                    accent = activity.oneUiAccent(),
                 )
             }
             DashboardCardType.ACCOUNT_HEALTH -> {
@@ -654,13 +669,13 @@ internal class MainDashboardBinder(
                     accent = when {
                         stats.isPrivate == true -> activity.getColor(R.color.metric_red)
                         stats.isVerified == true || stats.isPrivate == false -> activity.getColor(R.color.metric_green)
-                        else -> activity.getColor(R.color.oneui_text_secondary)
+                        else -> activity.oneUiTextSecondary()
                     },
                 )
             }
             DashboardCardType.ENGAGEMENT_RATE -> blendedAnalyticsSpec(
                 activity.getString(R.string.engagement_rate),
-                activity.getColor(R.color.oneui_accent),
+                activity.oneUiAccent(),
                 { blend -> blend.engagementRate?.let(::percent) },
                 { blend -> blend.usesImportedRate },
             )
@@ -672,7 +687,7 @@ internal class MainDashboardBinder(
             )
             DashboardCardType.TOTAL_VIEWS -> analyticsSpec(
                 activity.getString(R.string.total_views),
-                activity.getColor(R.color.oneui_accent),
+                activity.oneUiAccent(),
                 { TwidgetStore.compactNumber(it.totalViews) },
                 { analyticsCoverage(it) },
             )
@@ -684,13 +699,13 @@ internal class MainDashboardBinder(
             )
             DashboardCardType.MEDIAN_ENGAGEMENTS -> analyticsSpec(
                 activity.getString(R.string.median_engagements),
-                activity.getColor(R.color.oneui_accent),
+                activity.oneUiAccent(),
                 { TwidgetStore.compactNumber(it.medianEngagements.roundToLong()) },
                 { analyticsCoverage(it) },
             )
             DashboardCardType.X_IMPRESSIONS -> importedAnalyticsSpec(
                 activity.getString(R.string.x_impressions),
-                activity.getColor(R.color.oneui_accent),
+                activity.oneUiAccent(),
             ) { it.impressions }
             DashboardCardType.X_ENGAGEMENTS -> importedAnalyticsSpec(
                 activity.getString(R.string.x_engagements),
@@ -698,7 +713,7 @@ internal class MainDashboardBinder(
             ) { it.engagements }
             DashboardCardType.X_PROFILE_VISITS -> importedAnalyticsSpec(
                 activity.getString(R.string.x_profile_visits),
-                activity.getColor(R.color.oneui_accent),
+                activity.oneUiAccent(),
             ) { it.profileVisits }
             DashboardCardType.X_LIKES_RECEIVED -> importedAnalyticsSpec(
                 activity.getString(R.string.x_likes_received),
@@ -790,7 +805,7 @@ internal class MainDashboardBinder(
             .maxByOrNull { it.second }
 
     private fun momentum(history: List<HistorySample>): Pair<String, Int> {
-        if (history.size < 4) return activity.getString(R.string.flat) to activity.getColor(R.color.oneui_text_secondary)
+        if (history.size < 4) return activity.getString(R.string.flat) to activity.oneUiTextSecondary()
         val middle = history.lastIndex / 2
         val firstHalf = history[middle].followers - history.first().followers
         val secondHalf = history.last().followers - history[middle].followers
@@ -798,8 +813,8 @@ internal class MainDashboardBinder(
         return when {
             secondHalf > firstHalf + threshold -> activity.getString(R.string.accelerating) to activity.getColor(R.color.metric_green)
             secondHalf < firstHalf - threshold -> activity.getString(R.string.cooling) to activity.getColor(R.color.metric_red)
-            firstHalf == 0L && secondHalf == 0L -> activity.getString(R.string.flat) to activity.getColor(R.color.oneui_text_secondary)
-            else -> "Steady" to activity.getColor(R.color.oneui_accent)
+            firstHalf == 0L && secondHalf == 0L -> activity.getString(R.string.flat) to activity.oneUiTextSecondary()
+            else -> "Steady" to activity.oneUiAccent()
         }
     }
 

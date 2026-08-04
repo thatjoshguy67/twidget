@@ -1,5 +1,6 @@
 # Secrets / local config
 github.properties
+libs/oneui-design/github.properties
 local.properties
 keystore.properties
 .env

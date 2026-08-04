@@ -13,7 +13,7 @@
         android:centerX="0.5"
         android:centerY="0.0"
         android:gradientRadius="900dp"
-        android:startColor="@color/onboarding_grad_end"
-        android:centerColor="@color/onboarding_grad_center"
-        android:endColor="@color/onboarding_grad_start" />
+        android:startColor="?attr/twidgetOnboardingGradEnd"
+        android:centerColor="?attr/twidgetOnboardingGradCenter"
+        android:endColor="?attr/twidgetOnboardingGradStart" />
 </shape>

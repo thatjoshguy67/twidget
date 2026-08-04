@@ -7,7 +7,6 @@
     android:layout_height="match_parent"
     app:drawerBackAnimation="true"
     app:expanded="true"
-    app:handleInsets="false"
     app:mainRoundedCorners="top"
     app:title="@string/app_name">
 
@@ -64,9 +63,8 @@
             android:clickable="true"
             android:contentDescription="@string/schedule_new"
             android:elevation="6dp"
-            android:focusable="true"
-            app:backgroundTint="@color/oneui_accent"
-            app:fabCustomSize="70dp"
+        android:focusable="true"
+        app:fabCustomSize="70dp"
             app:srcCompat="@drawable/ic_oui_add"
             app:tint="@android:color/white" />
     </FrameLayout>

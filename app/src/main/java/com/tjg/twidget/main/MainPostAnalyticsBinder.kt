@@ -1,5 +1,10 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
@@ -91,7 +96,7 @@ internal class MainPostAnalyticsBinder(
                 includeFontPadding = false
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                setTextColor(activity.oneUiTextSecondary())
                 textSize = 13f
                 typeface = Typeface.create("sec", Typeface.BOLD)
             }, LinearLayout.LayoutParams(
@@ -110,7 +115,7 @@ internal class MainPostAnalyticsBinder(
                 text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
                 maxLines = 4
-                setTextColor(activity.getColor(R.color.oneui_text_primary))
+                setTextColor(activity.oneUiTextPrimary())
                 textSize = 15f
                 setLineSpacing(activity.dp(2).toFloat(), 1f)
                 linksClickable = true
@@ -140,7 +145,7 @@ internal class MainPostAnalyticsBinder(
                     includeFontPadding = false
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                    setTextColor(activity.oneUiTextSecondary())
                     textSize = 13f
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -168,7 +173,7 @@ internal class MainPostAnalyticsBinder(
                     includeFontPadding = false
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_primary))
+                    setTextColor(activity.oneUiTextPrimary())
                     textSize = 14f
                     typeface = Typeface.create("sec", Typeface.BOLD)
                 })
@@ -181,7 +186,7 @@ internal class MainPostAnalyticsBinder(
                     includeFontPadding = false
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
+                    setTextColor(activity.oneUiTextSecondary())
                     textSize = 12f
                     setPadding(0, activity.dp(3), 0, 0)
                 })
@@ -195,7 +200,7 @@ internal class MainPostAnalyticsBinder(
             if (start < 0) return@forEach
             val end = start + link.display.length
             spannable.setSpan(URLSpan(link.url), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(ForegroundColorSpan(activity.getColor(R.color.oneui_accent)), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(activity.oneUiAccent()), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         return spannable
     }

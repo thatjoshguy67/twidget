@@ -17,7 +17,7 @@
         android:paddingEnd="12dp"
         android:text="@string/schedule_compose_draft"
         android:textAllCaps="false"
-        android:textColor="@color/oneui_text_primary"
+        android:textColor="?attr/twidgetTextPrimary"
         android:textSize="16sp" />
 
     <androidx.appcompat.widget.AppCompatButton

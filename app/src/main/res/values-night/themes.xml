@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Twidget" parent="OneUITheme">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="colorPrimary">@color/tjg_accent</item>
+        <item name="colorPrimaryDark">@color/tjg_accent</item>
+        <item name="colorAccent">@color/tjg_accent</item>
+        <item name="colorControlActivated">@color/tjg_accent</item>
+        <item name="android:colorControlActivated">@color/tjg_accent</item>
+
+        <item name="drawerBackgroundColor">@color/oneui_drawer_bg</item>
+        <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
+        <item name="twidgetBackground">@color/oneui_bg</item>
+        <item name="twidgetCardBackground">@color/oneui_card_bg</item>
+        <item name="twidgetDrawerBackground">@color/oneui_drawer_bg</item>
+        <item name="twidgetDrawerSelectedBackground">@color/oneui_drawer_selected_bg</item>
+        <item name="twidgetDivider">@color/oneui_divider</item>
+        <item name="twidgetTextPrimary">@color/oneui_text_primary</item>
+        <item name="twidgetTextSecondary">@color/oneui_text_secondary</item>
+        <item name="twidgetAccentTranslucent">@color/tjg_accent_translucent</item>
+        <item name="twidgetOnboardingGradStart">@color/onboarding_grad_start</item>
+        <item name="twidgetOnboardingGradCenter">@color/onboarding_grad_center</item>
+        <item name="twidgetOnboardingGradEnd">@color/onboarding_grad_end</item>
+        <item name="twidgetImportGradStart">@color/import_grad_start</item>
+        <item name="twidgetImportGradCenter">@color/import_grad_center</item>
+        <item name="twidgetImportGradEnd">@color/import_grad_end</item>
+    </style>
+
+    <style name="Theme.Twidget.Launcher" parent="Theme.Twidget">
+        <item name="android:windowBackground">?attr/twidgetBackground</item>
+    </style>
+</resources>
+

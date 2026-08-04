@@ -1,21 +1,15 @@
 package com.tjg.twidget.settings
 
 import android.content.Intent
-import android.content.res.ColorStateList
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.text.InputType
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import android.widget.Toast
@@ -35,14 +29,12 @@ import com.tjg.twidget.main.AboutActivity
 import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
-import com.tjg.twidget.ui.ProfileImageLoader
-import com.tjg.twidget.ui.VerifiedBadge
+import com.tjg.twidget.ui.ProgressiveBlurChrome
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startSettingsSubActivity
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
-import dev.oneuiproject.oneui.R as IconR
-import dev.oneuiproject.oneui.preference.LayoutPreference
 import dev.oneuiproject.oneui.preference.SuggestionCardPreference
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
@@ -92,10 +84,67 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             })
         }
 
+        screen.addPreference(category(R.string.appearance))
+        screen.addPreference(ListPreference(context).apply {
+            key = "theme_mode_pref"
+            title = getString(R.string.theme_section)
+            dialogTitle = getString(R.string.theme_section)
+            summary = TwidgetTheme.themeModeLabel(context, TwidgetStore.appThemeMode(context))
+            entries = arrayOf(
+                getString(R.string.theme_mode_auto),
+                getString(R.string.theme_mode_light),
+                getString(R.string.theme_mode_dark),
+            )
+            entryValues = arrayOf(
+                TwidgetStore.COLOR_MODE_SYSTEM,
+                TwidgetStore.COLOR_MODE_LIGHT,
+                TwidgetStore.COLOR_MODE_DARK,
+            )
+            value = TwidgetStore.appThemeMode(context)
+            setOnPreferenceChangeListener { pref, value ->
+                val mode = value as String
+                TwidgetStore.saveAppThemeMode(context, mode)
+                pref.summary = TwidgetTheme.themeModeLabel(context, mode)
+                TwidgetTheme.publishChange(context)
+                refreshAppearancePreferences()
+                true
+            }
+        })
+        screen.addPreference(AccentColorPreference(context).apply {
+            key = "accent_color_pref"
+            title = getString(R.string.accent_color_section)
+        })
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "progressive_blur_pref"
+            title = getString(R.string.blur_effects)
+            summary = getString(R.string.blur_effects_summary)
+            isChecked = TwidgetStore.appBlurEnabled(context)
+            setOnPreferenceChangeListener { _, value ->
+                TwidgetStore.saveAppBlurEnabled(context, value as Boolean)
+                ProgressiveBlurChrome.refreshFromRoot(requireActivity())
+                true
+            }
+        })
+
         screen.addPreference(category(R.string.accounts))
-        screen.addPreference(LayoutPreference(context, accountsCard()).apply {
-            key = "accounts_card"
-            isSelectable = false
+        trackedAccounts().forEach { username ->
+            screen.addPreference(
+                AccountPreference(
+                    context = context,
+                    accountUsername = username,
+                    onLongPress = { anchor ->
+                        showAccountPopup(anchor, username)
+                    },
+                ),
+            )
+        }
+        screen.addPreference(Preference(context).apply {
+            key = "add_account"
+            title = getString(R.string.add_account)
+            setOnPreferenceClickListener {
+                requireActivity().startAddAccountActivity()
+                true
+            }
         })
 
         screen.addPreference(category(R.string.refresh))
@@ -266,116 +315,29 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             isIconSpaceReserved = false
         }
 
+    private fun refreshAppearancePreferences() {
+        val context = requireContext()
+        findPreference<ListPreference>("theme_mode_pref")?.summary =
+            TwidgetTheme.themeModeLabel(context, TwidgetStore.appThemeMode(context))
+        (findPreference("accent_color_pref") as? AccentColorPreference)?.refreshFromStore()
+        listView.adapter?.notifyDataSetChanged()
+    }
+
     companion object {
         const val ARG_SCROLL_TO_PREFERENCE = "scroll_to_preference"
     }
 
-    private fun accountsCard(): View {
+    private fun trackedAccounts(): List<String> {
         val context = requireContext()
-        val card = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                cornerRadius = dp(28).toFloat()
-                setColor(context.getColor(R.color.oneui_card_bg))
-            }
-            clipToOutline = true
-        }
-
-        val accounts = TwidgetStore.accounts(context)
+        return TwidgetStore.accounts(context)
             .ifEmpty { listOf(settings.username) }
             .filter { it.isNotBlank() }
             .distinctBy { it.lowercase() }
-
-        accounts.forEachIndexed { index, username ->
-            card.addView(accountRow(username))
-            card.addView(divider(startMargin = dp(78)))
-        }
-        card.addView(addAccountRow())
-        return card
     }
 
-    private fun accountRow(username: String): View {
+    private fun showAccountPopup(anchor: View, username: String) {
         val context = requireContext()
-        val stats = TwidgetStore.currentStats(context, username)
         val isDefault = username.equals(settings.username, ignoreCase = true)
-        var popupAnchor: View? = null
-        val longClickListener = View.OnLongClickListener { anchor ->
-            showAccountPopup(popupAnchor ?: anchor, username, isDefault)
-            true
-        }
-
-        return LinearLayout(context).apply {
-            popupAnchor = this
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            // Native SESL two-line preference rows measure 70dp tall with
-            // content inset 18dp from the card edge.
-            minimumHeight = dp(70)
-            setPadding(dp(18), dp(8), dp(18), dp(8))
-            isClickable = true
-            isFocusable = true
-            setBackgroundResource(resolveSelectableItemBackground())
-            setOnClickListener {
-                save(settings.copy(username = username))
-                buildScreen()
-            }
-            setOnLongClickListener(longClickListener)
-
-            addView(ImageView(context).apply {
-                setBackgroundResource(R.drawable.avatar_twidget)
-                ProfileImageLoader.loadInto(context, this, stats.profileImage)
-            }, LinearLayout.LayoutParams(dp(44), dp(44)))
-
-            addView(LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(TextView(context).apply {
-                    // Native SESL list sizes (17sp title / 13sp secondary) so
-                    // the card reads consistently with the preference rows.
-                    text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(16))
-                    setTextColor(context.getColor(R.color.oneui_text_primary))
-                    textSize = 17f
-                    typeface = Typeface.create("sec", Typeface.NORMAL)
-                    includeFontPadding = false
-                    maxLines = 1
-                })
-                addView(TextView(context).apply {
-                    text = context.getString(R.string.account_handle, username.trimStart('@'))
-                    setTextColor(context.getColor(R.color.oneui_text_secondary))
-                    textSize = 13f
-                    typeface = Typeface.create("sec", Typeface.NORMAL)
-                    includeFontPadding = false
-                    maxLines = 1
-                })
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(16)
-                marginEnd = dp(10)
-            })
-
-            addView(ImageView(context).apply {
-                setImageResource(if (isDefault) IconR.drawable.ic_oui_favorite_on else IconR.drawable.ic_oui_favorite_off)
-                imageTintList = ColorStateList.valueOf(
-                    context.getColor(if (isDefault) R.color.oneui_accent else R.color.oneui_text_secondary)
-                )
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                setPadding(dp(8), dp(8), dp(8), dp(8))
-            }, LinearLayout.LayoutParams(dp(42), dp(42)))
-
-            attachLongClickToChildren(this, longClickListener)
-        }
-    }
-
-    private fun attachLongClickToChildren(view: View, listener: View.OnLongClickListener) {
-        view.setOnLongClickListener(listener)
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                attachLongClickToChildren(view.getChildAt(index), listener)
-            }
-        }
-    }
-
-    private fun showAccountPopup(anchor: View, username: String, isDefault: Boolean) {
-        val context = requireContext()
         val actions = accountPopupActions(isDefault)
         val labels = actions.map { action ->
             getString(
@@ -391,13 +353,11 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
                     (super.getView(position, convertView, parent) as TextView).apply {
                         setTextColor(
-                            context.getColor(
-                                if (actions[position] == AccountPopupAction.DELETE) {
-                                    R.color.metric_red
-                                } else {
-                                    R.color.oneui_text_primary
-                                }
-                            )
+                            if (actions[position] == AccountPopupAction.DELETE) {
+                                context.getColor(R.color.metric_red)
+                            } else {
+                                TwidgetTheme.textPrimary(context)
+                            }
                         )
                     }
             })
@@ -443,39 +403,6 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         buildScreen()
     }
 
-    private fun addAccountRow(): View =
-        TextView(requireContext()).apply {
-            text = getString(R.string.add_account)
-            setTextColor(context.getColor(R.color.oneui_text_primary))
-            textSize = 17f
-            typeface = Typeface.create("sec", Typeface.NORMAL)
-            gravity = Gravity.CENTER_VERTICAL
-            // Native single-line preference rows measure 56dp.
-            minHeight = dp(56)
-            setPadding(dp(18), 0, dp(18), 0)
-            isClickable = true
-            isFocusable = true
-            setBackgroundResource(resolveSelectableItemBackground())
-            setOnClickListener {
-                requireActivity().startAddAccountActivity()
-            }
-        }
-
-    private fun divider(startMargin: Int): View =
-        View(requireContext()).apply {
-            setBackgroundColor(requireContext().getColor(R.color.oneui_divider))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).apply {
-                marginStart = startMargin
-                marginEnd = dp(18)
-            }
-        }
-
-    private fun resolveSelectableItemBackground(): Int {
-        val typed = android.util.TypedValue()
-        requireContext().theme.resolveAttribute(android.R.attr.selectableItemBackground, typed, true)
-        return typed.resourceId
-    }
-
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
 
@@ -500,6 +427,18 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             R.string.schedule_provider_local
         }
     )
+
+    override fun onPreferenceTreeClick(preference: Preference): Boolean {
+        if (preference is AccountPreference) {
+            val username = preference.accountUsername
+            if (!username.equals(settings.username, ignoreCase = true)) {
+                save(settings.copy(username = username))
+                buildScreen()
+            }
+            return true
+        }
+        return super.onPreferenceTreeClick(preference)
+    }
 }
 
 internal enum class AccountPopupAction {

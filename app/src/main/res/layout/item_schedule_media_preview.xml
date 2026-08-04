@@ -15,7 +15,7 @@
         android:id="@+id/schedule_media_preview_image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/oneui_divider"
+        android:background="?attr/twidgetDivider"
         android:contentDescription="@string/schedule_local_media"
         android:scaleType="centerCrop" />
 

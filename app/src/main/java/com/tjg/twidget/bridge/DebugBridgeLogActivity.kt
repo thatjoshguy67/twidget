@@ -1,5 +1,10 @@
 package com.tjg.twidget.bridge
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.SpannableString
@@ -121,7 +126,7 @@ class DebugBridgeLogFragment : InsetPreferenceFragment() {
             text = details
             typeface = Typeface.MONOSPACE
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setTextColor(context.getColor(R.color.oneui_text_primary))
+            setTextColor(context.oneUiTextPrimary())
             setTextIsSelectable(true)
             val pad = (16 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad / 2, pad, pad / 2)

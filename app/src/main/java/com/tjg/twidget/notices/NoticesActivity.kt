@@ -1,5 +1,8 @@
 package com.tjg.twidget.notices
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
@@ -123,7 +126,7 @@ class NoticesActivity : FoldablePopOverActivity() {
                     setText(R.string.notices_beta)
                     textSize = 12f
                     typeface = Typeface.create("sec", Typeface.BOLD)
-                    setTextColor(getColor(R.color.oneui_accent))
+                    setTextColor(oneUiAccent())
                     setPadding(dp(8), 0, 0, 0)
                 })
             }
@@ -136,11 +139,11 @@ class NoticesActivity : FoldablePopOverActivity() {
             maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
             setLineSpacing(dp(2).toFloat(), 1f)
-            setTextColor(getColor(R.color.oneui_text_primary))
+            setTextColor(oneUiTextPrimary())
             setPadding(0, dp(12), 0, 0)
         })
         addView(metaText(getString(R.string.notices_view_changelog)).apply {
-            setTextColor(getColor(R.color.oneui_accent))
+            setTextColor(oneUiAccent())
         })
     }
 
@@ -179,13 +182,13 @@ class NoticesActivity : FoldablePopOverActivity() {
         text = value
         textSize = 16f
         typeface = TwidgetFonts.oneUiSans(context, 700)
-        setTextColor(getColor(R.color.oneui_text_primary))
+        setTextColor(oneUiTextPrimary())
     }
 
     private fun metaText(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 13f
-        setTextColor(getColor(R.color.oneui_text_secondary))
+        setTextColor(oneUiTextSecondary())
         setPadding(0, dp(6), 0, 0)
     }
 

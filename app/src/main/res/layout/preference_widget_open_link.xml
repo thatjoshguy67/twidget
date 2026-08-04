@@ -5,4 +5,4 @@
     android:layout_height="24dp"
     android:contentDescription="@null"
     android:src="@drawable/ic_oui_open"
-    app:tint="@color/oneui_accent" />
+    app:tint="?attr/colorPrimary" />

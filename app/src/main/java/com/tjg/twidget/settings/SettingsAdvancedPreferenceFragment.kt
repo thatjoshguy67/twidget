@@ -1,5 +1,10 @@
 package com.tjg.twidget.settings
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
@@ -204,7 +209,7 @@ class SettingsAdvancedPreferenceFragment : InsetPreferenceFragment() {
                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                             )
                             setSpan(
-                                ForegroundColorSpan(context.getColor(R.color.oneui_text_primary)),
+                                ForegroundColorSpan(context.oneUiTextPrimary()),
                                 heading.length + 1,
                                 length,
                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,

@@ -8,7 +8,7 @@
     <gradient
         android:angle="270"
         android:startColor="@color/onboarding_settle_fade"
-        android:centerColor="@color/oneui_bg"
-        android:endColor="@color/oneui_bg"
+        android:centerColor="?attr/twidgetBackground"
+        android:endColor="?attr/twidgetBackground"
         android:type="linear" />
 </shape>

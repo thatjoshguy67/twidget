@@ -1,48 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <resources>
+
+    <!-- TJG-Website blue design tokens (fixed accent) -->
+
+    <color name="tjg_accent">#387aff</color>
+
+    <color name="tjg_accent_translucent">#22387aff</color>
+
+
+
+    <color name="oneui_accent">@color/tjg_accent</color>
+
+    <color name="oneui_accent_translucent">@color/tjg_accent_translucent</color>
+
     <color name="oneui_bg">#f1f1f3</color>
+
     <color name="oneui_card_bg">#fcfcff</color>
+
     <color name="oneui_drawer_bg">#fcfcff</color>
+
     <color name="oneui_drawer_selected_bg">#0d010102</color>
+
     <color name="oneui_divider">#e4e4e6</color>
+
     <color name="oneui_text_primary">#000000</color>
+
     <color name="oneui_text_secondary">#848487</color>
-    <color name="oneui_accent">#387aff</color>
-    <color name="oneui_accent_translucent">#22387aff</color>
+
+
+
     <color name="top_followers_skeleton">#f3f3f5</color>
+
     <color name="schedule_ready">#E65B17</color>
+
     <color name="schedule_calendar_cell">#F9F9FB</color>
+
     <color name="schedule_calendar_post">#EAEAEA</color>
+
     <color name="schedule_character_limit">#D92D2D</color>
+
     <color name="schedule_toolbar_floating">#E8FCFCFF</color>
+
     <color name="schedule_toolbar_floating_stroke">#66FFFFFF</color>
+
     <color name="notice_detail_back_surface">#80F4F7F5</color>
+
     <color name="notice_detail_back_icon">#506B75</color>
+
     <color name="oneui_preview_bg">#667788</color>
+
     <color name="metric_green">#3b9b55</color>
+
     <color name="metric_red">#E53935</color>
+
     <!-- Static launcher widget previews mirror the light widget card. -->
+
     <color name="widget_preview_surface">#F5F5F7</color>
+
     <color name="widget_preview_text_primary">#000000</color>
+
     <color name="widget_preview_text_secondary">#99000000</color>
+
     <color name="widget_preview_delta_positive">#2E7D32</color>
+
     <color name="widget_setting_progress_color_control_normal">#66C9C9CC</color>
+
     <color name="widget_setting_seek_bar_thumb_background_tint">#FCFCFF</color>
-    <color name="widget_setting_seek_bar_thumb_tint">@color/oneui_accent</color>
+
+    <color name="widget_setting_seek_bar_thumb_tint">@color/tjg_accent</color>
+
     <color name="widget_setting_seek_bar_tick_mark_solid_color">#FFA6A6A9</color>
+
     <!-- Onboarding radial gradient (top-center origin) — Figma light theme -->
+
     <color name="onboarding_grad_start">#F1F1F3</color>
+
     <color name="onboarding_grad_center">#BFDEF9</color>
+
     <color name="onboarding_grad_end">#8DCCFF</color>
+
     <!-- Glass pill button + input on the gradient -->
+
     <color name="onboarding_glass">#99FCFCFF</color>
+
     <color name="onboarding_glass_stroke">#33FFFFFF</color>
+
     <!-- Transparent-ish widget preview card on the add-widget step -->
+
     <color name="onboarding_widget_card">#73FFFFFF</color>
+
     <!-- "You're all set" settle: blue drains to the bottom, near-white takes over -->
+
     <color name="onboarding_settle_fade">#00F1F1F3</color>
+
     <color name="import_grad_start">#8DCCFF</color>
+
     <color name="import_grad_center">#CDE6FA</color>
+
     <color name="import_grad_end">#F1F1F3</color>
+
     <color name="import_failure_start">#FF8D8F</color>
+
 </resources>
+
+

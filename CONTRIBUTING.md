@@ -21,6 +21,9 @@ copy `github.properties.example` to `~/.config/twidget/github.properties`,
 populate it, and run `chmod 600` on the result (on Windows, restrict file
 permissions through your account settings).
 
+To edit **oneui-design** locally (themes, drawer, accent), see
+[docs/ONEUI_DESIGN.md](docs/ONEUI_DESIGN.md).
+
 **macOS (Android Studio bundled JBR):**
 
 ```bash

@@ -19,7 +19,7 @@
             android:layout_height="24dp"
             android:contentDescription="@null"
             android:src="@drawable/ic_oui_community"
-            app:tint="@color/oneui_text_primary" />
+            app:tint="?attr/twidgetTextPrimary" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -38,7 +38,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textFontWeight="700"
                     android:textSize="28sp"
                     android:textStyle="bold" />
@@ -58,7 +58,7 @@
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
                 android:text="@string/followers"
-                android:textColor="@color/oneui_text_secondary"
+                android:textColor="?attr/twidgetTextSecondary"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
@@ -68,7 +68,7 @@
         android:layout_height="1dp"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:background="@color/oneui_divider" />
+        android:background="?attr/twidgetDivider" />
 
     <com.tjg.twidget.ui.MetricChartView
         android:id="@+id/followers_chart"

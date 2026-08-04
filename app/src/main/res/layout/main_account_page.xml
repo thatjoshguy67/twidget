@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/main_account_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?roundedCornerColor"
-    android:orientation="vertical">
+    android:background="?roundedCornerColor">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/dashboard_scroll"
@@ -31,7 +35,7 @@
                     android:paddingEnd="6dp"
                     android:paddingBottom="10dp"
                     android:text="@string/private_account_notice"
-                    android:textColor="@color/oneui_text_secondary"
+                    android:textColor="?attr/twidgetTextSecondary"
                     android:textSize="13sp"
                     android:visibility="gone" />
 
@@ -44,7 +48,7 @@
                     android:paddingEnd="6dp"
                     android:paddingBottom="10dp"
                     android:text="@string/history_notice"
-                    android:textColor="@color/oneui_text_secondary"
+                    android:textColor="?attr/twidgetTextSecondary"
                     android:textSize="13sp"
                     android:visibility="gone" />
 
@@ -57,4 +61,6 @@
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-</LinearLayout>
+
+    </LinearLayout>
+</FrameLayout>

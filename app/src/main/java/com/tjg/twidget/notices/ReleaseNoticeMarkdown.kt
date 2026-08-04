@@ -1,5 +1,6 @@
 package com.tjg.twidget.notices
 
+import com.tjg.twidget.ui.TwidgetTheme
 import android.content.Context
 import android.graphics.Typeface
 import android.text.Spannable
@@ -109,10 +110,10 @@ object ReleaseNoticeMarkdown {
         ensureBlockGap(output)
         val start = output.length
         appendInline(context, output, content)
-        val accent = ContextCompat.getColor(context, R.color.oneui_accent)
+        val accent = TwidgetTheme.accent(context)
         output.setSpan(QuoteSpan(accent), start, output.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         output.setSpan(
-            ForegroundColorSpan(ContextCompat.getColor(context, R.color.oneui_text_secondary)),
+            ForegroundColorSpan(TwidgetTheme.textSecondary(context)),
             start,
             output.length,
             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
@@ -160,7 +161,7 @@ object ReleaseNoticeMarkdown {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                         )
                         output.setSpan(
-                            ForegroundColorSpan(ContextCompat.getColor(context, R.color.oneui_accent)),
+                            ForegroundColorSpan(TwidgetTheme.accent(context)),
                             start,
                             output.length,
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
@@ -201,7 +202,7 @@ object ReleaseNoticeMarkdown {
                         output.append(source.substring(index + 1, close))
                         output.setSpan(TypefaceSpan("monospace"), start, output.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                         output.setSpan(
-                            BackgroundColorSpan(ContextCompat.getColor(context, R.color.oneui_divider)),
+                            BackgroundColorSpan(TwidgetTheme.divider(context)),
                             start,
                             output.length,
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,

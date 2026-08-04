@@ -82,7 +82,7 @@ jobs:
           TWITTERAPIS_DEFAULT_API_KEY: ${{ secrets.TWITTERAPIS_DEFAULT_API_KEY }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug bundleDebug lintDebug --no-daemon --stacktrace
+            ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug bundleDebug lintDebug -PusePublishedOneUiDesign=true --no-daemon --stacktrace
             jarsigner \
               -keystore app/debug.keystore \
               -storepass android \
@@ -95,7 +95,7 @@ jobs:
               exit 1
             fi
             ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug bundleDebug lintDebug \
-              -PsignDebugWithRelease=true --no-daemon --stacktrace
+              -PsignDebugWithRelease=true -PusePublishedOneUiDesign=true --no-daemon --stacktrace
             jarsigner \
               -keystore "$RELEASE_STORE_FILE" \
               -storepass "$RELEASE_STORE_PASSWORD" \

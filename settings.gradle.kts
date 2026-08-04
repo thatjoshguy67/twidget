@@ -43,3 +43,24 @@ dependencyResolutionManagement {
 
 rootProject.name = "Twidget"
 include(":app")
+
+// Optional local oneui-design source — fork at https://github.com/KingOwen2006/oneui-design
+// Submodule: git submodule update --init libs/oneui-design
+val localOneUiDesignDir = file("libs/oneui-design")
+val usePublishedOneUiDesign = providers.gradleProperty("usePublishedOneUiDesign")
+    .orNull
+    ?.toBooleanStrictOrNull()
+    ?: false
+
+if (!usePublishedOneUiDesign && localOneUiDesignDir.isDirectory) {
+    val oneuiGithubProps = File(localOneUiDesignDir, "github.properties")
+    if (!oneuiGithubProps.isFile && githubPropertiesFile.isFile) {
+        githubPropertiesFile.copyTo(oneuiGithubProps, overwrite = true)
+    }
+    includeBuild(localOneUiDesignDir) {
+        dependencySubstitution {
+            substitute(module("io.github.tribalfs:oneui-design"))
+                .using(project(":oneui-design"))
+        }
+    }
+}

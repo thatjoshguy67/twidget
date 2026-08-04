@@ -2,7 +2,10 @@ package com.tjg.twidget.ui
 
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.util.SeslRoundedCorner
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +20,12 @@ import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
 abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        ViewCompat.setOnApplyWindowInsetsListener(listView) { list, insets ->
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, nav)
+            insets
+        }
+        ViewCompat.requestApplyInsets(listView)
         // The trailing inset draws the bottom rounding instead.
         listView.seslSetLastRoundedCorner(false)
         listView.addOnChildAttachStateChangeListener(
@@ -31,6 +40,14 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         for (index in 0 until listView.childCount) {
             TwidgetFonts.applyTo(listView.getChildAt(index))
         }
+        (view as? ViewGroup)?.let { host ->
+            ProgressiveBlurChrome.attach(requireActivity(), host, listView)
+        }
+    }
+
+    override fun onDestroyView() {
+        ProgressiveBlurChrome.detach(requireActivity())
+        super.onDestroyView()
     }
 
     /** Call after the last preference is added, before assigning the screen. */

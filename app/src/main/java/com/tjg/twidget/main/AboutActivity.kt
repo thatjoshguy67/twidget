@@ -1,5 +1,6 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.ui.oneUiTextPrimary
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
@@ -525,7 +526,7 @@ class AboutActivity : FoldablePopOverActivity() {
         val padding = (24 * resources.displayMetrics.density).toInt()
         val textView = TextView(this).apply {
             text = notices
-            setTextColor(getColor(R.color.oneui_text_primary))
+            setTextColor(oneUiTextPrimary())
             textSize = 13f
             typeface = Typeface.MONOSPACE
             setTextIsSelectable(true)

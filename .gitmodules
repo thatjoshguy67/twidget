@@ -1,0 +1,3 @@
+[submodule "libs/oneui-design"]
+	path = libs/oneui-design
+	url = https://github.com/KingOwen2006/oneui-design.git

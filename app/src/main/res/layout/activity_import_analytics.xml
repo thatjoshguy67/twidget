@@ -41,7 +41,7 @@
                         android:gravity="center"
                         android:includeFontPadding="false"
                         android:text="@string/import_data_from_x"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="34sp"
                         android:textStyle="bold" />
 
@@ -77,7 +77,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sec"
                                 android:text="@string/import_get_stats_title"
-                                android:textColor="@color/oneui_text_primary"
+                                android:textColor="?attr/twidgetTextPrimary"
                                 android:textSize="18sp" />
 
                             <TextView
@@ -88,7 +88,7 @@
                                 android:fontFamily="sec"
                                 android:lineSpacingExtra="2dp"
                                 android:text="@string/import_get_stats_summary"
-                                android:textColor="@color/oneui_text_secondary"
+                                android:textColor="?attr/twidgetTextSecondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
                     </LinearLayout>
@@ -117,7 +117,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sec"
                                 android:text="@string/import_premium_title"
-                                android:textColor="@color/oneui_text_primary"
+                                android:textColor="?attr/twidgetTextPrimary"
                                 android:textSize="18sp" />
 
                             <TextView
@@ -127,7 +127,7 @@
                                 android:fontFamily="sec"
                                 android:lineSpacingExtra="2dp"
                                 android:text="@string/import_premium_summary"
-                                android:textColor="@color/oneui_text_secondary"
+                                android:textColor="?attr/twidgetTextSecondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
                     </LinearLayout>
@@ -156,7 +156,7 @@
                                 android:layout_height="wrap_content"
                                 android:fontFamily="sec"
                                 android:text="@string/import_accuracy_title"
-                                android:textColor="@color/oneui_text_primary"
+                                android:textColor="?attr/twidgetTextPrimary"
                                 android:textSize="18sp" />
 
                             <TextView
@@ -166,7 +166,7 @@
                                 android:fontFamily="sec"
                                 android:lineSpacingExtra="2dp"
                                 android:text="@string/import_accuracy_summary"
-                                android:textColor="@color/oneui_text_secondary"
+                                android:textColor="?attr/twidgetTextSecondary"
                                 android:textSize="14sp" />
                         </LinearLayout>
                     </LinearLayout>
@@ -199,7 +199,7 @@
                     android:fontFamily="sec"
                     android:gravity="center"
                     android:includeFontPadding="false"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="34sp"
                     android:textStyle="bold" />
 
@@ -209,7 +209,7 @@
                     android:layout_marginTop="48dp"
                     android:fontFamily="sec"
                     android:text="@string/import_range"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -220,7 +220,7 @@
                     android:layout_marginTop="18dp"
                     android:fontFamily="sec"
                     android:gravity="center"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="18sp" />
 
                 <TextView
@@ -229,7 +229,7 @@
                     android:layout_marginTop="20dp"
                     android:fontFamily="sec"
                     android:text="@string/import_detected_followers"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -239,7 +239,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:fontFamily="sec"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="18sp" />
 
                 <TextView
@@ -248,7 +248,7 @@
                     android:layout_marginTop="20dp"
                     android:fontFamily="sec"
                     android:text="@string/import_metrics_detected"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -258,7 +258,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:fontFamily="sec"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="18sp" />
             </LinearLayout>
 
@@ -276,7 +276,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sec"
                     android:text="@string/importing"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="34sp"
                     android:textStyle="bold" />
 
@@ -301,7 +301,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sec"
                     android:text="@string/imported"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="42sp"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -321,7 +321,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sec"
                     android:text="@string/not_imported"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="42sp"
                     android:textStyle="bold" />
 
@@ -333,7 +333,7 @@
                     android:fontFamily="sec"
                     android:gravity="center"
                     android:text="@string/import_failure_default"
-                    android:textColor="@color/oneui_text_primary"
+                    android:textColor="?attr/twidgetTextPrimary"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
@@ -350,7 +350,7 @@
                         android:layout_marginTop="22dp"
                         android:fontFamily="sec"
                         android:text="@string/import_stored_followers"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="18sp" />
 
                     <TextView
@@ -359,7 +359,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:fontFamily="sec"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
 
@@ -369,7 +369,7 @@
                         android:layout_marginTop="22dp"
                         android:fontFamily="sec"
                         android:text="@string/import_detected_followers"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="18sp" />
 
                     <TextView
@@ -378,7 +378,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:fontFamily="sec"
-                        android:textColor="@color/oneui_text_primary"
+                        android:textColor="?attr/twidgetTextPrimary"
                         android:textSize="20sp"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -406,7 +406,7 @@
                 android:fontFamily="sec"
                 android:text="@string/cancel"
                 android:textAllCaps="false"
-                android:textColor="@color/oneui_text_primary"
+                android:textColor="?attr/twidgetTextPrimary"
                 android:textSize="17sp"
                 android:textStyle="bold" />
 

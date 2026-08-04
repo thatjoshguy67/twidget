@@ -17,6 +17,8 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.ViewStub
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -32,9 +34,11 @@ import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
 import com.tjg.twidget.schedule.ScheduleAccountScope
+import com.tjg.twidget.schedule.ScheduleAccentChrome
 import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleQueueHostActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
@@ -109,15 +113,22 @@ class MainActivity : ScheduleQueueHostActivity() {
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
+        TwidgetTheme.applySurfaces(this)
         destination = savedInstanceState?.getString(STATE_DESTINATION)
             ?.let(MainDestination::valueOf)
             ?: MainDestination.DASHBOARD
         val scheduleFab = findViewById<View>(R.id.schedule_fab)
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { inset ->
-            navigationBarInset = inset
-            scheduleFab.updateBottomMarginForNavigationBar(dp(20), inset)
-            updateScheduleBottomInsets(inset)
+        // NavDrawerLayout handles status-bar insets internally; only track nav bar for FAB anchoring.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_toolbar_layout)) { _, insets ->
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (nav != navigationBarInset) {
+                navigationBarInset = nav
+                scheduleFab.updateBottomMarginForNavigationBar(dp(20), nav)
+                updateScheduleBottomInsets(nav)
+            }
+            insets
         }
+        ViewCompat.requestApplyInsets(findViewById(R.id.main_toolbar_layout))
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         scheduleBackCallback = object : androidx.activity.OnBackPressedCallback(
             destination == MainDestination.SCHEDULING,
@@ -307,6 +318,16 @@ class MainActivity : ScheduleQueueHostActivity() {
         }
     }
 
+    override fun onAppThemeChanged() {
+        ScheduleAccentChrome.apply(this)
+        super.onAppThemeChanged()
+    }
+
+    override fun onContentChanged() {
+        super.onContentChanged()
+        ScheduleAccentChrome.apply(this)
+    }
+
     internal fun render(bindDashboard: Boolean = true) {
         accounts = TwidgetStore.accounts(this)
             .ifEmpty { listOf(TwidgetStore.settings(this).username) }
@@ -378,6 +399,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             destination == MainDestination.DASHBOARD &&
                 !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
         ) View.VISIBLE else View.GONE
+        ScheduleAccentChrome.apply(this)
     }
 
     override fun requestedUsername(): String =

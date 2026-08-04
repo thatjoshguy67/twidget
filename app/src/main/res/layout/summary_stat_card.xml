@@ -15,7 +15,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:includeFontPadding="false"
-        android:textColor="@color/oneui_text_primary"
+        android:textColor="?attr/twidgetTextPrimary"
         android:textSize="22sp"
         android:textStyle="bold" />
 
@@ -27,6 +27,6 @@
         android:ellipsize="end"
         android:includeFontPadding="false"
         android:maxLines="1"
-        android:textColor="@color/oneui_text_secondary"
+        android:textColor="?attr/twidgetTextSecondary"
         android:textSize="12sp" />
 </dev.oneuiproject.oneui.widget.RoundedLinearLayout>

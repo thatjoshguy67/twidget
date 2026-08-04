@@ -1,5 +1,6 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.Manifest
@@ -221,7 +222,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private fun updatePermissionStatus(viewId: Int, granted: Boolean) {
         findViewById<TextView>(viewId).apply {
             text = getString(if (granted) R.string.onboarding_permission_allowed else R.string.onboarding_permission_required)
-            setTextColor(getColor(R.color.oneui_text_secondary))
+            setTextColor(oneUiTextSecondary())
         }
     }
 

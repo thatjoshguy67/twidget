@@ -1,5 +1,10 @@
 package com.tjg.twidget.widget
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.res.Configuration
@@ -200,7 +205,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(context).apply {
                     text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(17))
-                    setTextColor(context.getColor(R.color.oneui_text_primary))
+                    setTextColor(context.oneUiTextPrimary())
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
@@ -208,7 +213,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                 })
                 addView(TextView(context).apply {
                     text = context.getString(R.string.account_handle, username.trimStart('@'))
-                    setTextColor(context.getColor(R.color.oneui_text_secondary))
+                    setTextColor(context.oneUiTextSecondary())
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
@@ -229,7 +234,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun divider(): View =
         View(this).apply {
-            setBackgroundColor(getColor(R.color.oneui_divider))
+            setBackgroundColor(oneUiDivider())
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).apply {
                 marginStart = dp(20)
                 marginEnd = dp(20)
@@ -243,7 +248,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             summary = if (logo == TwidgetStore.LOGO_TWITTER) getString(R.string.widget_logo_twitter) else getString(R.string.widget_logo_x)
             findViewById<ImageView>(OneUiR.id.end_view)?.apply {
                 setImageResource(if (logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x)
-                imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
+                imageTintList = android.content.res.ColorStateList.valueOf(oneUiTextPrimary())
             }
         }
 
@@ -326,8 +331,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     }
 
     private fun showDropDown(anchor: View, labels: List<String>, selectedIndex: Int, onSelected: (Int) -> Unit) {
-        val accent = getColor(R.color.oneui_accent)
-        val normal = getColor(R.color.oneui_text_primary)
+        val accent = oneUiAccent()
+        val normal = oneUiTextPrimary()
         val adapter = object : ArrayAdapter<String>(this, R.layout.dropdown_item_checked, R.id.dropdown_label, labels) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getView(position, convertView, parent)

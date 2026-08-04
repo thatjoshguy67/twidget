@@ -4,7 +4,7 @@
 
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/oneui_card_bg" />
+            <solid android:color="?attr/twidgetCardBackground" />
             <corners android:radius="22dp" />
         </shape>
     </item>

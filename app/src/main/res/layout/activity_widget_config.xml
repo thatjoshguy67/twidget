@@ -236,7 +236,7 @@
                         android:layout_height="1dp"
                         android:layout_marginStart="18dp"
                         android:layout_marginEnd="18dp"
-                        android:background="@color/oneui_divider" />
+                        android:background="?attr/twidgetDivider" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -339,7 +339,7 @@
             <View
                 android:layout_width="1dp"
                 android:layout_height="20dp"
-                android:background="@color/oneui_divider" />
+                android:background="?attr/twidgetDivider" />
 
             <TextView
                 android:id="@+id/btn_save"

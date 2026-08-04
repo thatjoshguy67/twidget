@@ -1,0 +1,89 @@
+package com.tjg.twidget.settings
+
+import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.drawable.BitmapDrawable
+import android.view.View
+import android.widget.ImageView
+import androidx.preference.Preference
+import androidx.preference.PreferenceViewHolder
+import com.tjg.twidget.R
+import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.TwidgetTheme
+import com.tjg.twidget.ui.VerifiedBadge
+import dev.oneuiproject.oneui.R as IconR
+import dev.oneuiproject.oneui.design.R as OneUiDesignR
+
+/**
+ * Standard One UI preference row for an account — lives inside a
+ * [PreferenceCategory] card so theming comes from the SESL preference pipeline.
+ */
+class AccountPreference(
+    context: Context,
+    private val username: String,
+    private val isDefault: Boolean,
+    private val onSelected: () -> Unit,
+    private val onLongPress: (View) -> Unit,
+) : Preference(context) {
+    init {
+        key = "account_${username.lowercase()}"
+        isIconSpaceReserved = true
+        widgetLayoutResource = R.layout.preference_account_widget
+        updateContent()
+        setOnPreferenceClickListener {
+            onSelected()
+            true
+        }
+    }
+
+    fun refreshFromStore(defaultUsername: String) {
+        val nowDefault = username.equals(defaultUsername, ignoreCase = true)
+        if (nowDefault != isDefault) {
+            // Preference identity is stable; star state is rebound on the next refresh.
+        }
+        updateContent()
+        notifyChanged()
+    }
+
+    private fun updateContent() {
+        val stats = TwidgetStore.currentStats(context, username)
+        title = VerifiedBadge.decorate(
+            context,
+            stats.fullName.ifBlank { username },
+            stats.isVerified,
+            stats.isPrivate,
+            dp(16),
+        )
+        summary = context.getString(R.string.account_handle, username.trimStart('@'))
+        icon = accountIcon(stats.profileImage)
+    }
+
+    override fun onBindViewHolder(holder: PreferenceViewHolder) {
+        super.onBindViewHolder(holder)
+        holder.itemView.setOnLongClickListener { anchor ->
+            onLongPress(anchor)
+            true
+        }
+        (holder.findViewById(R.id.account_favorite) as? ImageView)?.apply {
+            setImageResource(
+                if (isDefault) IconR.drawable.ic_oui_favorite_on else IconR.drawable.ic_oui_favorite_off,
+            )
+            imageTintList = ColorStateList.valueOf(
+                if (isDefault) TwidgetTheme.accent(context) else TwidgetTheme.textSecondary(context),
+            )
+        }
+    }
+
+    private fun accountIcon(profileUrl: String) = run {
+        val iconSize = context.resources.getDimensionPixelSize(
+            OneUiDesignR.dimen.oui_des_drawer_menu_item_icon_size,
+        )
+        ProfileImageLoader.cachedCircularBitmap(context, profileUrl, iconSize)?.let { bitmap ->
+            BitmapDrawable(context.resources, bitmap)
+        } ?: context.getDrawable(R.drawable.avatar_twidget)
+    }
+
+    private fun dp(value: Int): Int =
+        (value * context.resources.displayMetrics.density).toInt()
+}

@@ -36,6 +36,11 @@ import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.TwidgetTheme
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startSettingsSubActivity
@@ -91,6 +96,37 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 }
             })
         }
+
+        screen.addPreference(category(R.string.appearance))
+        screen.addPreference(ListPreference(context).apply {
+            key = "theme_mode_pref"
+            title = getString(R.string.theme_section)
+            dialogTitle = getString(R.string.theme_section)
+            summary = TwidgetTheme.themeModeLabel(context, TwidgetStore.appThemeMode(context))
+            entries = arrayOf(
+                getString(R.string.theme_mode_auto),
+                getString(R.string.theme_mode_light),
+                getString(R.string.theme_mode_dark),
+            )
+            entryValues = arrayOf(
+                TwidgetStore.COLOR_MODE_SYSTEM,
+                TwidgetStore.COLOR_MODE_LIGHT,
+                TwidgetStore.COLOR_MODE_DARK,
+            )
+            value = TwidgetStore.appThemeMode(context)
+            setOnPreferenceChangeListener { pref, value ->
+                val mode = value as String
+                TwidgetStore.saveAppThemeMode(context, mode)
+                pref.summary = TwidgetTheme.themeModeLabel(context, mode)
+                TwidgetTheme.publishChange(context)
+                refreshAppearancePreferences()
+                true
+            }
+        })
+        screen.addPreference(AccentColorPreference(context).apply {
+            key = "accent_color_pref"
+            title = getString(R.string.accent_color_section)
+        })
 
         screen.addPreference(category(R.string.accounts))
         screen.addPreference(LayoutPreference(context, accountsCard()).apply {
@@ -266,6 +302,14 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             isIconSpaceReserved = false
         }
 
+    private fun refreshAppearancePreferences() {
+        val context = requireContext()
+        findPreference<ListPreference>("theme_mode_pref")?.summary =
+            TwidgetTheme.themeModeLabel(context, TwidgetStore.appThemeMode(context))
+        (findPreference("accent_color_pref") as? AccentColorPreference)?.refreshFromStore()
+        listView.adapter?.notifyDataSetChanged()
+    }
+
     companion object {
         const val ARG_SCROLL_TO_PREFERENCE = "scroll_to_preference"
     }
@@ -276,7 +320,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 cornerRadius = dp(28).toFloat()
-                setColor(context.getColor(R.color.oneui_card_bg))
+                setColor(context.oneUiCardBackground())
             }
             clipToOutline = true
         }
@@ -333,7 +377,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                     // Native SESL list sizes (17sp title / 13sp secondary) so
                     // the card reads consistently with the preference rows.
                     text = VerifiedBadge.decorate(context, stats.fullName.ifBlank { username }, stats.isVerified, stats.isPrivate, dp(16))
-                    setTextColor(context.getColor(R.color.oneui_text_primary))
+                    setTextColor(context.oneUiTextPrimary())
                     textSize = 17f
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
@@ -341,7 +385,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 })
                 addView(TextView(context).apply {
                     text = context.getString(R.string.account_handle, username.trimStart('@'))
-                    setTextColor(context.getColor(R.color.oneui_text_secondary))
+                    setTextColor(context.oneUiTextSecondary())
                     textSize = 13f
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
@@ -355,7 +399,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             addView(ImageView(context).apply {
                 setImageResource(if (isDefault) IconR.drawable.ic_oui_favorite_on else IconR.drawable.ic_oui_favorite_off)
                 imageTintList = ColorStateList.valueOf(
-                    context.getColor(if (isDefault) R.color.oneui_accent else R.color.oneui_text_secondary)
+                    if (isDefault) TwidgetTheme.accent(context) else TwidgetTheme.textSecondary(context),
                 )
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 setPadding(dp(8), dp(8), dp(8), dp(8))
@@ -391,13 +435,11 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
                     (super.getView(position, convertView, parent) as TextView).apply {
                         setTextColor(
-                            context.getColor(
-                                if (actions[position] == AccountPopupAction.DELETE) {
-                                    R.color.metric_red
-                                } else {
-                                    R.color.oneui_text_primary
-                                }
-                            )
+                            if (actions[position] == AccountPopupAction.DELETE) {
+                                context.getColor(R.color.metric_red)
+                            } else {
+                                TwidgetTheme.textPrimary(context)
+                            }
                         )
                     }
             })
@@ -446,7 +488,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private fun addAccountRow(): View =
         TextView(requireContext()).apply {
             text = getString(R.string.add_account)
-            setTextColor(context.getColor(R.color.oneui_text_primary))
+            setTextColor(context.oneUiTextPrimary())
             textSize = 17f
             typeface = Typeface.create("sec", Typeface.NORMAL)
             gravity = Gravity.CENTER_VERTICAL
@@ -463,7 +505,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
 
     private fun divider(startMargin: Int): View =
         View(requireContext()).apply {
-            setBackgroundColor(requireContext().getColor(R.color.oneui_divider))
+            setBackgroundColor(requireContext().oneUiDivider())
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).apply {
                 marginStart = startMargin
                 marginEnd = dp(18)

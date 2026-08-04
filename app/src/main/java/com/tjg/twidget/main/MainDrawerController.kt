@@ -1,5 +1,10 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -55,7 +60,7 @@ internal class MainDrawerController(
             .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
         activity.findViewById<DrawerLayout>(drawerLayoutId).setupHeaderButton(
             requireNotNull(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_settings_outline)),
-            activity.getColor(R.color.oneui_text_secondary),
+            activity.oneUiTextSecondary(),
             activity.getString(R.string.settings),
         ) {
             closeDrawerOnCompactScreens()

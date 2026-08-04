@@ -109,6 +109,11 @@ object TwidgetStore {
     const val COLOR_MODE_LIGHT = "light"
     const val COLOR_MODE_DARK = "dark"
     const val COLOR_MODE_SYSTEM = "system"
+    const val ACCENT_BLUE = "blue"
+    const val ACCENT_CORAL = "coral"
+    const val ACCENT_MINT = "mint"
+    const val ACCENT_LILAC = "lilac"
+    const val ACCENT_MONO = "mono"
     const val FONT_ONE_UI_SANS = "one_ui_sans"
     const val FONT_GOOGLE_SANS_FLEX = "google_sans_flex"
 
@@ -124,6 +129,8 @@ object TwidgetStore {
     private const val KEY_TAP_ACTION = "tap_action"
     private const val KEY_DATA_SOURCE = "data_source"
     private const val KEY_SHARE_HISTORY = "share_history"
+    private const val KEY_APP_THEME_MODE = "app_theme_mode"
+    private const val KEY_APP_ACCENT_COLOR = "app_accent_color"
     private const val KEY_PROFILE = "profile"
     private const val KEY_HISTORY = "history"
     private const val KEY_ONBOARDED = "onboarded"
@@ -183,6 +190,24 @@ object TwidgetStore {
             dataSource = prefs.getString(KEY_DATA_SOURCE, DATA_SOURCE_FXTWITTER) ?: DATA_SOURCE_FXTWITTER,
             shareHistory = prefs.getBoolean(KEY_SHARE_HISTORY, false),
         )
+    }
+
+    fun appThemeMode(context: Context): String =
+        prefs(context).getString(KEY_APP_THEME_MODE, COLOR_MODE_SYSTEM) ?: COLOR_MODE_SYSTEM
+
+    fun saveAppThemeMode(context: Context, themeMode: String) {
+        prefs(context).edit()
+            .putString(KEY_APP_THEME_MODE, themeMode)
+            .apply()
+    }
+
+    fun appAccentColor(context: Context): String =
+        prefs(context).getString(KEY_APP_ACCENT_COLOR, ACCENT_BLUE) ?: ACCENT_BLUE
+
+    fun saveAppAccentColor(context: Context, accentColor: String) {
+        prefs(context).edit()
+            .putString(KEY_APP_ACCENT_COLOR, accentColor)
+            .apply()
     }
 
     fun saveSettings(context: Context, settings: TwidgetSettings) {

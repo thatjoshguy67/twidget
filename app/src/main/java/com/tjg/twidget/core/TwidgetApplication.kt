@@ -2,6 +2,7 @@ package com.tjg.twidget.core
 
 import android.app.Application
 import androidx.work.Configuration
+import com.tjg.twidget.ui.TwidgetTheme
 
 /**
  * Supplies WorkManager's configuration on demand. The manifest removes its
@@ -10,6 +11,11 @@ import androidx.work.Configuration
  * it after the launch skeleton is already visible.
  */
 class TwidgetApplication : Application(), Configuration.Provider {
+    override fun onCreate() {
+        super.onCreate()
+        TwidgetTheme.applyToApplication(this)
+    }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()
 }

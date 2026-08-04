@@ -1,5 +1,10 @@
 package com.tjg.twidget.ui
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -13,6 +18,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.annotation.ColorInt
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ImportedChartPoint
 import com.tjg.twidget.data.HistorySample
@@ -24,29 +30,28 @@ class MetricChartView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), TwidgetThemeAware {
     private val axisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_primary)
+        color = context.oneUiTextPrimary()
         textSize = 10f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val dateLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_primary)
+        color = context.oneUiTextPrimary()
         textSize = 10f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_divider)
+        color = context.oneUiAccentTranslucent()
         style = Paint.Style.FILL
-        alpha = 105
     }
     private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_card_bg)
+        color = context.oneUiCardBackground()
         textSize = 12f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.oneUiSans(context, 700)
     }
     private val tooltipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_primary)
+        color = context.oneUiTextPrimary()
         setShadowLayer(
             6f * resources.displayMetrics.density,
             0f,
@@ -55,24 +60,24 @@ class MetricChartView @JvmOverloads constructor(
         )
     }
     private val tooltipStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_accent)
+        color = context.oneUiAccent()
         style = Paint.Style.STROKE
         strokeWidth = resources.displayMetrics.density
     }
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val areaFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_divider)
+        color = context.oneUiDivider()
         style = Paint.Style.FILL
         alpha = 35
     }
     private val areaStripePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_secondary)
+        color = context.oneUiTextSecondary()
         style = Paint.Style.STROKE
         strokeWidth = 2f * resources.displayMetrics.density
         alpha = 55
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.oneui_text_secondary)
+        color = context.oneUiTextSecondary()
         style = Paint.Style.STROKE
         strokeWidth = 2f * resources.displayMetrics.density
         strokeCap = Paint.Cap.ROUND
@@ -148,16 +153,47 @@ class MetricChartView @JvmOverloads constructor(
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
+        updateBarGradient(height)
+    }
+
+    override fun applyTwidgetTheme() {
+        axisLabelPaint.color = context.oneUiTextPrimary()
+        dateLabelPaint.color = context.oneUiTextPrimary()
+        gridPaint.color = context.oneUiAccentTranslucent()
+        tooltipTextPaint.color = context.oneUiCardBackground()
+        tooltipPaint.color = context.oneUiTextPrimary()
+        tooltipStrokePaint.color = context.oneUiAccent()
+        areaFillPaint.color = context.oneUiDivider()
+        areaStripePaint.color = context.oneUiTextSecondary()
+        linePaint.color = context.oneUiTextSecondary()
+        updateBarGradient(height)
+        invalidate()
+    }
+
+    private fun updateBarGradient(viewHeight: Int) {
         val density = resources.displayMetrics.density
         val top = 18f * density
+        val bottom = (viewHeight - 30f * density).coerceAtLeast(top + 1f)
+        val accent = context.oneUiAccent()
         barGradient = LinearGradient(
             0f,
             top,
             0f,
-            (height - 30f * density).coerceAtLeast(top + 1f),
-            intArrayOf(Color.rgb(56, 122, 255), Color.rgb(133, 163, 222)),
+            bottom,
+            intArrayOf(accent, lightenAccent(accent, 0.55f)),
             null,
             Shader.TileMode.CLAMP,
+        )
+    }
+
+    private fun lightenAccent(@ColorInt color: Int, mix: Float): Int {
+        val r = Color.red(color)
+        val g = Color.green(color)
+        val b = Color.blue(color)
+        return Color.rgb(
+            (r + (255 - r) * mix).toInt().coerceIn(0, 255),
+            (g + (255 - g) * mix).toInt().coerceIn(0, 255),
+            (b + (255 - b) * mix).toInt().coerceIn(0, 255),
         )
     }
 

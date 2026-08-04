@@ -1,5 +1,10 @@
 package com.tjg.twidget.followers
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiCardBackground
+import com.tjg.twidget.ui.oneUiDivider
+import com.tjg.twidget.ui.oneUiTextPrimary
+import com.tjg.twidget.ui.oneUiTextSecondary
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -347,12 +352,12 @@ internal class TopFollowersCardBinder(
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
     private fun dp(value: Float): Int = (value * activity.resources.displayMetrics.density).toInt()
 
-    private val cardColor get() = activity.getColor(R.color.oneui_card_bg)
-    private val primaryColor get() = activity.getColor(R.color.oneui_text_primary)
-    private val secondaryColor get() = activity.getColor(R.color.oneui_text_secondary)
-    private val accentColor get() = activity.getColor(R.color.oneui_accent)
+    private val cardColor get() = activity.oneUiCardBackground()
+    private val primaryColor get() = activity.oneUiTextPrimary()
+    private val secondaryColor get() = activity.oneUiTextSecondary()
+    private val accentColor get() = activity.oneUiAccent()
     private val skeletonColor get() = activity.getColor(R.color.top_followers_skeleton)
-    private val dividerColor get() = activity.getColor(R.color.oneui_divider)
+    private val dividerColor get() = activity.oneUiDivider()
     private val rippleColor get() = (primaryColor and 0x00FFFFFF) or 0x24000000
 }
 

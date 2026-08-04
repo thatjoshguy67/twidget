@@ -1,5 +1,7 @@
 package com.tjg.twidget.analytics
 
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiTextPrimary
 import android.content.Intent
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.net.Uri
@@ -89,7 +91,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
                     setSpan(object : ClickableSpan() {
                         override fun onClick(widget: View) = openAnalyticsInBrowser()
                         override fun updateDrawState(ds: TextPaint) {
-                            ds.color = getColor(R.color.oneui_accent)
+                            ds.color = oneUiAccent()
                             ds.isUnderlineText = false
                         }
                     }, start, start + link.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -283,7 +285,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
                 secondary.visibility = View.GONE
                 primary.visibility = View.VISIBLE
                 primary.text = getString(R.string.continue_button)
-                primary.setTextColor(getColor(R.color.oneui_text_primary))
+                primary.setTextColor(oneUiTextPrimary())
                 primary.setBackgroundResource(R.drawable.onboarding_glass_button_bg)
                 setSingleButtonMargins(primary)
             }

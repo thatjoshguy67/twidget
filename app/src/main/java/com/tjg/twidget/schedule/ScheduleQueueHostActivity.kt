@@ -43,6 +43,7 @@ import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
@@ -172,6 +173,27 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         setupBottomNavigation()
         setupQueueViewSwitcher()
         queueRoot.visibility = if (initiallyVisible) View.VISIBLE else View.GONE
+        refreshScheduleAccentChrome()
+        queueTabs.post { refreshScheduleAccentChrome() }
+    }
+
+    private fun refreshScheduleAccentChrome() {
+        if (!::queueRoot.isInitialized) return
+        ScheduleAccentChrome.apply(
+            activity = this,
+            primaryFab = if (::primaryButton.isInitialized) primaryButton else null,
+            tabs = if (::queueTabs.isInitialized) queueTabs else null,
+            refresh = if (::refresh.isInitialized) refresh else null,
+            selectionBottomNav = if (::selectionBottomNav.isInitialized) selectionBottomNav else null,
+            trashBottomNav = if (::trashBottomNav.isInitialized) trashBottomNav else null,
+        )
+    }
+
+    override fun onAppThemeChanged() {
+        refreshScheduleAccentChrome()
+        if (::queueRoot.isInitialized && queueRoot.visibility == View.VISIBLE) {
+            renderQueue()
+        }
     }
 
     protected fun updateScheduleBottomInsets(inset: Int) {
@@ -238,6 +260,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     override fun onRestart() {
         super.onRestart()
+        refreshScheduleAccentChrome()
         if (::queueRoot.isInitialized && queueRoot.visibility == View.VISIBLE) {
             renderQueue()
             syncBufferQueue(userInitiated = false)
@@ -325,6 +348,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun renderQueue() {
+        refreshScheduleAccentChrome()
         showQueueMode()
         updateQueueHeader()
         content.removeAllViews()
@@ -535,7 +559,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             gravity = Gravity.CENTER
             textSize = 18f
             typeface = TwidgetFonts.oneUiSans(context, 700)
-            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+            setTextColor(TwidgetTheme.textPrimary(context))
         }, LinearLayout.LayoutParams(0, scheduleDp(48), 1f))
         addView(actionButton("›") {
             changeCalendarMonth(1)
@@ -567,7 +591,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 gravity = Gravity.CENTER
                 textSize = 12f
                 typeface = TwidgetFonts.oneUiSans(context, 700)
-                setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
+                setTextColor(TwidgetTheme.textSecondary(context))
             }, calendarCellParams(0, column, scheduleDp(28)))
         }
         repeat(leadingDays) { position ->
@@ -583,13 +607,12 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         }
     }
 
-    private fun calendarDayCell(date: LocalDate?, posts: List<ScheduledPost>): View = RoundedLinearLayout(this).apply {
+    private fun calendarDayCell(date: LocalDate?, posts: List<ScheduledPost>): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(scheduleDp(5), scheduleDp(5), scheduleDp(5), scheduleDp(5))
-        roundedCorners = 0
         background = GradientDrawable().apply {
             cornerRadius = scheduleDp(5).toFloat()
-            setColor(ContextCompat.getColor(context, R.color.schedule_calendar_cell))
+            setColor(calendarCellColor())
         }
         bindCalendarCellGestures(this, date, posts)
         if (date == null) return@apply
@@ -597,10 +620,9 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             text = date.dayOfMonth.toString()
             textSize = 14f
             typeface = TwidgetFonts.oneUiSans(context, if (date == LocalDate.now()) 700 else 600)
-            setTextColor(ContextCompat.getColor(
-                context,
-                if (date == LocalDate.now()) R.color.oneui_accent else R.color.oneui_text_primary,
-            ))
+            setTextColor(
+                if (date == LocalDate.now()) TwidgetTheme.accent(context) else TwidgetTheme.textPrimary(context),
+            )
         })
         posts.take(2).forEach { post ->
             addView(TextView(this@ScheduleQueueHostActivity).apply {
@@ -613,11 +635,11 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 }
                 textSize = 8f
                 maxLines = 3
-                setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+                setTextColor(TwidgetTheme.textPrimary(context))
                 setPadding(scheduleDp(4), scheduleDp(4), scheduleDp(4), scheduleDp(4))
                 background = GradientDrawable().apply {
                     cornerRadius = scheduleDp(3).toFloat()
-                    setColor(ContextCompat.getColor(context, R.color.schedule_calendar_post))
+                    setColor(calendarPostColor())
                 }
                 bindCalendarCellGestures(this, date, listOf(post))
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply {
@@ -628,8 +650,15 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             text = "+${posts.size - 2}"
             textSize = 8f
             gravity = Gravity.END
+            setTextColor(TwidgetTheme.textSecondary(context))
         })
     }
+
+    private fun calendarCellColor(): Int =
+        if (TwidgetTheme.isDark(this)) 0xFF252528.toInt() else 0xFFF9F9FB.toInt()
+
+    private fun calendarPostColor(): Int =
+        if (TwidgetTheme.isDark(this)) 0xFF353538.toInt() else 0xFFEAEAEA.toInt()
 
     private fun bindCalendarCellGestures(
         cell: View,
@@ -733,7 +762,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             } ?: getString(R.string.schedule_empty_post)
             textSize = 16f
             typeface = TwidgetFonts.oneUiSans(context, 400)
-            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+            setTextColor(TwidgetTheme.textPrimary(context))
             maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
             setLineSpacing(scheduleDp(2).toFloat(), 1f)
@@ -770,7 +799,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                     },
                 )
                 imageTintList = ColorStateList.valueOf(
-                    ContextCompat.getColor(context, R.color.oneui_accent),
+                    TwidgetTheme.accent(context),
                 )
                 contentDescription = null
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -781,7 +810,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             text = queueCardTitle(post)
             textSize = 14f
             typeface = TwidgetFonts.oneUiSans(context, 400)
-            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
+            setTextColor(TwidgetTheme.textSecondary(context))
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -989,7 +1018,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             ContextCompat.getDrawable(context, value.resourceId)
         }
         imageTintList = ColorStateList.valueOf(
-            ContextCompat.getColor(context, R.color.oneui_text_primary),
+            TwidgetTheme.textPrimary(context),
         )
         setPadding(scheduleDp(8), scheduleDp(8), scheduleDp(8), scheduleDp(8))
         layoutParams = LinearLayout.LayoutParams(scheduleDp(40), scheduleDp(40))
@@ -1463,7 +1492,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         addView(TextView(this@ScheduleQueueHostActivity).apply {
             text = item.text.ifBlank { getString(R.string.schedule_media_only) }
             textSize = 15f
-            setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+            setTextColor(TwidgetTheme.textPrimary(context))
             setTextIsSelectable(true)
             setPadding(0, scheduleDp(8), 0, scheduleDp(8))
         })
@@ -1589,8 +1618,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     private fun card(): LinearLayout = RoundedLinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setBackgroundColor(ContextCompat.getColor(context, R.color.oneui_card_bg))
-        roundedCornersColor = ContextCompat.getColor(context, R.color.oneui_bg)
+        setBackgroundColor(TwidgetTheme.cardBackground(context))
+        roundedCornersColor = TwidgetTheme.background(context)
         setPadding(scheduleDp(20), scheduleDp(18), scheduleDp(20), scheduleDp(18))
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1618,9 +1647,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         minWidth = 0
         setPadding(scheduleDp(14), 0, scheduleDp(14), 0)
         contentDescription = label
+        setTextColor(TwidgetTheme.textPrimary(context))
         if (selected) {
             backgroundTintList = ColorStateList.valueOf(
-                ContextCompat.getColor(context, R.color.oneui_accent_translucent),
+                TwidgetTheme.accentTranslucent(context),
             )
         }
         layoutParams = LinearLayout.LayoutParams(
@@ -1634,7 +1664,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         text = value
         textSize = 19f
         typeface = TwidgetFonts.oneUiSans(context, 700)
-        setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+        setTextColor(TwidgetTheme.textPrimary(context))
         setPadding(scheduleDp(24), scheduleDp(14), scheduleDp(24), scheduleDp(8))
     }
 
@@ -1642,14 +1672,14 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         text = value
         textSize = 15f
         typeface = TwidgetFonts.oneUiSans(context, 600)
-        setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
+        setTextColor(TwidgetTheme.textPrimary(context))
         maxLines = 4
     }
 
     private fun metaText(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 13f
-        setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
+        setTextColor(TwidgetTheme.textSecondary(context))
         setPadding(0, scheduleDp(6), 0, 0)
     }
 

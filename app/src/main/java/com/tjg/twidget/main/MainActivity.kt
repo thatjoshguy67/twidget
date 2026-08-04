@@ -32,9 +32,11 @@ import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
 import com.tjg.twidget.schedule.ScheduleAccountScope
+import com.tjg.twidget.schedule.ScheduleAccentChrome
 import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleQueueHostActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
@@ -109,6 +111,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
+        TwidgetTheme.applySurfaces(this)
         destination = savedInstanceState?.getString(STATE_DESTINATION)
             ?.let(MainDestination::valueOf)
             ?: MainDestination.DASHBOARD
@@ -307,6 +310,16 @@ class MainActivity : ScheduleQueueHostActivity() {
         }
     }
 
+    override fun onAppThemeChanged() {
+        ScheduleAccentChrome.apply(this)
+        super.onAppThemeChanged()
+    }
+
+    override fun onContentChanged() {
+        super.onContentChanged()
+        ScheduleAccentChrome.apply(this)
+    }
+
     internal fun render(bindDashboard: Boolean = true) {
         accounts = TwidgetStore.accounts(this)
             .ifEmpty { listOf(TwidgetStore.settings(this).username) }
@@ -378,6 +391,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             destination == MainDestination.DASHBOARD &&
                 !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
         ) View.VISIBLE else View.GONE
+        ScheduleAccentChrome.apply(this)
     }
 
     override fun requestedUsername(): String =

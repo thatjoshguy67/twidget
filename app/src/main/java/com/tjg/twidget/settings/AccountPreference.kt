@@ -22,7 +22,6 @@ import dev.oneuiproject.oneui.design.R as OneUiDesignR
 class AccountPreference(
     context: Context,
     private val username: String,
-    private val isDefault: Boolean,
     private val onSelected: () -> Unit,
     private val onLongPress: (View) -> Unit,
 ) : Preference(context) {
@@ -37,14 +36,13 @@ class AccountPreference(
         }
     }
 
-    fun refreshFromStore(defaultUsername: String) {
-        val nowDefault = username.equals(defaultUsername, ignoreCase = true)
-        if (nowDefault != isDefault) {
-            // Preference identity is stable; star state is rebound on the next refresh.
-        }
+    fun refreshFromStore() {
         updateContent()
         notifyChanged()
     }
+
+    private fun isDefaultAccount(): Boolean =
+        username.equals(TwidgetStore.settings(context).username, ignoreCase = true)
 
     private fun updateContent() {
         val stats = TwidgetStore.currentStats(context, username)
@@ -65,6 +63,11 @@ class AccountPreference(
             onLongPress(anchor)
             true
         }
+        val stats = TwidgetStore.currentStats(context, username)
+        (holder.findViewById(android.R.id.icon) as? ImageView)?.let { iconView ->
+            ProfileImageLoader.loadInto(context, iconView, stats.profileImage)
+        }
+        val isDefault = isDefaultAccount()
         (holder.findViewById(R.id.account_favorite) as? ImageView)?.apply {
             setImageResource(
                 if (isDefault) IconR.drawable.ic_oui_favorite_on else IconR.drawable.ic_oui_favorite_off,

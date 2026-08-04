@@ -131,6 +131,7 @@ object TwidgetStore {
     private const val KEY_SHARE_HISTORY = "share_history"
     private const val KEY_APP_THEME_MODE = "app_theme_mode"
     private const val KEY_APP_ACCENT_COLOR = "app_accent_color"
+    private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
     private const val KEY_PROFILE = "profile"
     private const val KEY_HISTORY = "history"
     private const val KEY_ONBOARDED = "onboarded"
@@ -207,6 +208,16 @@ object TwidgetStore {
     fun saveAppAccentColor(context: Context, accentColor: String) {
         prefs(context).edit()
             .putString(KEY_APP_ACCENT_COLOR, accentColor)
+            .apply()
+    }
+
+    /** Matches TJG-Website `progressiveBlur` localStorage; defaults to enabled. */
+    fun appBlurEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_PROGRESSIVE_BLUR, true)
+
+    fun saveAppBlurEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(KEY_PROGRESSIVE_BLUR, enabled)
             .apply()
     }
 

@@ -17,6 +17,8 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.ViewStub
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -116,11 +118,17 @@ class MainActivity : ScheduleQueueHostActivity() {
             ?.let(MainDestination::valueOf)
             ?: MainDestination.DASHBOARD
         val scheduleFab = findViewById<View>(R.id.schedule_fab)
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { inset ->
-            navigationBarInset = inset
-            scheduleFab.updateBottomMarginForNavigationBar(dp(20), inset)
-            updateScheduleBottomInsets(inset)
+        // NavDrawerLayout handles status-bar insets internally; only track nav bar for FAB anchoring.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_toolbar_layout)) { _, insets ->
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (nav != navigationBarInset) {
+                navigationBarInset = nav
+                scheduleFab.updateBottomMarginForNavigationBar(dp(20), nav)
+                updateScheduleBottomInsets(nav)
+            }
+            insets
         }
+        ViewCompat.requestApplyInsets(findViewById(R.id.main_toolbar_layout))
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         scheduleBackCallback = object : androidx.activity.OnBackPressedCallback(
             destination == MainDestination.SCHEDULING,

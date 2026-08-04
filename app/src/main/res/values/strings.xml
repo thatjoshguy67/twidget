@@ -172,6 +172,8 @@
     <string name="appearance">Appearance</string>
     <string name="theme_section">Theme</string>
     <string name="accent_color_section">Accent color</string>
+    <string name="blur_effects">Blur effects</string>
+    <string name="blur_effects_summary">Enable or disable the blur effects on scroll</string>
     <string name="accent_blue">Blue</string>
     <string name="accent_coral">Coral</string>
     <string name="accent_mint">Mint</string>

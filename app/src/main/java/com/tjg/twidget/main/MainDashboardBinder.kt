@@ -42,6 +42,7 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.followers.TopFollowersCardBinder
 import com.tjg.twidget.schedule.ScheduleAccentChrome
 import com.tjg.twidget.ui.MetricChartView
+import com.tjg.twidget.ui.ProgressiveBlurChrome
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
 import java.util.Locale
@@ -133,6 +134,13 @@ internal class MainDashboardBinder(
         // has bound, then reveal the completed page in one frame.
         skeleton?.let(host::removeView)
         ScheduleAccentChrome.apply(activity)
+        if (page is ViewGroup) {
+            ProgressiveBlurChrome.attach(
+                activity = activity,
+                anchor = page,
+                scrollView = page.findViewById(R.id.dashboard_scroll),
+            )
+        }
     }
 
     private fun bindPage(page: View, account: String) {

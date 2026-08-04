@@ -2,6 +2,7 @@ package com.tjg.twidget.ui
 
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.util.SeslRoundedCorner
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -39,6 +40,14 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         for (index in 0 until listView.childCount) {
             TwidgetFonts.applyTo(listView.getChildAt(index))
         }
+        (view as? ViewGroup)?.let { host ->
+            ProgressiveBlurChrome.attach(requireActivity(), host, listView)
+        }
+    }
+
+    override fun onDestroyView() {
+        ProgressiveBlurChrome.detach(requireActivity())
+        super.onDestroyView()
     }
 
     /** Call after the last preference is added, before assigning the screen. */

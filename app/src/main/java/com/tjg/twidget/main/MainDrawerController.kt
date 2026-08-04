@@ -25,6 +25,7 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.EdgeToEdgeActivity
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startLeftSidePopOverActivity
@@ -58,6 +59,7 @@ internal class MainDrawerController(
         }
         activity.findViewById<DrawerNavigationView>(drawerNavigationId)
             .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
+        TwidgetTheme.applyDrawerSurfaces(activity)
         activity.findViewById<DrawerLayout>(drawerLayoutId).setupHeaderButton(
             requireNotNull(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_settings_outline)),
             activity.oneUiTextSecondary(),
@@ -118,6 +120,7 @@ internal class MainDrawerController(
         }
         drawerNav.refreshDrawerMenu()
         drawerNav.post {
+            TwidgetTheme.applyDrawerSurfaces(activity)
             applyDrawerIconTints(drawerNav)
             attachDrawerAccountLongPresses(drawerNav)
         }

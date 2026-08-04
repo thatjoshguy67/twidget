@@ -13,6 +13,7 @@ import androidx.annotation.StyleRes
 import androidx.appcompat.app.AppCompatDelegate
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
+import dev.oneuiproject.oneui.design.R as OneUiDesignR
 
 /**
  * App-wide theme mode and accent palettes aligned with
@@ -148,11 +149,21 @@ object TwidgetTheme {
         if (dark) darkPalettes.getValue(normalizeAccent(accent)).cardBackground
         else lightPalettes.getValue(normalizeAccent(accent)).cardBackground
 
-    /** Updates drawer and re-themes custom views after accent/theme changes. */
+    /** Updates drawer chrome and re-themes custom views after accent/theme changes. */
     fun applySurfaces(activity: Activity) {
-        val palette = palette(activity.applicationContext)
-        activity.findViewById<View>(R.id.drawer_nav)?.setBackgroundColor(palette.drawerBackground)
-        rethemeCustomViews(activity.findViewById(android.R.id.content), palette)
+        applyDrawerSurfaces(activity)
+        ProgressiveBlurChrome.refreshFromRoot(activity)
+        rethemeCustomViews(activity.findViewById(android.R.id.content), palette(activity.applicationContext))
+    }
+
+    /** Paints the drawer panel and the status-bar gutter above it with the accent drawer color. */
+    fun applyDrawerSurfaces(activity: Activity) {
+        val drawerColor = palette(activity.applicationContext).drawerBackground
+        activity.findViewById<View>(R.id.drawer_nav)?.setBackgroundColor(drawerColor)
+        val drawerPanel = activity.findViewById<View>(OneUiDesignR.id.drawer_panel)
+        drawerPanel?.setBackgroundColor(drawerColor)
+        // SemDrawerLayout sits above drawer_panel; its top margin is the status-bar strip.
+        (drawerPanel?.parent as? View)?.setBackgroundColor(drawerColor)
     }
 
     private fun rethemeCustomViews(root: View?, @Suppress("UNUSED_PARAMETER") palette: Palette) {

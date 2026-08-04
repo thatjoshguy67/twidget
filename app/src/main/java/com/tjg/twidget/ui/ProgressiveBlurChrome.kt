@@ -11,7 +11,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import com.tjg.twidget.data.TwidgetStore
-import dev.oneuiproject.oneui.widget.SemProgressiveBlurOverlay
 import kotlin.math.roundToInt
 
 /**
@@ -27,8 +26,8 @@ object ProgressiveBlurChrome {
     private data class OverlayHost(
         val anchor: ViewGroup,
         val scrollView: View,
-        val topOverlay: SemProgressiveBlurOverlay,
-        val bottomOverlay: SemProgressiveBlurOverlay,
+        val topOverlay: ProgressiveBlurOverlay,
+        val bottomOverlay: ProgressiveBlurOverlay,
         val layoutListener: View.OnLayoutChangeListener,
     )
 
@@ -46,14 +45,14 @@ object ProgressiveBlurChrome {
         anchor.clipChildren = false
         anchor.clipToPadding = false
 
-        val topOverlay = SemProgressiveBlurOverlay(activity).apply {
+        val topOverlay = ProgressiveBlurOverlay(activity).apply {
             tag = TOP_TAG
-            edge = SemProgressiveBlurOverlay.Edge.TOP
+            edge = ProgressiveBlurOverlay.Edge.TOP
             this.fadeColor = fadeColor
         }
-        val bottomOverlay = SemProgressiveBlurOverlay(activity).apply {
+        val bottomOverlay = ProgressiveBlurOverlay(activity).apply {
             tag = BOTTOM_TAG
-            edge = SemProgressiveBlurOverlay.Edge.BOTTOM
+            edge = ProgressiveBlurOverlay.Edge.BOTTOM
             this.fadeColor = fadeColor
         }
 
@@ -112,7 +111,7 @@ object ProgressiveBlurChrome {
         refresh(activity)
     }
 
-    private fun applyEffect(overlay: SemProgressiveBlurOverlay, enabled: Boolean) {
+    private fun applyEffect(overlay: ProgressiveBlurOverlay, enabled: Boolean) {
         overlay.visibility = if (enabled) View.VISIBLE else View.GONE
         if (enabled) {
             overlay.post { overlay.applyBlurLayers() }
@@ -134,8 +133,8 @@ object ProgressiveBlurChrome {
     private fun bindScrollBehavior(
         activity: Activity,
         scrollView: View,
-        topOverlay: SemProgressiveBlurOverlay,
-        bottomOverlay: SemProgressiveBlurOverlay,
+        topOverlay: ProgressiveBlurOverlay,
+        bottomOverlay: ProgressiveBlurOverlay,
     ) {
         val update = Runnable {
             if (!TwidgetStore.appBlurEnabled(activity) || isReduceTransparencyOn(activity)) {

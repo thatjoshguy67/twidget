@@ -128,17 +128,10 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
 
         screen.addPreference(category(R.string.accounts))
         trackedAccounts().forEach { username ->
-            val isDefault = username.equals(settings.username, ignoreCase = true)
             screen.addPreference(
                 AccountPreference(
                     context = context,
-                    username = username,
-                    onSelected = {
-                        if (!isDefault) {
-                            save(settings.copy(username = username))
-                            buildScreen()
-                        }
-                    },
+                    accountUsername = username,
                     onLongPress = { anchor ->
                         showAccountPopup(anchor, username)
                     },
@@ -434,6 +427,18 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             R.string.schedule_provider_local
         }
     )
+
+    override fun onPreferenceTreeClick(preference: Preference): Boolean {
+        if (preference is AccountPreference) {
+            val username = preference.accountUsername
+            if (!username.equals(settings.username, ignoreCase = true)) {
+                save(settings.copy(username = username))
+                buildScreen()
+            }
+            return true
+        }
+        return super.onPreferenceTreeClick(preference)
+    }
 }
 
 internal enum class AccountPopupAction {

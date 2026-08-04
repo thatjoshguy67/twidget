@@ -21,19 +21,14 @@ import dev.oneuiproject.oneui.design.R as OneUiDesignR
  */
 class AccountPreference(
     context: Context,
-    private val username: String,
-    private val onSelected: () -> Unit,
+    val accountUsername: String,
     private val onLongPress: (View) -> Unit,
 ) : Preference(context) {
     init {
-        key = "account_${username.lowercase()}"
+        key = "account_${accountUsername.lowercase()}"
         isIconSpaceReserved = true
         widgetLayoutResource = R.layout.preference_account_widget
         updateContent()
-        setOnPreferenceClickListener {
-            onSelected()
-            true
-        }
     }
 
     fun refreshFromStore() {
@@ -42,18 +37,18 @@ class AccountPreference(
     }
 
     private fun isDefaultAccount(): Boolean =
-        username.equals(TwidgetStore.settings(context).username, ignoreCase = true)
+        accountUsername.equals(TwidgetStore.settings(context).username, ignoreCase = true)
 
     private fun updateContent() {
-        val stats = TwidgetStore.currentStats(context, username)
+        val stats = TwidgetStore.currentStats(context, accountUsername)
         title = VerifiedBadge.decorate(
             context,
-            stats.fullName.ifBlank { username },
+            stats.fullName.ifBlank { accountUsername },
             stats.isVerified,
             stats.isPrivate,
             dp(16),
         )
-        summary = context.getString(R.string.account_handle, username.trimStart('@'))
+        summary = context.getString(R.string.account_handle, accountUsername.trimStart('@'))
         icon = accountIcon(stats.profileImage)
     }
 
@@ -63,7 +58,7 @@ class AccountPreference(
             onLongPress(anchor)
             true
         }
-        val stats = TwidgetStore.currentStats(context, username)
+        val stats = TwidgetStore.currentStats(context, accountUsername)
         (holder.findViewById(android.R.id.icon) as? ImageView)?.let { iconView ->
             ProfileImageLoader.loadInto(context, iconView, stats.profileImage)
         }

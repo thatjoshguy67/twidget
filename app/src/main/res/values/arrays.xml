@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="theme_mode_entries_image">
+        <item>@drawable/theme_preview_light</item>
+        <item>@drawable/theme_preview_dark</item>
+    </array>
+    <string-array name="theme_mode_entries">
+        <item>@string/theme_mode_light</item>
+        <item>@string/theme_mode_dark</item>
+    </string-array>
+    <string-array name="theme_mode_values">
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+</resources>

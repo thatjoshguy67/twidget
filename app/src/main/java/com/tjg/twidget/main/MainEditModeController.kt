@@ -2,6 +2,7 @@ package com.tjg.twidget.main
 
 import android.view.DragEvent
 import android.view.View
+import android.widget.GridLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
@@ -20,6 +21,19 @@ internal class MainEditModeController(
     var dragPreviewOrder: List<String>? = null
     var dragPlaceholderView: android.view.View? = null
     var dragSourceView: android.view.View? = null
+    var dragInsertAt: Int = -1
+        private set
+
+    var dragSourceHeight: Int = 0
+        private set
+
+    var dragSourceLayoutParams: android.view.ViewGroup.LayoutParams? = null
+        private set
+
+    var dragSourceDetached = false
+        private set
+
+    private var dragFinishInFlight = false
 
     private var autoScrollDirection = 0
     private var autoScrollScheduled = false
@@ -32,7 +46,16 @@ internal class MainEditModeController(
                 autoScrollDirection = 0
                 return
             }
-            scroll.scrollBy(0, activity.dp(AUTO_SCROLL_STEP_DP) * autoScrollDirection)
+            val stepDp = if (
+                autoScrollDirection > 0 &&
+                dragInsertAt >= (dragPreviewOrder?.lastIndex ?: Int.MAX_VALUE)
+            ) {
+                AUTO_SCROLL_BOTTOM_STEP_DP
+            } else {
+                AUTO_SCROLL_STEP_DP
+            }
+            scroll.scrollBy(0, activity.dp(stepDp) * autoScrollDirection)
+            activity.dashboardBinder.scheduleRefreshDashboardDragLocation()
             autoScrollScheduled = true
             scroll.postOnAnimation(this)
         }
@@ -52,6 +75,16 @@ internal class MainEditModeController(
         if (!enabled) clearDragPreview()
         activity.invalidateOptionsMenu()
         activity.render()
+    }
+
+    fun enterEditModeForDrag() {
+        if (editMode) return
+        editMode = true
+        exitEditModeOnBack.isEnabled = true
+        activity.updateScheduleFabVisibility()
+        activity.invalidateOptionsMenu()
+        activity.render(bindDashboard = false)
+        activity.dashboardBinder.applyEditModeVisuals(animate = false)
     }
 
     fun confirmResetLayout() {
@@ -94,37 +127,88 @@ internal class MainEditModeController(
             .show()
     }
 
-    fun previewMoveDashboardCard(draggedId: String, targetId: String) {
-        val cards = (dragPreviewOrder ?: TwidgetStore.dashboardCards(activity)).toMutableList()
-        val from = cards.indexOf(draggedId)
-        val to = cards.indexOf(targetId)
-        if (from == -1 || to == -1 || from == to) return
-        val moved = cards.removeAt(from)
-        cards.add(if (from < to) to - 1 else to, moved)
-        if (cards == dragPreviewOrder) return
+    fun beginDashboardDrag(draggedId: String, source: View) {
+        val cards = TwidgetStore.dashboardCards(activity)
+        val card = DashboardCardType.fromId(draggedId)
+        draggedCardId = draggedId
         dragPreviewOrder = cards
-        DashboardCardType.fromId(draggedId)?.let { activity.dashboardBinder.moveDropPlaceholder(it, targetId) }
+        dragSourceView = source
+        dragInsertAt = cards.indexOf(draggedId).coerceAtLeast(0)
+        dragSourceHeight = source.height.takeIf { it > 0 }
+            ?: card?.let { activity.dp(it.size.heightDp) }
+            ?: 0
+        activity.dashboardBinder.beginDashboardDragSession()
+        activity.dashboardBinder.suspendDashboardLayoutTransition()
+        activity.dashboardBinder.detachDragSourceIfNeeded(source)
+        activity.dashboardBinder.showDashboardBottomDropZone(dragSourceHeight)
+        card?.let {
+            activity.dashboardBinder.applyPreviewOrder(it, cards, dragInsertAt)
+        }
+    }
+
+    fun previewMoveDashboardCard(draggedId: String, insertAt: Int) {
+        val pinned = emptySet<String>()
+        val cards = dragPreviewOrder ?: TwidgetStore.dashboardCards(activity)
+        val next = DashboardReorderPolicy.moveCard(cards, pinned, draggedId, insertAt) ?: return
+        if (next == dragPreviewOrder && insertAt == dragInsertAt) return
+        dragPreviewOrder = next
+        dragInsertAt = insertAt
+        DashboardCardType.fromId(draggedId)?.let {
+            activity.dashboardBinder.schedulePreviewOrder(it, next, insertAt)
+        }
+        dragSourceView?.performHapticFeedback(
+            if (insertAt >= cards.lastIndex) {
+                android.view.HapticFeedbackConstants.CONFIRM
+            } else {
+                android.view.HapticFeedbackConstants.CLOCK_TICK
+            },
+        )
     }
 
     fun finishDashboardDrag(commit: Boolean) {
-        if (draggedCardId == null) return
-        if (commit) {
-            dragPreviewOrder?.let { TwidgetStore.saveDashboardCards(activity, it) }
+        if (draggedCardId == null || dragFinishInFlight) return
+        dragFinishInFlight = true
+        val shouldCommit = commit
+        val container = activity.findViewById<GridLayout>(R.id.dashboard_content)
+        val finish = Runnable {
+            if (shouldCommit) {
+                dragPreviewOrder?.let { order ->
+                    TwidgetStore.saveDashboardCards(activity, order)
+                    activity.dashboardBinder.settleDashboardDrag(order)
+                }
+            }
+            clearDragPreview()
+            dragFinishInFlight = false
         }
-        clearDragPreview()
-        if (commit) activity.render()
+        if (container != null) {
+            container.post(finish)
+        } else {
+            finish.run()
+        }
     }
 
     fun clearDragPreview() {
         stopDashboardDragAutoScroll()
+        activity.dashboardBinder.cancelScheduledPreviewOrder()
+        activity.dashboardBinder.restoreDragSourceOnCancel()
+        activity.dashboardBinder.hideDashboardBottomDropZone()
+        activity.dashboardBinder.restoreDashboardLayoutTransition()
         dragPlaceholderView?.let { placeholder ->
             (placeholder.parent as? android.view.ViewGroup)?.removeView(placeholder)
         }
-        dragSourceView?.visibility = android.view.View.VISIBLE
         draggedCardId = null
         dragPreviewOrder = null
         dragPlaceholderView = null
         dragSourceView = null
+        dragInsertAt = -1
+        dragSourceHeight = 0
+        dragSourceLayoutParams = null
+        dragSourceDetached = false
+    }
+
+    internal fun markDragSourceDetached(layoutParams: android.view.ViewGroup.LayoutParams) {
+        dragSourceLayoutParams = layoutParams
+        dragSourceDetached = true
     }
 
     fun updateDashboardDragAutoScroll(source: View, event: DragEvent) {
@@ -156,5 +240,6 @@ internal class MainEditModeController(
     private companion object {
         private const val AUTO_SCROLL_EDGE_DP = 72
         private const val AUTO_SCROLL_STEP_DP = 12
+        private const val AUTO_SCROLL_BOTTOM_STEP_DP = 16
     }
 }

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark accent themes — full token sets so night mode never falls back to light/blue. -->
+
+    <style name="TwidgetAccentBlue" parent="Theme.Twidget">
+        <item name="colorPrimary">#387aff</item>
+        <item name="colorPrimaryDark">#387aff</item>
+        <item name="colorAccent">#387aff</item>
+        <item name="colorControlActivated">#387aff</item>
+        <item name="android:colorPrimary">#387aff</item>
+        <item name="android:colorControlActivated">#387aff</item>
+        <item name="twidgetBackground">#010102</item>
+        <item name="twidgetCardBackground">#17171a</item>
+        <item name="twidgetDrawerBackground">#17171a</item>
+        <item name="twidgetDrawerSelectedBackground">#14ffffff</item>
+        <item name="twidgetDivider">#3a3a3d</item>
+        <item name="twidgetTextPrimary">#ffffff</item>
+        <item name="twidgetTextSecondary">#a3a3a7</item>
+        <item name="twidgetAccentTranslucent">#33387aff</item>
+        <item name="twidgetOnboardingGradStart">#101012</item>
+        <item name="twidgetOnboardingGradCenter">#081928</item>
+        <item name="twidgetOnboardingGradEnd">#00233F</item>
+        <item name="twidgetImportGradStart">#003B66</item>
+        <item name="twidgetImportGradCenter">#081928</item>
+        <item name="twidgetImportGradEnd">#010102</item>
+    </style>
+
+    <style name="TwidgetAccentCoral" parent="Theme.Twidget">
+        <item name="colorPrimary">#ff6b6b</item>
+        <item name="colorPrimaryDark">#ff6b6b</item>
+        <item name="colorAccent">#ff6b6b</item>
+        <item name="colorControlActivated">#ff6b6b</item>
+        <item name="android:colorPrimary">#ff6b6b</item>
+        <item name="android:colorControlActivated">#ff6b6b</item>
+        <item name="twidgetBackground">#1a0f0f</item>
+        <item name="twidgetCardBackground">#251a1a</item>
+        <item name="twidgetDrawerBackground">#251a1a</item>
+        <item name="twidgetDrawerSelectedBackground">#14ffffff</item>
+        <item name="twidgetDivider">#3a3a3d</item>
+        <item name="twidgetTextPrimary">#ffffff</item>
+        <item name="twidgetTextSecondary">#a3a3a7</item>
+        <item name="twidgetAccentTranslucent">#33ff6b6b</item>
+        <item name="twidgetOnboardingGradStart">#1a0f0f</item>
+        <item name="twidgetOnboardingGradCenter">#241414</item>
+        <item name="twidgetOnboardingGradEnd">#331818</item>
+        <item name="twidgetImportGradStart">#331818</item>
+        <item name="twidgetImportGradCenter">#241414</item>
+        <item name="twidgetImportGradEnd">#1a0f0f</item>
+    </style>
+
+    <style name="TwidgetAccentMint" parent="Theme.Twidget">
+        <item name="colorPrimary">#4ecdc4</item>
+        <item name="colorPrimaryDark">#4ecdc4</item>
+        <item name="colorAccent">#4ecdc4</item>
+        <item name="colorControlActivated">#4ecdc4</item>
+        <item name="android:colorPrimary">#4ecdc4</item>
+        <item name="android:colorControlActivated">#4ecdc4</item>
+        <item name="twidgetBackground">#0a1414</item>
+        <item name="twidgetCardBackground">#1a2525</item>
+        <item name="twidgetDrawerBackground">#1a2525</item>
+        <item name="twidgetDrawerSelectedBackground">#14ffffff</item>
+        <item name="twidgetDivider">#3a3a3d</item>
+        <item name="twidgetTextPrimary">#ffffff</item>
+        <item name="twidgetTextSecondary">#a3a3a7</item>
+        <item name="twidgetAccentTranslucent">#334ecdc4</item>
+        <item name="twidgetOnboardingGradStart">#0a1414</item>
+        <item name="twidgetOnboardingGradCenter">#102020</item>
+        <item name="twidgetOnboardingGradEnd">#142C2C</item>
+        <item name="twidgetImportGradStart">#142C2C</item>
+        <item name="twidgetImportGradCenter">#102020</item>
+        <item name="twidgetImportGradEnd">#0a1414</item>
+    </style>
+
+    <style name="TwidgetAccentLilac" parent="Theme.Twidget">
+        <item name="colorPrimary">#a78bfa</item>
+        <item name="colorPrimaryDark">#a78bfa</item>
+        <item name="colorAccent">#a78bfa</item>
+        <item name="colorControlActivated">#a78bfa</item>
+        <item name="android:colorPrimary">#a78bfa</item>
+        <item name="android:colorControlActivated">#a78bfa</item>
+        <item name="twidgetBackground">#120f1a</item>
+        <item name="twidgetCardBackground">#1f1a25</item>
+        <item name="twidgetDrawerBackground">#1f1a25</item>
+        <item name="twidgetDrawerSelectedBackground">#14ffffff</item>
+        <item name="twidgetDivider">#3a3a3d</item>
+        <item name="twidgetTextPrimary">#ffffff</item>
+        <item name="twidgetTextSecondary">#a3a3a7</item>
+        <item name="twidgetAccentTranslucent">#33a78bfa</item>
+        <item name="twidgetOnboardingGradStart">#120f1a</item>
+        <item name="twidgetOnboardingGradCenter">#181322</item>
+        <item name="twidgetOnboardingGradEnd">#221A30</item>
+        <item name="twidgetImportGradStart">#221A30</item>
+        <item name="twidgetImportGradCenter">#181322</item>
+        <item name="twidgetImportGradEnd">#120f1a</item>
+    </style>
+
+    <style name="TwidgetAccentMono" parent="Theme.Twidget">
+        <item name="colorPrimary">#808080</item>
+        <item name="colorPrimaryDark">#808080</item>
+        <item name="colorAccent">#808080</item>
+        <item name="colorControlActivated">#808080</item>
+        <item name="android:colorPrimary">#808080</item>
+        <item name="android:colorControlActivated">#808080</item>
+        <item name="twidgetBackground">#000000</item>
+        <item name="twidgetCardBackground">#17171a</item>
+        <item name="twidgetDrawerBackground">#17171a</item>
+        <item name="twidgetDrawerSelectedBackground">#14ffffff</item>
+        <item name="twidgetDivider">#3a3a3d</item>
+        <item name="twidgetTextPrimary">#ffffff</item>
+        <item name="twidgetTextSecondary">#a3a3a7</item>
+        <item name="twidgetAccentTranslucent">#33808080</item>
+        <item name="twidgetOnboardingGradStart">#101012</item>
+        <item name="twidgetOnboardingGradCenter">#18181A</item>
+        <item name="twidgetOnboardingGradEnd">#222224</item>
+        <item name="twidgetImportGradStart">#222224</item>
+        <item name="twidgetImportGradCenter">#18181A</item>
+        <item name="twidgetImportGradEnd">#000000</item>
+    </style>
+</resources>

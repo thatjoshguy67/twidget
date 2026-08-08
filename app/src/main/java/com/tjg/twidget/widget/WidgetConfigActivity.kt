@@ -23,6 +23,8 @@ import androidx.appcompat.widget.SeslSeekBar
 import androidx.appcompat.widget.SwitchCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.ui.oneUiAccent
+import com.tjg.twidget.ui.oneUiTextPrimary
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import com.tjg.twidget.ui.EdgeToEdgeActivity
 import com.tjg.twidget.ui.ProfileImageLoader
@@ -326,8 +328,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     }
 
     private fun showDropDown(anchor: View, labels: List<String>, selectedIndex: Int, onSelected: (Int) -> Unit) {
-        val accent = getColor(R.color.oneui_accent)
-        val normal = getColor(R.color.oneui_text_primary)
+        val accent = oneUiAccent()
+        val normal = oneUiTextPrimary()
         val adapter = object : ArrayAdapter<String>(this, R.layout.dropdown_item_checked, R.id.dropdown_label, labels) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getView(position, convertView, parent)

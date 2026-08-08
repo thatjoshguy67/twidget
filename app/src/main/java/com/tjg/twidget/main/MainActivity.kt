@@ -34,6 +34,7 @@ import com.tjg.twidget.notices.ReleaseNoticesStore
 import com.tjg.twidget.schedule.ScheduleAccountScope
 import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleQueueHostActivity
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.widget.RefreshWorker
@@ -67,6 +68,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val username = intent?.getStringExtra(BangerScanWorker.EXTRA_USERNAME) ?: return
             if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            if (editModeController.editMode || editModeController.draggedCardId != null) return
             analytics = AnalyticsClient.cached(this@MainActivity, selectedAccount)
             dashboardBinder.bindContent()
         }
@@ -76,6 +78,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val username = intent?.getStringExtra(TopFollowersScanWorker.EXTRA_USERNAME) ?: return
             if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            if (editModeController.editMode || editModeController.draggedCardId != null) return
             dashboardBinder.bindContent()
         }
     }
@@ -106,9 +109,10 @@ class MainActivity : ScheduleQueueHostActivity() {
             openSchedule = ::showScheduling,
         )
         syncController = MainSyncController(this)
-        postAnalyticsBinder = MainPostAnalyticsBinder(this)
+        postAnalyticsBinder = MainPostAnalyticsBinder(this) { editModeController.editMode }
 
         setContentView(R.layout.activity_main)
+        TwidgetTheme.applySurfaces(this)
         destination = savedInstanceState?.getString(STATE_DESTINATION)
             ?.let(MainDestination::valueOf)
             ?: MainDestination.DASHBOARD
@@ -233,7 +237,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         menu.findItem(R.id.menu_edit_layout)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_reset_layout)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_add_card)?.isVisible = editModeController.editMode
-        menu.findItem(R.id.menu_done_editing)?.isVisible = false
+        menu.findItem(R.id.menu_done_editing)?.isVisible = editModeController.editMode
         return true
     }
 

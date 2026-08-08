@@ -13,6 +13,7 @@ import android.text.style.StyleSpan
 import android.text.style.TypefaceSpan
 import android.text.style.URLSpan
 import androidx.core.content.ContextCompat
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.R
 
 /** Lightweight native Markdown styling for the subset used by GitHub release notes. */
@@ -109,7 +110,7 @@ object ReleaseNoticeMarkdown {
         ensureBlockGap(output)
         val start = output.length
         appendInline(context, output, content)
-        val accent = ContextCompat.getColor(context, R.color.oneui_accent)
+        val accent = TwidgetTheme.accent(context)
         output.setSpan(QuoteSpan(accent), start, output.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         output.setSpan(
             ForegroundColorSpan(ContextCompat.getColor(context, R.color.oneui_text_secondary)),
@@ -160,7 +161,7 @@ object ReleaseNoticeMarkdown {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                         )
                         output.setSpan(
-                            ForegroundColorSpan(ContextCompat.getColor(context, R.color.oneui_accent)),
+                            ForegroundColorSpan(TwidgetTheme.accent(context)),
                             start,
                             output.length,
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,

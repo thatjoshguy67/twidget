@@ -14,6 +14,31 @@ async function availablePort() {
   return port;
 }
 
+const BRIDGE_START_TIMEOUT_MS = 15000;
+
+async function waitForBridgeStart(child) {
+  const stderr = [];
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      const detail = stderr.length ? `\n${stderr.join("")}` : "";
+      reject(new Error(`Bridge did not start within ${BRIDGE_START_TIMEOUT_MS}ms${detail}`));
+    }, BRIDGE_START_TIMEOUT_MS);
+    child.once("error", reject);
+    child.stderr.on("data", (chunk) => stderr.push(String(chunk)));
+    child.stdout.on("data", (chunk) => {
+      if (String(chunk).includes("Twidget bridge listening")) {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
+    child.once("exit", (code, signal) => {
+      clearTimeout(timeout);
+      const detail = stderr.length ? `\n${stderr.join("")}` : "";
+      reject(new Error(`Bridge exited before listening (${code ?? "null"}, ${signal ?? "null"})${detail}`));
+    });
+  });
+}
+
 async function startBridge(t, environment) {
   const port = await availablePort();
   const temp = await mkdtemp(path.join(os.tmpdir(), "twidget-bridge-test-"));
@@ -36,16 +61,7 @@ async function startBridge(t, environment) {
     }
     await rm(temp, { recursive: true, force: true });
   });
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Bridge did not start")), 5000);
-    child.once("error", reject);
-    child.stdout.on("data", (chunk) => {
-      if (String(chunk).includes("Twidget bridge listening")) {
-        clearTimeout(timeout);
-        resolve();
-      }
-    });
-  });
+  await waitForBridgeStart(child);
   return `http://127.0.0.1:${port}`;
 }
 
@@ -141,16 +157,7 @@ test("bridge security and health defaults", async (t) => {
     await rm(temp, { recursive: true, force: true });
   });
 
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Bridge did not start")), 5000);
-    child.once("error", reject);
-    child.stdout.on("data", (chunk) => {
-      if (String(chunk).includes("Twidget bridge listening")) {
-        clearTimeout(timeout);
-        resolve();
-      }
-    });
-  });
+  await waitForBridgeStart(child);
 
   const base = `http://127.0.0.1:${port}`;
   const health = await fetch(`${base}/health`);

@@ -110,7 +110,18 @@ app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   const corsOrigin = String(process.env.CORS_ALLOW_ORIGIN || "").trim();
-  if (corsOrigin) res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+  if (corsOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", corsOrigin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Authorization,Content-Type,X-Rettiwt-Api-Key",
+    );
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return;
+    }
+  }
   res.setHeader("Cache-Control", "no-store");
   next();
 });

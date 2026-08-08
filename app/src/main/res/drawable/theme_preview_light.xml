@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Samsung OneUI light-mode preview matching Display settings mock. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="160dp"
+    android:viewportWidth="120"
+    android:viewportHeight="160">
+    <!-- Outer phone chrome -->
+    <path
+        android:fillColor="#E8E8EC"
+        android:pathData="M18,6h84a18,18 0,0 1,18 18v112a18,18 0,0 1,-18 18H18a18,18 0,0 1,-18 -18V24a18,18 0,0 1,18 -18z" />
+    <!-- Inset content card -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,22h60a14,14 0,0 1,14 14v72a14,14 0,0 1,-14 14H30a14,14 0,0 1,-14 -14V36a14,14 0,0 1,14 -14z" />
+    <!-- Row 1: accent dot + text bar -->
+    <path
+        android:fillColor="#387AFF"
+        android:pathData="M44,48a8,8 0,1 1,0.01 0z" />
+    <path
+        android:fillColor="#D0D0D6"
+        android:pathData="M58,42h28a5,5 0,0 1,5 5v6a5,5 0,0 1,-5 5H58a5,5 0,0 1,-5 -5v-6a5,5 0,0 1,5 -5z" />
+    <!-- Row 2: accent dot + text bar -->
+    <path
+        android:fillColor="#387AFF"
+        android:pathData="M44,84a8,8 0,1 1,0.01 0z" />
+    <path
+        android:fillColor="#D0D0D6"
+        android:pathData="M58,78h28a5,5 0,0 1,5 5v6a5,5 0,0 1,-5 5H58a5,5 0,0 1,-5 -5v-6a5,5 0,0 1,5 -5z" />
+    <!-- Bottom footer band (follows outer rounded corners) -->
+    <path
+        android:fillColor="#F2F2F6"
+        android:pathData="M0,128h120v26a18,18 0,0 1,-18 18H18a18,18 0,0 1,-18 -18z" />
+</vector>

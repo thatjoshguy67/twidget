@@ -22,6 +22,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
+import com.tjg.twidget.ui.oneUiAccent
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
@@ -244,7 +245,7 @@ internal class ScheduleComposeUi(
         text.getSpans(0, text.length, ComposerTokenSpan::class.java).forEach(text::removeSpan)
         COMPOSER_TOKEN_PATTERN.findAll(text).forEach { match ->
             text.setSpan(
-                ComposerTokenSpan(activity.getColor(R.color.oneui_accent)),
+                ComposerTokenSpan(activity.oneUiAccent()),
                 match.range.first,
                 match.range.last + 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,

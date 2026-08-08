@@ -2,4 +2,6 @@
 <resources>
     <item name="profile_image_request" type="id" />
     <item name="drawer_avatar_render_guard" type="id" />
+    <item name="dashboard_drag_gesture" type="id" />
+    <item name="post_card_open_url" type="id" />
 </resources>

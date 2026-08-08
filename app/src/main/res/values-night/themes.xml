@@ -28,38 +28,8 @@
         <item name="twidgetImportGradEnd">@color/import_grad_end</item>
     </style>
 
-    <!-- Used only by the launcher activity. Android displays this window
-         before MainActivity can draw its dashboard skeleton. -->
     <style name="Theme.Twidget.Launcher" parent="Theme.Twidget">
         <item name="android:windowBackground">?attr/twidgetBackground</item>
     </style>
-
-    <style name="WidgetPresetButton">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">48dp</item>
-        <item name="android:layout_marginEnd">8dp</item>
-        <item name="android:background">?android:attr/selectableItemBackground</item>
-        <item name="android:clickable">true</item>
-        <item name="android:focusable">true</item>
-        <item name="android:fontFamily">sans-serif</item>
-        <item name="android:gravity">center</item>
-        <item name="android:maxLines">2</item>
-        <item name="android:minWidth">72dp</item>
-        <item name="android:paddingHorizontal">14dp</item>
-        <item name="android:textColor">?android:textColorPrimary</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">14sp</item>
-    </style>
-
-    <style name="SettingsRadioRow">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">64dp</item>
-        <item name="android:background">?android:attr/selectableItemBackground</item>
-        <item name="android:clickable">true</item>
-        <item name="android:focusable">true</item>
-        <item name="android:gravity">center_vertical</item>
-        <item name="android:orientation">horizontal</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">20dp</item>
-    </style>
 </resources>
+

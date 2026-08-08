@@ -1,5 +1,6 @@
 package com.tjg.twidget.settings
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Typeface
@@ -36,17 +37,20 @@ import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startSettingsSubActivity
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as IconR
+import dev.oneuiproject.oneui.preference.HorizontalRadioPreference
 import dev.oneuiproject.oneui.preference.LayoutPreference
 import dev.oneuiproject.oneui.preference.SuggestionCardPreference
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private lateinit var settings: TwidgetSettings
+    private var suppressThemePreferenceCallbacks = false
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         settings = TwidgetStore.settings(requireContext())
@@ -57,7 +61,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     override fun onResume() {
         super.onResume()
         settings = TwidgetStore.settings(requireContext())
-        buildScreen()
+        refreshThemePreferences()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -91,6 +95,13 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 }
             })
         }
+
+        addThemePreferences(screen)
+        screen.addPreference(category(R.string.appearance))
+        screen.addPreference(AccentColorPreference(context).apply {
+            key = "accent_color_pref"
+            title = getString(R.string.accent_color_section)
+        })
 
         screen.addPreference(category(R.string.accounts))
         screen.addPreference(LayoutPreference(context, accountsCard()).apply {
@@ -258,6 +269,10 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
 
         screen.addBottomInset()
         preferenceScreen = screen
+        // findPreference only works after preferenceScreen is assigned — wire theme
+        // listeners here so Light/Dark/System default actually save and apply.
+        syncThemePreferencesFromStore()
+        wireThemePreferences()
     }
 
     private fun category(titleRes: Int): PreferenceCategory =
@@ -265,6 +280,78 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             if (titleRes != 0) title = getString(titleRes)
             isIconSpaceReserved = false
         }
+
+    private fun addThemePreferences(screen: PreferenceGroup) {
+        val context = requireContext()
+        val themeScreen = preferenceManager.createPreferenceScreen(context)
+        preferenceManager.inflateFromResource(context, R.xml.settings_theme_preferences, themeScreen)
+        while (themeScreen.preferenceCount > 0) {
+            val preference = themeScreen.getPreference(0)
+            themeScreen.removePreference(preference)
+            preference.isPersistent = false
+            screen.addPreference(preference)
+        }
+    }
+
+    private fun syncThemePreferencesFromStore() {
+        val context = requireContext()
+        suppressThemePreferenceCallbacks = true
+        try {
+            findPreference<SwitchPreferenceCompat>("theme_mode_system_pref")?.apply {
+                isPersistent = false
+                isChecked = TwidgetStore.themeSystemDefault(context)
+            }
+            findPreference<HorizontalRadioPreference>("theme_mode_manual_pref")?.apply {
+                isPersistent = false
+                value = TwidgetStore.themeManualMode(context)
+                setDividerEnabled(false)
+                setTouchEffectEnabled(false)
+            }
+        } finally {
+            suppressThemePreferenceCallbacks = false
+        }
+    }
+
+    private fun wireThemePreferences() {
+        val context = requireContext()
+        findPreference<HorizontalRadioPreference>("theme_mode_manual_pref")
+            ?.setOnPreferenceChangeListener { _, value ->
+                if (suppressThemePreferenceCallbacks) return@setOnPreferenceChangeListener false
+                applyThemeSelection {
+                    TwidgetStore.saveThemeManualMode(context, value.toString())
+                }
+                true
+            }
+        findPreference<SwitchPreferenceCompat>("theme_mode_system_pref")
+            ?.setOnPreferenceChangeListener { _, value ->
+                if (suppressThemePreferenceCallbacks) return@setOnPreferenceChangeListener false
+                applyThemeSelection {
+                    TwidgetStore.saveThemeSystemDefault(context, value as Boolean)
+                }
+                true
+            }
+    }
+
+    /**
+     * Saves + applies night mode once. Avoid calling [Activity.recreate] in the same
+     * stack frame as [AppCompatDelegate.localNightMode] — Samsung double-recreates and crashes.
+     */
+    private fun applyThemeSelection(save: () -> Unit) {
+        save()
+        val act = activity ?: return
+        TwidgetTheme.publishChange(act)
+        TwidgetTheme.applyActivityTheme(act)
+        act.window.decorView.post {
+            if (act.isFinishing || act.isDestroyed) return@post
+            act.recreate()
+        }
+    }
+
+    private fun refreshThemePreferences() {
+        syncThemePreferencesFromStore()
+        (findPreference("accent_color_pref") as? AccentColorPreference)?.refreshFromStore()
+        listView.adapter?.notifyDataSetChanged()
+    }
 
     companion object {
         const val ARG_SCROLL_TO_PREFERENCE = "scroll_to_preference"
@@ -355,7 +442,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             addView(ImageView(context).apply {
                 setImageResource(if (isDefault) IconR.drawable.ic_oui_favorite_on else IconR.drawable.ic_oui_favorite_off)
                 imageTintList = ColorStateList.valueOf(
-                    context.getColor(if (isDefault) R.color.oneui_accent else R.color.oneui_text_secondary)
+                    if (isDefault) TwidgetTheme.accent(context) else TwidgetTheme.textSecondary(context),
                 )
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 setPadding(dp(8), dp(8), dp(8), dp(8))

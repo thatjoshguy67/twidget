@@ -22,10 +22,10 @@ object VerifiedBadge {
         if (name.isBlank() || (verified != true && isPrivate != true)) return name
         val builder = SpannableStringBuilder(name)
         if (verified == true) {
-            builder.appendBadge(context, OneUiIconR.drawable.ic_oui_checkbox_checked, badgeSizePx, R.color.oneui_accent)
+            builder.appendBadge(context, OneUiIconR.drawable.ic_oui_checkbox_checked, badgeSizePx, TwidgetTheme.accent(context))
         }
         if (isPrivate == true) {
-            builder.appendBadge(context, OneUiIconR.drawable.ic_oui_lock, badgeSizePx, R.color.oneui_text_secondary)
+            builder.appendBadge(context, OneUiIconR.drawable.ic_oui_lock, badgeSizePx, TwidgetTheme.textSecondary(context))
         }
         return builder
     }
@@ -34,10 +34,10 @@ object VerifiedBadge {
         context: Context,
         drawableRes: Int,
         sizePx: Int,
-        tintRes: Int,
+        tint: Int,
     ) {
         val badge = AppCompatResources.getDrawable(context, drawableRes)?.mutate() ?: return
-        badge.setTint(context.getColor(tintRes))
+        badge.setTint(tint)
         badge.setBounds(0, 0, sizePx, sizePx)
         val alignment = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ImageSpan.ALIGN_CENTER

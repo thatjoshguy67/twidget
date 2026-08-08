@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.work.ForegroundInfo
+import com.tjg.twidget.ui.TwidgetTheme
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MainActivity
@@ -54,7 +55,7 @@ object TopFollowersNotificationHelper {
                     .setProgress(notificationProgress)
                     .setProgressSegments(listOf(
                         Notification.ProgressStyle.Segment(notificationMax)
-                            .setColor(context.getColor(R.color.oneui_accent)),
+                            .setColor(TwidgetTheme.accent(context)),
                     ))
                 val percent = if (notificationMax == 0) 0 else
                     (notificationProgress.toLong() * 100L / notificationMax).toInt()

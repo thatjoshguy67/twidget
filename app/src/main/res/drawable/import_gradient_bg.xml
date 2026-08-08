@@ -2,8 +2,8 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <gradient
         android:angle="270"
-        android:startColor="@color/import_grad_start"
-        android:centerColor="@color/import_grad_center"
-        android:endColor="@color/import_grad_end"
+        android:startColor="?attr/twidgetImportGradStart"
+        android:centerColor="?attr/twidgetImportGradCenter"
+        android:endColor="?attr/twidgetImportGradEnd"
         android:centerY="0.48" />
 </shape>

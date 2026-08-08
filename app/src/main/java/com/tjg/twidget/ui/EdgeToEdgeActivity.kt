@@ -1,5 +1,6 @@
 package com.tjg.twidget.ui
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -7,7 +8,7 @@ import android.view.ViewTreeObserver
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.tjg.twidget.R
+import com.tjg.twidget.data.TwidgetStore
 import dev.oneuiproject.oneui.utils.applyEdgeToEdge
 
 /**
@@ -17,15 +18,84 @@ import dev.oneuiproject.oneui.utils.applyEdgeToEdge
  */
 abstract class EdgeToEdgeActivity : AppCompatActivity() {
     private var fontRoot: ViewGroup? = null
+    private var themeGenerationAtCreate = -1
+    private var nightUiModeAtCreate = Configuration.UI_MODE_NIGHT_UNDEFINED
+
     private val fontLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
         fontRoot?.let(TwidgetFonts::applyTo)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        TwidgetTheme.applyToApplication(this)
+        TwidgetTheme.applyActivityTheme(this)
+        themeGenerationAtCreate = TwidgetTheme.themeGeneration
+        nightUiModeAtCreate = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         super.onCreate(savedInstanceState)
-        // Apply after AppCompat installs the themed decor so the parent One UI
-        // theme cannot restore an opaque navigation-bar colour afterwards.
         applyEdgeToEdge()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (needsThemeRefresh()) {
+            scheduleThemeRecreate()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (needsThemeRefresh()) {
+            scheduleThemeRecreate()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        TwidgetAppVisibility.activityStarted()
+        themeListenerRegistration = TwidgetThemeChanges.addListener {
+            if (isFinishing || isDestroyed) return@addListener
+            if (needsThemeRefresh()) scheduleThemeRecreate()
+        }
+    }
+
+    private fun needsThemeRefresh(): Boolean {
+        if (themeGenerationAtCreate != TwidgetTheme.themeGeneration) return true
+        val nightUi = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return when (TwidgetTheme.resolvedThemeMode(this)) {
+            TwidgetStore.COLOR_MODE_DARK -> nightUi != Configuration.UI_MODE_NIGHT_YES
+            TwidgetStore.COLOR_MODE_LIGHT -> nightUi != Configuration.UI_MODE_NIGHT_NO
+            else -> nightUi != nightUiModeAtCreate
+        }
+    }
+
+    override fun onStop() {
+        themeListenerRegistration?.close()
+        themeListenerRegistration = null
+        TwidgetAppVisibility.activityStopped()
+        super.onStop()
+    }
+
+    /** Called after a theme recreate when subclasses need to restore transient UI state. */
+    protected open fun onAppThemeChanged() = Unit
+
+    private fun recreateForThemeChange() {
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
+        recreate()
+    }
+
+    private var themeListenerRegistration: AutoCloseable? = null
+    private var themeRecreateScheduled = false
+
+    private fun scheduleThemeRecreate() {
+        if (themeRecreateScheduled || isFinishing || isDestroyed) return
+        themeRecreateScheduled = true
+        window.decorView.post {
+            themeRecreateScheduled = false
+            if (isFinishing || isDestroyed || !needsThemeRefresh()) return@post
+            TwidgetTheme.applySurfaces(this)
+            onAppThemeChanged()
+            recreateForThemeChange()
+        }
     }
 
     override fun onContentChanged() {
@@ -35,16 +105,7 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             TwidgetFonts.applyTo(root)
             root.viewTreeObserver.addOnGlobalLayoutListener(fontLayoutListener)
         }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        TwidgetAppVisibility.activityStarted()
-    }
-
-    override fun onStop() {
-        TwidgetAppVisibility.activityStopped()
-        super.onStop()
+        TwidgetTheme.applySurfaces(this)
     }
 
     override fun onDestroy() {

@@ -52,6 +52,22 @@
         <flag name="smart_page" value="0x20" />
     </attr>
 
+    <!-- App theme tokens — resolved via Theme.Twidget, themes_accent.xml, and TwidgetTheme palettes -->
+    <attr name="twidgetBackground" format="color" />
+    <attr name="twidgetCardBackground" format="color" />
+    <attr name="twidgetDrawerBackground" format="color" />
+    <attr name="twidgetDrawerSelectedBackground" format="color" />
+    <attr name="twidgetDivider" format="color" />
+    <attr name="twidgetTextPrimary" format="color" />
+    <attr name="twidgetTextSecondary" format="color" />
+    <attr name="twidgetAccentTranslucent" format="color" />
+    <attr name="twidgetOnboardingGradStart" format="color" />
+    <attr name="twidgetOnboardingGradCenter" format="color" />
+    <attr name="twidgetOnboardingGradEnd" format="color" />
+    <attr name="twidgetImportGradStart" format="color" />
+    <attr name="twidgetImportGradCenter" format="color" />
+    <attr name="twidgetImportGradEnd" format="color" />
+
     <!-- Samsung OneUI featured widget flags — enables widget label on home screen -->
     <attr name="featuredWidget" format="integer">
         <flag name="tiny" value="0x1" />

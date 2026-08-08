@@ -235,6 +235,16 @@
     <string name="tap_refresh">Refresh stats</string>
     <string name="tap_profile">Open profile in X app</string>
     <string name="tap_twidget">Open Twidget</string>
+    <string name="appearance">Appearance</string>
+    <string name="accent_color_section">Accent color</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_coral">Coral</string>
+    <string name="accent_mint">Mint</string>
+    <string name="accent_lilac">Lilac</string>
+    <string name="accent_mono">Mono</string>
+    <string name="theme_mode_system_default">System default</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
     <string name="widget_preview_section">Preview</string>
     <string name="widget_appearance_section">Appearance</string>
     <string name="widget_opacity">Opacity</string>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- OneUI sample pattern: image radio + System default switch in one card. -->
+    <PreferenceCategory android:key="theme_mode_category">
+
+        <dev.oneuiproject.oneui.preference.HorizontalRadioPreference
+            android:key="theme_mode_manual_pref"
+            android:persistent="false"
+            android:dependency="theme_mode_system_pref"
+            android:title=""
+            app:defaultValue="light"
+            app:entries="@array/theme_mode_entries"
+            app:entriesImage="@array/theme_mode_entries_image"
+            app:entryValues="@array/theme_mode_values"
+            app:viewType="image" />
+
+        <SwitchPreferenceCompat
+            android:key="theme_mode_system_pref"
+            android:persistent="false"
+            android:disableDependentsState="true"
+            android:title="@string/theme_mode_system_default"
+            app:defaultValue="true" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

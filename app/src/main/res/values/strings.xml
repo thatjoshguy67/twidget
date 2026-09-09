@@ -3,11 +3,16 @@
     <string name="app_name">Twidget</string>
     <string name="widget_description">X/Twitter follower tracker with blurred home screen widgets</string>
     <string name="widget_label">Twidget Followers</string>
+    <string name="widget_language">Language</string>
+    <string name="widget_language_default">System default</string>
+    <string name="widget_language_de">German (Deutsch)</string>
+    <string name="widget_language_en">English</string>
     <string name="lockscreen_follower_1x1_label">Followers 1x1</string>
     <string name="lockscreen_follower_2x1_label">Followers 2x1</string>
     <string name="dashboard_title">That Josh Guy</string>
     <string name="last_synced">Last synced: %1$s</string>
     <string name="not_synced_yet">Not synced yet</string>
+    <string name="time_unavailable">Time unavailable</string>
     <string name="sync">Sync</string>
     <string name="add_widget_to_home">Add widget to home screen</string>
     <string name="settings">Settings</string>
@@ -106,6 +111,10 @@
     <string name="milestone_goal_reached">Goal reached!</string>
     <string name="milestone_edit_title">Set follower milestone</string>
     <string name="milestone_edit_message">Enter a follower goal as a number or words, for example 100 or One Thousand.</string>
+    <string name="language">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_german">German (Deutsch)</string>
+    <string name="language_english">English</string>
     <string name="milestone_use_auto">Use auto milestone</string>
     <string name="milestone_edit_button">Edit</string>
     <string name="milestone_show_percent">Show progress percentage</string>

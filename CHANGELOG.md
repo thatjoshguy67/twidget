@@ -76,6 +76,8 @@ personal visual experience across phones, tablets, foldables, and widgets.
 - Added wallpaper-derived and custom app palettes, including controls for
   accent, surface tint, and intensity.
 - Added richer schedule link previews and improved thread composition controls.
+- Added German as a first-class app and widget language, with a language
+  picker in Settings and widget configuration.
 
 ### Changed
 

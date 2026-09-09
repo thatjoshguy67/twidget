@@ -32,6 +32,7 @@ import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.PostSummary
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.AccountAverageSeries
 import com.tjg.twidget.data.DailyStreakStore
 import com.tjg.twidget.data.HistoryRange
@@ -63,9 +64,6 @@ import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -771,9 +769,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun scheduleDate(timestamp: Long): String = if (timestamp > 0L) {
-        SimpleDateFormat("EEE, MMM d · h:mm a", Locale.getDefault()).format(Date(timestamp))
+        AppLocales.formatDate(timestamp, "EEE, d. MMM · HH:mm", "EEE, MMM d · h:mm a")
     } else {
-        "Time unavailable"
+        getString(R.string.time_unavailable)
     }
 
     private fun openSchedule(tweet: BriefUpcomingTweet) {
@@ -1267,7 +1265,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     ).apply { topMargin = dp(top) }
 
     private fun postDate(post: PostSummary): String = if (post.timestamp > 0L) {
-        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(post.timestamp))
+        AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
     } else post.createdAt
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

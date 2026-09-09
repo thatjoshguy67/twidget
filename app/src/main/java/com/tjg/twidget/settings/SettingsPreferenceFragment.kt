@@ -19,6 +19,8 @@ import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -40,6 +42,7 @@ import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startSettingsSubActivity
 import com.tjg.twidget.widget.RefreshWorker
+import com.tjg.twidget.widget.TwidgetBriefWidget
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as IconR
 import dev.oneuiproject.oneui.preference.LayoutPreference
@@ -137,7 +140,48 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 true
             }
         })
+        screen.addPreference(category(R.string.language))
+        screen.addPreference(ListPreference(context).apply {
+            key = "app_language_pref"
+            title = getString(R.string.language)
+            dialogTitle = getString(R.string.language)
+            
+            val tags = arrayOf("", "de", "en")
 
+            entries = arrayOf(
+                getString(R.string.language_system),
+                getString(R.string.language_german),
+                getString(R.string.language_english)
+            )
+            entryValues = tags
+
+            val currentLocales = AppCompatDelegate.getApplicationLocales()
+            val currentTag = if (currentLocales.isEmpty) "" else currentLocales.toLanguageTags().split(",")[0]
+
+            val selectedIndex = tags.indexOfFirst { tag ->
+                if (tag.isEmpty()) currentTag.isEmpty() else currentTag.startsWith(tag)
+            }.coerceAtLeast(0)
+
+            value = tags[selectedIndex]
+            summary = entries[selectedIndex]
+
+            setOnPreferenceChangeListener { pref, newValue ->
+                val tag = newValue as String
+                val appLocales = if (tag.isEmpty()) {
+                    LocaleListCompat.getEmptyLocaleList()
+                } else {
+                    LocaleListCompat.forLanguageTags(tag)
+                }
+
+                AppCompatDelegate.setApplicationLocales(appLocales)
+                TwidgetWidget.updateAll(context)
+                TwidgetBriefWidget.updateAll(context)
+
+                val newIndex = tags.indexOf(tag).coerceAtLeast(0)
+                pref.summary = entries[newIndex]
+                true
+            }
+        })
         screen.addPreference(category(R.string.analytics))
         screen.addPreference(ListPreference(context).apply {
             key = "data_source_pref"

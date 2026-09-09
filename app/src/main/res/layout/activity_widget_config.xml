@@ -207,6 +207,14 @@
                     app:title="@string/widget_tint" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/language_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_language_default"
+                    app:title="@string/widget_language" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/font_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

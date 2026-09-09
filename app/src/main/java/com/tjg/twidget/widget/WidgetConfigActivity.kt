@@ -42,6 +42,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var colorMode = TwidgetStore.COLOR_MODE_SYSTEM
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
+    private var language = "DEFAULT"
     private var currentLevel = 2
     private var isLockWidget = false
     private var isLockWide = false
@@ -100,6 +101,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         colorMode = settings.colorMode
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
+        language = settings.language
         if (isBriefWidget) accountUsername = ""
         bindControls()
         if (!isBriefWidget) buildAccountRows()
@@ -132,6 +134,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<CardItemView>(R.id.tint_row).setOnClickListener { pickColorMode(it) }
         findViewById<CardItemView>(R.id.logo_row).setOnClickListener { pickLogo(it) }
         findViewById<CardItemView>(R.id.font_row).setOnClickListener { pickFont(it) }
+        findViewById<CardItemView>(R.id.language_row)?.setOnClickListener { pickLanguage(it) }
         findViewById<SwitchCompat>(R.id.delta_switch).isChecked = showDelta
         findViewById<View>(R.id.delta_row).setOnClickListener {
             showDelta = !showDelta
@@ -254,6 +257,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private fun render() {
         findViewById<CardItemView>(R.id.tint_row).summary = colorModeLabel(colorMode)
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
+        findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
         findViewById<CardItemView>(R.id.logo_row).apply {
             summary = when (logo) {
                 TwidgetStore.LOGO_TWITTER -> getString(R.string.widget_logo_twitter)
@@ -275,7 +279,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language)
 
         if (isLockWidget) {
             preview.background = null
@@ -421,7 +425,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun saveAndFinish() {
         tintAlpha = OPACITY_PRESETS[currentLevel]
-        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta))
+        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language))
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             val manager = AppWidgetManager.getInstance(this)
             if (isLockWidget) {
@@ -526,4 +530,22 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         val heightDp: Int,
         val cornerRadiusDp: Float,
     )
+    private fun pickLanguage(anchor: View) {
+        val values = arrayOf("DEFAULT", "de", "en")
+        val labels = listOf(
+            getString(R.string.widget_language_default),
+            getString(R.string.widget_language_de),
+            getString(R.string.widget_language_en)
+        )
+        showDropDown(anchor, labels, values.indexOf(language).coerceAtLeast(0)) { which ->
+            language = values[which]
+            render()
+        }
+    }
+
+    private fun languageLabel(lang: String): String = when (lang) {
+        "de" -> getString(R.string.widget_language_de)
+        "en" -> getString(R.string.widget_language_en)
+        else -> getString(R.string.widget_language_default)
+    }
 }

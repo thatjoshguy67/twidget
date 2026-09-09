@@ -6,6 +6,7 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.XAnalyticsImportPolicy
 import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.core.HistoryMigrationPolicy
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
@@ -88,6 +89,7 @@ data class TwidgetWidgetSettings(
     val colorMode: String,
     val fontFamily: String,
     val showDelta: Boolean = true,
+    val language: String = "DEFAULT",
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -367,6 +369,7 @@ object TwidgetStore {
                 prefs.getString("widget_font_family$suffix", FONT_ONE_UI_SANS),
             ),
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
+            language = prefs.getString("widget_language$suffix", prefs.getString("widget_language", "DEFAULT")) ?: "DEFAULT",
         )
     }
 
@@ -381,6 +384,7 @@ object TwidgetStore {
             .putString("widget_color_mode$suffix", settings.colorMode)
             .putString("widget_font_family$suffix", normalizeWidgetFont(settings.fontFamily))
             .putBoolean("widget_show_delta$suffix", settings.showDelta)
+            .putString("widget_language$suffix", settings.language)
             .apply()
     }
 
@@ -553,7 +557,9 @@ object TwidgetStore {
             }
             else -> false
         }
-        val labelFormat = SimpleDateFormat(if (monthly) "MMM" else "MMM d", Locale.US)
+        val locale = AppLocales.applicationLocale()
+        val pattern = if (monthly) "MMM" else if (locale.language == "de") "d. MMM" else "MMM d"
+        val labelFormat = SimpleDateFormat(pattern, locale)
         var previousEnd = rangeStart(all, range) - 1
         return bucketEnds(all, range).mapNotNull { end ->
             val bucketStart = previousEnd + 1
@@ -753,10 +759,14 @@ object TwidgetStore {
     fun followersDelta(context: Context, username: String = settings(context).username): Long =
         todayDelta(context, username) { it.followers }
 
-    fun compactNumber(value: Long): String = when {
-        abs(value) >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
-        abs(value) >= 10_000 -> "${value / 1_000}K"
-        else -> NumberFormat.getIntegerInstance(Locale.US).format(value)
+    fun compactNumber(value: Long): String {
+        val locale = AppLocales.applicationLocale()
+        val absValue = abs(value)
+        return when {
+            absValue >= 1_000_000 -> "${String.format(locale, "%.1f", value / 1_000_000f)}M"
+            absValue >= 10_000 -> "${value / 1_000}K"
+            else -> NumberFormat.getIntegerInstance(locale).format(value)
+        }
     }
 
     fun signedNumber(value: Long): String =
@@ -764,8 +774,8 @@ object TwidgetStore {
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
         if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
-        val formatter = SimpleDateFormat("MMM d, h:mm a", Locale.US)
-        return context.getString(R.string.last_synced, formatter.format(Date(stats.syncedAt)))
+        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a")
+        return context.getString(R.string.last_synced, formatterDate)
     }
 
     private fun prefs(context: Context): SharedPreferences =
@@ -828,7 +838,7 @@ object TwidgetStore {
 
     private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
-            dayLabel = SimpleDateFormat("MMM d", Locale.US).format(Date(stats.syncedAt)),
+            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d"),
             followers = stats.followersCount,
             following = stats.followingsCount,
             posts = stats.statusesCount,
@@ -1035,7 +1045,10 @@ object TwidgetStore {
     )
 
     private fun demoHistory(): List<HistorySample> {
-        val formatter = SimpleDateFormat("MMM d", Locale.US)
+        val formatter = SimpleDateFormat(
+            if (AppLocales.applicationLocale().language == "de") "d. MMM" else "MMM d",
+            AppLocales.applicationLocale(),
+        )
         val today = startOfDay(System.currentTimeMillis())
         val followerGains = listOf(25L, 40L, 30L, 38L, 22L, 52L, 109L)
         return followerGains.indices.map { index ->

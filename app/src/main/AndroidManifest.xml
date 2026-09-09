@@ -31,9 +31,21 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Twidget">
+
+        <!-- Persists per-app language on API 32 and lower. Android 13+ uses
+             localeConfig above for system Settings and Play Store language. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
 
         <!-- Opts Twidget into Samsung's wallpaper-derived One UI colour
              palette. The referenced metadata includes the SESL colour roles

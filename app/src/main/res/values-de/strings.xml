@@ -4,7 +4,7 @@
     <string name="widget_description">Twitter Follower-Tracker mit Blur-Widgets</string>
     <string name="widget_label">Twidget Follower</string>
     <string name="widget_language">Sprache</string>
-    <string name="widget_language_default">Systemstandard</string>
+    <string name="widget_language_default">App-Standard</string>
     <string name="widget_language_de">Deutsch</string>
     <string name="widget_language_en">Englisch (English)</string>
     <string name="lockscreen_follower_1x1_label">Follower 1x1</string>
@@ -327,7 +327,7 @@
     <string name="update_notification_title">Twidget-Update verfügbar</string>
     <string name="update_notification_body">Version %1$s ist bereit zur Installation.</string>
     <string name="update_notification_channel_description">Benachrichtigen, wenn eine neue Version von Twidget verfügbar ist</string>
-    <string name="update_remind_later">Erinnere mich später</string>
+    <string name="update_remind_later">Später erinnern</string>
     <string name="update_install_now">Jetzt installieren</string>
     <string name="oneui_project">One UI Project</string>
     <string name="link_tjg">https://tjg.gg</string>

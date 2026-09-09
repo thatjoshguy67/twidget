@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="streak_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
+    <string name="streak_safe_until_tomorrow">Dein Streak ist bis morgen sicher</string>
+    <string name="streak_post_to_continue">Tweete heute, um deinen Streak zu halten</string>
+    <string name="streak_expiring_soon">Tweete innerhalb von 10 Minuten, bevor dein Streak endet</string>
+    <string name="streak_revive">Tweete heute, um einen Posting-Streak zu starten</string>
+</resources>

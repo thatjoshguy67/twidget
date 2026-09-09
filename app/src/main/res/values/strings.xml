@@ -12,6 +12,7 @@
     <string name="dashboard_title">That Josh Guy</string>
     <string name="last_synced">Last synced: %1$s</string>
     <string name="not_synced_yet">Not synced yet</string>
+    <string name="time_unavailable">Time unavailable</string>
     <string name="sync">Sync</string>
     <string name="add_widget_to_home">Add widget to home screen</string>
     <string name="settings">Settings</string>

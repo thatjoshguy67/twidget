@@ -9,6 +9,7 @@ import android.graphics.RectF
 import android.os.Build
 import androidx.core.content.ContextCompat
 import com.tjg.twidget.R
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
@@ -58,29 +59,14 @@ object WidgetArtworkRenderer {
         val footerHeight = if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE) 20f * density else 26f * density
         val textMaxWidth = width - pad * 2
         val textMaxHeight = height - pad * 2 - footerHeight
-        val localizedContext = when (settings.language) {
-            "de" -> context.createConfigurationContext(
-            android.content.res.Configuration(context.resources.configuration).apply {
-            setLocale(java.util.Locale.GERMAN)
-        }
-        )
-            "en" -> context.createConfigurationContext(
-            android.content.res.Configuration(context.resources.configuration).apply {
-            setLocale(java.util.Locale.ENGLISH)
-        }
-        )
-            else -> context
-        }
-
-        val words = TwidgetWidget.followersInWords(stats.followersCount, settings.language)
-            .split(" ")
+        val locale = AppLocales.resolve(settings.language)
+        val localizedContext = AppLocales.wrap(context, settings.language)
+        val words = TwidgetWidget.followersInWords(stats.followersCount, locale)
+            .split(Regex("\\s+"))
             .filter { it.isNotBlank() } + localizedContext.getString(R.string.followers)
         val textSize = findTextSize(context, settings, words, textMaxWidth, textMaxHeight)
         val lines = wrapWords(context, settings, words, textMaxWidth, textSize)
-        val isGerman = settings.language.lowercase() == "de" || 
-                       (settings.language.lowercase() == "default" && java.util.Locale.getDefault().language == "de")
-        
-        // Exklusiv für Deutsch ein gleichmäßigerer Faktor (z.B. 1.0f), sonst Standard (1.12f)
+        val isGerman = locale.language == "de"
         val lineHeightMultiplier = if (isGerman) 1.0f else 1.12f
         val lineHeight = textSize * lineHeightMultiplier
         val top = pad + max(0f, (textMaxHeight - lines.size * lineHeight) / 2f) + textSize * 0.88f
@@ -131,7 +117,7 @@ object WidgetArtworkRenderer {
         maxHeight: Float,
     ): Float {
         var size = 42f * context.resources.displayMetrics.scaledDensity
-        val isGerman = settings.language.lowercase() == "de" || (settings.language.lowercase() == "default" && java.util.Locale.getDefault().language == "de")
+        val isGerman = AppLocales.resolve(settings.language).language == "de"
         val minFactor = if (isGerman) 11f else 15f
         val min = minFactor * context.resources.displayMetrics.scaledDensity
         while (size > min) {
@@ -148,6 +134,9 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         textSize: Float,
     ): List<List<String>> {
+        // Measure each word with the paint it will actually be drawn with —
+        // per-word weight/width means a single measuring paint would misjudge
+        // the heavier emphasis words and overflow the card.
         fun measure(word: String) =
             wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
                 .measureText(word)
@@ -169,7 +158,7 @@ object WidgetArtworkRenderer {
         if (current.isNotEmpty()) lines += current
         return lines
     }
-    
+
     // Numeric formats for the 2x1 and strip (3x1/4x1) sizes, drawn as bitmaps
     // because launchers ignore @font references when inflating RemoteViews.
     private fun renderCompact(
@@ -190,13 +179,9 @@ object WidgetArtworkRenderer {
         val canvas = Canvas(bitmap)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val primary = if (dark) Color.WHITE else Color.BLACK
-        val locale = when (settings.language.lowercase()) {
-        "de" -> java.util.Locale.GERMAN
-        "en" -> java.util.Locale.US
-        else -> java.util.Locale.getDefault()
-}
-val value = java.text.NumberFormat.getIntegerInstance(locale).format(stats.followersCount)
-        val label = context.getString(R.string.followers)
+        val locale = AppLocales.resolve(settings.language)
+        val value = AppLocales.integer(stats.followersCount, locale)
+        val label = AppLocales.wrap(context, settings.language).getString(R.string.followers)
 
         fun paintFor(weight: Int, color: Int, sizeSp: Float) =
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
@@ -328,12 +313,20 @@ val value = java.text.NumberFormat.getIntegerInstance(locale).format(stats.follo
         "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
         "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
         "Seventeen", "Eighteen", "Nineteen",
+        "Ein", "Eine", "Eins", "Zwei", "Drei", "Vier", "Fünf", "Sechs", "Sieben", "Acht", "Neun",
+        "Zehn", "Elf", "Zwölf", "Dreizehn", "Vierzehn", "Fünfzehn", "Sechzehn",
+        "Siebzehn", "Achtzehn", "Neunzehn", "Null",
     )
-    private val TENS_WORDS = setOf("Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
+    private val TENS_WORDS = setOf(
+        "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+        "Zwanzig", "Dreißig", "Vierzig", "Fünfzig", "Sechzig", "Siebzig", "Achtzig", "Neunzig",
+    )
     private val SCALE_WORDS = setOf(
         "Thousand", "Million", "Billion", "Trillion", "Quadrillion", "Quintillion",
+        "Tausend", "Millionen", "Milliarde", "Milliarden", "Billionen", "Billiarde", "Billiarden",
+        "Trillionen",
     )
-    private val CONNECTOR_WORDS = setOf("Hundred", "and", "Hundert", "hundert", "und")
+    private val CONNECTOR_WORDS = setOf("Hundred", "and", "Hundert", "und")
 
     // Typographic role per word. TENS carries the loudest emphasis, ONES next,
     // HUNDRED anchors the scale, SOFT words (thousand/million/"and") recede, and
@@ -342,18 +335,21 @@ val value = java.text.NumberFormat.getIntegerInstance(locale).format(stats.follo
     private enum class WordRole { TENS, ONES, HUNDRED, SOFT, LABEL, STRONG }
 
     private fun roleOf(context: Context, word: String): WordRole {
-    val isLabel = word.equals("Follower", ignoreCase = true) ||
-                  word.equals("Followers", ignoreCase = true) ||
-                  word.equals(context.getString(R.string.followers), ignoreCase = true)
-
-    if (isLabel) return WordRole.LABEL
-
-    return when (val bare = word.trim(',')) {
-        in TENS_WORDS -> WordRole.TENS
-        in ONES_WORDS -> WordRole.ONES
-        in SCALE_WORDS -> WordRole.SOFT
-        in CONNECTOR_WORDS -> if (bare.equals("Hundred", ignoreCase = true) || bare.equals("Hundert", ignoreCase = true)) WordRole.HUNDRED else WordRole.SOFT
-        else -> WordRole.STRONG // bare numerals or unknown tokens
+        val isLabel = word.equals("Follower", ignoreCase = true) ||
+            word.equals("Followers", ignoreCase = true) ||
+            word.equals(context.getString(R.string.followers), ignoreCase = true)
+        if (isLabel) return WordRole.LABEL
+        return when (val bare = word.trim(',')) {
+            in TENS_WORDS -> WordRole.TENS
+            in ONES_WORDS -> WordRole.ONES
+            in SCALE_WORDS -> WordRole.SOFT
+            in CONNECTOR_WORDS ->
+                if (bare.equals("Hundred", ignoreCase = true) || bare.equals("Hundert", ignoreCase = true)) {
+                    WordRole.HUNDRED
+                } else {
+                    WordRole.SOFT
+                }
+            else -> WordRole.STRONG
         }
     }
 

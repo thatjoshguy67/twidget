@@ -42,6 +42,7 @@ import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startSettingsSubActivity
 import com.tjg.twidget.widget.RefreshWorker
+import com.tjg.twidget.widget.TwidgetBriefWidget
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as IconR
 import dev.oneuiproject.oneui.preference.LayoutPreference
@@ -173,6 +174,8 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
                 }
 
                 AppCompatDelegate.setApplicationLocales(appLocales)
+                TwidgetWidget.updateAll(context)
+                TwidgetBriefWidget.updateAll(context)
 
                 val newIndex = tags.indexOf(tag).coerceAtLeast(0)
                 pref.summary = entries[newIndex]

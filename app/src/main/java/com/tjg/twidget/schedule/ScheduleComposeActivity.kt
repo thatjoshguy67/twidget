@@ -27,13 +27,13 @@ import androidx.picker.app.SeslDatePickerDialog
 import androidx.picker.app.SeslTimePickerDialog
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
@@ -413,12 +413,15 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     internal fun composeIsBusy(): Boolean = busy
     internal fun composeAvatarUsername(): String = requestedUsername().ifBlank { editorAccount }
     internal fun composeTimeSummaryText(): String {
-        val locale = Locale.getDefault()
-        return if (locale.language == "de") {
-            SimpleDateFormat("d. MMM · HH:mm", locale).format(editorTime.time)
+        val formatted = AppLocales.formatDate(
+            editorTime.timeInMillis,
+            "d. MMM · HH:mm",
+            "MMM d · h:mm a",
+        )
+        return if (AppLocales.applicationLocale().language == "de") {
+            formatted
         } else {
-            SimpleDateFormat("MMM d · h:mm a", locale).format(editorTime.time)
-                .replace("AM", "am").replace("PM", "pm")
+            formatted.replace("AM", "am").replace("PM", "pm")
         }
     }
     internal fun composeDp(value: Int): Int = dp(value)

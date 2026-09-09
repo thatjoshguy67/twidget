@@ -18,12 +18,10 @@ import androidx.appcompat.content.res.AppCompatResources
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.ProfileImageLoader
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 internal class MainPostAnalyticsBinder(
@@ -233,9 +231,7 @@ internal class MainPostAnalyticsBinder(
 
     private fun postDate(post: PostSummary): String =
         if (post.timestamp > 0L) {
-            val locale = Locale.getDefault()
-            val pattern = if (locale.language == "de") "d. MMM, HH:mm" else "MMM d, h:mm a"
-            SimpleDateFormat(pattern, locale).format(Date(post.timestamp))
+            AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
         } else {
             post.createdAt
         }

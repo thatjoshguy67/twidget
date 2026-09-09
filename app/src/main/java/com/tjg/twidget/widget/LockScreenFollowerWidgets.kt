@@ -14,6 +14,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.widget.RemoteViews
 import com.tjg.twidget.R
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import com.tjg.twidget.ui.TwidgetFonts
@@ -170,15 +171,12 @@ object LockScreenFollowerViews {
         val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
         val stats = TwidgetStore.currentStats(context, account)
         val delta = TwidgetStore.followersDelta(context, account)
-        val locale = when (widgetSettings.language.lowercase()) {
-        "de" -> java.util.Locale.GERMAN
-        "en" -> java.util.Locale.US
-        else -> java.util.Locale.getDefault()
-        }
-        val count = java.text.NumberFormat.getIntegerInstance(locale).format(stats.followersCount)
+        val locale = AppLocales.resolve(widgetSettings.language)
+        val count = AppLocales.integer(stats.followersCount, locale)
+        val strings = AppLocales.wrap(context, widgetSettings.language)
         val deltaText = when {
             !widgetSettings.showDelta -> ""
-            delta == 0L -> context.getString(R.string.followers).lowercase()
+            delta == 0L -> strings.getString(R.string.followers).lowercase()
             else -> TwidgetStore.signedNumber(delta)
         }
         // Transparent widget over the wallpaper, so text is white like the

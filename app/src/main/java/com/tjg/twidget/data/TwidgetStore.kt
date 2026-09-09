@@ -6,6 +6,7 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.XAnalyticsImportPolicy
 import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.core.HistoryMigrationPolicy
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
@@ -556,7 +557,7 @@ object TwidgetStore {
             }
             else -> false
         }
-        val locale = Locale.getDefault()
+        val locale = AppLocales.applicationLocale()
         val pattern = if (monthly) "MMM" else if (locale.language == "de") "d. MMM" else "MMM d"
         val labelFormat = SimpleDateFormat(pattern, locale)
         var previousEnd = rangeStart(all, range) - 1
@@ -758,24 +759,14 @@ object TwidgetStore {
     fun followersDelta(context: Context, username: String = settings(context).username): Long =
         todayDelta(context, username) { it.followers }
 
-fun compactNumber(value: Long): String {
-        val isGerman = Locale.getDefault().language == "de"
+    fun compactNumber(value: Long): String {
+        val locale = AppLocales.applicationLocale()
         val absValue = abs(value)
-        
-        val rawResult = when {
-            absValue >= 1_000_000 -> {
-                val formatted = String.format(Locale.US, "%.1fM", value / 1_000_000f)
-                if (isGerman) formatted.replace('.', ',') else formatted
-            }
-            absValue >= 10_000 -> {
-                "${value / 1_000}K"
-            }
-            else -> {
-                val formatted = NumberFormat.getIntegerInstance(Locale.US).format(value)
-                if (isGerman) formatted.replace(',', '.') else formatted
-            }
+        return when {
+            absValue >= 1_000_000 -> "${String.format(locale, "%.1f", value / 1_000_000f)}M"
+            absValue >= 10_000 -> "${value / 1_000}K"
+            else -> NumberFormat.getIntegerInstance(locale).format(value)
         }
-        return rawResult
     }
 
     fun signedNumber(value: Long): String =
@@ -783,10 +774,8 @@ fun compactNumber(value: Long): String {
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
         if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
-        val locale = Locale.getDefault()
-        val pattern = if (locale.language == "de") "d. MMM, HH:mm" else "MMM d, h:mm a"
-        val formatter = SimpleDateFormat(pattern, locale)
-        return context.getString(R.string.last_synced, formatter.format(Date(stats.syncedAt)))
+        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a")
+        return context.getString(R.string.last_synced, formatterDate)
     }
 
     private fun prefs(context: Context): SharedPreferences =
@@ -849,10 +838,7 @@ fun compactNumber(value: Long): String {
 
     private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
-            dayLabel = SimpleDateFormat(
-                if (Locale.getDefault().language == "de") "d. MMM" else "MMM d",
-                Locale.getDefault()
-    ).format(Date(stats.syncedAt)),
+            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d"),
             followers = stats.followersCount,
             following = stats.followingsCount,
             posts = stats.statusesCount,
@@ -1059,9 +1045,10 @@ fun compactNumber(value: Long): String {
     )
 
     private fun demoHistory(): List<HistorySample> {
-        val locale = Locale.getDefault()
-        val pattern = if (locale.language == "de") "d. MMM" else "MMM d"
-        val formatter = SimpleDateFormat(pattern, locale)
+        val formatter = SimpleDateFormat(
+            if (AppLocales.applicationLocale().language == "de") "d. MMM" else "MMM d",
+            AppLocales.applicationLocale(),
+        )
         val today = startOfDay(System.currentTimeMillis())
         val followerGains = listOf(25L, 40L, 30L, 38L, 22L, 52L, 109L)
         return followerGains.indices.map { index ->

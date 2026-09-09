@@ -40,6 +40,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
@@ -1195,15 +1196,15 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun queueDateTitle(value: Long?): String = value?.let {
-    val locale = Locale.getDefault()
-    val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
-    if (locale.language == "de") {
-        date.format(DateTimeFormatter.ofPattern("EEE, d. MMMM yyyy 'um' HH:mm", locale))
-    } else {
-        val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
-        val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
-        "$weekdayAndMonth ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} at $time"
-    }
+        val locale = AppLocales.applicationLocale()
+        val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
+        if (locale.language == "de") {
+            date.format(DateTimeFormatter.ofPattern("EEE, d. MMMM yyyy 'um' HH:mm", locale))
+        } else {
+            val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
+            val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
+            "$weekdayAndMonth ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} at $time"
+        }
     } ?: getString(R.string.schedule_no_time)
 
     private fun ordinalSuffix(day: Int): String = when {

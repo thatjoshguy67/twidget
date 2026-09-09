@@ -10,8 +10,6 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
-import android.text.Html
-import java.util.Locale
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -27,6 +25,7 @@ import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.providers.RettiwtClient
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
+import java.util.Locale
 
 open class TwidgetWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -347,14 +346,9 @@ open class TwidgetWidget : AppWidgetProvider() {
                 else -> Color.red(settings.tintColor) < 128
             }
 
-        private fun fullNumber(value: Long, widgetSettings: TwidgetWidgetSettings? = null): String {
-            val locale = when (widgetSettings?.language?.lowercase()) {
-            "de" -> java.util.Locale.GERMAN
-            "en" -> java.util.Locale.US
-            else -> java.util.Locale.getDefault()
-            }
-        return java.text.NumberFormat.getIntegerInstance(locale).format(value)
-        }
+        private fun fullNumber(value: Long, locale: Locale = Locale.US): String =
+            java.text.NumberFormat.getIntegerInstance(locale).format(value)
+
         private fun dp(context: Context, value: Int): Int =
             (value * context.resources.displayMetrics.density).toInt()
 
@@ -366,215 +360,135 @@ open class TwidgetWidget : AppWidgetProvider() {
                 }
             }
         }
-    fun followersInWords(value: Long, langSetting: String = "DEFAULT"): CharSequence {
-        if (value < 0L) return fullNumber(value)
-        val html = numberWords(value, langSetting)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY)
-        } else {
-            @Suppress("DEPRECATION")
-            Html.fromHtml(html)
+
+        fun followersInWords(value: Long, locale: Locale = Locale.ENGLISH): String {
+            if (value < 0L) return fullNumber(value, locale)
+            return if (locale.language == "de") germanNumberWords(value) else numberWords(value)
         }
-    }
-    
-    private fun ones(value: Long): String = when (value) {
-        1L -> "One"
-        2L -> "Two"
-        3L -> "Three"
-        4L -> "Four"
-        5L -> "Five"
-        6L -> "Six"
-        7L -> "Seven"
-        8L -> "Eight"
-        9L -> "Nine"
-        else -> "Zero"
-    }
 
-    private fun tens(value: Long): String = when {
-        value < 10L -> ones(value)
-        value == 10L -> "Ten"
-        value == 11L -> "Eleven"
-        value == 12L -> "Twelve"
-        value == 13L -> "Thirteen"
-        value == 14L -> "Fourteen"
-        value == 15L -> "Fifteen"
-        value == 16L -> "Sixteen"
-        value == 17L -> "Seventeen"
-        value == 18L -> "Eighteen"
-        value == 19L -> "Nineteen"
-        value < 30L -> if (value % 10L == 0L) "Twenty" else "Twenty " + ones(value % 10L)
-        value < 40L -> if (value % 10L == 0L) "Thirty" else "Thirty " + ones(value % 10L)
-        value < 50L -> if (value % 10L == 0L) "Forty" else "Forty " + ones(value % 10L)
-        value < 60L -> if (value % 10L == 0L) "Fifty" else "Fifty " + ones(value % 10L)
-        value < 70L -> if (value % 10L == 0L) "Sixty" else "Sixty " + ones(value % 10L)
-        value < 80L -> if (value % 10L == 0L) "Seventy" else "Seventy " + ones(value % 10L)
-        value < 90L -> if (value % 10L == 0L) "Eighty" else "Eighty " + ones(value % 10L)
-        else -> if (value % 10L == 0L) "Ninety" else "Ninety " + ones(value % 10L)
-    }
-
-    private fun germanTens(n: Int): String {
-        val ones = arrayOf("", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun")
-        val teens = arrayOf("zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn")
-        val tens = arrayOf("", "zehn", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig")
-
-        return when {
-            n < 10 -> ones[n]
-            n < 20 -> teens[n - 10]
-            else -> {
-                val t = n / 10
-                val o = n % 10
-                if (o == 0) tens[t] else "${if (o == 1) "ein" else ones[o]}und${tens[t]}"
-            }
-        }
-    }
-
-    private fun germanHundreds(value: Long): String {
-        val v = value.toInt()
-        if (v == 0) return ""
-        val h = v / 100
-        val rem = v % 100
-
-        val hStr = when (h) {
-            0 -> ""
-            1 -> "<b>Ein Hundert</b>"
-            else -> "<b>${germanTens(h).replaceFirstChar { it.uppercase() }} Hundert</b>"
-        }
-        val remStr = if (rem > 0) "<b>${germanTens(rem).replaceFirstChar { it.uppercase() }}</b>" else ""
-
-        return listOf(hStr, remStr).filter { it.isNotEmpty() }.joinToString(" ")
-    }
-     private fun hundreds(value: Long, isGerman: Boolean): String {
-        if (value <= 0L) return ""
-
-        return if (isGerman) {
-            val units = arrayOf(
-                "", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun",
-                "zehn", "elf", "zwölf", "dreizehn", "vierzehn", "fünfzehn", "sechzehn",
-                "siebzehn", "achtzehn", "neunzehn"
-            )
-            val tens = arrayOf("", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig")
-
-            val h = (value / 100).toInt()
-            val rem = (value % 100).toInt()
-
-            buildString {
-                if (h > 0) {
-                    if (h == 1) {
-                             append("<b>Ein</b> <b>Hundert</b>")
-                    } else {
-                        val hUnitWord = units[h].replaceFirstChar { it.uppercase() }
-                        append("<b>$hUnitWord</b> <b>Hundert</b>")
-                    }
-                    if (rem > 0) append(" ")
-                }
-                if (rem > 0) {
-                    if (rem < 20) {
-                        var word = if (rem == 1) "eins" else units[rem]
-                        word = word.replaceFirstChar { it.uppercase() }
-                        append("<b>$word</b>")
-                    } else {
-                        val t = rem / 10
-                        val u = rem % 10
-                        val tWord = tens[t]
-                        val uWord = if (u == 1) "ein" else units[u]
-
-                        if (u > 0) {
-                            val capitalizedU = uWord.replaceFirstChar { it.uppercase() }
-                            val capitalizedT = tWord.replaceFirstChar { it.uppercase() }
-                            append("<b>$capitalizedU</b> und <b>$capitalizedT</b>")
-                        } else {
-                            val capitalizedT = tWord.replaceFirstChar { it.uppercase() }
-                            append("<b>$capitalizedT</b>")
-                        }
-                    }
-                }
-            }
-        } else {
-            val unitsEng = arrayOf(
-                "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
-                "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
-                "Seventeen", "Eighteen", "Nineteen"
-            )
-            val tensEng = arrayOf("", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
-
-            val h = (value / 100).toInt()
-            val rem = (value % 100).toInt()
-
-            buildString {
-                if (h > 0) {
-                    append("<b>${unitsEng[h]}</b> <b>Hundred</b>")
-                    if (rem > 0) append(" and ")
-                }
-                if (rem > 0) {
-                    if (rem < 20) {
-                        append("<b>${unitsEng[rem]}</b>")
-                    } else {
-                        val t = rem / 10
-                        val u = rem % 10
-                        append("<b>${tensEng[t]}</b>")
-                        if (u > 0) {
-                            append(" <b>${unitsEng[u]}</b>")
-                        }
-                    }
-                }
-            }
-        }
-    }
-    private fun numberWords(value: Long, langSetting: String = "DEFAULT"): String {
-        val locale = when (langSetting) {
-            "de" -> Locale.GERMAN
-            "en" -> Locale.ENGLISH
-            else -> {
-                val appLocales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
-                if (!appLocales.isEmpty) appLocales[0]!! else Locale.getDefault()
-            }
-        }
-        val isGerman = locale.language == "de"
-
-        if (value == 0L) return if (isGerman) "<b>Null</b>" else "<b>Zero</b>"
-        if (value < 1_000L) return hundreds(value, isGerman)
-
-        val (scale, leading, name) = if (isGerman) {
-            val scales = listOf(
-                1_000_000_000_000_000_000L to ("Trillion" to "Trillionen"),
-                1_000_000_000_000_000L to ("Billiarde" to "Billiarden"),
-                1_000_000_000_000L to ("Billion" to "Billionen"),
-                1_000_000_000L to ("Milliarde" to "Milliarden"),
-                1_000_000L to ("Million" to "Millionen"),
-                1_000L to ("Tausend" to "Tausend")
-            )
-            val entry = scales.first { value >= it.first }
-            val sc = entry.first
-            val lead = value / sc
-            val scaleName = if (lead == 1L) entry.second.first else entry.second.second
-            Triple(sc, lead, scaleName)
-        } else {
+        private fun numberWords(value: Long): String {
+            if (value == 0L) return "Zero"
+            if (value < 1_000L) return hundreds(value)
             val scales = listOf(
                 1_000_000_000_000_000_000L to "Quintillion",
                 1_000_000_000_000_000L to "Quadrillion",
                 1_000_000_000_000L to "Trillion",
                 1_000_000_000L to "Billion",
                 1_000_000L to "Million",
-                1_000L to "Thousand"
+                1_000L to "Thousand",
             )
-            val entry = scales.first { value >= it.first }
-            val sc = entry.first
-            val lead = value / sc
-            Triple(sc, lead, entry.second)
+            val (scale, name) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
+            return buildString {
+                append(numberWords(leading))
+                append(' ')
+                append(name)
+                if (remainder > 0) {
+                    append(", ")
+                    append(numberWords(remainder))
+                }
+            }
         }
 
-        val remainder = value % scale
+        private fun hundreds(value: Long): String {
+            val hundred = value / 100
+            val remainder = value % 100
+            return when {
+                hundred > 0 && remainder > 0 -> "${ones(hundred)} Hundred and ${tens(remainder)}"
+                hundred > 0 -> "${ones(hundred)} Hundred"
+                else -> tens(remainder)
+            }
+        }
 
-        return buildString {
-            append(numberWords(leading, langSetting))
-            append(" <b>$name</b>")
-            if (remainder > 0) {
-                append(if (isGerman) "\n" else ", ")
-                append(numberWords(remainder, langSetting))
+        private fun tens(value: Long): String {
+            val names = mapOf(
+                10L to "Ten", 11L to "Eleven", 12L to "Twelve", 13L to "Thirteen", 14L to "Fourteen",
+                15L to "Fifteen", 16L to "Sixteen", 17L to "Seventeen", 18L to "Eighteen", 19L to "Nineteen",
+                20L to "Twenty", 30L to "Thirty", 40L to "Forty", 50L to "Fifty", 60L to "Sixty",
+                70L to "Seventy", 80L to "Eighty", 90L to "Ninety"
+            )
+            names[value]?.let { return it }
+            val ten = value / 10 * 10
+            val one = value % 10
+            return listOfNotNull(names[ten], ones(one).takeIf { one > 0 }).joinToString(" ")
+        }
+
+        private fun ones(value: Long): String = when (value) {
+            1L -> "One"
+            2L -> "Two"
+            3L -> "Three"
+            4L -> "Four"
+            5L -> "Five"
+            6L -> "Six"
+            7L -> "Seven"
+            8L -> "Eight"
+            9L -> "Nine"
+            else -> "Zero"
+        }
+
+        private fun germanNumberWords(value: Long): String {
+            if (value == 0L) return "Null"
+            if (value < 1_000L) return germanHundreds(value)
+            val scales = listOf(
+                1_000_000_000_000_000_000L to ("Trillion" to "Trillionen"),
+                1_000_000_000_000_000L to ("Billiarde" to "Billiarden"),
+                1_000_000_000_000L to ("Billion" to "Billionen"),
+                1_000_000_000L to ("Milliarde" to "Milliarden"),
+                1_000_000L to ("Million" to "Millionen"),
+                1_000L to ("Tausend" to "Tausend"),
+            )
+            val (scale, names) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
+            val name = if (leading == 1L) names.first else names.second
+            return buildString {
+                append(if (leading == 1L) germanIndefinite(scale) else germanNumberWords(leading))
+                append(' ')
+                append(name)
+                if (remainder > 0) {
+                    append(", ")
+                    append(germanNumberWords(remainder))
+                }
+            }
+        }
+
+        private fun germanIndefinite(scale: Long): String =
+            if (scale == 1_000L) "Ein" else "Eine"
+
+        // Spaced so the word-art widget can wrap and emphasise each token.
+        private fun germanHundreds(value: Long): String {
+            val units = arrayOf(
+                "", "Ein", "Zwei", "Drei", "Vier", "Fünf", "Sechs", "Sieben", "Acht", "Neun",
+                "Zehn", "Elf", "Zwölf", "Dreizehn", "Vierzehn", "Fünfzehn", "Sechzehn",
+                "Siebzehn", "Achtzehn", "Neunzehn",
+            )
+            val tensNames = arrayOf(
+                "", "", "Zwanzig", "Dreißig", "Vierzig", "Fünfzig", "Sechzig", "Siebzig", "Achtzig", "Neunzig",
+            )
+            val hundred = (value / 100).toInt()
+            val remainder = (value % 100).toInt()
+            return buildString {
+                if (hundred > 0) {
+                    append(if (hundred == 1) "Ein" else units[hundred])
+                    append(" Hundert")
+                    if (remainder > 0) append(" und ")
+                }
+                if (remainder > 0) {
+                    when {
+                        remainder == 1 -> append("Eins")
+                        remainder < 20 -> append(units[remainder])
+                        remainder % 10 == 0 -> append(tensNames[remainder / 10])
+                        else -> {
+                            append(if (remainder % 10 == 1) "Ein" else units[remainder % 10])
+                            append(" und ")
+                            append(tensNames[remainder / 10])
+                        }
+                    }
+                }
             }
         }
     }
-}
 }
 
 /**

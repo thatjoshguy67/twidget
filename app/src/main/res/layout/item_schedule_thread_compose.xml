@@ -31,6 +31,18 @@
             android:background="@drawable/avatar_twidget"
             android:contentDescription="@string/account"
             android:scaleType="centerCrop" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/schedule_thread_reorder"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:background="@drawable/schedule_reorder_handle_bg"
+            android:contentDescription="@string/schedule_reorder_thread"
+            android:padding="0dp"
+            android:scaleType="center"
+            android:visibility="gone"
+            app:srcCompat="@drawable/ic_schedule_reorder" />
     </FrameLayout>
 
     <LinearLayout
@@ -75,6 +87,10 @@
                 android:visibility="gone"
                 app:srcCompat="@drawable/ic_oui_close" />
         </FrameLayout>
+
+        <include
+            android:id="@+id/schedule_thread_link_preview"
+            layout="@layout/item_schedule_link_preview" />
 
         <TextView
             android:id="@+id/schedule_thread_limit_notice"

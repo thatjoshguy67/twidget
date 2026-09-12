@@ -45,16 +45,9 @@ object ProfileImageLoader {
             return
         }
 
-        cachedBitmap(context, imageUrl)?.let {
-            imageView.setPadding(0, 0, 0, 0)
-            imageView.imageTintList = null
-            imageView.setImageBitmap(it)
-            return
-        }
-
         showFallback(imageView)
         AppExecutors.execute {
-            val bitmap = downloadToCache(context, imageUrl)
+            val bitmap = cachedBitmap(context, imageUrl) ?: downloadToCache(context, imageUrl)
             imageView.post {
                 // Dashboard rows are often populated before attachment. The old
                 // attachment guard discarded fast avatar responses permanently.
@@ -78,17 +71,11 @@ object ProfileImageLoader {
             return
         }
         imageView.visibility = View.VISIBLE
-        cachedBitmap(context, imageUrl)?.let {
-            imageView.setImageBitmap(it)
-            return
-        }
         imageView.setImageDrawable(null)
         AppExecutors.execute {
-            val bitmap = downloadToCache(context, imageUrl)
+            val bitmap = cachedBitmap(context, imageUrl) ?: downloadToCache(context, imageUrl)
             imageView.post {
-                if (imageView.isAttachedToWindow &&
-                    imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null
-                ) {
+                if (imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null) {
                     imageView.setImageBitmap(bitmap)
                 }
             }
@@ -105,17 +92,11 @@ object ProfileImageLoader {
             return
         }
         imageView.visibility = View.VISIBLE
-        cachedMediaBitmap(context, imageUrl)?.let {
-            imageView.setImageBitmap(it)
-            return
-        }
         imageView.setImageDrawable(null)
         AppExecutors.execute {
-            val bitmap = downloadMediaToCache(context, imageUrl)
+            val bitmap = cachedMediaBitmap(context, imageUrl) ?: downloadMediaToCache(context, imageUrl)
             imageView.post {
-                if (!imageView.isAttachedToWindow ||
-                    imageView.getTag(R.id.profile_image_request) != requestToken
-                ) return@post
+                if (imageView.getTag(R.id.profile_image_request) != requestToken) return@post
                 if (bitmap != null) {
                     imageView.setImageBitmap(bitmap)
                 } else {

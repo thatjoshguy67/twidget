@@ -81,6 +81,12 @@ internal class MainEditModeController(
             .filterNot { it in current }
             .mapNotNull(DashboardCardType::fromId)
             .filter { !it.requiresAnalyticsImport() || hasAnalyticsImport() }
+            .filter {
+                it != DashboardCardType.MILESTONE || activity.selectedAccount.equals(
+                    TwidgetStore.settings(activity).username,
+                    ignoreCase = true,
+                )
+            }
         if (hidden.isEmpty()) {
             Toast.makeText(activity, R.string.all_cards_added, Toast.LENGTH_SHORT).show()
             return

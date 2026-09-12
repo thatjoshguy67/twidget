@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="112dp"
+    android:clipToOutline="true"
+    android:foreground="@drawable/brief_card_ripple"
+    android:gravity="center_vertical"
+    android:minHeight="112dp"
+    android:orientation="horizontal"
+    android:paddingStart="14dp"
+    android:paddingEnd="18dp">
+
+    <ImageView
+        android:id="@+id/brief_dashboard_icon"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:contentDescription="@null"
+        android:padding="10dp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/brief_dashboard_copy"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/brief_dashboard_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sec"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/oneui_text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/brief_dashboard_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:ellipsize="end"
+            android:fontFamily="sec"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:textColor="@color/oneui_text_primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/brief_onboarding_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/brief_onboarding_background">
+
+    <ImageButton
+        android:id="@+id/brief_onboarding_back"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/back"
+        android:padding="13dp"
+        android:scaleType="centerInside" />
+
+    <LinearLayout
+        android:layout_width="354dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/brief_onboarding_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sec"
+            android:includeFontPadding="false"
+            android:textColor="@color/oneui_text_primary"
+            android:textSize="36sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="sec"
+            android:includeFontPadding="false"
+            android:lineSpacingExtra="1dp"
+            android:text="@string/brief_onboarding_body"
+            android:textColor="@color/oneui_text_primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/brief_onboarding_continue"
+            android:layout_width="268dp"
+            android:layout_height="60dp"
+            android:layout_marginTop="68dp"
+            android:background="@drawable/brief_onboarding_button_bg"
+            android:clickable="true"
+            android:elevation="8dp"
+            android:focusable="true"
+            android:fontFamily="sec"
+            android:gravity="center"
+            android:text="@string/brief_onboarding_continue"
+            android:textColor="@color/oneui_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>

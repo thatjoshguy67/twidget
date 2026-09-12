@@ -3,6 +3,5 @@
     <style name="Theme.Twidget.Launcher" parent="Theme.Twidget">
         <item name="android:windowSplashScreenBackground">@color/oneui_bg</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
 </resources>

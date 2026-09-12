@@ -7,8 +7,9 @@
     <color name="oneui_divider">#e4e4e6</color>
     <color name="oneui_text_primary">#000000</color>
     <color name="oneui_text_secondary">#848487</color>
-    <color name="oneui_accent">#387aff</color>
-    <color name="oneui_accent_translucent">#22387aff</color>
+    <!-- SESL's primary role is replaced by Samsung's wallpaper palette when
+         the theming metadata declared by the app is active. -->
+    <color name="oneui_accent">@color/sesl_primary_color_light</color>
     <color name="top_followers_skeleton">#f3f3f5</color>
     <color name="schedule_ready">#E65B17</color>
     <color name="schedule_calendar_cell">#F9F9FB</color>
@@ -45,4 +46,15 @@
     <color name="import_grad_center">#CDE6FA</color>
     <color name="import_grad_end">#F1F1F3</color>
     <color name="import_failure_start">#FF8D8F</color>
+    <color name="brief_dashboard_glow">#8DCCFF</color>
+    <color name="brief_screen_top">#A1D5FF</color>
+    <color name="brief_top_bar_transparent">#00A1D5FF</color>
+    <color name="brief_screen_bottom">#F1F1F3</color>
+    <color name="brief_card_surface">#99FFFFFF</color>
+    <color name="brief_text_supporting">#848487</color>
+    <color name="brief_divider">#1F000000</color>
+    <color name="brief_icon_top_tweet">#F28C38</color>
+    <color name="brief_onboarding_top">#A1D5FF</color>
+    <color name="brief_onboarding_bottom">#F1F1F3</color>
+    <color name="brief_onboarding_button">#99FCFCFF</color>
 </resources>

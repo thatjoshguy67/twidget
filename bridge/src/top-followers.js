@@ -2,6 +2,20 @@ const MAX_TOP_FOLLOWERS = 5;
 const MAX_SCANNED = 10_000_000;
 const MAX_PAGES = 6_250;
 
+export function shouldRefreshTopFollowers({
+  snapshot,
+  scan,
+  now = Date.now(),
+  refreshMs = 24 * 60 * 60 * 1000,
+}) {
+  if (scan?.status === "running") return false;
+  const lastAttemptAt = Math.max(
+    Number(snapshot?.completedAt || snapshot?.cachedAt || 0),
+    Number(scan?.startedAt || scan?.updatedAt || 0),
+  );
+  return lastAttemptAt <= 0 || now - lastAttemptAt >= refreshMs;
+}
+
 export function prepareTopFollowersCache(body, now = Date.now()) {
   if (!body || typeof body !== "object" || !Array.isArray(body.top)) return null;
   if (body.top.length < 1 || body.top.length > MAX_TOP_FOLLOWERS) return null;

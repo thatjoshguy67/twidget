@@ -40,6 +40,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
@@ -924,6 +925,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun queueCardTitle(post: ScheduledPost): CharSequence = when {
+        post.status == ScheduleStatus.AWAITING_CONFIRMATION ->
+            "${queueDateTitle(post.scheduledAt)} · ${getString(R.string.schedule_status_awaiting_confirmation)}"
         post.status == ScheduleStatus.NEEDS_ACTION -> SpannableStringBuilder(
             getString(R.string.schedule_ready_now),
         ).apply {
@@ -1195,11 +1198,15 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun queueDateTitle(value: Long?): String = value?.let {
-        val locale = Locale.getDefault()
+        val locale = AppLocales.applicationLocale()
         val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
-        val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
-        val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
-        "$weekdayAndMonth ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} at $time"
+        if (locale.language == "de") {
+            date.format(DateTimeFormatter.ofPattern("EEE, d. MMMM yyyy 'um' HH:mm", locale))
+        } else {
+            val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
+            val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
+            "$weekdayAndMonth ${date.dayOfMonth}${ordinalSuffix(date.dayOfMonth)}, ${date.year} at $time"
+        }
     } ?: getString(R.string.schedule_no_time)
 
     private fun ordinalSuffix(day: Int): String = when {
@@ -1323,11 +1330,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             onComplete()
             return
         }
-        val remotePosts = posts.filter {
-            it.provider == ScheduleProvider.BUFFER &&
-                !it.remotePostId.isNullOrBlank() &&
-                it.status != ScheduleStatus.CANCELLED
-        }
+        val remotePosts = posts.filter(BufferScheduleFallbackPolicy::requiresRemoteCancellation)
         val localPosts = posts.filterNot { remotePosts.contains(it) }
         if (remotePosts.isEmpty()) {
             localPosts.forEach(::removePostLocally)
@@ -1727,6 +1730,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun statusLabel(status: ScheduleStatus): Int = when (status) {
         ScheduleStatus.DRAFT -> R.string.schedule_status_draft
         ScheduleStatus.SCHEDULED -> R.string.schedule_status_scheduled
+        ScheduleStatus.AWAITING_CONFIRMATION -> R.string.schedule_status_awaiting_confirmation
         ScheduleStatus.NEEDS_ACTION -> R.string.schedule_status_needs_action
         ScheduleStatus.PUBLISHED -> R.string.schedule_status_published
         ScheduleStatus.FAILED -> R.string.schedule_status_failed

@@ -25,6 +25,7 @@ import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.providers.RettiwtClient
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
+import java.util.Locale
 
 open class TwidgetWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
@@ -53,8 +54,11 @@ open class TwidgetWidget : AppWidgetProvider() {
 
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, com.tjg.twidget.TwidgetWidget::class.java))
-            ids.forEach { updateWidget(context, manager, it) }
+            listOf(
+                com.tjg.twidget.TwidgetWidget::class.java,
+            ).flatMap { provider ->
+                manager.getAppWidgetIds(ComponentName(context, provider)).asIterable()
+            }.forEach { updateWidget(context, manager, it) }
             LockScreenFollowerViews.updateAll(context)
         }
 
@@ -180,11 +184,11 @@ open class TwidgetWidget : AppWidgetProvider() {
                 val dark = isDark(context, widgetSettings)
                 val base = if (dark) 16 else 255
                 val backgroundColor = Color.argb(widgetSettings.tintAlpha, base, base, base)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
-                    // with a rectangular ColorDrawable. Keeping the surface
-                    // separate also lets the text bitmap scale without being
-                    // distorted to fill unusual launcher cell ratios.
+                    // with a rectangular ColorDrawable. One UI uses this
+                    // drawable as the glass/blur surface; replacing it made the
+                    // milestone widget translucent but left the wallpaper sharp.
                     setColorStateList(
                         android.R.id.background,
                         "setBackgroundTintList",
@@ -342,8 +346,8 @@ open class TwidgetWidget : AppWidgetProvider() {
                 else -> Color.red(settings.tintColor) < 128
             }
 
-        private fun fullNumber(value: Long): String =
-            java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(value)
+        private fun fullNumber(value: Long, locale: Locale = Locale.US): String =
+            java.text.NumberFormat.getIntegerInstance(locale).format(value)
 
         private fun dp(context: Context, value: Int): Int =
             (value * context.resources.displayMetrics.density).toInt()
@@ -357,9 +361,9 @@ open class TwidgetWidget : AppWidgetProvider() {
             }
         }
 
-        fun followersInWords(value: Long): String {
-            if (value < 0L) return fullNumber(value)
-            return numberWords(value)
+        fun followersInWords(value: Long, locale: Locale = Locale.ENGLISH): String {
+            if (value < 0L) return fullNumber(value, locale)
+            return if (locale.language == "de") germanNumberWords(value) else numberWords(value)
         }
 
         private fun numberWords(value: Long): String {
@@ -422,6 +426,68 @@ open class TwidgetWidget : AppWidgetProvider() {
             9L -> "Nine"
             else -> "Zero"
         }
+
+        private fun germanNumberWords(value: Long): String {
+            if (value == 0L) return "Null"
+            if (value < 1_000L) return germanHundreds(value)
+            val scales = listOf(
+                1_000_000_000_000_000_000L to ("Trillion" to "Trillionen"),
+                1_000_000_000_000_000L to ("Billiarde" to "Billiarden"),
+                1_000_000_000_000L to ("Billion" to "Billionen"),
+                1_000_000_000L to ("Milliarde" to "Milliarden"),
+                1_000_000L to ("Million" to "Millionen"),
+                1_000L to ("Tausend" to "Tausend"),
+            )
+            val (scale, names) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
+            val name = if (leading == 1L) names.first else names.second
+            return buildString {
+                append(if (leading == 1L) germanIndefinite(scale) else germanNumberWords(leading))
+                append(' ')
+                append(name)
+                if (remainder > 0) {
+                    append(", ")
+                    append(germanNumberWords(remainder))
+                }
+            }
+        }
+
+        private fun germanIndefinite(scale: Long): String =
+            if (scale == 1_000L) "Ein" else "Eine"
+
+        // Spaced so the word-art widget can wrap and emphasise each token.
+        private fun germanHundreds(value: Long): String {
+            val units = arrayOf(
+                "", "Ein", "Zwei", "Drei", "Vier", "Fünf", "Sechs", "Sieben", "Acht", "Neun",
+                "Zehn", "Elf", "Zwölf", "Dreizehn", "Vierzehn", "Fünfzehn", "Sechzehn",
+                "Siebzehn", "Achtzehn", "Neunzehn",
+            )
+            val tensNames = arrayOf(
+                "", "", "Zwanzig", "Dreißig", "Vierzig", "Fünfzig", "Sechzig", "Siebzig", "Achtzig", "Neunzig",
+            )
+            val hundred = (value / 100).toInt()
+            val remainder = (value % 100).toInt()
+            return buildString {
+                if (hundred > 0) {
+                    append(if (hundred == 1) "Ein" else units[hundred])
+                    append(" Hundert")
+                    if (remainder > 0) append(" und ")
+                }
+                if (remainder > 0) {
+                    when {
+                        remainder == 1 -> append("Eins")
+                        remainder < 20 -> append(units[remainder])
+                        remainder % 10 == 0 -> append(tensNames[remainder / 10])
+                        else -> {
+                            append(if (remainder % 10 == 1) "Ein" else units[remainder % 10])
+                            append(" und ")
+                            append(tensNames[remainder / 10])
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -476,3 +542,4 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         const val ACTION_REFRESH = "com.tjg.twidget.action.REFRESH"
     }
 }
+

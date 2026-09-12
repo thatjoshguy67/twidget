@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_followers_browser_title">Top-Follower</string>
+    <string name="top_followers_browser_search">Follower durchsuchen</string>
+    <string name="top_followers_browser_search_hint">Suchen</string>
+    <string name="top_followers_browser_refresh">Gesamte Liste aktualisieren</string>
+    <string name="top_followers_browser_refreshed">%1$d Follower synchronisiert</string>
+    <string name="top_followers_browser_rescan_started">Erneuter Scan mit deinem verknüpften API-Key…</string>
+    <string name="top_followers_browser_rescan_title">Neuen Scan starten?</string>
+    <string name="top_followers_browser_rescan_message">Dafür werden deine verknüpften API-Zugangsdaten genutzt und es können kostenpflichtige Aufrufe anfallen. Fortfahren?</string>
+    <string name="top_followers_browser_refresh_failed">Die vollständige Follower-Liste konnte nicht aktualisiert werden. Versuche es erneut.</string>
+    <string name="top_followers_browser_empty">Noch kein Follower-Ranking verfügbar.</string>
+    <string name="top_followers_browser_no_results">Keine Follower passen zu deiner Suche.</string>
+</resources>

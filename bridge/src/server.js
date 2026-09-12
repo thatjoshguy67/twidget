@@ -7,7 +7,11 @@ import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
 import { bangerScore } from "./banger-score.js";
 import { prepareAnalyticsImport } from "./analytics-import.js";
-import { prepareTopFollowersCache } from "./top-followers.js";
+import { prepareTopFollowersCache, shouldRefreshTopFollowers } from "./top-followers.js";
+import {
+  fetchTwitterApisFollowersPage,
+  TopFollowersProviderError,
+} from "./top-followers-provider.js";
 import {
   LocalFixedWindowLimiter,
   LocalHistoryRepository,
@@ -33,6 +37,13 @@ const historyRefreshMs = envInteger("HISTORY_REFRESH_MINUTES", 60, 15, 1440) * 6
 const historySampleRetentionDays = envInteger("HISTORY_SAMPLE_RETENTION_DAYS", 0, 0, 36500);
 const historyInactiveAccountDays = envInteger("HISTORY_INACTIVE_ACCOUNT_DAYS", 0, 0, 36500);
 const historyPruneMs = envInteger("HISTORY_PRUNE_HOURS", 24, 1, 168) * 60 * 60 * 1000;
+const topFollowersFreshMs = envInteger("TOP_FOLLOWERS_FRESH_HOURS", 24, 1, 168) * 60 * 60 * 1000;
+const topFollowersRefreshMs = envInteger("TOP_FOLLOWERS_REFRESH_HOURS", 24, 1, 168) * 60 * 60 * 1000;
+const topFollowersRetentionDays = envInteger("TOP_FOLLOWERS_RETENTION_DAYS", 30, 1, 365);
+const topFollowersDailyStarts = envInteger("TOP_FOLLOWERS_DAILY_SCAN_LIMIT", 50, 1, 10000);
+const topFollowersDailyStartsPerIp = envInteger("TOP_FOLLOWERS_DAILY_SCAN_LIMIT_PER_IP", 3, 1, 1000);
+const topFollowersMaxConcurrent = envInteger("TOP_FOLLOWERS_MAX_CONCURRENT", 2, 1, 10);
+const topFollowersMaxPages = envInteger("TOP_FOLLOWERS_MAX_PAGES", 6250, 1, 6250);
 const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
 const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 75000, 20, 100000);
 const bangerScoringVersion = 2;
@@ -51,6 +62,9 @@ const historyStorePath = process.env.HISTORY_STORE_PATH ||
   (fs.existsSync("/data") ? "/data/twidget-history.json" : path.resolve(process.cwd(), "data", "twidget-history.json"));
 const historyBackend = String(process.env.HISTORY_BACKEND || "json").trim().toLowerCase();
 const redisUrl = String(process.env.REDIS_URL || "").trim();
+const twitterApisApiKey = String(process.env.TWITTERAPIS_API_KEY || "").trim();
+const twitterApisFollowersEndpoint = String(process.env.TWITTERAPIS_FOLLOWERS_ENDPOINT ||
+  "https://api.twitterapis.com/twitter/user/followers_v2").trim();
 
 const redisClient = await connectRedis(redisUrl);
 const cache = new SharedJsonCache({ client: redisClient, prefix: "twidget:profile", maxEntries: maxCacheEntries });
@@ -64,11 +78,20 @@ const expensiveLimiter = redisClient
 const historyRegistrationLimiter = redisClient
   ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:history-registration", windowMs: 60 * 60 * 1000 })
   : new LocalFixedWindowLimiter({ windowMs: 60 * 60 * 1000, maxKeys: 1 });
+const topFollowersDailyLimiter = redisClient
+  ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:top-followers-daily", windowMs: 24 * 60 * 60 * 1000 })
+  : new LocalFixedWindowLimiter({ windowMs: 24 * 60 * 60 * 1000, maxKeys: 1 });
+const topFollowersPerIpDailyLimiter = redisClient
+  ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:top-followers-ip-daily", windowMs: 24 * 60 * 60 * 1000 })
+  : new LocalFixedWindowLimiter({ windowMs: 24 * 60 * 60 * 1000, maxKeys: maxTrackedIps });
 const historyRepository = await createHistoryRepository();
 const oauthStates = new Map();
 const oauthSessions = new Map();
 const profileInFlight = new Map();
 const bangerInFlight = new Map();
+const topFollowersJobs = new Map();
+const topFollowersQueue = new Map();
+let topFollowersActive = 0;
 let upstreamActive = 0;
 
 // The follower-graph reconstruction feature is gone (removed 2026-07-08:
@@ -119,7 +142,12 @@ app.use((req, res, next) => {
 // get a smaller budget because they can trigger remote API work.
 app.use(rateLimit(requestLimiter, rateLimitMax));
 app.use((req, res, next) => {
-  if (/^\/(admin|analytics|banger|history|official|oauth)\b/.test(req.path)) {
+  // A completed follower archive is a cheap database read, and one hydration
+  // legitimately spans several pages. Keep it under the general abuse limit
+  // without consuming the smaller remote-work budget used by scan starts.
+  const topFollowersArchiveRead = req.method === "GET"
+    && /^\/history\/[^/]+\/top-followers\/all$/.test(req.path);
+  if (!topFollowersArchiveRead && /^\/(admin|analytics|banger|history|official|oauth)\b/.test(req.path)) {
     return rateLimit(expensiveLimiter, expensiveRateLimitMax)(req, res, next);
   }
   next();
@@ -197,6 +225,12 @@ app.get("/health", async (_req, res) => {
       inactiveAccountDays: historyInactiveAccountDays || null,
       analyticsImport: true,
       archiveBackfill: waybackEnabled,
+      topFollowers: {
+        serverScans: Boolean(twitterApisApiKey),
+        freshnessHours: topFollowersFreshMs / (60 * 60 * 1000),
+        refreshHours: topFollowersRefreshMs / (60 * 60 * 1000),
+        retentionDays: topFollowersRetentionDays,
+      },
     },
     sharedState: redisClient ? "redis" : "local",
   });
@@ -388,12 +422,119 @@ app.get("/history/:username/top-followers", async (req, res) => {
     return;
   }
   await historyRepository.getHistory(key, { touch: true });
+  const snapshot = await historyRepository.getTopFollowersSnapshot(key, { offset: 0, limit: 5 });
+  if (snapshot?.followers?.length) {
+    res.json(topFollowersSnapshotResponse(username, snapshot, true));
+    return;
+  }
   const cached = (await historyRepository.getMeta(key)).topFollowers;
   if (!cached || !Array.isArray(cached.top) || !cached.top.length) {
     res.status(404).json({ error: "top_followers_not_cached" });
     return;
   }
   res.json({ userName: username, ...cached });
+});
+
+app.get("/history/:username/top-followers/all", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const offset = queryInteger(req.query.offset, 0, 0, 10_000_000);
+  const limit = queryInteger(req.query.limit, 250, 1, 2_000);
+  if (offset === null || limit === null) {
+    res.status(400).json({ error: "invalid_pagination" });
+    return;
+  }
+  const key = username.toLowerCase();
+  const snapshot = await historyRepository.getTopFollowersSnapshot(key, { offset, limit });
+  if (!snapshot?.followers?.length && offset === 0) {
+    res.status(404).json({ error: "top_followers_not_cached" });
+    return;
+  }
+  if (!snapshot) {
+    res.status(404).json({ error: "top_followers_not_cached" });
+    return;
+  }
+  await historyRepository.getHistory(key, { touch: true });
+  res.json({
+    ...topFollowersSnapshotResponse(username, snapshot, false),
+    offset,
+    limit,
+    nextOffset: offset + snapshot.followers.length < snapshot.total
+      ? offset + snapshot.followers.length
+      : null,
+  });
+});
+
+app.get("/history/:username/top-followers/scan", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  const scan = await historyRepository.getTopFollowersScan(username.toLowerCase());
+  if (!scan) {
+    res.status(404).json({ error: "top_followers_scan_not_found" });
+    return;
+  }
+  if (scan.status === "running" && !topFollowersJobs.has(username.toLowerCase())) {
+    launchTopFollowersJob(username.toLowerCase(), username, scan);
+  }
+  res.json(topFollowersScanResponse(username, scan));
+});
+
+app.post("/history/:username/top-followers/scan", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) {
+    res.status(400).json({ error: "invalid_username" });
+    return;
+  }
+  if (!twitterApisApiKey) {
+    res.status(503).json({ error: "top_followers_scan_not_configured" });
+    return;
+  }
+  const key = username.toLowerCase();
+  if (!(await historyRepository.hasAccount(key))) {
+    res.status(409).json({ error: "history_account_not_registered" });
+    return;
+  }
+  const enrollmentMeta = await historyRepository.getMeta(key);
+  if (!enrollmentMeta.topFollowersEnrolledAt) {
+    await historyRepository.setMeta(key, { ...enrollmentMeta, topFollowersEnrolledAt: Date.now() });
+  }
+  const snapshot = await historyRepository.getTopFollowersSnapshot(key, { offset: 0, limit: 5 });
+  if (snapshot && Date.now() - snapshot.completedAt < topFollowersFreshMs) {
+    res.json(topFollowersSnapshotResponse(username, snapshot, true));
+    return;
+  }
+  const existing = await historyRepository.getTopFollowersScan(key);
+  if (existing?.status === "running") {
+    if (!topFollowersJobs.has(key)) launchTopFollowersJob(key, username, existing);
+    res.status(202).json(topFollowersScanResponse(username, existing));
+    return;
+  }
+  if (topFollowersActive >= topFollowersMaxConcurrent) {
+    res.setHeader("Retry-After", "15");
+    res.status(503).json({ error: "top_followers_scan_capacity_reached" });
+    return;
+  }
+  const clientDaily = await topFollowersPerIpDailyLimiter.take(req.ip || req.socket?.remoteAddress || "unknown");
+  if (clientDaily.capacityReached || clientDaily.count > topFollowersDailyStartsPerIp) {
+    res.setHeader("Retry-After", String(Math.ceil(clientDaily.retryMs / 1000)));
+    res.status(429).json({ error: "top_followers_client_daily_limit_reached" });
+    return;
+  }
+  const daily = await topFollowersDailyLimiter.take("all");
+  if (daily.capacityReached || daily.count > topFollowersDailyStarts) {
+    res.setHeader("Retry-After", String(Math.ceil(daily.retryMs / 1000)));
+    res.status(429).json({ error: "top_followers_daily_limit_reached" });
+    return;
+  }
+  const scan = await historyRepository.startTopFollowersScan(key, crypto.randomUUID());
+  launchTopFollowersJob(key, username, scan);
+  res.status(202).json(topFollowersScanResponse(username, scan));
 });
 
 app.post("/history/:username/top-followers", requireTopFollowersPublisher, historyJsonBody, async (req, res) => {
@@ -413,7 +554,11 @@ app.post("/history/:username/top-followers", requireTopFollowersPublisher, histo
     return;
   }
   const meta = await historyRepository.getMeta(key);
-  await historyRepository.setMeta(key, { ...meta, topFollowers: cached });
+  await historyRepository.setMeta(key, {
+    ...meta,
+    topFollowers: cached,
+    topFollowersEnrolledAt: meta.topFollowersEnrolledAt || Date.now(),
+  });
   await historyRepository.getHistory(key, { touch: true });
   res.status(201).json({ userName: username, ...cached });
 });
@@ -551,15 +696,20 @@ app.get("/analytics/:username", async (req, res) => {
 async function computeAnalytics(username) {
   const profile = await fetchFxProfile(username);
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const posts = await fetchFxWeeklyPosts(username, weekAgo);
+  const activity = await fetchFxWeeklyPosts(username, weekAgo);
+  const posts = activity.posts;
 
   const postCount = posts.length;
   const views = posts.map((post) => post.views);
   const engagements = posts.map((post) => post.engagements);
+  const likes = posts.map((post) => post.likes);
+  const replies = posts.map((post) => post.replies);
+  const shares = posts.map((post) => post.reposts + post.quotes);
   const totalViews = sum(views);
   const totalEngagements = sum(engagements);
   const best = maxBy(posts, (post) => post.engagements);
-  const worst = minBy(posts, (post) => post.engagements);
+  const maturePosts = posts.filter((post) => post.ts > 0 && Date.now() - post.ts >= 24 * 60 * 60 * 1000);
+  const worst = minBy(maturePosts, (post) => post.engagements);
 
   return {
     userName: username,
@@ -579,9 +729,23 @@ async function computeAnalytics(username) {
       avgEngagementsPerFollower: profile.followersCount > 0 && postCount > 0 ? totalEngagements / postCount / profile.followersCount : 0,
       engagementRate: totalViews > 0 ? totalEngagements / totalViews : 0,
     },
-    // With only one post, best and worst would be identical — show just the one.
+    benchmarks: {
+      medianLikes: median(likes),
+      medianReplies: median(replies),
+      medianShares: median(shares),
+    },
+    // Require two posts with a full day of exposure before naming a quietest one.
     best: posts.length ? best : null,
-    worst: posts.length >= 2 ? worst : null,
+    worst: maturePosts.length >= 2 ? worst : null,
+    // Lets clients derive conservative, account-specific guidance without
+    // exposing replies or reposts (already excluded by fetchFxWeeklyPosts).
+    recentPosts: posts.slice(0, 50).map((post) => ({
+      ...post,
+      text: post.text.slice(0, 180),
+    })),
+    // Original-post timestamps let clients build streaks without counting replies.
+    activityTimestamps: posts.map((post) => post.ts),
+    activityComplete: activity.complete,
     cachedAt: Date.now(),
   };
 }
@@ -703,7 +867,7 @@ function publicBangerState(state) {
 }
 
 async function fetchFxWeeklyPosts(username, weekAgo) {
-  if (process.env.TEST_MOCK_UPSTREAM === "1") return [];
+  if (process.env.TEST_MOCK_UPSTREAM === "1") return { posts: [], complete: true };
   const url = new URL(`https://api.fxtwitter.com/2/profile/${encodeURIComponent(username)}/statuses`);
   url.searchParams.set("count", String(analyticsPostCount));
   url.searchParams.set("since", String(weekAgo));
@@ -711,16 +875,18 @@ async function fetchFxWeeklyPosts(username, weekAgo) {
     headers: { Accept: "application/json", "User-Agent": "TwidgetBridge/0.1" },
     signal: AbortSignal.timeout(15000),
   });
-  if (response.status === 204) return [];
+  if (response.status === 204) return { posts: [], complete: true };
   const json = await response.json().catch(() => ({}));
   if (!response.ok || numberValue(json.code) >= 400) {
     throw new Error(`FxTwitter statuses ${response.status}: ${stringValue(json.message) || "request failed"}`);
   }
   const requested = username.toLowerCase();
-  return (Array.isArray(json.results) ? json.results : [])
+  const results = Array.isArray(json.results) ? json.results : [];
+  const posts = results
     .filter((status) => isWeeklyOwnPost(status, requested, weekAgo))
     .map(normalizeFxStatus)
     .sort((a, b) => b.ts - a.ts);
+  return { posts, complete: results.length < analyticsPostCount };
 }
 
 function normalizeFxStatus(status) {
@@ -907,6 +1073,7 @@ async function refreshKnownAccounts() {
   try {
     const today = startOfDay(Date.now());
     const accounts = await historyRepository.listAccounts();
+    await scheduleTopFollowersRefreshes(accounts);
     for (const key of accounts) {
       const samples = await historyRepository.getHistory(key);
       const latest = samples[samples.length - 1];
@@ -930,19 +1097,173 @@ async function refreshKnownAccounts() {
   }
 }
 
+async function scheduleTopFollowersRefreshes(accounts) {
+  if (!twitterApisApiKey) return;
+  const now = Date.now();
+  for (const key of accounts) {
+    try {
+      const [snapshot, scan, meta] = await Promise.all([
+        historyRepository.getTopFollowersSnapshot(key, { offset: 0, limit: 1 }),
+        historyRepository.getTopFollowersScan(key),
+        historyRepository.getMeta(key),
+      ]);
+      if (!meta.topFollowersEnrolledAt && !snapshot && !scan && !meta.topFollowers) continue;
+      if (scan?.status === "running") {
+        launchTopFollowersJob(key, key, scan);
+        continue;
+      }
+      if (!shouldRefreshTopFollowers({ snapshot, scan, now, refreshMs: topFollowersRefreshMs })) continue;
+      const started = await historyRepository.startTopFollowersScan(key, crypto.randomUUID());
+      launchTopFollowersJob(key, key, started);
+      console.log(`Daily Top Followers refresh queued for ${key}`);
+    } catch (error) {
+      console.warn(`Unable to queue daily Top Followers refresh for ${key}:`, error?.message || error);
+    }
+  }
+}
+
 async function pruneHistory() {
   const releaseLock = await acquireJobLock("history-prune", historyPruneMs);
   if (!releaseLock) return;
   try {
     const result = await historyRepository.prune();
+    const deletedTopFollowers = await historyRepository.pruneTopFollowers(topFollowersRetentionDays);
     if (result.deletedAccounts || result.deletedSamples) {
       console.log(`History retention pruned ${result.deletedAccounts} accounts and ${result.deletedSamples} samples`);
     }
+    if (deletedTopFollowers) console.log(`Top Followers retention pruned ${deletedTopFollowers} scans`);
   } catch (error) {
     console.warn("History retention failed:", error);
   } finally {
     await releaseLock();
   }
+}
+
+function launchTopFollowersJob(key, username, scan) {
+  if (topFollowersJobs.has(key) || topFollowersQueue.has(key)) return;
+  topFollowersQueue.set(key, { username, scan });
+  drainTopFollowersQueue();
+}
+
+function drainTopFollowersQueue() {
+  while (topFollowersActive < topFollowersMaxConcurrent && topFollowersQueue.size) {
+    const next = topFollowersQueue.entries().next().value;
+    if (!next) return;
+    const [key, { username, scan }] = next;
+    topFollowersQueue.delete(key);
+    startTopFollowersJob(key, username, scan);
+  }
+}
+
+function startTopFollowersJob(key, username, scan) {
+  topFollowersActive += 1;
+  const job = runTopFollowersJobWithLock(key, username, scan)
+    .catch((error) => console.error(`Top Followers scan crashed for ${key}:`, error))
+    .finally(() => {
+      topFollowersJobs.delete(key);
+      topFollowersActive -= 1;
+      drainTopFollowersQueue();
+    });
+  topFollowersJobs.set(key, job);
+}
+
+async function runTopFollowersJobWithLock(key, username, scan) {
+  const releaseLock = await acquireJobLock(`top-followers:${key}`, 12 * 60 * 60 * 1000);
+  if (!releaseLock) return;
+  try {
+    await runTopFollowersJob(key, username, scan);
+  } finally {
+    await releaseLock();
+  }
+}
+
+async function runTopFollowersJob(key, username, initial) {
+  let scan = initial;
+  try {
+    while (scan.pages < topFollowersMaxPages) {
+      const page = await withUpstreamSlot(() => fetchTopFollowersProviderPage(username, scan.cursor));
+      if (!page.users.length) {
+        if (!scan.scanned) throw new Error("top_followers_unavailable");
+        await historyRepository.completeTopFollowersScan(key, scan.scanId);
+        console.log(`Top Followers scan completed for ${key}: ${scan.scanned} followers across ${scan.pages} pages`);
+        return;
+      }
+      if (page.nextCursor && page.nextCursor === scan.cursor) throw new Error("top_followers_pagination_stalled");
+      scan = await historyRepository.appendTopFollowersPage(
+        key,
+        scan.scanId,
+        page.users,
+        page.nextCursor,
+      );
+      if (!scan) return;
+      if (!page.nextCursor) {
+        scan = await historyRepository.completeTopFollowersScan(key, scan.scanId);
+        console.log(`Top Followers scan completed for ${key}: ${scan?.scanned || 0} followers across ${scan?.pages || 0} pages`);
+        return;
+      }
+    }
+    throw new Error("top_followers_page_limit_reached");
+  } catch (error) {
+    const code = topFollowersFailureCode(error);
+    await historyRepository.failTopFollowersScan(key, scan.scanId, code);
+    console.warn(`Top Followers scan failed for ${key}: ${code}`);
+  }
+}
+
+async function fetchTopFollowersProviderPage(username, cursor) {
+  if (process.env.TEST_MOCK_UPSTREAM === "1") {
+    if (cursor) return { users: [], nextCursor: "" };
+    return {
+      users: [
+        { id: "42", username: "topfan", name: "Top Fan", followers: 9001, verified: false, avatar: "", mutual: null },
+        { id: "43", username: "anotherfan", name: "Another Fan", followers: 8000, verified: true, avatar: "", mutual: true },
+      ],
+      nextCursor: "",
+    };
+  }
+  return fetchTwitterApisFollowersPage({
+    username,
+    cursor,
+    apiKey: twitterApisApiKey,
+    endpoint: twitterApisFollowersEndpoint,
+  });
+}
+
+function topFollowersFailureCode(error) {
+  if (error instanceof TopFollowersProviderError) {
+    if (error.status === 401 || error.status === 403) return "provider_key_rejected";
+    if (error.status === 402) return "provider_credit_empty";
+    if (error.status === 400) return "invalid_username";
+    if (error.status === 404) return "followers_unavailable";
+    if (error.status === 429) return "provider_rate_limited";
+    return "provider_unavailable";
+  }
+  return String(error?.message || "scan_failed").slice(0, 160);
+}
+
+function topFollowersScanResponse(username, scan) {
+  return {
+    userName: username,
+    source: "bridge",
+    status: scan.status,
+    pages: scan.pages,
+    scanned: scan.scanned,
+    startedAt: scan.startedAt,
+    updatedAt: scan.updatedAt,
+    completedAt: scan.completedAt,
+    ...(scan.error ? { error: scan.error } : {}),
+  };
+}
+
+function topFollowersSnapshotResponse(username, snapshot, legacyTop) {
+  const response = {
+    ...topFollowersScanResponse(username, snapshot),
+    cachedAt: snapshot.completedAt,
+    total: snapshot.total,
+  };
+  if (legacyTop) response.top = snapshot.followers.slice(0, 5);
+  else response.followers = snapshot.followers;
+  return response;
 }
 
 function sleep(ms) {
@@ -1611,8 +1932,12 @@ async function createHistoryRepository() {
   }
   await repository.initialize();
   const pruned = await repository.prune();
+  const prunedTopFollowers = await repository.pruneTopFollowers(topFollowersRetentionDays);
   if (pruned.deletedAccounts || pruned.deletedSamples) {
     console.log(`History retention pruned ${pruned.deletedAccounts} accounts and ${pruned.deletedSamples} samples at startup`);
+  }
+  if (prunedTopFollowers) {
+    console.log(`Top Followers retention pruned ${prunedTopFollowers} scans at startup`);
   }
   console.log(`History backend: ${repository.backendName()}`);
   return repository;
@@ -1646,6 +1971,13 @@ function envInteger(name, fallback, min, max) {
   if (raw === undefined || raw === "") return fallback;
   const parsed = Number(raw);
   return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+function queryInteger(value, fallback, min, max) {
+  if (value === undefined || value === "") return fallback;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : null;
 }
 
 function base64Url(buffer) {

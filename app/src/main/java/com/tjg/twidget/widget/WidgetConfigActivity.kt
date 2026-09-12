@@ -22,6 +22,7 @@ import android.widget.TextView
 import androidx.appcompat.widget.SeslSeekBar
 import androidx.appcompat.widget.SwitchCompat
 import com.tjg.twidget.R
+import com.tjg.twidget.brief.BriefStore
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import com.tjg.twidget.ui.EdgeToEdgeActivity
@@ -41,9 +42,11 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var colorMode = TwidgetStore.COLOR_MODE_SYSTEM
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
+    private var language = "DEFAULT"
     private var currentLevel = 2
     private var isLockWidget = false
     private var isLockWide = false
+    private var isBriefWidget = false
     private val accountRadios = mutableListOf<Pair<String, RadioButton>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +60,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         isLockWide = intent?.getBooleanExtra(EXTRA_LOCKSCREEN_WIDE, false) == true
         val providerClass = AppWidgetManager.getInstance(this)
             .getAppWidgetInfo(appWidgetId)?.provider?.className.orEmpty()
+        isBriefWidget = providerClass == TwidgetBriefWidget::class.java.name
         if (providerClass.startsWith("com.tjg.twidget.LockScreenFollower")) {
             isLockWidget = true
             isLockWide = providerClass == com.tjg.twidget.LockScreenFollowerWideWidget::class.java.name
@@ -73,8 +77,19 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             listOf(R.id.opacity_block, R.id.tint_row, R.id.font_row, R.id.tap_separator, R.id.tap_action_card)
                 .forEach { findViewById<View>(it).visibility = View.GONE }
             findViewById<CardItemView>(R.id.logo_row).showTopDivider = false
+        } else if (isBriefWidget) {
+            // Brief chooses its account, copy, icon and tap destination from the
+            // current dynamic card. Its glass appearance and font remain user
+            // configurable.
+            listOf(
+                R.id.account_separator,
+                R.id.account_group,
+                R.id.logo_row,
+                R.id.delta_row,
+                R.id.tap_separator,
+                R.id.tap_action_card,
+            ).forEach { findViewById<View>(it).visibility = View.GONE }
         }
-
         val settings = TwidgetStore.widgetSettings(this, appWidgetId)
         tintAlpha = settings.tintAlpha
         currentLevel = closestOpacityLevel(tintAlpha)
@@ -86,8 +101,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         colorMode = settings.colorMode
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
+        language = settings.language
+        if (isBriefWidget) accountUsername = ""
         bindControls()
-        buildAccountRows()
+        if (!isBriefWidget) buildAccountRows()
         render()
     }
 
@@ -117,6 +134,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<CardItemView>(R.id.tint_row).setOnClickListener { pickColorMode(it) }
         findViewById<CardItemView>(R.id.logo_row).setOnClickListener { pickLogo(it) }
         findViewById<CardItemView>(R.id.font_row).setOnClickListener { pickFont(it) }
+        findViewById<CardItemView>(R.id.language_row)?.setOnClickListener { pickLanguage(it) }
         findViewById<SwitchCompat>(R.id.delta_switch).isChecked = showDelta
         findViewById<View>(R.id.delta_row).setOnClickListener {
             showDelta = !showDelta
@@ -239,10 +257,19 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private fun render() {
         findViewById<CardItemView>(R.id.tint_row).summary = colorModeLabel(colorMode)
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
+        findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
         findViewById<CardItemView>(R.id.logo_row).apply {
-            summary = if (logo == TwidgetStore.LOGO_TWITTER) getString(R.string.widget_logo_twitter) else getString(R.string.widget_logo_x)
+            summary = when (logo) {
+                TwidgetStore.LOGO_TWITTER -> getString(R.string.widget_logo_twitter)
+                else -> getString(R.string.widget_logo_x)
+            }
             findViewById<ImageView>(OneUiR.id.end_view)?.apply {
-                setImageResource(if (logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x)
+                setImageResource(
+                    when (logo) {
+                        TwidgetStore.LOGO_TWITTER -> R.drawable.ic_logo_twitter
+                        else -> R.drawable.ic_logo_x
+                    },
+                )
                 imageTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
             }
         }
@@ -252,7 +279,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language)
 
         if (isLockWidget) {
             preview.background = null
@@ -265,6 +292,36 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER,
             ))
+            return
+        }
+
+        if (isBriefWidget) {
+            val widthDp = 300
+            val heightDp = 149
+            val darkPreview = isDarkPreview()
+            val previewBase = if (darkPreview) 16 else 255
+            preview.background = GradientDrawable().apply {
+                cornerRadius = resources.displayMetrics.density * 26f
+                setColor(Color.argb(tintAlpha, previewBase, previewBase, previewBase))
+            }
+            preview.layoutParams = preview.layoutParams.apply {
+                width = dp(widthDp)
+                height = dp(heightDp)
+            }
+            preview.addView(ImageView(this).apply {
+                scaleType = ImageView.ScaleType.FIT_XY
+                setImageBitmap(
+                    BriefWidgetArtworkRenderer.render(
+                        context = this@WidgetConfigActivity,
+                        widthPx = dp(widthDp),
+                        heightPx = dp(heightDp),
+                        account = selectedAccount,
+                        snapshot = BriefStore.read(this@WidgetConfigActivity, selectedAccount),
+                        dark = darkPreview,
+                        fontFamily = fontFamily,
+                    ),
+                )
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             return
         }
 
@@ -319,7 +376,13 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun pickLogo(anchor: View) {
         val values = arrayOf(TwidgetStore.LOGO_X, TwidgetStore.LOGO_TWITTER)
-        showDropDown(anchor, listOf(getString(R.string.widget_logo_x), getString(R.string.widget_logo_twitter)), values.indexOf(logo).coerceAtLeast(0)) { which ->
+        val labels = values.map {
+            when (it) {
+                TwidgetStore.LOGO_TWITTER -> getString(R.string.widget_logo_twitter)
+                else -> getString(R.string.widget_logo_x)
+            }
+        }
+        showDropDown(anchor, labels, values.indexOf(logo).coerceAtLeast(0)) { which ->
             logo = values[which]
             render()
         }
@@ -362,7 +425,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun saveAndFinish() {
         tintAlpha = OPACITY_PRESETS[currentLevel]
-        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta))
+        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language))
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             val manager = AppWidgetManager.getInstance(this)
             if (isLockWidget) {
@@ -373,7 +436,11 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                     if (isLockWide) R.layout.lockscreen_message_2x1 else R.layout.lockscreen_message_1x1,
                 )
             } else {
-                TwidgetWidget.updateWidget(this, manager, appWidgetId)
+                if (isBriefWidget) {
+                    TwidgetBriefWidget.updateWidget(this, manager, appWidgetId)
+                } else {
+                    TwidgetWidget.updateWidget(this, manager, appWidgetId)
+                }
             }
             setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
         } else if (isLockWidget) {
@@ -463,4 +530,22 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         val heightDp: Int,
         val cornerRadiusDp: Float,
     )
+    private fun pickLanguage(anchor: View) {
+        val values = arrayOf("DEFAULT", "de", "en")
+        val labels = listOf(
+            getString(R.string.widget_language_default),
+            getString(R.string.widget_language_de),
+            getString(R.string.widget_language_en)
+        )
+        showDropDown(anchor, labels, values.indexOf(language).coerceAtLeast(0)) { which ->
+            language = values[which]
+            render()
+        }
+    }
+
+    private fun languageLabel(lang: String): String = when (lang) {
+        "de" -> getString(R.string.widget_language_de)
+        "en" -> getString(R.string.widget_language_en)
+        else -> getString(R.string.widget_language_default)
+    }
 }

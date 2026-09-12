@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.net.Uri
@@ -26,10 +27,9 @@ import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.settings.SettingsAdvancedActivity
-import com.tjg.twidget.providers.TwitterApisClient
-import com.tjg.twidget.providers.TwitterApisAccessSource
 import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 /** Renders the four Figma states for the dashboard's Top Followers card. */
@@ -41,7 +41,8 @@ internal class TopFollowersCardBinder(
     fun create(account: String): View {
         val state = TopFollowersStore.read(activity, account)
         return when {
-            state.scanning && TopFollowersActiveScans.isActive(account) -> scanningCard(account, state)
+            state.scanning && TopFollowersActiveScans.isActive(account) &&
+                TopFollowersScanWorker.linkedApiScanSource(activity) != null -> scanningCard(account, state)
             state.complete && state.top.isNotEmpty() -> resultsCard(account, state)
             else -> notScannedCard(account, state)
         }
@@ -76,7 +77,13 @@ internal class TopFollowersCardBinder(
                 topMargin = dp(40)
             })
             addView(Button(activity).apply {
-                text = activity.getString(R.string.top_followers_start_scan)
+                val linkedApi = TopFollowersScanWorker.linkedApiScanSource(activity)
+                val shareHistory = TwidgetStore.settings(activity).shareHistory
+                text = activity.getString(when {
+                    linkedApi != null -> R.string.top_followers_start_scan
+                    shareHistory -> R.string.top_followers_find_with_bridge
+                    else -> R.string.top_followers_add_api_key
+                })
                 isAllCaps = false
                 textSize = 20f
                 setTextColor(Color.WHITE)
@@ -84,7 +91,13 @@ internal class TopFollowersCardBinder(
                 stateListAnimator = null
                 elevation = dp(8).toFloat()
                 background = rounded(accentColor, 28f)
-                setOnClickListener { showStartDialog(account) }
+                setOnClickListener {
+                    when {
+                        linkedApi != null -> showStartDialog(account)
+                        shareHistory -> requestBridgeScan(account)
+                        else -> openApiKeySettings()
+                    }
+                }
                 contentDescription = if (state.error.isBlank()) text else "${text}. ${state.error}"
             }, frameParams(206, 60).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
@@ -105,7 +118,7 @@ internal class TopFollowersCardBinder(
             minimumHeight = dp(424)
             background = rounded(cardColor, 28f)
             clipToOutline = true
-            addView(header(progressTitle, account, refreshEnabled = false, stopEnabled = true),
+            addView(header(progressTitle, account, openBrowserEnabled = false, stopEnabled = true),
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)))
             state.top.take(5).forEachIndexed { index, follower ->
                 addView(resultRow(index + 1, follower, divider = true),
@@ -126,56 +139,78 @@ internal class TopFollowersCardBinder(
             (getChildAt(1).layoutParams as LinearLayout.LayoutParams).height = dp(40)
         }
 
-    private fun resultsCard(account: String, state: TopFollowersState): View =
-        LinearLayout(activity).apply {
+    private fun resultsCard(account: String, state: TopFollowersState): View {
+        TopFollowersArchiveStore.seedFromTop(activity, account, state.top)
+        val canBrowse = state.complete && state.top.isNotEmpty()
+        return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             minimumHeight = dp(384)
             background = rounded(cardColor, 28f)
             clipToOutline = true
-            addView(header(activity.getString(R.string.top_followers_results_title), account, refreshEnabled = true),
+            addView(header(activity.getString(R.string.top_followers_results_title), account, openBrowserEnabled = true),
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)))
             state.top.take(5).forEachIndexed { index, follower ->
                 addView(resultRow(index + 1, follower, index < 4),
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(68)))
             }
+            if (canBrowse) {
+                addView(label(activity.getString(R.string.top_followers_view_all), 14f, accentColor, 700).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(8), 0, dp(12))
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { openBrowse(account) }
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            }
         }
+    }
 
     private fun header(
         title: String,
         account: String,
-        refreshEnabled: Boolean,
+        openBrowserEnabled: Boolean,
         stopEnabled: Boolean = false,
     ): View {
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(12), 0)
+            if (openBrowserEnabled) {
+                isClickable = true
+                isFocusable = true
+                foreground = RippleDrawable(
+                    ColorStateList.valueOf(rippleColor),
+                    null,
+                    ColorDrawable(Color.WHITE),
+                )
+                contentDescription = "$title. ${activity.getString(R.string.top_followers_view_all)}"
+                setOnClickListener { openBrowse(account) }
+            }
             addView(label(title, 13f, secondaryColor, 700).apply { gravity = Gravity.CENTER_VERTICAL },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
             addView(ImageView(activity).apply {
                 setImageDrawable(AppCompatResources.getDrawable(
                     activity,
-                    if (stopEnabled) R.drawable.ic_dashboard_edit_close else OneUiIconR.drawable.ic_oui_refresh,
+                    if (stopEnabled) {
+                        R.drawable.ic_dashboard_edit_close
+                    } else {
+                        OneUiIconR.drawable.ic_oui_keyboard_arrow_right
+                    },
                 ))
-                imageTintList = ColorStateList.valueOf(primaryColor)
-                setPadding(dp(8), dp(8), dp(8), dp(8))
-                val actionEnabled = refreshEnabled || stopEnabled
-                isEnabled = actionEnabled
-                alpha = if (actionEnabled) 1f else 0.7f
-                isClickable = actionEnabled
-                isFocusable = actionEnabled
-                if (actionEnabled) {
+                imageTintList = ColorStateList.valueOf(if (stopEnabled) primaryColor else secondaryColor)
+                val iconPadding = if (stopEnabled) 8 else 11
+                setPadding(dp(iconPadding), dp(iconPadding), dp(iconPadding), dp(iconPadding))
+                isClickable = stopEnabled
+                isFocusable = stopEnabled
+                if (stopEnabled) {
                     background = RippleDrawable(
                         ColorStateList.valueOf(rippleColor),
                         null,
                         rounded(cardColor, 20f),
                     )
-                }
-                contentDescription = activity.getString(
-                    if (stopEnabled) R.string.top_followers_stop_scan else R.string.top_followers_refresh,
-                )
-                when {
-                    stopEnabled -> setOnClickListener { stopScan(account) }
-                    refreshEnabled -> setOnClickListener { showStartDialog(account) }
+                    contentDescription = activity.getString(R.string.top_followers_stop_scan)
+                    setOnClickListener { stopScan(account) }
+                } else {
+                    contentDescription = null
                 }
             }, LinearLayout.LayoutParams(dp(40), dp(40)))
         }
@@ -265,25 +300,35 @@ internal class TopFollowersCardBinder(
     }
 
     private fun showStartDialog(account: String) {
-        val accessSource = TwitterApisClient.topFollowersAccess(activity)?.source
-        val personalKey = accessSource == TwitterApisAccessSource.PERSONAL
+        val source = TopFollowersScanWorker.linkedApiScanSource(activity)
+        val dialogMode = selectTopFollowersScanDialogMode(source)
         val builder = AlertDialog.Builder(activity)
             .setTitle(R.string.top_followers_scan_title)
             .setMessage(
-                if (personalKey) R.string.top_followers_scan_message_personal
-                else R.string.top_followers_scan_message_trial,
+                when (dialogMode) {
+                    TopFollowersScanDialogMode.TWITTERAPIS -> R.string.top_followers_scan_message_personal
+                    TopFollowersScanDialogMode.X_API -> R.string.top_followers_scan_message_x_api
+                    TopFollowersScanDialogMode.UNAVAILABLE -> R.string.top_followers_scan_message_trial
+                },
             )
             // AppCompat lays buttons out neutral, negative, positive in LTR.
             .setNeutralButton(R.string.cancel, null)
             .setPositiveButton(R.string.top_followers_start) { _, _ -> startScan(account) }
-        if (shouldShowAddApiKeyAction(accessSource)) {
+        if (shouldShowAddApiKeyAction(source)) {
             builder.setNegativeButton(R.string.top_followers_add_api_key) { _, _ -> openApiKeySettings() }
         }
         builder.show()
     }
 
+    private fun requestBridgeScan(account: String) {
+        if (!TwidgetStore.settings(activity).shareHistory) return
+        requestNotificationPermission()
+        TopFollowersBridgeSyncWorker.enqueueScanRequest(activity, account)
+        Toast.makeText(activity, R.string.top_followers_bridge_scan_requested, Toast.LENGTH_LONG).show()
+    }
+
     private fun startScan(account: String) {
-        if (!TwitterApisClient.hasTopFollowersAccess(activity)) {
+        if (TopFollowersScanWorker.linkedApiScanSource(activity) == null) {
             Toast.makeText(activity, R.string.top_followers_api_key_required, Toast.LENGTH_LONG).show()
             openApiKeySettings()
             return
@@ -314,6 +359,13 @@ internal class TopFollowersCardBinder(
 
     private fun openXProfile(username: String) {
         activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://x.com/${Uri.encode(username)}")))
+    }
+
+    private fun openBrowse(account: String) {
+        activity.startRightSidePopOverActivity(
+            Intent(activity, TopFollowersBrowseActivity::class.java)
+                .putExtra(TopFollowersBrowseActivity.EXTRA_USERNAME, account),
+        )
     }
 
     private fun label(textValue: String, size: Float, color: Int, weight: Int) = TextView(activity).apply {
@@ -356,8 +408,22 @@ internal class TopFollowersCardBinder(
     private val rippleColor get() = (primaryColor and 0x00FFFFFF) or 0x24000000
 }
 
-internal fun shouldShowAddApiKeyAction(source: TwitterApisAccessSource?): Boolean =
-    source != TwitterApisAccessSource.PERSONAL
+internal enum class TopFollowersScanDialogMode {
+    TWITTERAPIS,
+    X_API,
+    UNAVAILABLE,
+}
+
+internal fun selectTopFollowersScanDialogMode(
+    source: TopFollowersScanSource?,
+): TopFollowersScanDialogMode = when {
+    source == TopFollowersScanSource.TWITTERAPIS -> TopFollowersScanDialogMode.TWITTERAPIS
+    source == TopFollowersScanSource.X_API -> TopFollowersScanDialogMode.X_API
+    else -> TopFollowersScanDialogMode.UNAVAILABLE
+}
+
+internal fun shouldShowAddApiKeyAction(source: TopFollowersScanSource?): Boolean =
+    source == null
 
 internal object TopFollowersProgress {
     fun percentage(scanned: Int, total: Long?): Int? {

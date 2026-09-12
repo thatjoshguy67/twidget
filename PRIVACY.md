@@ -1,7 +1,7 @@
 # Twidget Privacy Policy
 
 **Effective date:** 26 July 2026
-**Last updated:** 26 July 2026
+**Last updated:** 6 August 2026
 
 This Privacy Policy explains how **Twidget** (`com.tjg.twidget`) accesses,
 uses, stores, transmits, and deletes information. Twidget is developed and
@@ -83,9 +83,10 @@ maintainer-operated Twidget bridge may store:
 - sample dates, timestamps, and metric provenance;
 - verified movements derived from an X Analytics import, including dates and
   follow/unfollow counts; and
-- a completed Top Followers ranking containing up to five public accounts,
-  their public names, usernames, account IDs, follower counts, verification
-  state, avatar URLs, and scan metadata.
+- the latest completed Top Followers scan for that public account, including
+  the public names, usernames, account IDs, follower counts, verification
+  state, avatar URLs, mutual-follow state when the provider supplies it, and
+  scan metadata for the public accounts in the follower list.
 
 This information is pooled so participating Twidget users can receive genuine
 historical samples or reuse a completed public ranking. Ordinary direct
@@ -105,12 +106,19 @@ metrics remain on the device.
 
 ### Top Followers and post analytics providers
 
-When the user starts a Top Followers scan, Twidget sends the selected public
-username directly to TwitterAPIs with either the included rate-limited app key
-or a key supplied by the user. When TwitterAPIs is selected as the profile or
-post-analytics provider, the username is also sent for those requests.
-Personal provider keys remain encrypted on the device and are not sent through
-the Twidget bridge.
+When shared history is enabled and no personal provider key is selected, a Top
+Followers request sends the selected public username to the Twidget bridge.
+The bridge reuses a recent completed scan when available or sends the username
+to TwitterAPIs using a server-held, rate-limited provider key. Completed lists
+are retained for up to 30 days by default and can be viewed by other opted-in
+Twidget installs tracking that public handle.
+
+When shared history is disabled, or when the user chooses a personal
+TwitterAPIs key or compatible official X API credentials, the scan runs from
+the device instead. Personal provider keys remain encrypted on the device and
+are not sent through the Twidget bridge. When TwitterAPIs is selected as the
+profile or post-analytics provider, the username is also sent for those
+requests.
 
 ### Buffer scheduling and Cloudinary media
 
@@ -249,7 +257,7 @@ to processing of, restrict, or receive a copy of their personal information.
 ## Data deletion requests
 
 Twidget does not create user accounts. To request deletion of a public
-X/Twitter account's shared bridge history, contributed Top Followers ranking,
+X/Twitter account's shared bridge history, stored Top Followers scan,
 related bridge metadata, or media uploaded to the maintainer-operated
 Cloudinary account, contact **That Josh Guy** through
 [support@tjg.gg](mailto:support@tjg.gg).

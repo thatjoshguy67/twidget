@@ -36,11 +36,11 @@ import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleQueueHostActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import com.tjg.twidget.update.AppUpdateManager
+import com.tjg.twidget.update.UpdateCheckWorker
+import com.tjg.twidget.update.UpdateNotificationHelper
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as OneUiIconR
-import dev.oneuiproject.oneui.layout.Badge
-import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 
 class MainActivity : ScheduleQueueHostActivity() {
@@ -149,6 +149,7 @@ class MainActivity : ScheduleQueueHostActivity() {
                     AppExecutors.execute {
                         TwidgetStore.migrateStoredHistories(applicationContext)
                         RefreshWorker.schedule(applicationContext)
+                        UpdateCheckWorker.schedule(applicationContext)
                     }
                     render()
                     if (savedInstanceState == null) checkReleasesOnLaunch()
@@ -263,12 +264,10 @@ class MainActivity : ScheduleQueueHostActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    // Orange dot on the drawer's settings cog while an app update is
-    // available, mirroring official Samsung apps.
+    // Show one native update dot. One UI moves it from the collapsed drawer
+    // affordance to the settings button when the drawer is expanded.
     private fun updateSettingsBadge() {
-        findViewById<DrawerLayout>(R.id.main_toolbar_layout).setHeaderButtonBadge(
-            if (TwidgetStore.updateAvailable(this)) Badge.DOT else Badge.NONE
-        )
+        if (::drawerController.isInitialized) drawerController.updateNavigationBadge()
     }
 
     private fun checkReleasesOnLaunch() {
@@ -286,6 +285,8 @@ class MainActivity : ScheduleQueueHostActivity() {
                     check.update != null,
                     check.update?.version?.toString(),
                 )
+                check.update?.let { UpdateNotificationHelper.showIfNeeded(appContext, it) }
+                    ?: UpdateNotificationHelper.cancel(appContext)
                 // The debug channel uses a quota-free release sidecar and does
                 // not refresh notices through the rate-limited GitHub API.
                 if (check.notices.isNotEmpty()) ReleaseNoticesStore.save(appContext, check.notices)

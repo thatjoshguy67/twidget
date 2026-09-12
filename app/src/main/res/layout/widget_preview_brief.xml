@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_brief_card_surface">
+
+    <FrameLayout
+        android:layout_width="43dp"
+        android:layout_height="43dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/avatar_twidget">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_twidget_notification" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="start"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/one_ui_sans"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:text="@string/brief_preview_title"
+            android:textColor="#FF000000"
+            android:textFontWeight="600"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/one_ui_sans"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:text="@string/brief_preview_body"
+            android:textColor="#FF000000"
+            android:textFontWeight="400"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

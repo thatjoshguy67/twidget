@@ -37,8 +37,9 @@ internal data class TwitterApisTimelineResult(
  * stale mixed data.
  */
 object AnalyticsClient {
+    private const val WORST_POST_MATURITY_MS = 24 * 60 * 60 * 1000L
     private const val PREFS = "twidget_analytics"
-    private const val CACHE_VERSION = 4
+    private const val CACHE_VERSION = 6
     private const val STALE_MS = 60 * 60 * 1000L // 1 hour
     private const val TWITTERAPIS_STALE_MS = 6 * 60 * 60 * 1000L
     private const val ANALYTICS_PAGE_SIZE = 100
@@ -313,9 +314,13 @@ object AnalyticsClient {
     ): PostAnalytics {
         val views = posts.map { it.views }
         val engagements = posts.map { it.engagements }
+        val likes = posts.map { it.likes }
+        val replies = posts.map { it.replies }
+        val shares = posts.map { it.reposts + it.quotes }
         val totalViews = views.sum()
         val totalEngagements = engagements.sum()
         val count = posts.size
+        val maturePosts = posts.filter { it.timestamp > 0L && cachedAt - it.timestamp >= WORST_POST_MATURITY_MS }
         return PostAnalytics(
             userName = username,
             followers = followers,
@@ -335,8 +340,12 @@ object AnalyticsClient {
             } else 0.0,
             engagementRate = if (totalViews > 0) totalEngagements.toDouble() / totalViews else 0.0,
             best = posts.maxByOrNull { it.engagements },
-            worst = posts.minByOrNull { it.engagements }.takeIf { posts.size >= 2 },
+            worst = maturePosts.minByOrNull { it.engagements }.takeIf { maturePosts.size >= 2 },
             cachedAt = cachedAt,
+            medianLikes = median(likes),
+            medianReplies = median(replies),
+            medianShares = median(shares),
+            recentPosts = posts.take(50),
         )
     }
 
@@ -528,10 +537,18 @@ object AnalyticsClient {
                 .put("avgEngagementsPerFollower", a.avgEngagementsPerFollower)
                 .put("engagementRate", a.engagementRate),
         )
+        .put(
+            "benchmarks",
+            JSONObject()
+                .put("medianLikes", a.medianLikes)
+                .put("medianReplies", a.medianReplies)
+                .put("medianShares", a.medianShares),
+        )
         .apply {
             a.best?.let { put("best", serializePost(it)) }
             a.worst?.let { put("worst", serializePost(it)) }
             a.banger?.let { put("banger", serializePost(it)) }
+            put("recentPosts", JSONArray(a.recentPosts.map(::serializePost)))
             put("bangerComplete", a.bangerComplete)
             put("bangerPostsScanned", a.bangerPostsScanned)
         }

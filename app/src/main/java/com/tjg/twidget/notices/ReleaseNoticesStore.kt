@@ -16,6 +16,9 @@ object ReleaseNoticesStore {
     private const val KEY_CACHED_AT = "cached_at"
     private const val KEY_LAST_SEEN_TAG = "last_seen_tag"
 
+    fun visible(context: Context): List<ReleaseNotice> =
+        UpcomingReleaseNotes.merge(UpcomingReleaseNotes.read(context), cached(context).notices)
+
     fun cached(context: Context): CachedReleaseNotices {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val raw = prefs.getString(KEY_NOTICES, null) ?: return CachedReleaseNotices(emptyList(), 0L)
@@ -37,7 +40,7 @@ object ReleaseNoticesStore {
     }
 
     fun save(context: Context, notices: List<ReleaseNotice>, now: Long = System.currentTimeMillis()) {
-        val encoded = JSONArray(notices.map { notice ->
+        val encoded = JSONArray(notices.filterNot { it.upcoming }.map { notice ->
             JSONObject()
                 .put("tag", notice.tag)
                 .put("title", notice.title)

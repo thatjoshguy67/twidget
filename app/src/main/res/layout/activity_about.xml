@@ -44,17 +44,17 @@
             app:statusBarScrim="@android:color/transparent">
 
             <LinearLayout
+                android:id="@+id/about_header_content"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="@dimen/about_hero_content_height"
                 android:layout_marginTop="?attr/actionBarSize"
-                android:gravity="center"
+                android:gravity="top|center_horizontal"
                 android:orientation="vertical"
                 android:paddingStart="24dp"
                 android:paddingEnd="24dp"
                 android:paddingBottom="16dp"
                 android:clipChildren="false"
-                android:clipToPadding="false"
-                app:isCustomTitle="true">
+                android:clipToPadding="false">
 
                 <androidx.appcompat.widget.AppCompatImageView
                     android:id="@+id/about_header_icon"
@@ -87,29 +87,40 @@
                     android:textColor="?android:textColorSecondary"
                     android:textSize="14sp" />
 
-                <ImageView
-                    android:id="@+id/about_update_spinner"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
-                    android:elevation="2dp"
-                    android:contentDescription="@string/checking_for_updates"
-                    android:src="@drawable/oneui_spinner"
-                    android:visibility="gone" />
+                <FrameLayout
+                    android:id="@+id/about_update_action"
+                    android:layout_width="match_parent"
+                    android:layout_height="72dp"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:paddingTop="24dp"
+                    android:visibility="invisible">
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/about_update_button"
-                    style="@style/OneUI.ContainedButton"
-                    android:layout_width="160dp"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="sec"
-                    android:text="@string/update"
-                    android:textAllCaps="false"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
-                    android:visibility="gone" />
+                    <ImageView
+                        android:id="@+id/about_update_spinner"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/checking_for_updates"
+                        android:elevation="2dp"
+                        android:src="@drawable/oneui_spinner"
+                        android:visibility="gone" />
+
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/about_update_button"
+                        style="@style/OneUI.ContainedButton"
+                        android:layout_width="200dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:fontFamily="sec"
+                        android:text="@string/update"
+                        android:textAllCaps="false"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
+                        android:visibility="gone" />
+                </FrameLayout>
+
             </LinearLayout>
 
             <androidx.appcompat.widget.Toolbar
@@ -239,6 +250,16 @@
                     app:summary="@string/about_kingowen_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_kingowen_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_aaron_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    app:showTopDivider="true"
+                    app:summary="@string/about_aaron_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_aaron_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             <dev.oneuiproject.oneui.widget.Separator
@@ -337,10 +358,11 @@
         <ImageView
             android:layout_width="72dp"
             android:layout_height="72dp"
-            android:contentDescription="@null"
             android:layout_marginTop="-26dp"
+            android:contentDescription="@null"
             android:rotation="180"
             android:src="@drawable/ic_oui_keyboard_arrow_down"
             app:tint="?android:textColorSecondary" />
     </LinearLayout>
+
 </dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout>

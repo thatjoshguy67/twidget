@@ -53,9 +53,9 @@ Twidget can fetch stats a few ways.
 2. **Twidget bridge** — an externally hosted instance of [`bridge/`](bridge/). Currently uses FxTwitter first and falls back to Rettiwt for profile lookups when possible. Caches fetched results for other Twidget users.
 3. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself with any Node 22 host. Point Twidget at it under Settings → Advanced → Self-hosted bridge. Bridge routes include `GET /user/:username` and `GET /analytics/:username`. Set `BRIDGE_API_TOKEN` on self-hosted instances; the shared Twidget bridge remains token-free by design.
 4. **Official X API (bring your own credentials)** — for direct official profile stats. Bring your own API keys and fetch data directly from X using their V2 API. This is not cheap, so only paying X API users can utilise this option. Twidget does not provide this. 
-5. **TwitterAPIs** — Twidget's included app key provides a rate-limited Top Followers trial. Add your own key for direct profile stats, bounded seven-day post analytics/media, and no Twidget daily scan limit. Paid post analytics are cached for six hours and fall back to the configured bridge when unavailable.
+5. **TwitterAPIs** — opted-in Top Followers scans can run through Twidget's bridge and reuse a recent completed public scan. Add your own key for direct profile stats, bounded seven-day post analytics/media, and device-run follower scans without Twidget's daily limit. Paid post analytics are cached for six hours and fall back to the configured bridge when unavailable.
 
-The **Your Top Followers** dashboard card uses [TwitterAPIs](https://twitterapis.com) to enumerate a public account's followers. The included app key permits one completed scan per account per local day. A personal key entered under Settings → Advanced takes priority, is encrypted on-device, and removes Twidget's daily limit; TwitterAPIs charges and provider limits still apply. Scans are manual, resumable, and capped at 6,250 paid pages per run (the provider's documented $5 at $0.0008 per read). Protected accounts are not supported. When shared history is enabled, a completed ranking is cached with that account's bridge history so participating installs can reuse it instead of paying for the same scan again.
+The **Your Top Followers** dashboard card enumerates a public account's followers. With shared history enabled, Twidget first reuses a fresh completed bridge scan or asks the bridge to run one server-side through [TwitterAPIs](https://twitterapis.com); the latest completed list is available to other opted-in installs tracking that handle. A personal key entered under Settings → Advanced takes priority, stays encrypted on-device, and runs the scan directly without Twidget's daily limit; TwitterAPIs charges and provider limits still apply. Scans are manual, resumable, and capped at 6,250 paid pages per run (the provider's documented $5 at $0.0008 per read). Protected accounts are not supported.
 
 > Shared history is opt-in. The [`bridge/`](bridge/) stores only accounts explicitly registered through the history route. Normal profile lookups do not create persistent records. 
 
@@ -121,12 +121,13 @@ GitHub Packages credentials belong in
 file outside the checkout. Production signing material is never required for a
 contributor build.
 
-The stable version is set in `version.properties`. Debug and beta APKs are
-labeled `v<version>-debug.N` and `v<version>-beta.N`; `N` is one plus the
-number of commits since the base version was set, so changing the stable
-version resets both channels to `.1`. Rebuilding the same commit keeps the
-same reproducible version. Use `-PprereleaseNumber=N` only when a non-Git build
-needs an explicit sequence number.
+The stable version is set in `version.properties`. Debug APKs are labeled
+`v<version>-debug.N`, where `N` is one plus the number of commits since the
+base version was set. Beta APKs are labeled `v<version>-beta.N`; the
+Pre-release workflow derives `N` from existing beta tags. Changing the stable
+version resets both channels to `.1`, and rebuilding the same tagged commit
+keeps the same version. Use `-PprereleaseNumber=N` or `-PbetaNumber=N` only
+when a non-Git build needs an explicit sequence number.
 
 ## Project policies
 

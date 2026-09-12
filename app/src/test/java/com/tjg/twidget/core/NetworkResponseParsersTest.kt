@@ -150,6 +150,20 @@ class NetworkResponseParsersTest {
               "postsAnalyzed": 3,
               "reach": { "totalViews": 9000, "avgViews": 3000.0, "medianViews": 2500.0, "avgViewsPerFollower": 3.0 },
               "engagement": { "totalEngagements": 450, "avgEngagements": 150.0, "medianEngagements": 120.0, "avgEngagementsPerFollower": 0.15, "engagementRate": 0.05 },
+              "benchmarks": { "medianLikes": 8.0, "medianReplies": 2.0, "medianShares": 3.0 },
+              "recentPosts": [
+                {
+                  "url": "https://x.com/example/status/2",
+                  "text": "A recent original tweet",
+                  "views": 2000,
+                  "likes": 8,
+                  "replies": 2,
+                  "reposts": 1,
+                  "quotes": 0,
+                  "engagements": 11,
+                  "ts": 2
+                }
+              ],
               "best": {
                 "url": "https://x.com/example/status/1",
                 "text": "Best https://t.co/link",
@@ -183,10 +197,14 @@ class NetworkResponseParsersTest {
         assertEquals(9000L, analytics.totalViews)
         assertEquals(450L, analytics.totalEngagements)
         assertEquals(0.05, analytics.engagementRate, 0.0001)
+        assertEquals(8.0, analytics.medianLikes, 0.0001)
+        assertEquals(2.0, analytics.medianReplies, 0.0001)
+        assertEquals(3.0, analytics.medianShares, 0.0001)
         assertEquals("Best https://t.co/link", analytics.best?.text)
         assertEquals("", analytics.best?.authorAvatar)
         assertEquals(listOf("https://example.com/story"), analytics.best?.links?.map(PostLink::url))
         assertEquals(listOf("https://cdn.example/photo.jpg"), analytics.best?.media?.map(PostMedia::url))
+        assertEquals(listOf("A recent original tweet"), analytics.recentPosts.map { it.text })
     }
 
     @Test

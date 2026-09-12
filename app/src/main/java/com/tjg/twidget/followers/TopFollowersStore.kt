@@ -14,6 +14,8 @@ data class TopFollower(
     val followers: Long,
     val verified: Boolean,
     val avatarUrl: String,
+    val scanIndex: Int = 0,
+    val mutual: Boolean? = null,
 )
 
 data class TopFollowersState(
@@ -71,6 +73,8 @@ object TopFollowersStore {
                             followers = user.optLong("followers"),
                             verified = user.optBoolean("verified"),
                             avatarUrl = user.optString("avatar"),
+                            scanIndex = user.optInt("scanIndex"),
+                            mutual = user.optNullableBoolean("mutual"),
                         ))
                     }
                 },
@@ -98,6 +102,8 @@ object TopFollowersStore {
                 put("followers", user.followers)
                 put("verified", user.verified)
                 put("avatar", user.avatarUrl)
+                if (user.scanIndex > 0) put("scanIndex", user.scanIndex)
+                user.mutual?.let { put("mutual", it) }
             })
         }
         val root = JSONObject().apply {
@@ -150,6 +156,7 @@ object TopFollowersStore {
                 activeRunId = runId,
             ),
         )
+        TopFollowersArchiveStore.clear(context, username)
         return TopFollowersScanStart.STARTED
     }
 
@@ -180,6 +187,9 @@ object TopFollowersStore {
     private fun key(username: String) = username.trim().trimStart('@').lowercase(Locale.US)
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }
+
+private fun JSONObject.optNullableBoolean(key: String): Boolean? =
+    if (!has(key) || isNull(key)) null else optBoolean(key)
 
 internal fun rankedTopFollowers(users: List<TopFollower>, limit: Int = 5): List<TopFollower> =
     users

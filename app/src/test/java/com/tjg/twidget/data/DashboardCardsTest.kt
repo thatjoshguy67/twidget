@@ -32,4 +32,26 @@ class DashboardCardsTest {
             ),
         )
     }
+
+    @Test
+    fun yourBriefIsFirstForNewDashboards() {
+        assertEquals("milestone", TwidgetStore.DEFAULT_DASHBOARD_CARDS.first())
+    }
+
+    @Test
+    fun yourBriefMovesFirstWithoutScramblingExistingCards() {
+        assertEquals(
+            listOf("milestone", "followers", "top_followers", "engagement"),
+            prioritizeDashboardCard(
+                listOf("followers", "top_followers", "milestone", "engagement"),
+                "milestone",
+            ),
+        )
+    }
+
+    @Test
+    fun aRemovedYourBriefCardIsNotAddedBackByTheOrderMigration() {
+        val cards = listOf("followers", "top_followers", "engagement")
+        assertEquals(cards, prioritizeDashboardCard(cards, "milestone"))
+    }
 }

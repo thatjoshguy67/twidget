@@ -10,4 +10,5 @@
     <dimen name="onboarding_side_padding">28dp</dimen>
     <dimen name="notice_detail_header_height">280dp</dimen>
     <dimen name="notice_detail_content_padding">24dp</dimen>
+    <dimen name="about_hero_content_height">274dp</dimen>
 </resources>

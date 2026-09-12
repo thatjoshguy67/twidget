@@ -10,6 +10,7 @@ enum class ScheduleProvider {
 enum class ScheduleStatus {
     DRAFT,
     SCHEDULED,
+    AWAITING_CONFIRMATION,
     NEEDS_ACTION,
     PUBLISHED,
     FAILED,
@@ -25,7 +26,9 @@ object ScheduleStateTransitions {
                 ScheduleStatus.FAILED,
                 ScheduleStatus.CANCELLED,
             )
-            ScheduleStatus.SCHEDULED -> to in setOf(
+            ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION -> to in setOf(
+                ScheduleStatus.AWAITING_CONFIRMATION,
+                ScheduleStatus.SCHEDULED,
                 ScheduleStatus.DRAFT,
                 ScheduleStatus.NEEDS_ACTION,
                 ScheduleStatus.PUBLISHED,
@@ -130,17 +133,72 @@ object ScheduleQueuePolicy {
             .flatMap { it.media.asSequence() }
             .take(MAX_CARD_MEDIA)
             .toList()
+
+    fun order(posts: List<ScheduledPost>): List<ScheduledPost> = posts.sortedWith(
+        compareBy<ScheduledPost>(::statusPriority)
+            .thenByDescending { it.pinned && canPin(it.status) }
+            .thenBy { if (it.status == ScheduleStatus.SCHEDULED) it.scheduledAt ?: Long.MAX_VALUE else 0L }
+            .thenByDescending {
+                if (it.status in setOf(ScheduleStatus.NEEDS_ACTION, ScheduleStatus.FAILED, ScheduleStatus.DRAFT)) {
+                    it.updatedAt
+                } else {
+                    0L
+                }
+            }
+            .thenByDescending {
+                if (it.status in setOf(ScheduleStatus.AWAITING_CONFIRMATION, ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED)) {
+                    it.publishedAt ?: it.scheduledAt ?: it.updatedAt
+                } else {
+                    0L
+                }
+            },
+    )
+
+    private fun statusPriority(post: ScheduledPost): Int = when (post.status) {
+        ScheduleStatus.NEEDS_ACTION, ScheduleStatus.FAILED -> 0
+        ScheduleStatus.SCHEDULED -> 1
+        ScheduleStatus.DRAFT -> 2
+        ScheduleStatus.AWAITING_CONFIRMATION -> 3
+        ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED -> 4
+    }
+}
+
+object BufferScheduleFallbackPolicy {
+    /** Passing the due time changes presentation, never proof of publication. */
+    fun reconcile(post: ScheduledPost, nowMillis: Long): ScheduledPost {
+        if (post.provider != ScheduleProvider.BUFFER || post.deletedAt != null ||
+            post.status != ScheduleStatus.SCHEDULED ||
+            post.scheduledAt?.let { it <= nowMillis } != true
+        ) return post
+        return post.copy(
+            status = ScheduleStatus.AWAITING_CONFIRMATION,
+            publishedAt = null,
+            pinned = false,
+            updatedAt = nowMillis,
+        )
+    }
+
+    fun needsConfirmation(post: ScheduledPost): Boolean =
+        post.provider == ScheduleProvider.BUFFER &&
+            !post.remotePostId.isNullOrBlank() &&
+            post.deletedAt == null &&
+            post.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION)
+
+    fun requiresRemoteCancellation(post: ScheduledPost): Boolean =
+        post.provider == ScheduleProvider.BUFFER &&
+            !post.remotePostId.isNullOrBlank() &&
+            post.status !in setOf(ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED)
 }
 
 object ScheduleNotificationPolicy {
     fun shouldNotifyBufferPublished(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
         previous?.provider == ScheduleProvider.BUFFER &&
-            previous.status == ScheduleStatus.SCHEDULED &&
+            previous.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION) &&
             nextStatus == ScheduleStatus.PUBLISHED
 
     fun shouldNotifyBufferFailed(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
         previous?.provider == ScheduleProvider.BUFFER &&
-            previous.status == ScheduleStatus.SCHEDULED &&
+            previous.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION, ScheduleStatus.PUBLISHED) &&
             nextStatus == ScheduleStatus.NEEDS_ACTION
 }
 
@@ -158,6 +216,14 @@ data class ScheduleValidationIssue(
     val message: String,
 )
 
+data class ScheduleTextLimitStatus(
+    val standardExcess: Int,
+    val hardExcess: Int,
+) {
+    val exceedsStandardLimit: Boolean get() = standardExcess > 0
+    val exceedsHardLimit: Boolean get() = hardExcess > 0
+}
+
 object SchedulePolicy {
     const val STANDARD_TEXT_LENGTH = 280
     const val PREMIUM_TEXT_LENGTH = 25_000
@@ -167,6 +233,14 @@ object SchedulePolicy {
         if (isVerified == true) PREMIUM_TEXT_LENGTH else STANDARD_TEXT_LENGTH
 
     fun textLength(text: String): Int = text.codePointCount(0, text.length)
+
+    fun textLimitStatus(text: String, isVerified: Boolean): ScheduleTextLimitStatus {
+        val length = textLength(text)
+        return ScheduleTextLimitStatus(
+            standardExcess = (length - STANDARD_TEXT_LENGTH).coerceAtLeast(0),
+            hardExcess = (length - textLimit(isVerified)).coerceAtLeast(0),
+        )
+    }
 
     fun validate(
         post: ScheduledPost,

@@ -1,6 +1,8 @@
 package com.tjg.twidget.followers
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
@@ -64,6 +66,40 @@ class TopFollowersScanPolicyTest {
 
         assertFalse(TopFollowersScanPolicy.canStart("2026-07-18", localLateEvening, losAngeles))
         assertTrue(TopFollowersScanPolicy.canStart("2026-07-18", localLateEvening, ZoneId.of("UTC")))
+    }
+
+    @Test
+    fun directFollowerProvidersRequireExplicitCredentials() {
+        assertEquals(
+            TopFollowersScanSource.TWITTERAPIS,
+            selectTopFollowersScanSource(false, true, false),
+        )
+        assertEquals(
+            TopFollowersScanSource.X_API,
+            selectTopFollowersScanSource(true, false, true),
+        )
+        assertNull(selectTopFollowersScanSource(false, false, false))
+    }
+
+    @Test
+    fun explicitRefreshUsesLinkedApiAndNeverSelectsTheBridge() {
+        assertEquals(
+            TopFollowersScanSource.TWITTERAPIS,
+            selectLinkedApiScanSource(
+                selectedXApi = false,
+                personalTwitterApis = true,
+                fallbackXApi = false,
+            ),
+        )
+        assertEquals(
+            TopFollowersScanSource.X_API,
+            selectLinkedApiScanSource(
+                selectedXApi = true,
+                personalTwitterApis = true,
+                fallbackXApi = true,
+            ),
+        )
+        assertNull(selectLinkedApiScanSource(false, false, false))
     }
 
     private fun millis(year: Int, month: Int, day: Int, hour: Int, minute: Int): Long =

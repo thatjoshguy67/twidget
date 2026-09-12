@@ -79,4 +79,22 @@ class SchedulePolicyTest {
         assertTrue(accepted.isEmpty())
         assertEquals(ScheduleValidationCode.TEXT_TOO_LONG, rejected.single().code)
     }
+
+    @Test
+    fun premiumOverflowPast280IsAdvisoryUntilTheHardLimit() {
+        val premium = SchedulePolicy.textLimitStatus("x".repeat(281), isVerified = true)
+        val unverified = SchedulePolicy.textLimitStatus("x".repeat(281), isVerified = false)
+        val premiumTooLong = SchedulePolicy.textLimitStatus(
+            "x".repeat(SchedulePolicy.PREMIUM_TEXT_LENGTH + 1),
+            isVerified = true,
+        )
+
+        assertEquals(1, premium.standardExcess)
+        assertEquals(0, premium.hardExcess)
+        assertTrue(premium.exceedsStandardLimit)
+        assertTrue(!premium.exceedsHardLimit)
+        assertEquals(1, unverified.hardExcess)
+        assertTrue(unverified.exceedsHardLimit)
+        assertEquals(1, premiumTooLong.hardExcess)
+    }
 }

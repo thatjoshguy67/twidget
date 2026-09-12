@@ -1,6 +1,7 @@
 package com.tjg.twidget.notices
 
 import android.content.Context
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.text.Spannable
 import android.text.SpannableStringBuilder
@@ -14,23 +15,22 @@ import android.text.style.TypefaceSpan
 import android.text.style.URLSpan
 import androidx.core.content.ContextCompat
 import com.tjg.twidget.R
+import kotlin.math.ceil
 
 /** Lightweight native Markdown styling for the subset used by GitHub release notes. */
 object ReleaseNoticeMarkdown {
     fun render(context: Context, markdown: String): CharSequence {
         val output = SpannableStringBuilder()
-        val lines = markdown.trim().lines()
+        val lines = parseBlocks(markdown)
         var previousKind: LineKind? = null
 
-        lines.forEach { rawLine ->
-            val line = rawLine.trimEnd()
-            if (line.isBlank()) {
+        lines.forEach { parsed ->
+            if (parsed.kind == LineKind.BLANK) {
                 appendBlankLine(output)
                 previousKind = null
                 return@forEach
             }
 
-            val parsed = parseLine(line)
             val kind = parsed.kind
             if (output.isNotEmpty() && previousKind != null && previousKind != kind && output.last() != '\n') {
                 output.append('\n')
@@ -59,6 +59,7 @@ object ReleaseNoticeMarkdown {
                 )
                 LineKind.QUOTE -> appendQuote(context, output, parsed.content)
                 LineKind.PARAGRAPH -> appendParagraph(context, output, parsed.content)
+                LineKind.BLANK -> Unit
             }
             previousKind = kind
         }
@@ -96,28 +97,35 @@ object ReleaseNoticeMarkdown {
         val start = output.length
         output.append(marker).append(' ')
         appendInline(context, output, content)
+        // Paragraph spans must include the terminating newline. Ending the
+        // span before it made Android drop the hanging indent on later wraps.
+        output.append('\n')
+        val firstMargin = dp(context, 14 + depth * 12)
+        val markerWidth = ceil(Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 16f * context.resources.displayMetrics.scaledDensity
+            typeface = Typeface.create("sec", Typeface.NORMAL)
+        }.measureText("$marker ")).toInt()
         output.setSpan(
-            LeadingMarginSpan.Standard(dp(context, 14 + depth * 12), dp(context, 28 + depth * 12)),
+            LeadingMarginSpan.Standard(firstMargin, firstMargin + markerWidth),
             start,
             output.length,
             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
         )
-        output.append('\n')
     }
 
     private fun appendQuote(context: Context, output: SpannableStringBuilder, content: String) {
         ensureBlockGap(output)
         val start = output.length
         appendInline(context, output, content)
+        output.append('\n')
         val accent = ContextCompat.getColor(context, R.color.oneui_accent)
         output.setSpan(QuoteSpan(accent), start, output.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         output.setSpan(
             ForegroundColorSpan(ContextCompat.getColor(context, R.color.oneui_text_secondary)),
             start,
-            output.length,
+            output.length - 1,
             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
         )
-        output.append('\n')
     }
 
     private fun appendParagraph(context: Context, output: SpannableStringBuilder, content: String) {
@@ -252,6 +260,38 @@ object ReleaseNoticeMarkdown {
         return ParsedLine(LineKind.PARAGRAPH, line.trim())
     }
 
+    /** CommonMark treats ordinary source newlines as spaces, including inside list items. */
+    internal fun parseBlocks(markdown: String): List<ParsedLine> {
+        val blocks = mutableListOf<ParsedLine>()
+        markdown.trim().lines().forEach { rawLine ->
+            val line = rawLine.trimEnd()
+            if (line.isBlank()) {
+                if (blocks.lastOrNull()?.kind != LineKind.BLANK) {
+                    blocks += ParsedLine(LineKind.BLANK, "")
+                }
+                return@forEach
+            }
+
+            val parsed = parseLine(line)
+            val previous = blocks.lastOrNull()
+            val continuesPrevious = parsed.kind == LineKind.PARAGRAPH && previous?.kind in setOf(
+                LineKind.PARAGRAPH,
+                LineKind.BULLET,
+                LineKind.ORDERED,
+                LineKind.QUOTE,
+            )
+            if (continuesPrevious && previous != null) {
+                blocks[blocks.lastIndex] = previous.copy(
+                    content = "${previous.content} ${parsed.content}".trim(),
+                )
+            } else {
+                blocks += parsed
+            }
+        }
+        while (blocks.lastOrNull()?.kind == LineKind.BLANK) blocks.removeAt(blocks.lastIndex)
+        return blocks
+    }
+
     internal data class ParsedLine(
         val kind: LineKind,
         val content: String,
@@ -260,7 +300,7 @@ object ReleaseNoticeMarkdown {
         val marker: String = "",
     )
 
-    internal enum class LineKind { HEADING, BULLET, ORDERED, QUOTE, PARAGRAPH }
+    internal enum class LineKind { HEADING, BULLET, ORDERED, QUOTE, PARAGRAPH, BLANK }
 
     private val HEADING = Regex("^(#{1,6})\\s+(.+)$")
     private val BULLET = Regex("^(\\s*)[-*+]\\s+(.+)$")

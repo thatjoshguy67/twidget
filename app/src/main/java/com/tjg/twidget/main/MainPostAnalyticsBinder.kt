@@ -1,6 +1,7 @@
 package com.tjg.twidget.main
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.net.Uri
 import android.text.SpannableString
@@ -17,12 +18,11 @@ import androidx.appcompat.content.res.AppCompatResources
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.ProfileImageLoader
 import java.text.NumberFormat
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import dev.oneuiproject.oneui.R as OneUiIconR
 
 internal class MainPostAnalyticsBinder(
     private val activity: MainActivity,
@@ -71,7 +71,7 @@ internal class MainPostAnalyticsBinder(
     private fun postAnalyticsShell(label: String, body: String, post: PostSummary?): View =
         LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(activity.dp(16), activity.dp(14), activity.dp(16), activity.dp(14))
+            setPadding(activity.dp(14), activity.dp(14), activity.dp(14), activity.dp(14))
             val opensPost = post?.url?.isNotBlank() == true
             background = AppCompatResources.getDrawable(
                 activity,
@@ -103,15 +103,14 @@ internal class MainPostAnalyticsBinder(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = activity.dp(11)
+                topMargin = activity.dp(10)
             }) }
 
             addView(TextView(activity).apply {
                 text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
-                maxLines = 4
                 setTextColor(activity.getColor(R.color.oneui_text_primary))
-                textSize = 15f
+                textSize = 14f
                 setLineSpacing(activity.dp(2).toFloat(), 1f)
                 linksClickable = true
                 movementMethod = LinkMovementMethod.getInstance()
@@ -119,30 +118,24 @@ internal class MainPostAnalyticsBinder(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = activity.dp(7)
+                topMargin = activity.dp(10)
             })
 
             post?.media?.firstOrNull()?.let { media ->
                 addView(ImageView(activity).apply {
                     contentDescription = media.alt.ifBlank { activity.getString(R.string.post_media) }
+                    scaleType = ImageView.ScaleType.CENTER_CROP
                     ProfileImageLoader.loadMediaInto(activity, this, media.url, activity.dp(14))
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    activity.dp(120),
+                    activity.dp(218),
                 ).apply {
-                    topMargin = activity.dp(12)
+                    topMargin = activity.dp(10)
                 })
             }
 
             post?.let {
-                addView(TextView(activity).apply {
-                    text = tweetMetrics(it)
-                    includeFontPadding = false
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                    textSize = 13f
-                }, LinearLayout.LayoutParams(
+                addView(tweetMetricsRow(it), LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply {
@@ -158,7 +151,7 @@ internal class MainPostAnalyticsBinder(
 
             addView(ImageView(activity).apply {
                 ProfileImageLoader.loadInto(activity, this, post.authorAvatar)
-            }, LinearLayout.LayoutParams(activity.dp(38), activity.dp(38)))
+            }, LinearLayout.LayoutParams(activity.dp(40), activity.dp(40)))
 
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
@@ -200,18 +193,47 @@ internal class MainPostAnalyticsBinder(
         return spannable
     }
 
+    private fun tweetMetricsRow(post: PostSummary): View =
+        LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addMetric(OneUiIconR.drawable.ic_oui_equalizer_2, post.views, R.string.post_metric_views)
+            addMetric(OneUiIconR.drawable.ic_oui_message_outline, post.replies, R.string.post_metric_replies)
+            addMetric(OneUiIconR.drawable.ic_oui_repeat, post.reposts, R.string.post_metric_reposts)
+            addMetric(OneUiIconR.drawable.ic_oui_heart_outline, post.likes, R.string.post_metric_likes)
+        }
+
+    private fun LinearLayout.addMetric(iconRes: Int, value: Long, labelRes: Int) {
+        val formattedValue = TwidgetStore.compactNumber(value)
+        addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            contentDescription = activity.getString(labelRes, formattedValue)
+            addView(ImageView(activity).apply {
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                setImageDrawable(AppCompatResources.getDrawable(activity, iconRes))
+                imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_primary))
+            }, LinearLayout.LayoutParams(activity.dp(18), activity.dp(18)))
+            addView(TextView(activity).apply {
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                text = formattedValue
+                includeFontPadding = false
+                setTextColor(activity.getColor(R.color.oneui_text_primary))
+                textSize = 14f
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                marginStart = activity.dp(4)
+            })
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    }
+
     private fun postDate(post: PostSummary): String =
         if (post.timestamp > 0L) {
-            SimpleDateFormat("MMM d, h:mm a", Locale.US).format(Date(post.timestamp))
+            AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
         } else {
             post.createdAt
         }
 
-    private fun tweetMetrics(post: PostSummary): String =
-        activity.getString(
-            R.string.tweet_metrics,
-            TwidgetStore.compactNumber(post.views),
-            TwidgetStore.compactNumber(post.replies),
-            TwidgetStore.compactNumber(post.likes),
-        )
 }

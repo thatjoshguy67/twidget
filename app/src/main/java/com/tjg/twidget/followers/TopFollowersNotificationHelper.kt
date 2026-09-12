@@ -105,6 +105,39 @@ object TopFollowersNotificationHelper {
         }.getOrDefault(false)
     }
 
+    fun showNewHighRankingFollower(
+        context: Context,
+        username: String,
+        follower: TopFollower,
+        rank: Int,
+    ): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return false
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.top_followers_notifications),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply { description = context.getString(R.string.top_followers_notifications_description) })
+        val notification = Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_twidget_notification)
+            .setContentTitle(context.getString(R.string.top_followers_new_high_ranking_title, username))
+            .setContentText(context.getString(
+                R.string.top_followers_new_high_ranking_detail,
+                follower.username,
+                rank,
+            ))
+            .setContentIntent(openAppIntent(context, username))
+            .setAutoCancel(true)
+            .setCategory(Notification.CATEGORY_SOCIAL)
+            .build()
+        return runCatching {
+            manager.notify(completionNotificationId(username), notification)
+            true
+        }.getOrDefault(false)
+    }
+
     fun cancelProgress(context: Context, username: String) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(progressNotificationId(username))

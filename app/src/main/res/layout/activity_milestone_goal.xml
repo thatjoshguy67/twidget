@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dev.oneuiproject.oneui.layout.ToolbarLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/milestone_setup_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg"
+    app:expandable="false"
+    app:expanded="false"
+    app:handleInsets="false"
+    app:showNavButtonAsBack="true"
+    app:title="@string/milestone_account_goals">
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingStart="10dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="32dp"
+        app:layout_location="main_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/milestone_metric_rows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:colorBackground"
+                android:orientation="vertical" />
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="?android:colorBackground"
+                android:orientation="vertical">
+
+                <dev.oneuiproject.oneui.widget.SwitchItemView
+                    android:id="@+id/milestone_auto_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:separateSwitch="false"
+                    app:showTopDivider="false"
+                    app:summaryOff="@string/milestone_auto_adjust_summary"
+                    app:summaryOn="@string/milestone_auto_adjust_summary"
+                    app:title="@string/milestone_auto_adjust" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</dev.oneuiproject.oneui.layout.ToolbarLayout>

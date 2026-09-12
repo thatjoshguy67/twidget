@@ -28,7 +28,10 @@ npm test
 - `GET /banger/:username` — opt-in, resumable Hall of Fame scan for the account's best balanced post.
 - `GET /history/:username` — opt-in pooled daily history registration/read.
 - `GET /history/:username/top-followers` — reads a completed shared ranking.
-- `POST /history/:username/top-followers` — trusted ranking publication; requires `TOP_FOLLOWERS_PUBLISH_TOKEN` on a public bridge or `BRIDGE_API_TOKEN` on a private bridge.
+- `GET /history/:username/top-followers/all` — paginates the latest completed server-owned follower list.
+- `GET /history/:username/top-followers/scan` — reads durable server-scan progress.
+- `POST /history/:username/top-followers/scan` — starts or resumes a bounded server-owned scan for an already opted-in account, or reuses a fresh snapshot. Current clients use this only for the first user-requested ranking; subsequent refreshes are bridge-scheduled.
+- `POST /history/:username/top-followers` — legacy trusted-publisher compatibility route; requires `TOP_FOLLOWERS_PUBLISH_TOKEN` on a public bridge or `BRIDGE_API_TOKEN` on a private bridge.
 - `POST /history/:username/analytics-import` — reconstructs X Analytics movements and admits gap days only when live and stored follower anchors match within a tight margin.
 - `DELETE /admin/history/:username` — operator-only permanent deletion; hidden unless `HISTORY_ADMIN_TOKEN` is configured.
 - `GET /official/user/:username` — disabled publicly by default, even with an X bearer configured.
@@ -55,10 +58,17 @@ Android sends the configured bridge token as both a Bearer token and the legacy
 `X-Rettiwt-Api-Key` header. Do not ship a private token inside a publicly
 distributed APK.
 
-Shared ranking reads remain public, but writes fail closed. A public deployment
-must set `TOP_FOLLOWERS_PUBLISH_TOKEN` and give it only to a trusted server-side
-publisher; ordinary app installs must not receive it. If neither that credential
-nor `BRIDGE_API_TOKEN` is configured, the write route is hidden.
+Top Followers provider credentials remain server-side. When a shared-history
+user first asks to find their top follower, that request enrolls the account in
+server-owned refreshes once per `TOP_FOLLOWERS_REFRESH_HOURS` (24 hours by
+default), including while phones are offline. Accounts that only participate in
+pooled metric history are not scanned until that explicit first request.
+Ordinary app installs cannot submit follower rows. Initial client requests have
+global and per-IP daily-start limits; scheduled work remains bounded by the
+enrolled-account cap, refresh cadence, upstream concurrency, page cost, and
+retention. The legacy ranking write remains fail-closed behind
+`TOP_FOLLOWERS_PUBLISH_TOKEN` for compatibility and must never be exposed to an
+app install.
 
 Application middleware cannot absorb a volumetric or distributed DDoS attack.
 Put a public production domain behind an edge WAF/DDoS service and monitor
@@ -81,8 +91,8 @@ HISTORY_DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 REDIS_URL=redis://user:password@host:6379
 ```
 
-The bridge creates its `twidget_history_accounts` and
-`twidget_history_samples` tables and indexes at startup. An explicitly selected
+The bridge creates its `twidget_history_accounts`, `twidget_history_samples`,
+`twidget_top_follower_scans`, and `twidget_top_followers` tables and indexes at startup. An explicitly selected
 PostgreSQL backend fails startup instead of falling back to a local JSON file;
 this prevents a database outage from silently creating divergent history.
 Likewise, a configured but unavailable Redis instance fails startup, and live
@@ -96,12 +106,13 @@ marks legacy Wayback zero fields unknown, keeps positive archive values known,
 and preserves genuine observed zero values from live/client samples. Sample
 `src` records `live`, `client`, or `wayback` provenance where available.
 
-Participating clients may also attach the latest completed Top Followers
-ranking to an already registered public account through
-`POST /history/:username/top-followers`. Other participating clients read it
-with `GET /history/:username/top-followers`. The bridge bounds the payload to
-five validated public profiles and stores it in the account metadata; these
-routes do not create history-pool accounts on their own.
+For participating clients, the bridge owns the provider scan and stages each
+validated page in durable storage. Readers only see the latest scan after an
+atomic completion transition; an interrupted scan can resume from its stored
+cursor without replacing the previous completed snapshot. The original
+top-five response remains available for older clients, while current clients
+page through the full ranked list. These routes do not create history-pool
+accounts on their own.
 
 For the first deployment onto an existing PostgreSQL store, keep the bridge at
 one replica and take a database backup. Startup takes a PostgreSQL advisory
@@ -147,6 +158,10 @@ controls include:
 
 - `BRIDGE_API_TOKEN` — optional token for private/self-hosted data routes.
 - `TOP_FOLLOWERS_PUBLISH_TOKEN` — trusted shared-ranking writer credential for an otherwise public bridge.
+- `TWITTERAPIS_API_KEY` — server-only key used for opted-in bridge-owned follower scans.
+- `TOP_FOLLOWERS_FRESH_HOURS`, `TOP_FOLLOWERS_REFRESH_HOURS`, `TOP_FOLLOWERS_RETENTION_DAYS` — request reuse, scheduled refresh, and permanent deletion windows.
+- `TOP_FOLLOWERS_DAILY_SCAN_LIMIT`, `TOP_FOLLOWERS_DAILY_SCAN_LIMIT_PER_IP` — initial client-request budgets.
+- `TOP_FOLLOWERS_MAX_CONCURRENT`, `TOP_FOLLOWERS_MAX_PAGES` — scheduled and requested provider-work bounds.
 - `TRUST_PROXY_HOPS` — exact reverse-proxy hop count; Railway uses `1`.
 - `RATE_LIMIT_*`, `EXPENSIVE_RATE_LIMIT_MAX` — request budgets; shared when Redis is configured.
 - `REDIS_URL` — shared rate limits, response caches, and scheduled-job locks.

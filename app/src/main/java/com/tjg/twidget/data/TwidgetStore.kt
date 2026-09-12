@@ -6,9 +6,12 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.XAnalyticsImportPolicy
 import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.core.HistoryMigrationPolicy
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
+import com.tjg.twidget.main.MilestonePolicy
+import com.tjg.twidget.main.MilestoneSettings
 import com.tjg.twidget.update.AppVersion
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -86,14 +89,15 @@ data class TwidgetWidgetSettings(
     val colorMode: String,
     val fontFamily: String,
     val showDelta: Boolean = true,
+    val language: String = "DEFAULT",
 )
 
-enum class HistoryRange(val labelRes: Int) {
-    WEEK(R.string.range_7d),
-    MONTH(R.string.range_1m),
-    THREE_MONTHS(R.string.range_3m),
-    YTD(R.string.range_ytd),
-    YEAR(R.string.range_1y),
+enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
+    WEEK(R.string.range_7d, 7),
+    MONTH(R.string.range_1m, 30),
+    THREE_MONTHS(R.string.range_3m, 90),
+    YEAR(R.string.range_1y, 365),
+    ALL_TIME(R.string.range_all_time, 0),
 }
 
 object TwidgetStore {
@@ -129,6 +133,8 @@ object TwidgetStore {
     private const val KEY_ONBOARDED = "onboarded"
     private const val KEY_ACCOUNTS = "accounts"
     private const val KEY_DASHBOARD_CARDS = "dashboard_cards"
+    private const val KEY_DASHBOARD_CARDS_MIGRATED = "dashboard_cards_migrated_v6"
+    private const val KEY_DASHBOARD_BRIEF_FIRST_MIGRATED = "dashboard_brief_first_migrated_v1"
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
     private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
     private const val KEY_FAKE_UPDATE = "debug_fake_update"
@@ -143,8 +149,10 @@ object TwidgetStore {
     private const val HISTORY_MIGRATION_VERSION = 5
     private val LEGACY_SEEDED_FOLLOWER_GAINS = listOf(18L, 9L, 21L, 15L, 14L, 26L)
     val DEFAULT_DASHBOARD_CARDS = listOf(
+        "milestone",
         "followers",
         "top_followers",
+        "daily_streak",
         "follower_ratio",
         "engagement_rate",
         "post_rate",
@@ -357,8 +365,11 @@ object TwidgetStore {
             tapAction = prefs.getString("widget_tap_action$suffix", prefs.getString(KEY_TAP_ACTION, TAP_REFRESH)) ?: TAP_REFRESH,
             accountUsername = prefs.getString("widget_account$suffix", "") ?: "",
             colorMode = prefs.getString("widget_color_mode$suffix", COLOR_MODE_SYSTEM) ?: COLOR_MODE_SYSTEM,
-            fontFamily = prefs.getString("widget_font_family$suffix", FONT_ONE_UI_SANS) ?: FONT_ONE_UI_SANS,
+            fontFamily = normalizeWidgetFont(
+                prefs.getString("widget_font_family$suffix", FONT_ONE_UI_SANS),
+            ),
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
+            language = prefs.getString("widget_language$suffix", prefs.getString("widget_language", "DEFAULT")) ?: "DEFAULT",
         )
     }
 
@@ -371,10 +382,14 @@ object TwidgetStore {
             .putString("widget_tap_action$suffix", settings.tapAction)
             .putString("widget_account$suffix", normalizeUsername(settings.accountUsername))
             .putString("widget_color_mode$suffix", settings.colorMode)
-            .putString("widget_font_family$suffix", settings.fontFamily)
+            .putString("widget_font_family$suffix", normalizeWidgetFont(settings.fontFamily))
             .putBoolean("widget_show_delta$suffix", settings.showDelta)
+            .putString("widget_language$suffix", settings.language)
             .apply()
     }
+
+    fun normalizeWidgetFont(fontFamily: String?): String =
+        if (fontFamily == FONT_GOOGLE_SANS_FLEX) FONT_GOOGLE_SANS_FLEX else FONT_ONE_UI_SANS
 
     fun accounts(context: Context): List<String> {
         val saved = prefs(context).getString(KEY_ACCOUNTS, null)?.let { encoded ->
@@ -428,13 +443,37 @@ object TwidgetStore {
     }
 
     fun dashboardCards(context: Context): List<String> {
-        val saved = prefs(context).getString(KEY_DASHBOARD_CARDS, null)?.let { encoded ->
+        val store = prefs(context)
+        val saved = store.getString(KEY_DASHBOARD_CARDS, null)?.let { encoded ->
             runCatching {
                 val array = JSONArray(encoded)
                 List(array.length()) { index -> array.getString(index) }
             }.getOrNull()
         }
-        return resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS)
+        var resolved = resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS)
+        if (!store.getBoolean(KEY_DASHBOARD_CARDS_MIGRATED, false)) {
+            if (saved != null) {
+                val merged = (resolved + listOf("milestone", "daily_streak"))
+                    .filter { it in DEFAULT_DASHBOARD_CARDS }
+                    .distinct()
+                if (merged != resolved) {
+                    saveDashboardCards(context, merged)
+                    resolved = merged
+                }
+            }
+            store.edit().putBoolean(KEY_DASHBOARD_CARDS_MIGRATED, true).apply()
+        }
+        if (!store.getBoolean(KEY_DASHBOARD_BRIEF_FIRST_MIGRATED, false)) {
+            if (saved != null) {
+                val reordered = prioritizeDashboardCard(resolved, "milestone")
+                if (reordered != resolved) {
+                    saveDashboardCards(context, reordered)
+                    resolved = reordered
+                }
+            }
+            store.edit().putBoolean(KEY_DASHBOARD_BRIEF_FIRST_MIGRATED, true).apply()
+        }
+        return resolved
     }
 
     fun saveDashboardCards(context: Context, cards: List<String>) {
@@ -475,12 +514,29 @@ object TwidgetStore {
         return backfilled
     }
 
-    // REAL samples inside the range window, oldest first — the input for
-    // every delta and insight number. Estimated samples never appear here.
     fun rangedHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
         val all = fullHistory(context, username).filterNot { it.estimated }
-        return all.filter { it.timestamp >= rangeStart(range) }
+        if (range == HistoryRange.ALL_TIME) return all.ifEmpty { listOfNotNull(all.lastOrNull()) }
+        return all.filter { it.timestamp >= rangeStart(all, range) }
             .ifEmpty { listOfNotNull(all.lastOrNull()) }
+    }
+
+    fun chartRange(context: Context, username: String, metricId: String): HistoryRange {
+        val clean = normalizeUsername(username).ifBlank { settings(context).username }
+        val saved = runCatching {
+            HistoryRange.valueOf(
+                prefs(context).getString(chartRangeKey(clean, metricId), HistoryRange.WEEK.name)
+                    ?: HistoryRange.WEEK.name,
+            )
+        }.getOrDefault(HistoryRange.WEEK)
+        return HistoryRangePolicy.resolveSavedRange(saved, fullHistory(context, clean))
+    }
+
+    fun saveChartRange(context: Context, username: String, metricId: String, range: HistoryRange) {
+        val clean = normalizeUsername(username).ifBlank { settings(context).username }
+        prefs(context).edit()
+            .putString(chartRangeKey(clean, metricId), range.name)
+            .apply()
     }
 
     // Chart-friendly view of the range: fixed buckets across the whole window.
@@ -491,10 +547,21 @@ object TwidgetStore {
     fun chartHistory(context: Context, username: String, range: HistoryRange): List<HistorySample> {
         val all = fullHistory(context, username)
         if (all.isEmpty()) return all
-        val monthly = range == HistoryRange.YTD || range == HistoryRange.YEAR
-        val labelFormat = SimpleDateFormat(if (monthly) "MMM" else "MMM d", Locale.US)
-        var previousEnd = rangeStart(range) - 1
-        return bucketEnds(range).mapNotNull { end ->
+        val monthly = when (range) {
+            HistoryRange.YEAR -> true
+            HistoryRange.ALL_TIME -> {
+                val real = all.filterNot { it.estimated }
+                val firstDay = startOfDay(real.minOfOrNull { it.timestamp } ?: System.currentTimeMillis())
+                val today = startOfDay(System.currentTimeMillis())
+                (today - firstDay) > 89 * DAY_MILLIS
+            }
+            else -> false
+        }
+        val locale = AppLocales.applicationLocale()
+        val pattern = if (monthly) "MMM" else if (locale.language == "de") "d. MMM" else "MMM d"
+        val labelFormat = SimpleDateFormat(pattern, locale)
+        var previousEnd = rangeStart(all, range) - 1
+        return bucketEnds(all, range).mapNotNull { end ->
             val bucketStart = previousEnd + 1
             previousEnd = end
             // Real sample in the bucket wins; else a stored estimate (graph
@@ -506,19 +573,14 @@ object TwidgetStore {
         }
     }
 
-    private fun bucketEnds(range: HistoryRange): List<Long> {
+    private fun bucketEnds(all: List<HistorySample>, range: HistoryRange): List<Long> {
         val today = startOfDay(System.currentTimeMillis())
         return when (range) {
             HistoryRange.WEEK -> (6 downTo 0).map { today - it * DAY_MILLIS }
             HistoryRange.MONTH -> (5 downTo 0).map { today - it * 5 * DAY_MILLIS }
             HistoryRange.THREE_MONTHS -> (5 downTo 0).map { today - it * 15 * DAY_MILLIS }
-            HistoryRange.YTD, HistoryRange.YEAR -> {
-                val months = if (range == HistoryRange.YTD) {
-                    Calendar.getInstance().get(Calendar.MONTH) + 1
-                } else {
-                    12
-                }
-                (months - 1 downTo 0).map { offset ->
+            HistoryRange.YEAR -> {
+                (11 downTo 0).map { offset ->
                     val endOfMonth = Calendar.getInstance().apply {
                         timeInMillis = today
                         add(Calendar.MONTH, -offset)
@@ -527,6 +589,19 @@ object TwidgetStore {
                     minOf(startOfDay(endOfMonth.timeInMillis), today)
                 }
             }
+            HistoryRange.ALL_TIME -> allTimeBucketEnds(all, today)
+        }
+    }
+
+    private fun allTimeBucketEnds(all: List<HistorySample>, today: Long): List<Long> {
+        val real = all.filterNot { it.estimated }
+        val firstDay = startOfDay(real.minOfOrNull { it.timestamp } ?: today)
+        val spanDays = ((today - firstDay) / DAY_MILLIS).coerceAtLeast(1)
+        val bucketCount = minOf(12, spanDays.toInt()).coerceAtLeast(1)
+        if (bucketCount == 1) return listOf(today)
+        return (0 until bucketCount).map { index ->
+            val fraction = index.toDouble() / (bucketCount - 1)
+            startOfDay(firstDay + ((today - firstDay) * fraction).toLong())
         }
     }
 
@@ -552,21 +627,15 @@ object TwidgetStore {
         )
     }
 
-    private fun rangeStart(range: HistoryRange): Long {
+    private fun rangeStart(all: List<HistorySample>, range: HistoryRange): Long {
         val today = startOfDay(System.currentTimeMillis())
         return when (range) {
             HistoryRange.WEEK -> today - 6 * DAY_MILLIS
             HistoryRange.MONTH -> today - 29 * DAY_MILLIS
             HistoryRange.THREE_MONTHS -> today - 89 * DAY_MILLIS
             HistoryRange.YEAR -> today - 364 * DAY_MILLIS
-            HistoryRange.YTD -> Calendar.getInstance().apply {
-                set(Calendar.MONTH, Calendar.JANUARY)
-                set(Calendar.DAY_OF_MONTH, 1)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
+            HistoryRange.ALL_TIME -> all.filterNot { it.estimated }
+                .minOfOrNull { startOfDay(it.timestamp) } ?: today
         }
     }
 
@@ -690,10 +759,14 @@ object TwidgetStore {
     fun followersDelta(context: Context, username: String = settings(context).username): Long =
         todayDelta(context, username) { it.followers }
 
-    fun compactNumber(value: Long): String = when {
-        abs(value) >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
-        abs(value) >= 10_000 -> "${value / 1_000}K"
-        else -> NumberFormat.getIntegerInstance(Locale.US).format(value)
+    fun compactNumber(value: Long): String {
+        val locale = AppLocales.applicationLocale()
+        val absValue = abs(value)
+        return when {
+            absValue >= 1_000_000 -> "${String.format(locale, "%.1f", value / 1_000_000f)}M"
+            absValue >= 10_000 -> "${value / 1_000}K"
+            else -> NumberFormat.getIntegerInstance(locale).format(value)
+        }
     }
 
     fun signedNumber(value: Long): String =
@@ -701,8 +774,8 @@ object TwidgetStore {
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
         if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
-        val formatter = SimpleDateFormat("MMM d, h:mm a", Locale.US)
-        return context.getString(R.string.last_synced, formatter.format(Date(stats.syncedAt)))
+        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a")
+        return context.getString(R.string.last_synced, formatterDate)
     }
 
     private fun prefs(context: Context): SharedPreferences =
@@ -733,9 +806,39 @@ object TwidgetStore {
             ?.takeIf { username.equals(defaultUsername, ignoreCase = true) }
     }
 
+    fun milestoneSettings(context: Context, username: String = settings(context).username): MilestoneSettings {
+        val clean = normalizeUsername(username).ifBlank { settings(context).username }
+        val store = prefs(context)
+        val target = store.getLong(milestoneTargetKey(clean), 0L).takeIf { it > 0L }
+        return MilestoneSettings(
+            target = target,
+            labelRaw = store.getString(milestoneLabelKey(clean), "") ?: "",
+            showPercent = store.getBoolean(milestoneShowPercentKey(clean), true),
+        )
+    }
+
+    fun saveMilestoneSettings(context: Context, username: String, milestone: MilestoneSettings) {
+        val clean = normalizeUsername(username).ifBlank { settings(context).username }
+        prefs(context).edit()
+            .putLong(milestoneTargetKey(clean), milestone.target ?: 0L)
+            .putString(milestoneLabelKey(clean), milestone.labelRaw)
+            .putBoolean(milestoneShowPercentKey(clean), milestone.showPercent)
+            .apply()
+    }
+
+    fun clearMilestoneSettings(context: Context, username: String) {
+        saveMilestoneSettings(context, username, MilestoneSettings())
+    }
+
+    private fun milestoneTargetKey(username: String) = "milestone_target_${username.lowercase(Locale.US)}"
+    private fun milestoneLabelKey(username: String) = "milestone_label_${username.lowercase(Locale.US)}"
+    private fun milestoneShowPercentKey(username: String) = "milestone_show_percent_${username.lowercase(Locale.US)}"
+    private fun chartRangeKey(username: String, metricId: String) =
+        "chart_range_${username.lowercase(Locale.US)}_${metricId.lowercase(Locale.US)}"
+
     private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
-            dayLabel = SimpleDateFormat("MMM d", Locale.US).format(Date(stats.syncedAt)),
+            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d"),
             followers = stats.followersCount,
             following = stats.followingsCount,
             posts = stats.statusesCount,
@@ -942,7 +1045,10 @@ object TwidgetStore {
     )
 
     private fun demoHistory(): List<HistorySample> {
-        val formatter = SimpleDateFormat("MMM d", Locale.US)
+        val formatter = SimpleDateFormat(
+            if (AppLocales.applicationLocale().language == "de") "d. MMM" else "MMM d",
+            AppLocales.applicationLocale(),
+        )
         val today = startOfDay(System.currentTimeMillis())
         val followerGains = listOf(25L, 40L, 30L, 38L, 22L, 52L, 109L)
         return followerGains.indices.map { index ->
@@ -961,3 +1067,6 @@ object TwidgetStore {
 
 internal fun resolveDashboardCards(saved: List<String>?, available: List<String>): List<String> =
     saved?.filter { it in available }?.distinct() ?: available
+
+internal fun prioritizeDashboardCard(cards: List<String>, cardId: String): List<String> =
+    if (cardId in cards) listOf(cardId) + cards.filterNot { it == cardId } else cards

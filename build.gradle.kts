@@ -1,4 +1,5 @@
 plugins {
-    id("com.android.application") version "8.9.1" apply false
+    // Kotlin 2.2 metadata requires the R8 version bundled with AGP 8.10+.
+    id("com.android.application") version "8.10.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }

@@ -32,6 +32,7 @@ data class ReleaseNotice(
     val url: String,
     val prerelease: Boolean,
     val publishedAt: String,
+    val upcoming: Boolean = false,
 )
 
 data class AppVersion(

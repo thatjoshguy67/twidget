@@ -24,6 +24,7 @@ object TwidgetFonts {
 
     private var baseTypeface: Typeface? = null
     private val weightedTypefaces = mutableMapOf<Pair<Int, Boolean>, Typeface>()
+    private var googleTypeface: Typeface? = null
 
     fun oneUiSans(context: Context, weight: Int = 400, italic: Boolean = false): Typeface {
         val key = weight.coerceIn(1, 1_000) to italic
@@ -35,7 +36,13 @@ object TwidgetFonts {
                     key.first >= 400 -> getRegularFont()
                     else -> getLightFont()
                 }
-                if (italic) Typeface.create(seslTypeface, Typeface.ITALIC) else seslTypeface
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    Typeface.create(seslTypeface, key.first, italic)
+                } else if (italic) {
+                    Typeface.create(seslTypeface, Typeface.ITALIC)
+                } else {
+                    seslTypeface
+                }
             } else {
                 val base = baseTypeface ?: (ResourcesCompat.getFont(context, R.font.one_ui_sans)
                     ?: Typeface.DEFAULT).also { baseTypeface = it }
@@ -47,6 +54,19 @@ object TwidgetFonts {
             }
         }
     }
+
+    /**
+     * Returns the untouched variable face for Canvas artwork. Widget renderers apply `wght` once on Paint;
+     * creating a weighted Typeface first can make some Android renderers embolden the same axis twice.
+     */
+    fun oneUiSansVariable(context: Context): Typeface =
+        baseTypeface ?: (ResourcesCompat.getFont(context, R.font.one_ui_sans)
+            ?: Typeface.DEFAULT).also { baseTypeface = it }
+
+    /** Returns the untouched Google Sans Flex variable face for Canvas artwork. */
+    fun googleSansFlex(context: Context): Typeface =
+        googleTypeface ?: (ResourcesCompat.getFont(context, R.font.google_sans_flex)
+            ?: Typeface.DEFAULT).also { googleTypeface = it }
 
     fun applyTo(view: View) {
         if (view is TextView) {

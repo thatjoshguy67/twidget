@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dev.oneuiproject.oneui.layout.ToolbarLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/top_followers_browse_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/oneui_bg"
+    app:expandable="true"
+    app:expanded="false"
+    app:handleInsets="false"
+    app:mainRoundedCorners="top"
+    app:showNavButtonAsBack="true"
+    app:title="@string/top_followers_browser_title">
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/top_followers_browse_refresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_location="main_content">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="10dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/top_followers_browse_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fadeScrollbars="true"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:scrollbarStyle="insideOverlay"
+                android:scrollbars="vertical" />
+
+            <TextView
+                android:id="@+id/top_followers_browse_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="@string/top_followers_browser_empty"
+                android:textColor="@color/oneui_text_secondary"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</dev.oneuiproject.oneui.layout.ToolbarLayout>

@@ -1,5 +1,14 @@
 import java.io.File
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     id("com.android.application")
@@ -49,9 +58,11 @@ fun git(vararg args: String): CommandResult = runCatching {
     CommandResult(process.waitFor(), process.inputStream.bufferedReader().use { it.readText().trim() })
 }.getOrElse { CommandResult(-1, "") }
 
-// Debug builds use the commit distance from the base-version change so every
-// main build remains identifiable. Beta releases have their own sequence,
-// supplied by the pre-release workflow, and reset to 1 for each base version.
+// Debug builds use the commit distance from the base-version change in their
+// version name so every build remains identifiable. Their version code uses a
+// fixed slot above every beta, allowing trusted debug APKs to replace betas.
+// Beta releases have their own sequence, supplied by the pre-release workflow,
+// and reset to 1 for each base version.
 val debugNumber = providers.gradleProperty("prereleaseNumber").orNull?.toIntOrNull()
     ?: run {
         val versionFileStatus = git("status", "--porcelain", "--", "version.properties")
@@ -73,21 +84,15 @@ val cloudinaryCloudName = providers.gradleProperty("cloudinaryCloudName").orNull
 val cloudinaryUploadPreset = providers.gradleProperty("cloudinaryUploadPreset").orNull
     ?: System.getenv("CLOUDINARY_UPLOAD_PRESET")
     ?: ""
-val twitterApisDefaultApiKey = providers.gradleProperty("twitterApisDefaultApiKey").orNull
-    ?: System.getenv("TWITTERAPIS_DEFAULT_API_KEY")
-    ?: ""
 require(debugNumber > 0) { "prereleaseNumber must be greater than zero" }
 require(betaNumber > 0) { "betaNumber must be greater than zero" }
-require(debugNumber <= 79) {
-    "Debug build number $debugNumber exceeds this version's Play Store slot range; bump versionName"
-}
 require(betaNumber <= 19) {
     "Beta build number $betaNumber exceeds this version's Play Store slot range; bump versionName"
 }
 
 // Reserve 100 monotonically ordered Play Store version-code slots for each
-// semantic version: debug 01-79, beta 80-98, and stable 99. The layout stays
-// below Play's 2,100,000,000 ceiling through version 20.999.999.
+// semantic version: beta 80-98, trusted debug 98, and stable 99. The layout
+// stays below Play's 2,100,000,000 ceiling through version 20.999.999.
 val versionCodeBase =
     versionMajor * 100_000_000 + versionMinor * 100_000 + versionPatch * 100
 val stableVersionCode = versionCodeBase + 99
@@ -108,7 +113,6 @@ android {
         resValue("string", "buffer_oauth_client_id", bufferOAuthClientId)
         resValue("string", "cloudinary_cloud_name", cloudinaryCloudName)
         resValue("string", "cloudinary_upload_preset", cloudinaryUploadPreset)
-        resValue("string", "twitterapis_default_api_key", twitterApisDefaultApiKey)
         resValue(
             "string",
             "buffer_oauth_redirect_uri",
@@ -171,20 +175,46 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+abstract class GenerateDebugChangelog : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val changelogFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val directory = outputDirectory.get().asFile
+        directory.mkdirs()
+        changelogFile.get().asFile.copyTo(directory.resolve("upcoming-changelog.md"), overwrite = true)
     }
 }
 
 androidComponents {
     onVariants(selector().all()) { variant ->
         val versionCode = when (variant.buildType) {
-            "debug" -> versionCodeBase + debugNumber
+            "debug" -> versionCodeBase + 98
             "beta" -> versionCodeBase + 79 + betaNumber
             else -> stableVersionCode
         }
         variant.outputs.forEach { output ->
             output.versionCode.set(versionCode)
+        }
+        if (variant.buildType == "debug") {
+            val changelog = tasks.register<GenerateDebugChangelog>("generateDebugChangelog") {
+                changelogFile.set(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+                outputDirectory.set(layout.buildDirectory.dir("generated/debugChangelog/assets"))
+            }
+            variant.sources.assets?.addGeneratedSourceDirectory(changelog, GenerateDebugChangelog::outputDirectory)
         }
     }
 }
@@ -198,13 +228,19 @@ configurations.configureEach {
     exclude(group = "androidx.viewpager2", module = "viewpager2")
     exclude(group = "androidx.viewpager", module = "viewpager")
     exclude(group = "androidx.appcompat", module = "appcompat")
+    // Play Services pulls stock Fragment, but One UI Design supplies the SESL
+    // implementation under the same AndroidX package names.
+    exclude(group = "androidx.fragment", module = "fragment")
     exclude(group = "androidx.slidingpanelayout", module = "slidingpanelayout")
     exclude(group = "com.google.android.material", module = "material")
 }
 
 dependencies {
     implementation("io.github.tribalfs:oneui-design:0.9.13+oneui8")
+    implementation("com.airbnb.android:lottie:6.6.2")
     implementation("androidx.work:work-runtime:2.11.2")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("io.github.oneuiproject:icons:1.1.0")
     implementation("sesl.androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01+1.0.0-sesl8+rev0")
     testImplementation("junit:junit:4.13.2")

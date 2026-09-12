@@ -22,6 +22,7 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?roundedCornerColor"
         app:layout_location="main_content">
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout

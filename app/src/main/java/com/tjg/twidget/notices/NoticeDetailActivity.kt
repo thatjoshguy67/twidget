@@ -43,8 +43,9 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
         ViewCompat.requestApplyInsets(root)
 
         val tag = intent.getStringExtra(EXTRA_NOTICE_TAG)
-        val notice = ReleaseNoticesStore.cached(this).notices
+        val notice = ReleaseNoticesStore.visible(this)
             .firstOrNull { it.tag == tag }
+            ?: UpcomingReleaseNotes.read(this)?.takeIf { it.tag == tag }
         if (notice == null) {
             finish()
             return
@@ -52,8 +53,10 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
 
         findViewById<TextView>(R.id.notice_detail_title).text = notice.title
         findViewById<TextView>(R.id.notice_detail_meta).text = releaseMeta(notice)
-        findViewById<TextView>(R.id.notice_detail_beta).visibility =
-            if (notice.prerelease) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.notice_detail_beta).apply {
+            setText(if (notice.upcoming) R.string.notices_upcoming else R.string.notices_beta)
+            visibility = if (notice.prerelease || notice.upcoming) View.VISIBLE else View.GONE
+        }
         findViewById<TextView>(R.id.notice_detail_body).apply {
             text = if (notice.body.isBlank()) {
                 getString(R.string.notices_no_details)
@@ -69,9 +72,15 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
         findViewById<AppCompatButton>(R.id.notice_detail_update_button).setOnClickListener {
             startLeftSidePopOverActivity(Intent(this, AboutActivity::class.java))
         }
+        if (notice.upcoming) {
+            findViewById<View>(R.id.notice_detail_actions_divider).visibility = View.GONE
+            findViewById<View>(R.id.notice_detail_release_button).visibility = View.GONE
+            findViewById<View>(R.id.notice_detail_update_button).visibility = View.GONE
+        }
     }
 
     private fun releaseMeta(notice: ReleaseNotice): String {
+        if (notice.upcoming) return getString(R.string.notices_upcoming_summary)
         val date = runCatching {
             DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
                 .format(Instant.parse(notice.publishedAt).atZone(ZoneId.systemDefault()))

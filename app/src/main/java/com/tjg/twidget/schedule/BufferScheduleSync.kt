@@ -18,7 +18,7 @@ class BufferScheduleSync(
 ) {
     private val appContext = context.applicationContext
 
-    fun sync(userInitiated: Boolean = false): BufferSyncResult {
+    fun sync(userInitiated: Boolean = false, username: String? = null): BufferSyncResult {
         if (!BufferOAuth.isConnected(appContext)) {
             return BufferSyncResult()
         }
@@ -26,7 +26,7 @@ class BufferScheduleSync(
             return BufferSyncResult(errors = listOf(it))
         }
         if (!BufferRequestThrottle.beginSync(appContext, userInitiated)) return BufferSyncResult()
-        val trackedUsername = TwidgetStore.settings(appContext).username.trim().trimStart('@')
+        val trackedUsername = (username ?: TwidgetStore.settings(appContext).username).trim().trimStart('@')
         if (trackedUsername.isBlank()) return BufferSyncResult(errors = listOf("No default X account is configured"))
         val mappedId = ScheduleSettingsStore.bufferChannelFor(appContext, trackedUsername)
         val mappedOrganizationId = ScheduleSettingsStore.bufferOrganizationFor(appContext, trackedUsername)
@@ -58,13 +58,9 @@ class BufferScheduleSync(
         if (!active.isSuccess) return BufferSyncResult(errors = active.errors.map { it.message })
         val now = System.currentTimeMillis()
         val confirmationStart = existing
-            .filter {
-                it.status == ScheduleStatus.SCHEDULED &&
-                    it.scheduledAt?.let { dueAt -> dueAt <= now + TERMINAL_LOOKAHEAD_MS } == true
-            }
-            .mapNotNull(ScheduledPost::scheduledAt)
+            .mapNotNull { terminalConfirmationTime(it, now) }
             .minOrNull()
-            ?.minus(24 * 60 * 60 * 1000L)
+            ?.minus(TERMINAL_QUERY_PADDING_MS)
         val terminal = confirmationStart?.let {
             client.listPosts(organizationId, channelId, listOf("sent", "error"), it)
         } ?: BufferResult(emptyList())
@@ -77,13 +73,7 @@ class BufferScheduleSync(
             seen += bufferPost.id
             val current = existing.firstOrNull { it.remotePostId == bufferPost.id }
                 ?: existing.firstOrNull { it.matches(bufferPost, channelId) }
-            val status = when (bufferPost.status.lowercase()) {
-                "draft" -> ScheduleStatus.DRAFT
-                "scheduled", "sending" -> ScheduleStatus.SCHEDULED
-                "sent" -> ScheduleStatus.PUBLISHED
-                "error" -> ScheduleStatus.NEEDS_ACTION
-                else -> return@forEach
-            }
+            val status = resolvedStatus(bufferPost.status, bufferPost.dueAt, now) ?: return@forEach
             val local = ScheduledPost(
                 id = current?.id ?: remoteLocalId(bufferPost.id),
                 provider = ScheduleProvider.BUFFER,
@@ -97,18 +87,24 @@ class BufferScheduleSync(
                 errorMessage = if (status == ScheduleStatus.NEEDS_ACTION) "Buffer could not publish this post" else null,
                 createdAt = current?.createdAt ?: bufferPost.createdAt ?: now,
                 updatedAt = now,
-                publishedAt = if (status == ScheduleStatus.PUBLISHED) bufferPost.dueAt ?: current?.publishedAt else current?.publishedAt,
+                publishedAt = when (status) {
+                    ScheduleStatus.PUBLISHED -> bufferPost.dueAt ?: current?.publishedAt ?: now
+                    else -> null
+                },
                 pinned = current?.pinned ?: false,
                 deletedAt = current?.deletedAt,
             )
             store.upsert(local)
-            if (ScheduleNotificationPolicy.shouldNotifyBufferPublished(current, status)) {
+            if (
+                bufferPost.status.equals("sent", ignoreCase = true) &&
+                ScheduleNotificationPolicy.shouldNotifyBufferPublished(current, status)
+            ) {
                 ScheduleNotificationHelper.showBufferPublished(appContext, local)
             }
             if (ScheduleNotificationPolicy.shouldNotifyBufferFailed(current, status)) {
                 ScheduleNotificationHelper.showBufferFailed(appContext, local)
             }
-            if (status == ScheduleStatus.SCHEDULED) BufferPublishCheckWorker.enqueue(appContext, local)
+            BufferPublishCheckWorker.enqueue(appContext, local)
             if (current == null) imported++ else updated++
         }
 
@@ -130,7 +126,32 @@ class BufferScheduleSync(
 
     companion object {
         private const val TERMINAL_LOOKAHEAD_MS = 5 * 60 * 1000L
+        private const val TERMINAL_CONFIRMATION_GRACE_MS = 24 * 60 * 60 * 1000L
+        private const val TERMINAL_QUERY_PADDING_MS = 24 * 60 * 60 * 1000L
         internal fun remoteLocalId(postId: String): String = "buffer-post-$postId"
+
+        // Pending posts remain eligible even if the device was offline for days.
+        internal fun terminalConfirmationTime(post: ScheduledPost, now: Long): Long? = when (post.status) {
+            ScheduleStatus.SCHEDULED -> post.scheduledAt?.takeIf { it <= now + TERMINAL_LOOKAHEAD_MS }
+            ScheduleStatus.AWAITING_CONFIRMATION -> post.scheduledAt ?: post.createdAt
+            ScheduleStatus.PUBLISHED -> (post.publishedAt ?: post.scheduledAt)?.takeIf {
+                now - it in 0L..TERMINAL_CONFIRMATION_GRACE_MS
+            }
+            else -> null
+        }
+
+        internal fun resolvedStatus(remoteStatus: String, dueAt: Long?, now: Long): ScheduleStatus? =
+            when (remoteStatus.lowercase(java.util.Locale.ROOT)) {
+                "draft" -> ScheduleStatus.DRAFT
+                "error" -> ScheduleStatus.NEEDS_ACTION
+                "sent" -> ScheduleStatus.PUBLISHED
+                "scheduled", "sending" -> if (dueAt != null && dueAt <= now) {
+                    ScheduleStatus.AWAITING_CONFIRMATION
+                } else {
+                    ScheduleStatus.SCHEDULED
+                }
+                else -> null
+            }
 
         /**
          * A just-due post can briefly disappear from Buffer's active list before it

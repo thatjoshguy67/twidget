@@ -33,11 +33,11 @@ class ScheduleStore(context: Context) {
     }
 
     fun get(id: String): ScheduledPost? = synchronized(lock) {
-        readAllLocked().firstOrNull { it.id == id }
+        readActiveStateLocked().firstOrNull { it.id == id }
     }
 
     fun list(): List<ScheduledPost> = synchronized(lock) {
-        sortPosts(readAllLocked().filter { it.deletedAt == null })
+        sortPosts(readActiveStateLocked().filter { it.deletedAt == null })
     }
 
     fun listTrash(): List<ScheduledPost> = synchronized(lock) {
@@ -48,7 +48,7 @@ class ScheduleStore(context: Context) {
         val normalized = normalizeAccount(account)
         return synchronized(lock) {
             sortPosts(
-                readAllLocked().filter {
+                readActiveStateLocked().filter {
                     it.deletedAt == null &&
                         (
                             normalizeAccount(it.accountId.orEmpty()) == normalized ||
@@ -149,6 +149,13 @@ class ScheduleStore(context: Context) {
         return purgeExpiredTrashLocked(decoded)
     }
 
+    private fun readActiveStateLocked(nowMillis: Long = System.currentTimeMillis()): List<ScheduledPost> {
+        val posts = readAllLocked()
+        val reconciled = posts.map { BufferScheduleFallbackPolicy.reconcile(it, nowMillis) }
+        if (reconciled != posts) writeAllLocked(reconciled)
+        return reconciled
+    }
+
     private fun purgeExpiredTrashLocked(posts: List<ScheduledPost>): List<ScheduledPost> {
         val cutoff = System.currentTimeMillis() - ScheduleTrashPolicy.RETENTION_MS
         val expired = posts.filter { post ->
@@ -173,13 +180,7 @@ class ScheduleStore(context: Context) {
         account.trim().trimStart('@').lowercase()
 
     private fun sortPosts(posts: List<ScheduledPost>): List<ScheduledPost> =
-        posts.sortedWith(
-            compareByDescending<ScheduledPost> {
-                it.pinned && ScheduleQueuePolicy.canPin(it.status)
-            }
-                .thenBy { it.scheduledAt ?: Long.MAX_VALUE }
-                .thenByDescending { it.updatedAt },
-        )
+        ScheduleQueuePolicy.order(posts)
 
     private fun sortTrashPosts(posts: List<ScheduledPost>): List<ScheduledPost> =
         posts.sortedByDescending { it.deletedAt ?: 0L }

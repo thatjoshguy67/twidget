@@ -1,6 +1,7 @@
 package com.tjg.twidget.main
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.view.Menu
@@ -25,6 +26,7 @@ import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startLeftSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import dev.oneuiproject.oneui.design.R as OneUiDesignR
+import dev.oneuiproject.oneui.layout.Badge
 import dev.oneuiproject.oneui.layout.DrawerLayout
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
@@ -45,11 +47,20 @@ internal class MainDrawerController(
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
     private var showingEditNavigation = false
+    private var lastDrawerClosedState: Boolean? = null
 
     fun setupDrawerChrome() {
         activity.findViewById<NavDrawerLayout>(drawerLayoutId).apply {
             closeNavRailOnBack = true
             setHideNavRailDrawerOnCollapse(false)
+            viewTreeObserver.addOnPreDrawListener {
+                val drawerClosed = !isOpen
+                if (drawerClosed != lastDrawerClosedState) {
+                    lastDrawerClosedState = drawerClosed
+                    applyNavigationBadge(this, drawerClosed)
+                }
+                true
+            }
         }
         activity.findViewById<DrawerNavigationView>(drawerNavigationId)
             .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
@@ -134,6 +145,22 @@ internal class MainDrawerController(
         }
     }
 
+    fun updateNavigationBadge(drawerClosed: Boolean? = null) {
+        if (!isEditMode()) {
+            val layout = activity.findViewById<DrawerLayout>(drawerLayoutId)
+            renderDrawerNavigation(layout)
+            applyNavigationBadge(layout, drawerClosed ?: !layout.isOpen)
+        }
+    }
+
+    private fun applyNavigationBadge(layout: DrawerLayout, drawerClosed: Boolean) {
+        lastDrawerClosedState = drawerClosed
+        layout.setHeaderButtonBadge(
+            if (TwidgetStore.updateAvailable(activity)) Badge.DOT else Badge.NONE,
+        )
+        layout.post { applyDrawerButtonAppearance(layout) }
+    }
+
     private fun renderEditModeNavigation(layout: DrawerLayout) {
         if (!showingEditNavigation) {
             layout.setExpanded(expanded = false, animate = true)
@@ -167,11 +194,11 @@ internal class MainDrawerController(
             showingEditNavigation = false
         }
         layout.showNavigationButton = true
-        val drawerIcon = AppCompatResources.getDrawable(activity, OneUiDesignR.drawable.oui_des_ic_ab_drawer)
-        layout.setNavigationButtonIcon(drawerIcon)
+        layout.setNavigationButtonIcon(drawerIcon())
         layout.setNavigationButtonTooltip(
             activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
         )
+        applyDrawerButtonAppearance(layout)
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
             if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
                 // NavDrawerLayout renders the drawer affordance in the navigation rail on
@@ -179,10 +206,29 @@ internal class MainDrawerController(
                 navigationIcon = null
                 setNavigationOnClickListener(null)
             } else {
-                navigationIcon = drawerIcon
+                navigationIcon = drawerIcon()
                 setNavigationOnClickListener { layout.setDrawerOpen(true, true) }
             }
         }
+    }
+
+    private fun drawerIcon(): Drawable? {
+        return AppCompatResources.getDrawable(
+            activity,
+            OneUiDesignR.drawable.oui_des_ic_ab_drawer,
+        )
+    }
+
+    private fun applyDrawerButtonAppearance(layout: DrawerLayout) {
+        val primary = activity.getColor(R.color.oneui_text_primary)
+        layout.findViewById<ImageView>(OneUiDesignR.id.navRailDrawerButton)?.apply {
+            alpha = 1f
+            imageTintList = ColorStateList.valueOf(primary)
+        }
+        layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar)
+            ?.navigationIcon
+            ?.mutate()
+            ?.setTint(primary)
     }
 
     private fun attachDrawerAccountLongPresses(drawerNav: DrawerNavigationView) {

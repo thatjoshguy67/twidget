@@ -23,12 +23,18 @@ import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import com.tjg.twidget.R
+import com.tjg.twidget.analytics.ActivityClient
 import com.tjg.twidget.analytics.AnalyticsBlendPolicy
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.analytics.BlendedAnalytics
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.XAnalyticsMovement
+import com.tjg.twidget.brief.BriefEngine
+import com.tjg.twidget.brief.BriefCardType
+import com.tjg.twidget.brief.BriefEditorialSummary
+import com.tjg.twidget.brief.BriefSettingsStore
+import com.tjg.twidget.brief.TwidgetBriefActivity
 import com.tjg.twidget.data.AccountAverageSeries
 import com.tjg.twidget.data.HistoryRange
 import com.tjg.twidget.data.HistorySample
@@ -46,6 +52,7 @@ import kotlin.math.roundToLong
 // full-width cards with extra height.
 internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
     HALF(1, 140),
+    MILESTONE(2, 112),
     FULL(2, 156),
     CHART(2, 260),
     TOP_FOLLOWERS(2, 430),
@@ -65,7 +72,8 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     X_ENGAGEMENTS("x_engagements", R.string.x_engagements, DashboardCardSize.HALF),
     X_PROFILE_VISITS("x_profile_visits", R.string.x_profile_visits, DashboardCardSize.HALF),
     X_LIKES_RECEIVED("x_likes_received", R.string.x_likes_received, DashboardCardSize.HALF),
-    MILESTONE("milestone", R.string.milestone_progress, DashboardCardSize.FULL),
+    MILESTONE("milestone", R.string.brief_title, DashboardCardSize.MILESTONE),
+    DAILY_STREAK("daily_streak", R.string.daily_streak, DashboardCardSize.HALF),
     GROWTH_PACE("growth_pace", R.string.growth_pace, DashboardCardSize.HALF),
     BEST_DAY("best_day", R.string.best_recent_day, DashboardCardSize.HALF),
     MOMENTUM("momentum", R.string.momentum, DashboardCardSize.HALF),
@@ -171,13 +179,18 @@ internal class MainDashboardBinder(
         TwidgetStore.dashboardCards(activity)
             .mapNotNull(DashboardCardType::fromId)
             .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
+            .filter { it != DashboardCardType.MILESTONE || isDefaultAccount(account) }
             .forEach { card ->
                 val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
                     createTopFollowersCard(account)
                 } else if (card in POST_CARD_TYPES) {
                     activity.postAnalyticsBinder.createGridCard(card, account)
                 } else if (card.size == DashboardCardSize.CHART) {
-                    createChartCard(card, stats, chartHistory, history, fullHistory)
+                    createChartCard(card, account, stats, chartHistory, fullHistory)
+                } else if (card == DashboardCardType.MILESTONE) {
+                    createBriefCard(stats, account)
+                } else if (card == DashboardCardType.DAILY_STREAK) {
+                    createStreakCard(stats)
                 } else {
                     createInsightCard(card, stats, history)
                 }
@@ -203,6 +216,7 @@ internal class MainDashboardBinder(
         }
 
         activity.syncController.maybeRefreshAnalytics(account)
+        activity.syncController.maybeRefreshStreak(account)
     }
 
     private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
@@ -286,16 +300,30 @@ internal class MainDashboardBinder(
             })
 
             if (spec.progress != null) {
+                val progressValue = spec.progress.coerceIn(0, 100)
+                addView(TextView(activity).apply {
+                    text = activity.getString(R.string.milestone_progress_percent, progressValue)
+                    includeFontPadding = false
+                    gravity = Gravity.END
+                    setTextColor(spec.accent)
+                    textSize = 12f
+                    typeface = Typeface.create("sec", Typeface.BOLD)
+                }, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = activity.dp(9)
+                })
                 addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
                     max = 100
-                    progress = spec.progress.coerceIn(0, 100)
+                    progress = progressValue
                     progressTintList = ColorStateList.valueOf(spec.accent)
                     progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
                 }, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     activity.dp(6),
                 ).apply {
-                    topMargin = activity.dp(9)
+                    topMargin = activity.dp(4)
                 })
             }
 
@@ -314,6 +342,59 @@ internal class MainDashboardBinder(
         }
     }
 
+    private fun createBriefCard(stats: ProfileStats, account: String): View {
+        val root = LayoutInflater.from(activity).inflate(R.layout.brief_dashboard_card, null, false)
+        val snapshot = BriefEngine.rebuild(activity, account)
+        val summary = BriefEditorialSummary.from(snapshot)
+        val hero = snapshot.cards.firstOrNull() ?: com.tjg.twidget.brief.BriefCard(
+            id = "empty",
+            type = BriefCardType.SUMMARY,
+            title = activity.getString(R.string.brief_widget_empty_title),
+            body = activity.getString(R.string.brief_categories_empty_body),
+            score = 0,
+        )
+        val iconRes = when (hero.type) {
+            BriefCardType.MILESTONE -> R.drawable.ic_milestone_goals
+            BriefCardType.STREAK -> R.drawable.ic_streak_fire
+            BriefCardType.TOP_FOLLOWER -> OneUiIconR.drawable.ic_oui_community
+            else -> null
+        }
+        root.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
+            visibility = if (iconRes == null) View.GONE else View.VISIBLE
+            iconRes?.let {
+                setImageDrawable(AppCompatResources.getDrawable(activity, it))
+                imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_primary))
+            }
+        }
+        root.findViewById<LinearLayout>(R.id.brief_dashboard_copy).apply {
+            (layoutParams as LinearLayout.LayoutParams).marginStart = activity.dp(
+                if (iconRes == null) 4 else 12,
+            )
+        }
+        root.findViewById<TextView>(R.id.brief_dashboard_title).text = summary.title
+        root.findViewById<TextView>(R.id.brief_dashboard_message).text = summary.shortDescription
+        root.background = MilestoneCardBackgroundDrawable(
+            glowColor = activity.getColor(R.color.brief_dashboard_glow),
+            surfaceColor = activity.getColor(R.color.oneui_card_bg),
+            radiusPx = activity.dp(28).toFloat(),
+        )
+        root.contentDescription =
+            "${activity.getString(R.string.brief_title)}. ${summary.title}. ${summary.shortDescription}"
+        root.setOnClickListener {
+            if (!editModeController.editMode && isDefaultAccount(account)) {
+                BriefSettingsStore.setEnabled(activity, true)
+                activity.startActivity(TwidgetBriefActivity.intent(activity, account))
+            }
+        }
+        return root
+    }
+
+    private fun isDefaultAccount(account: String): Boolean =
+        account.equals(TwidgetStore.settings(activity).username, ignoreCase = true)
+
+    private fun createStreakCard(stats: ProfileStats): View =
+        StreakCardFactory.create(activity, ActivityClient.snapshot(activity, stats.userName))
+
     private fun createTopFollowersCard(account: String): View {
         return TopFollowersCardBinder(
             activity = activity,
@@ -324,9 +405,9 @@ internal class MainDashboardBinder(
 
     private fun createChartCard(
         card: DashboardCardType,
+        account: String,
         stats: ProfileStats,
         chartHistory: List<HistorySample>,
-        history: List<HistorySample>,
         fullHistory: List<HistorySample>,
     ): View {
         val (layoutRes, valueId, deltaId, chartId, value, known, selector) = when (card) {
@@ -364,9 +445,9 @@ internal class MainDashboardBinder(
             ) { it.likes }
             else -> error("Compact cards do not have chart layouts.")
         }
-        return LayoutInflater.from(activity).inflate(layoutRes, null, false).also {
+        return LayoutInflater.from(activity).inflate(layoutRes, null, false).also { root ->
             bindMetric(
-                it,
+                root,
                 valueId,
                 deltaId,
                 chartId,
@@ -378,6 +459,15 @@ internal class MainDashboardBinder(
                 allowSparseAverage = card == DashboardCardType.FOLLOWERS &&
                     fullHistory.any { it.imported && it.followersKnown },
             )
+            if (METRIC_HISTORY_DRILL_DOWN_ENABLED) {
+                val openHistory = {
+                    if (!editModeController.editMode) {
+                        activity.startActivity(MetricChartActivity.intent(activity, account, card.id))
+                    }
+                }
+                root.setOnClickListener { openHistory() }
+                root.findViewById<MetricChartView>(chartId)?.onChartTapListener = openHistory
+            }
         }
     }
 
@@ -581,16 +671,49 @@ internal class MainDashboardBinder(
                 accent = activity.getColor(R.color.oneui_accent),
             )
             DashboardCardType.MILESTONE -> {
-                val milestone = nextMilestone(stats.followersCount)
-                val previous = previousMilestone(milestone)
-                val remaining = (milestone - stats.followersCount).coerceAtLeast(0)
-                val progress = if (milestone == previous) 100 else (((stats.followersCount - previous).coerceAtLeast(0) * 100) / (milestone - previous)).toInt()
+                val milestoneSettings = TwidgetStore.milestoneSettings(activity, stats.userName)
+                val spec = MilestonePolicy.resolveCardSpec(
+                    followersCount = stats.followersCount,
+                    followersKnown = stats.followersKnown,
+                    settings = milestoneSettings,
+                    autoNextMilestone = ::nextMilestone,
+                    autoPreviousMilestone = ::previousMilestone,
+                    compactNumber = TwidgetStore::compactNumber,
+                    goalReachedText = activity.getString(R.string.milestone_goal_reached),
+                    unknownFollowersText = activity.getString(R.string.milestone_unknown_followers),
+                    toNextMilestone = { remaining, target ->
+                        activity.getString(R.string.to_next_milestone, remaining, target)
+                    },
+                    milestoneLabel = activity.getString(R.string.milestone_progress),
+                )
                 InsightSpec(
-                    label = "Milestone",
-                    value = TwidgetStore.compactNumber(milestone),
-                    detail = activity.getString(R.string.to_next_milestone, TwidgetStore.compactNumber(remaining), TwidgetStore.compactNumber(milestone)),
+                    label = spec.label,
+                    value = spec.value,
+                    detail = spec.detail,
                     accent = activity.getColor(R.color.oneui_accent),
-                    progress = progress,
+                    progress = spec.progress,
+                )
+            }
+            DashboardCardType.DAILY_STREAK -> {
+                val streak = ActivityClient.snapshot(activity, stats.userName)
+                InsightSpec(
+                    label = activity.getString(R.string.daily_streak),
+                    value = if (streak.streak > 0) {
+                        activity.getString(R.string.daily_streak_days, streak.streak)
+                    } else {
+                        activity.getString(R.string.daily_streak_none)
+                    },
+                    detail = when {
+                        streak.activeToday -> activity.getString(R.string.daily_streak_active_today)
+                        streak.streak > 0 && streak.lastActiveDay != null ->
+                            activity.getString(R.string.daily_streak_last_active, streak.lastActiveDay)
+                        else -> activity.getString(R.string.daily_streak_keep_going)
+                    },
+                    accent = if (streak.streak > 0) {
+                        activity.getColor(R.color.metric_green)
+                    } else {
+                        activity.getColor(R.color.oneui_text_secondary)
+                    },
                 )
             }
             DashboardCardType.GROWTH_PACE -> {
@@ -901,6 +1024,10 @@ internal class MainDashboardBinder(
         )
     }
 }
+
+// Keep the compact dashboard charts visible in 1.2, but do not expose the
+// unfinished full-history page from Followers, Following, Posts, or Likes.
+private const val METRIC_HISTORY_DRILL_DOWN_ENABLED = false
 
 internal fun DashboardCardType.requiresAnalyticsImport(): Boolean = when (this) {
     DashboardCardType.X_IMPRESSIONS,

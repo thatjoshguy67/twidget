@@ -43,8 +43,36 @@ test("local history persists UTC samples and applies configured retention", asyn
   assert.equal(await repository.hasAccount("old"), false);
 
   const stored = JSON.parse(await readFile(filePath, "utf8"));
-  assert.equal(stored.version, 3);
+  assert.equal(stored.version, 4);
   assert.equal(stored.accounts.active[0].ts, now - DAY);
+});
+
+test("local Top Followers scans publish atomically, paginate by rank, and expire", async (t) => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), "twidget-top-followers-test-"));
+  const filePath = path.join(temp, "history.json");
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  let now = Date.UTC(2026, 7, 1);
+  const repository = new LocalHistoryRepository({ filePath, maxHistoryDays: 400, now: () => now });
+  await repository.initialize();
+  await repository.registerAccount("example", [sample(now, 10)], 2);
+  const started = await repository.startTopFollowersScan("example", "scan-1");
+  assert.equal(started.status, "running");
+  await repository.appendTopFollowersPage("example", "scan-1", [
+    { id: "1", username: "one", name: "One", followers: 10, verified: false, avatar: "", mutual: null },
+    { id: "2", username: "two", name: "Two", followers: 20, verified: true, avatar: "", mutual: true },
+  ], "next");
+  assert.equal(await repository.getTopFollowersSnapshot("example"), null);
+  await repository.completeTopFollowersScan("example", "scan-1");
+  const snapshot = await repository.getTopFollowersSnapshot("example", { offset: 0, limit: 1 });
+  assert.equal(snapshot.total, 2);
+  assert.equal(snapshot.followers[0].username, "two");
+  await repository.startTopFollowersScan("example", "scan-2");
+  assert.equal((await repository.getTopFollowersSnapshot("example")).followers[0].username, "two");
+  await repository.failTopFollowersScan("example", "scan-2", "provider_unavailable");
+  assert.equal((await repository.getTopFollowersSnapshot("example")).followers[0].username, "two");
+  now += 31 * DAY;
+  assert.equal(await repository.pruneTopFollowers(30), 1);
+  assert.equal(await repository.getTopFollowersSnapshot("example"), null);
 });
 
 test("history merge never lets an estimate replace a real daily sample", () => {
@@ -163,6 +191,8 @@ test("PostgreSQL repository creates cascading schema and stores dates in UTC", a
   assert.match(schema.sql, /ON DELETE CASCADE/);
   assert.match(schema.sql, /last_accessed_at/);
   assert.match(schema.sql, /ADD COLUMN IF NOT EXISTS following_known/);
+  assert.match(schema.sql, /CREATE TABLE IF NOT EXISTS twidget_top_follower_scans/);
+  assert.match(schema.sql, /CREATE TABLE IF NOT EXISTS twidget_top_followers/);
   assert.match(schema.sql, /NOT estimated AND \(source IS DISTINCT FROM 'wayback' OR following > 0\)/);
   assert.equal(await repository.healthCheck(), true);
   assert.ok(calls.some((call) => call.sql === "SELECT 1"));

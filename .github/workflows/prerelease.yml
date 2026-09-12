@@ -39,6 +39,24 @@ jobs:
         with:
           fetch-depth: 0 # full history so the changelog diff has a baseline
 
+      - name: Validate release metadata
+        run: |
+          VERSION=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version.properties must contain a plain semantic version."
+            exit 1
+          fi
+          BRIDGE_VERSION=$(jq -r '.version' bridge/package.json)
+          BRIDGE_LOCK_VERSION=$(jq -r '.packages[""].version' bridge/package-lock.json)
+          if [ "$BRIDGE_VERSION" != "$VERSION" ] || [ "$BRIDGE_LOCK_VERSION" != "$VERSION" ]; then
+            echo "::error::Bridge package metadata ($BRIDGE_VERSION / $BRIDGE_LOCK_VERSION) does not match beta base version $VERSION"
+            exit 1
+          fi
+          if ! grep -Fq "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section for [$VERSION]."
+            exit 1
+          fi
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -83,12 +101,7 @@ jobs:
           BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
           CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
-          TWITTERAPIS_DEFAULT_API_KEY: ${{ secrets.TWITTERAPIS_DEFAULT_API_KEY }}
         run: |
-          if [ -z "$TWITTERAPIS_DEFAULT_API_KEY" ]; then
-            echo "::error::TWITTERAPIS_DEFAULT_API_KEY is not configured"
-            exit 1
-          fi
           ./gradlew testBetaUnitTest assembleBeta bundleBeta lintVitalBeta \
             -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
 

@@ -3,6 +3,7 @@ package com.tjg.twidget.main
 import android.widget.Toast
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.tjg.twidget.R
+import com.tjg.twidget.analytics.ActivityClient
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
@@ -21,6 +22,7 @@ internal class MainSyncController(
         private set
     private var syncGeneration = 0L
     private val analyticsInFlight = mutableSetOf<String>()
+    private val streakInFlight = mutableSetOf<String>()
 
     fun invalidateLifecycle() {
         lifecycleGeneration++
@@ -99,6 +101,26 @@ internal class MainSyncController(
             postUiIfCurrent(lifecycleToken) {
                 if (activity.selectedAccount.equals(account, ignoreCase = true) && !activity.editModeController.editMode) {
                     activity.analytics = fresh
+                    activity.dashboardBinder.bindContent()
+                }
+            }
+        }
+    }
+
+    fun maybeRefreshStreak(account: String) {
+        if (activity.editModeController.editMode || !ActivityClient.isStale(activity, account)) return
+        val key = account.lowercase(Locale.US)
+        synchronized(streakInFlight) {
+            if (!streakInFlight.add(key)) return
+        }
+        val lifecycleToken = lifecycleGeneration
+        AppExecutors.execute(onRejected = {
+            synchronized(streakInFlight) { streakInFlight.remove(key) }
+        }) {
+            runCatching { ActivityClient.refresh(activity.applicationContext, account) }
+            synchronized(streakInFlight) { streakInFlight.remove(key) }
+            postUiIfCurrent(lifecycleToken) {
+                if (activity.selectedAccount.equals(account, ignoreCase = true) && !activity.editModeController.editMode) {
                     activity.dashboardBinder.bindContent()
                 }
             }

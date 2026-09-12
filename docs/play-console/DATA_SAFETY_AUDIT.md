@@ -28,7 +28,7 @@ the optional scheduling feature.
 
 | Play data type | Handling | Ephemeral | Required? | Purpose | Code basis |
 | --- | --- | --- | --- | --- | --- |
-| Name | Collected | No | Optional | App functionality | An opt-in completed Top Followers ranking contributes the public names of up to five ranked accounts to the shared bridge. |
+| Name | Collected | No | Optional | App functionality | An opted-in bridge scan stores the public names in the latest completed Top Followers list so participating installs can reuse it. |
 | Personal identifiers | Collected and shared | No | Required | App functionality | The configured X/Twitter account name is sent to the selected profile provider and may be retained by the opt-in shared-history bridge. Automatic refreshes mean provider transfers are not always a single user-initiated sharing action. Buffer account/channel identifiers are also used when that optional integration is enabled. |
 | Photos | Collected | No | Optional | App functionality | A user-selected image attached to a Buffer post is uploaded to Cloudinary and retained for Buffer to fetch. |
 | Videos | Collected | No | Optional | App functionality | A user-selected video attached to a Buffer post is uploaded to Cloudinary and retained for Buffer to fetch. |
@@ -45,9 +45,10 @@ Google's service-provider or specific user-initiated-action rules:
   that Buffer can fetch.
 - Buffer receives content only when the user explicitly chooses its remote
   save/schedule functionality.
-- Shared-history and Top Followers contributions are sent to the first-party
-  bridge after a specific opt-in; the in-app disclosure explains that public
-  account stats are contributed for use by other Twidget users.
+- Shared-history and server-side Top Followers scans use the first-party bridge
+  after a specific opt-in; the in-app disclosure explains that public account
+  stats and the latest completed public follower list can be reused by other
+  opted-in Twidget users.
 
 ## Intentionally not selected
 

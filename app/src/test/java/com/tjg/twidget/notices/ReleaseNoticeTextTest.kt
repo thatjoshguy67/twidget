@@ -64,4 +64,30 @@ class ReleaseNoticeTextTest {
         assertEquals("Important note", quote.content)
         assertEquals(ReleaseNoticeMarkdown.LineKind.PARAGRAPH, paragraph.kind)
     }
+
+    @Test
+    fun styledMarkdownJoinsSourceWrappedListItemsAndParagraphs() {
+        val markdown = """
+            Intro text wraps in the
+            source but remains one paragraph.
+
+            - A longer release-note item
+              continues across source lines
+              without becoming new paragraphs.
+            - The next item remains separate.
+        """.trimIndent()
+
+        val blocks = ReleaseNoticeMarkdown.parseBlocks(markdown)
+
+        assertEquals(4, blocks.size)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.PARAGRAPH, blocks[0].kind)
+        assertEquals("Intro text wraps in the source but remains one paragraph.", blocks[0].content)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.BLANK, blocks[1].kind)
+        assertEquals(ReleaseNoticeMarkdown.LineKind.BULLET, blocks[2].kind)
+        assertEquals(
+            "A longer release-note item continues across source lines without becoming new paragraphs.",
+            blocks[2].content,
+        )
+        assertEquals(ReleaseNoticeMarkdown.LineKind.BULLET, blocks[3].kind)
+    }
 }

@@ -28,6 +28,7 @@ object SecureCredentialStore {
     const val BUFFER_TOKEN_EXPIRY = "buffer_token_expiry"
     const val LEGACY_POSTPONE_API_KEY = "postpone_api_key"
     const val TWITTERAPIS_API_KEY = "twitterapis_api_key"
+    const val GEMINI_API_KEY = "gemini_api_key"
 
     private const val KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "com.tjg.twidget.credentials.v1"
@@ -44,6 +45,7 @@ object SecureCredentialStore {
         BUFFER_TOKEN_EXPIRY,
         LEGACY_POSTPONE_API_KEY,
         TWITTERAPIS_API_KEY,
+        GEMINI_API_KEY,
     )
     private val lock = Any()
 

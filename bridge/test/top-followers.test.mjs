@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { prepareTopFollowersCache } from "../src/top-followers.js";
+import { prepareTopFollowersCache, shouldRefreshTopFollowers } from "../src/top-followers.js";
 
 test("normalizes a bounded completed Top Followers result", () => {
   const cached = prepareTopFollowersCache({
@@ -38,4 +38,22 @@ test("rejects malformed, duplicate, or unbounded shared rankings", () => {
   assert.equal(prepareTopFollowersCache({ scanned: 1, pages: 1, top: [{ ...valid, username: "not valid" }] }), null);
   assert.equal(prepareTopFollowersCache({ scanned: 1, pages: 1, top: [{ ...valid, avatar: "http://example.com/a" }] }), null);
   assert.equal(prepareTopFollowersCache({ scanned: 2, pages: 1, top: [valid, valid] }), null);
+});
+
+test("daily refreshes run once per cadence and do not duplicate running scans", () => {
+  const day = 24 * 60 * 60 * 1000;
+  const now = 10 * day;
+  assert.equal(shouldRefreshTopFollowers({ snapshot: null, scan: null, now, refreshMs: day }), true);
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: { completedAt: now - day + 1 }, scan: null, now, refreshMs: day,
+  }), false);
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: { completedAt: now - day }, scan: null, now, refreshMs: day,
+  }), true);
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: null, scan: { status: "failed", startedAt: now - 1000 }, now, refreshMs: day,
+  }), false);
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: null, scan: { status: "running", startedAt: now - day * 2 }, now, refreshMs: day,
+  }), false);
 });

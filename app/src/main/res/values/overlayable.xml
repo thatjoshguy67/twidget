@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UnusedResources">
+    <!-- Android 14+ allows an app signed like the target (Twidget itself) to
+         replace only these colour roles with a self-targeted fabricated RRO. -->
+    <overlayable name="TwidgetPalette">
+        <policy type="signature">
+            <item name="sesl_blue_color_light" type="color" />
+            <item name="sesl_blue_color_dark" type="color" />
+            <item name="sesl_blue_dark_color_light" type="color" />
+            <item name="sesl_blue_dark_color_dark" type="color" />
+            <item name="sesl_primary_color_light" type="color" />
+            <item name="sesl_primary_color_dark" type="color" />
+            <item name="sesl_primary_dark_color_light" type="color" />
+            <item name="sesl_primary_dark_color_dark" type="color" />
+            <item name="sesl_control_activated_color" type="color" />
+            <item name="oui_des_floating_action_bar_selected_text_color" type="color" />
+        </policy>
+    </overlayable>
+</resources>

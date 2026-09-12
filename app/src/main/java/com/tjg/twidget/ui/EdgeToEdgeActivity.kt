@@ -1,5 +1,6 @@
 package com.tjg.twidget.ui
 
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,11 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     private var fontRoot: ViewGroup? = null
     private val fontLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
         fontRoot?.let(TwidgetFonts::applyTo)
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        AppPaletteManager.attachResources(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

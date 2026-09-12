@@ -17,6 +17,8 @@ internal object ScheduleJsonCodec {
         "id" to json(id),
         "provider" to json(provider.name),
         "status" to json(status.name),
+        // Older betas used PUBLISHED for both presumed and confirmed posts.
+        "bufferPublicationConfirmed" to json(provider == ScheduleProvider.BUFFER && status == ScheduleStatus.PUBLISHED),
         "accountId" to json(accountId),
         "accountUsername" to json(accountUsername),
         "scheduledAt" to json(scheduledAt),
@@ -54,13 +56,19 @@ internal object ScheduleJsonCodec {
 
     private fun postFromValue(value: JsonValue.ObjectValue): ScheduledPost {
         val createdAt = value.long("createdAt")
+        val provider = when (value.string("provider")) {
+            "POSTPONE" -> ScheduleProvider.LOCAL_REMINDER
+            else -> enumValueOf<ScheduleProvider>(value.string("provider"))
+        }
+        val savedStatus = enumValueOf<ScheduleStatus>(value.string("status"))
+        val needsLegacyConfirmation = provider == ScheduleProvider.BUFFER &&
+            savedStatus == ScheduleStatus.PUBLISHED &&
+            !value.optionalString("remotePostId").isNullOrBlank() &&
+            !value.optionalBoolean("bufferPublicationConfirmed")
         return ScheduledPost(
             id = value.string("id"),
-            provider = when (value.string("provider")) {
-                "POSTPONE" -> ScheduleProvider.LOCAL_REMINDER
-                else -> enumValueOf(value.string("provider"))
-            },
-            status = enumValueOf(value.string("status")),
+            provider = provider,
+            status = if (needsLegacyConfirmation) ScheduleStatus.AWAITING_CONFIRMATION else savedStatus,
             accountId = value.optionalString("accountId"),
             accountUsername = value.string("accountUsername"),
             scheduledAt = value.optionalLong("scheduledAt"),
@@ -70,7 +78,7 @@ internal object ScheduleJsonCodec {
             errorMessage = value.optionalString("errorMessage"),
             createdAt = createdAt,
             updatedAt = value.long("updatedAt"),
-            publishedAt = value.optionalLong("publishedAt"),
+            publishedAt = if (needsLegacyConfirmation) null else value.optionalLong("publishedAt"),
             pinned = value.optionalBoolean("pinned"),
             deletedAt = value.optionalLong("deletedAt"),
         )

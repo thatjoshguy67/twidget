@@ -2,6 +2,146 @@
 
 All notable changes to Twidget are documented here.
 
+## [1.2.0] - 2026-09-12
+
+Make Twidget more personal with Your Brief, new ways to follow your progress,
+and colours that match your style. This update also brings German language
+support, richer follower rankings, and more reliable scheduling.
+
+### Your Brief
+
+- **Your account, at a glance.** Meet Your Brief, a personal overview of account
+  changes, tweet performance, milestones, and scheduled posts. The most relevant
+  insights appear first, with actions to help you decide what to do next.
+- **Choose what matters to you.** Toggle content categories on or off in
+  Your Brief settings. Your next Brief reflects your activity, with clearer summaries,
+  follower context, and progress towards your goals.
+- **Runs on-device.** On supported devices, Gemini Nano can refine the wording
+  on-device. You can also use Gemini Cloud with your own API key from Google AI Studio.
+- **A Brief for your home screen.** Add the new Your Brief widget in a variety
+  of sizes, with the same customisation as the Followers widget. Choose One UI
+  Sans or Google Sans Flex, with text that adapts to the space available.
+
+### Goals, streaks, and history
+
+- **See your next milestone.** Set goals from the dashboard and follow your
+  progress towards each target. Enter your own follower goal or choose a preset.
+- **Keep your posting streak going.** A new daily streak card tracks consecutive
+  days with original posts, rewarding consistent activity. 
+- **Explore more of your history.** Open expanded charts and view longer time
+  ranges as your account history grows.
+
+### Your Top Followers
+
+- **Explore your follower rankings.** Browse, search, and filter your entire
+  follower list from the dashboard, with smoother scrolling and clearer refresh
+  and rescan options.
+- **Keep rankings up to date.** With shared history enabled, requested scans can
+  run on the Twidget bridge and refresh daily, even while your phone is offline. Receive
+  a notification when a new follower enters the highest-ranked results.
+- **More ways to scan.** Use your own compatible official X API credentials for
+  follower scans, alongside TwitterAPIs. Bridge scans retain progress and let
+  opted-in users tracking the same account reuse completed results.
+
+### Colours and widgets
+
+- **Match your device's colour palette.** On One UI 4.0+, Twidget's UI will adapt
+  to your device's colour palette, letting you have a consistent look and feel
+  with the rest of your phone. Other Android skins, and custom colour palettes,
+  coming in a future release.
+- **More readable widgets.** Follower and Brief widgets have improved font
+  weights, spacing, and text wrapping across narrow, tall, and compact layouts.
+- **Better use of larger screens.** Your Brief arranges cards in independent
+  columns on tablets and foldables, with refined dashboard spacing and layouts.
+
+### German language support
+
+- **Use Twidget in German.** Choose your app language in Settings, or select a
+  language for individual widgets. German text, number formatting, and dates
+  are supported across more of the app. Thanks [Aaron the Techie](https://x.com/aaronthetechie) <3
+- **Localisations welcome.** If you want your language represented in Twidget,
+  feel free to contribute!
+
+### Scheduling
+
+- **Clearer publishing status.** Overdue Buffer posts now show **Awaiting
+  confirmation** until Buffer reports the result. They stay out of upcoming
+  Brief content while remaining cancellable and continuing background checks.
+  Successful publications and publishing errors trigger the appropriate
+  notification. Records saved by older betas are rechecked too.
+- **Easier composing.** Scheduled posts have richer link previews, and thread
+  composition controls and interactions have been refined.
+
+### App updates
+
+- **Know when an update is ready.** Twidget checks for updates in the background
+  every six hours. Update notifications show the available version and offer
+  **Remind me later** and **Install now** actions.
+- **Easier-to-read release notes.** Paragraphs and lists now wrap naturally,
+  with properly aligned continuation lines.
+
+### Other improvements
+
+- Clearer tweet performance explanations, with quote tweets and retweets
+  reported separately and less repeated follower-change text.
+- More reliable Brief loading, saved summaries, and on-device model selection,
+  including useful summaries when AI is unavailable.
+- Improved goal editing, icons, and light and dark appearances throughout the app.
+
+[1.2.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.1.1...twidget-v1.2.0
+
+## [1.2.0-beta.2] - 2026-08-09
+
+The second Twidget 1.2 beta makes Your Brief more consistent and useful, reconciles
+Buffer posts after their scheduled time, improves widget typography, and adds
+proactive update and Top Followers notifications.
+
+### Added
+
+- Added six-hour background update checks with a notification that shows the
+  available version and offers **Remind me later** and **Install now** actions.
+- Added a Google Sans Flex option to the Your Brief widget alongside
+  One UI Sans.
+- Added background bridge syncing for opted-in Top Followers rankings and a
+  notification when a new follower enters the highest-ranked results.
+
+### Changed
+
+- Your Brief now writes sentence-case dashboard headings, expanded-page titles,
+  grammatically correct subheadings, and a separate concise description for
+  the dashboard card and home-screen widget.
+- Refined Your Brief cards with clearer follower context, correctly routed schedule
+  and composer actions, exact goal progress and remaining-follower copy, and
+  more useful names and explanations for posting and scheduling guidance.
+- Prioritized tweet insights by engagements, impressions, likes, quote tweets,
+  and retweets; quote tweets and retweets are now reported separately instead
+  of being combined as shares.
+- Changing Your Brief content categories now regenerates the next brief and excludes disabled categories and their schedule data from the refresh.
+- Reworked Your Brief and Followers widget typography with accurate variable-font
+  weights, improved heading spacing, responsive two-line descriptions,
+  body text on narrower tall widgets, and vertically centred one-row layouts.
+- Moved follower-change context out of the chart card so the page summary and
+  follower card no longer repeat the same sentence.
+- Improved Top Followers refresh, rescan confirmation, empty-state guidance,
+  bridge-backed daily ranking updates, and server/client sync behavior.
+
+### Fixed
+
+- Scheduled Buffer posts are now treated as published once their scheduled time
+  passes, moved below upcoming posts and drafts, and removed from upcoming Brief
+  content unless Buffer reports a real publishing error or the post is known not
+  to be live.
+- Fixed follower-goal editing so typed values work with or without grouping
+  commas and do not have to match one of the picker presets.
+- Fixed release-note Markdown so source-wrapped paragraphs and list items flow
+  naturally, with continuation lines aligned beneath the list text.
+- Fixed truncated or repetitive Brief summaries, including singular follower
+  grammar, and kept dashboard/widget descriptions to a useful two-line length.
+- Raised debug-build version codes above the corresponding beta build so debug
+  APKs can be installed over the latest beta without a downgrade error.
+
+[1.2.0-beta.2]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.2.0-beta.1...twidget-v1.2.0-beta.2
+
 ## [1.1.1] - 2026-07-26
 
 Twidget 1.1.1 moves scheduled publishing to Buffer, makes Top Followers scans

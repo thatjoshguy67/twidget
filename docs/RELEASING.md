@@ -11,11 +11,9 @@ the Git repository.
   `~/.config/twidget/github.properties` with owner-only permissions.
 - GitHub Actions stores the base64-encoded release keystore, signing passwords,
   and package-registry credentials as encrypted repository secrets.
-- GitHub Actions stores the bundled Top Followers trial credential as the
-  encrypted repository secret `TWITTERAPIS_DEFAULT_API_KEY`. It is injected as
-  an Android string resource at build time and must never be committed or
-  printed. Because any credential bundled in an APK can be extracted, its
-  TwitterAPIs account must also enforce a strict provider-side spend/quota cap.
+- Railway stores the server-only Top Followers provider credential as the
+  sealed `TWITTERAPIS_API_KEY` service variable. It is never injected into an
+  APK or GitHub Actions build.
 - GitHub Actions stores the Discord release-channel webhook as the encrypted
   repository secret `DISCORD_RELEASE_WEBHOOK_URL`. Stable and beta workflows
   post through it only after their GitHub Release is published; the Debug Build
@@ -36,16 +34,16 @@ keyPassword=...
 For a one-off alternative location, pass
 `-PtwidgetSigningProperties=/absolute/path/to/keystore.properties`.
 
-Set or rotate the trial key without putting it in shell history:
+Set or rotate the bridge provider key without putting it in shell history:
 
 ```bash
-gh secret set TWITTERAPIS_DEFAULT_API_KEY --repo thatjoshguy67/twidget
+printf "%s" "$TWITTERAPIS_API_KEY" | railway variable set TWITTERAPIS_API_KEY --stdin --service twidget-bridge --environment production
 ```
 
-For a local trial-enabled build, set `TWITTERAPIS_DEFAULT_API_KEY` in the
-calling environment or pass `-PtwitterApisDefaultApiKey` from a protected local
-configuration. Builds without it remain valid for contributors, but show that
-trial access is unavailable.
+For local bridge development, set `TWITTERAPIS_API_KEY` only in the bridge
+process environment. Android builds deliberately contain no included provider
+credential; users who do not opt into shared history need their own provider
+credentials for Top Followers scans.
 
 ## Stable release checklist
 
@@ -72,9 +70,10 @@ Do not create the stable tag manually unless recovering a failed workflow; the
 workflow owns the tag and published asset.
 
 Each semantic version reserves Play Store version-code slots in release order:
-debug builds use 01–79, beta builds use 80–98, and the stable build uses 99.
-After publishing a beta AAB for a semantic version, do not publish a later debug
-AAB for that same version; proceed to another beta or the stable release.
+beta builds use 80–98, trusted debug builds use 98, and the stable build uses
+99. This lets a production-signed debug APK install over any beta of the same
+version while keeping the stable release as the final upgrade. Do not publish
+debug AABs to Play; the debug slot is for local and workflow testing only.
 
 ## Discord release notifications
 

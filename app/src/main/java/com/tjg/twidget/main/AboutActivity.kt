@@ -15,6 +15,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
@@ -40,6 +41,7 @@ import com.tjg.twidget.update.AppRelease
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.update.AppVersion
 import com.tjg.twidget.update.UpdateChannel
+import com.tjg.twidget.update.UpdateNotificationHelper
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 import dev.oneuiproject.oneui.widget.CardItemView
 import java.io.File
@@ -53,12 +55,16 @@ class AboutActivity : FoldablePopOverActivity() {
     private var availableRelease: AppRelease? = null
     private var pendingInstallApk: File? = null
     private var waitingForInstallPermission = false
+    private var requestedInstallVersion: String? = null
 
     private val updateChannel: UpdateChannel
         get() = savedUpdateChannel(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedInstallVersion = intent.getStringExtra(EXTRA_INSTALL_VERSION)
+            ?.takeIf(String::isNotBlank)
+        if (requestedInstallVersion != null) UpdateNotificationHelper.cancel(this)
         setContentView(R.layout.activity_about)
         applySystemBarInsets()
         setupToolbar()
@@ -77,6 +83,9 @@ class AboutActivity : FoldablePopOverActivity() {
         }
         findViewById<View>(R.id.about_kingowen_credit).setOnClickListener {
             openUrl(getString(R.string.link_kingowen))
+        }
+        findViewById<View>(R.id.about_aaron_credit).setOnClickListener {
+            openUrl(getString(R.string.link_aaron))
         }
         findViewById<View>(R.id.about_fxtwitter_credit).setOnClickListener {
             openUrl(getString(R.string.link_fxtwitter))
@@ -165,6 +174,22 @@ class AboutActivity : FoldablePopOverActivity() {
         if (waitingForInstallPermission && packageManager.canRequestPackageInstalls()) {
             waitingForInstallPermission = false
             pendingInstallApk?.let(::launchPackageInstaller)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        requestedInstallVersion = intent.getStringExtra(EXTRA_INSTALL_VERSION)
+            ?.takeIf(String::isNotBlank)
+        if (requestedInstallVersion == null) return
+        UpdateNotificationHelper.cancel(this)
+        val release = availableRelease
+        if (release != null && release.version.toString() == requestedInstallVersion) {
+            requestedInstallVersion = null
+            downloadUpdate(release)
+        } else {
+            checkForUpdates(updateChannel)
         }
     }
 
@@ -278,10 +303,53 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun setupResponsiveHeroHeight() {
-        if (resources.configuration.smallestScreenWidthDp >= LARGE_SCREEN_MIN_WIDTH_DP) {
-            findViewById<AppBarLayout>(R.id.about_app_bar)
-                .seslSetCustomHeightProportion(true, LARGE_SCREEN_HERO_HEIGHT_PROPORTION)
+        val root = findViewById<View>(R.id.about_root)
+        val appBar = findViewById<AppBarLayout>(R.id.about_app_bar)
+        val header = findViewById<View>(R.id.about_header_content)
+        val baseProportion = if (
+            resources.configuration.smallestScreenWidthDp >= LARGE_SCREEN_MIN_WIDTH_DP
+        ) {
+            LARGE_SCREEN_HERO_HEIGHT_PROPORTION
+        } else {
+            DEFAULT_HERO_HEIGHT_PROPORTION
         }
+        var appliedProportion = -1f
+
+        val updateHeight: () -> Unit = {
+            if (root.height > 0 && header.measuredHeight > 0) {
+                val topMargin = (header.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
+                val breathingRoom =
+                    (HERO_BREATHING_ROOM_DP * resources.displayMetrics.density).toInt()
+                // The initial half-height app bar can constrain the hero child
+                // before this callback runs. Use the header's designed height as
+                // the floor so that truncated first measurement does not become
+                // the final hero height on short or high-density displays.
+                val headerHeight = maxOf(
+                    header.measuredHeight,
+                    resources.getDimensionPixelSize(R.dimen.about_hero_content_height),
+                )
+                // SESL AppBarLayout injects its own extended bottom padding even when the
+                // layout XML declares none. Include it or the scrolling sibling starts over
+                // the final part of the header on shorter and foldable displays.
+                val requiredHeight = appBar.paddingTop +
+                    appBar.paddingBottom +
+                    topMargin +
+                    headerHeight +
+                    breathingRoom
+                val requiredProportion = requiredHeight.toFloat() / root.height
+                val nextProportion = requiredProportion.coerceIn(
+                    baseProportion,
+                    MAX_HERO_HEIGHT_PROPORTION,
+                )
+                if (abs(nextProportion - appliedProportion) > 0.001f) {
+                    appliedProportion = nextProportion
+                    appBar.seslSetCustomHeightProportion(true, nextProportion)
+                }
+            }
+        }
+        root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateHeight() }
+        header.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateHeight() }
+        root.post { updateHeight() }
     }
 
     // Seven taps on the version number unlock the hidden debug menu in
@@ -325,6 +393,7 @@ class AboutActivity : FoldablePopOverActivity() {
             val release = fakeRelease()
             availableRelease = release
             showUpdateAvailable(release)
+            maybeInstallRequestedUpdate(release)
             finishPullRefresh()
             return
         }
@@ -350,7 +419,12 @@ class AboutActivity : FoldablePopOverActivity() {
                 }
                 val release = result.getOrNull()
                 availableRelease = release
-                if (release == null) hideUpdateUi() else showUpdateAvailable(release)
+                if (release == null) {
+                    hideUpdateUi()
+                } else {
+                    showUpdateAvailable(release)
+                    maybeInstallRequestedUpdate(release)
+                }
                 finishPullRefresh()
             }
         }
@@ -374,6 +448,7 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun showUpdateChecking() {
+        findViewById<View>(R.id.about_update_action).visibility = View.VISIBLE
         findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
         findViewById<ImageView>(R.id.about_update_spinner).apply {
             visibility = View.VISIBLE
@@ -384,6 +459,7 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun showUpdateAvailable(release: AppRelease) {
         hideUpdateSpinner()
+        findViewById<View>(R.id.about_update_action).visibility = View.VISIBLE
         findViewById<AppCompatButton>(R.id.about_update_button).apply {
             contentDescription = getString(R.string.update_to_version, release.version.toString())
             isEnabled = true
@@ -394,6 +470,9 @@ class AboutActivity : FoldablePopOverActivity() {
     private fun hideUpdateUi() {
         hideUpdateSpinner()
         findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
+        // Keep the reserved action slot in the layout so the icon, title and
+        // version never move when an update check changes state.
+        findViewById<View>(R.id.about_update_action).visibility = View.INVISIBLE
     }
 
     private fun hideUpdateSpinner() {
@@ -442,6 +521,13 @@ class AboutActivity : FoldablePopOverActivity() {
         Toast.makeText(this, R.string.update_download_failed, Toast.LENGTH_LONG).show()
     }
 
+    private fun maybeInstallRequestedUpdate(release: AppRelease) {
+        if (requestedInstallVersion != release.version.toString()) return
+        requestedInstallVersion = null
+        UpdateNotificationHelper.cancel(this)
+        downloadUpdate(release)
+    }
+
     private fun isValidUpdateApk(apk: File, release: AppRelease): Boolean {
         val archive = packageManager.getPackageArchiveInfo(apk.absolutePath, 0) ?: return false
         val archiveVersion = archive.versionName?.let(AppVersion::parse) ?: return false
@@ -478,6 +564,7 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun setupCollapsingContent() {
         val content = findViewById<View>(R.id.about_content)
+        val header = findViewById<View>(R.id.about_header_content)
         val hint = findViewById<View>(R.id.about_swipe_hint)
         val gradientFade = findViewById<View>(R.id.about_gradient_fade)
         content.alpha = 0f
@@ -486,6 +573,9 @@ class AboutActivity : FoldablePopOverActivity() {
                 val range = appBar.totalScrollRange.coerceAtLeast(1)
                 val progress = abs(verticalOffset).toFloat() / range
                 content.alpha = ((progress - 0.25f) / 0.55f).coerceIn(0f, 1f)
+                // Clear the fixed hero before it passes behind the pinned,
+                // transparent toolbar during collapse.
+                header.alpha = (1f - progress * 2f).coerceIn(0f, 1f)
                 // The gradient belongs to the expanded hero; scrolling settles
                 // the page onto the plain One UI background.
                 // Let the hero recede early in the scroll, leaving the settled
@@ -504,6 +594,7 @@ class AboutActivity : FoldablePopOverActivity() {
     private fun setupCreditAvatars() {
         loadCreditAvatar(R.id.about_tjg_credit, TJG_X_USERNAME)
         loadCreditAvatar(R.id.about_kingowen_credit, KINGOWEN_X_USERNAME)
+        loadCreditAvatar(R.id.about_aaron_credit, AARON_X_USERNAME)
     }
 
     private fun loadCreditAvatar(rowId: Int, username: String) {
@@ -547,6 +638,13 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     companion object {
+        private const val EXTRA_INSTALL_VERSION = "install_update_version"
+
+        fun installUpdateIntent(context: Context, version: String): Intent =
+            Intent(context, AboutActivity::class.java)
+                .putExtra(EXTRA_INSTALL_VERSION, version)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
         internal fun savedUpdateChannel(context: Context): UpdateChannel {
             val preferences = context.getSharedPreferences("AboutActivity", MODE_PRIVATE)
             val installedVersion = context.packageManager
@@ -576,13 +674,17 @@ class AboutActivity : FoldablePopOverActivity() {
         }
 
         private const val LARGE_SCREEN_MIN_WIDTH_DP = 600
+        private const val DEFAULT_HERO_HEIGHT_PROPORTION = 0.5f
         private const val LARGE_SCREEN_HERO_HEIGHT_PROPORTION = 0.58f
+        private const val MAX_HERO_HEIGHT_PROPORTION = 0.9f
+        private const val HERO_BREATHING_ROOM_DP = 24
 
         private const val DEBUG_UNLOCK_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
+        private const val AARON_X_USERNAME = "aaronthetechie"
         private const val PREF_BETA_RELEASES = "beta_releases"
         private const val PREF_UPDATE_CHANNEL = "update_channel"
         private const val MENU_APP_INFO = 1

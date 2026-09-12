@@ -105,7 +105,7 @@ export class LocalHistoryRepository {
     this.sampleRetentionDays = sampleRetentionDays;
     this.inactiveAccountDays = inactiveAccountDays;
     this.now = now;
-    this.store = { version: 3, accounts: {}, meta: {}, access: {} };
+    this.store = { version: 4, accounts: {}, meta: {}, access: {}, topFollowers: {} };
   }
 
   async initialize() {
@@ -116,6 +116,7 @@ export class LocalHistoryRepository {
         accounts: objectValue(parsed?.accounts),
         meta: objectValue(parsed?.meta),
         access: objectValue(parsed?.access),
+        topFollowers: objectValue(parsed?.topFollowers),
       };
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -177,8 +178,95 @@ export class LocalHistoryRepository {
     delete this.store.accounts[key];
     delete this.store.meta[key];
     delete this.store.access[key];
+    delete this.store.topFollowers[key];
     if (existed) await this.persist();
     return existed;
+  }
+  async getTopFollowersScan(key) {
+    const scan = this.store.topFollowers[key];
+    return scan ? topFollowersScanSummary(scan) : null;
+  }
+  async startTopFollowersScan(key, scanId, now = this.now()) {
+    const existing = this.store.topFollowers[key];
+    if (existing?.status === "running") return topFollowersScanSummary(existing);
+    const previous = existing?.status === "complete" ? existing : existing?.previous;
+    const scan = {
+      scanId,
+      status: "running",
+      cursor: "",
+      pages: 0,
+      scanned: 0,
+      startedAt: now,
+      updatedAt: now,
+      completedAt: 0,
+      error: "",
+      followers: [],
+      ...(previous?.status === "complete" ? { previous } : {}),
+    };
+    this.store.topFollowers[key] = scan;
+    await this.persist();
+    return topFollowersScanSummary(scan);
+  }
+  async appendTopFollowersPage(key, scanId, followers, cursor, now = this.now()) {
+    const scan = this.store.topFollowers[key];
+    if (!scan || scan.scanId !== scanId || scan.status !== "running") return null;
+    const seen = new Set(scan.followers.map((value) => topFollowerIdentity(value)));
+    for (const value of followers) {
+      const identity = topFollowerIdentity(value);
+      if (!identity || seen.has(identity)) continue;
+      seen.add(identity);
+      scan.followers.push({ ...value, scanIndex: scan.followers.length });
+    }
+    scan.cursor = cursor;
+    scan.pages += 1;
+    scan.scanned = scan.followers.length;
+    scan.updatedAt = now;
+    await this.persist();
+    return topFollowersScanSummary(scan);
+  }
+  async completeTopFollowersScan(key, scanId, now = this.now()) {
+    const scan = this.store.topFollowers[key];
+    if (!scan || scan.scanId !== scanId) return null;
+    scan.status = "complete";
+    scan.cursor = "";
+    scan.completedAt = now;
+    scan.updatedAt = now;
+    delete scan.previous;
+    await this.persist();
+    return topFollowersScanSummary(scan);
+  }
+  async failTopFollowersScan(key, scanId, error, now = this.now()) {
+    const scan = this.store.topFollowers[key];
+    if (!scan || scan.scanId !== scanId) return null;
+    scan.status = "failed";
+    scan.error = String(error || "scan_failed").slice(0, 160);
+    scan.updatedAt = now;
+    await this.persist();
+    return topFollowersScanSummary(scan);
+  }
+  async getTopFollowersSnapshot(key, { offset = 0, limit = 250 } = {}) {
+    const current = this.store.topFollowers[key];
+    const scan = current?.status === "complete" ? current : current?.previous;
+    if (!scan || scan.status !== "complete" || !scan.followers.length) return null;
+    const ordered = [...scan.followers].sort(topFollowersRankOrder);
+    return {
+      ...topFollowersScanSummary(scan),
+      total: ordered.length,
+      followers: ordered.slice(offset, offset + limit),
+    };
+  }
+  async pruneTopFollowers(retentionDays, now = this.now()) {
+    if (retentionDays <= 0) return 0;
+    const cutoff = now - retentionDays * DAY_MS;
+    let deleted = 0;
+    for (const [key, scan] of Object.entries(this.store.topFollowers)) {
+      if (Number(scan.completedAt || scan.updatedAt || 0) < cutoff) {
+        delete this.store.topFollowers[key];
+        deleted += 1;
+      }
+    }
+    if (deleted) await this.persist();
+    return deleted;
   }
   async prune() {
     const now = this.now();
@@ -291,6 +379,37 @@ export class PostgresHistoryRepository {
       CREATE INDEX IF NOT EXISTS twidget_history_accounts_last_accessed_idx
         ON twidget_history_accounts (last_accessed_at);
 
+      CREATE TABLE IF NOT EXISTS twidget_top_follower_scans (
+        scan_id uuid PRIMARY KEY,
+        username varchar(15) NOT NULL REFERENCES twidget_history_accounts(username) ON DELETE CASCADE,
+        status varchar(16) NOT NULL CHECK (status IN ('running', 'complete', 'failed')),
+        cursor text NOT NULL DEFAULT '',
+        pages integer NOT NULL DEFAULT 0 CHECK (pages >= 0),
+        scanned integer NOT NULL DEFAULT 0 CHECK (scanned >= 0),
+        error varchar(160) NOT NULL DEFAULT '',
+        started_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        completed_at timestamptz
+      );
+      CREATE TABLE IF NOT EXISTS twidget_top_followers (
+        scan_id uuid NOT NULL REFERENCES twidget_top_follower_scans(scan_id) ON DELETE CASCADE,
+        scan_index integer NOT NULL CHECK (scan_index >= 0),
+        follower_id varchar(80) NOT NULL DEFAULT '',
+        follower_username varchar(15) NOT NULL,
+        display_name varchar(100) NOT NULL DEFAULT '',
+        followers bigint NOT NULL CHECK (followers >= 0),
+        verified boolean NOT NULL DEFAULT false,
+        avatar text NOT NULL DEFAULT '',
+        mutual boolean,
+        PRIMARY KEY (scan_id, scan_index)
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS twidget_top_followers_scan_username_idx
+        ON twidget_top_followers (scan_id, lower(follower_username));
+      CREATE INDEX IF NOT EXISTS twidget_top_follower_scans_username_completed_idx
+        ON twidget_top_follower_scans (username, completed_at DESC);
+      CREATE INDEX IF NOT EXISTS twidget_top_followers_rank_idx
+        ON twidget_top_followers (scan_id, followers DESC, follower_username);
+
       ALTER TABLE twidget_history_samples ADD COLUMN IF NOT EXISTS followers_known boolean;
       ALTER TABLE twidget_history_samples ADD COLUMN IF NOT EXISTS following_known boolean;
       ALTER TABLE twidget_history_samples ADD COLUMN IF NOT EXISTS posts_known boolean;
@@ -373,6 +492,190 @@ export class PostgresHistoryRepository {
       VALUES ($1, $2::jsonb)
       ON CONFLICT (username) DO UPDATE SET metadata = EXCLUDED.metadata
     `, [key, JSON.stringify(meta)]);
+  }
+  async getTopFollowersScan(key) {
+    const result = await this.pool.query(`
+      SELECT scan_id::text, status, cursor, pages, scanned, error,
+             extract(epoch from started_at) * 1000 AS started_at_ms,
+             extract(epoch from updated_at) * 1000 AS updated_at_ms,
+             extract(epoch from completed_at) * 1000 AS completed_at_ms
+      FROM twidget_top_follower_scans
+      WHERE username = $1
+      ORDER BY (status = 'running') DESC, updated_at DESC
+      LIMIT 1
+    `, [key]);
+    return result.rows[0] ? topFollowersScanFromRow(result.rows[0]) : null;
+  }
+  async startTopFollowersScan(key, scanId) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('twidget_top_followers:' || $1))", [key]);
+      const running = await client.query(`
+        SELECT scan_id::text, status, cursor, pages, scanned, error,
+               extract(epoch from started_at) * 1000 AS started_at_ms,
+               extract(epoch from updated_at) * 1000 AS updated_at_ms,
+               extract(epoch from completed_at) * 1000 AS completed_at_ms
+        FROM twidget_top_follower_scans WHERE username = $1 AND status = 'running'
+        ORDER BY updated_at DESC LIMIT 1
+      `, [key]);
+      if (running.rows[0]) {
+        await client.query("COMMIT");
+        return topFollowersScanFromRow(running.rows[0]);
+      }
+      const inserted = await client.query(`
+        INSERT INTO twidget_top_follower_scans (scan_id, username, status)
+        VALUES ($1::uuid, $2, 'running')
+        RETURNING scan_id::text, status, cursor, pages, scanned, error,
+                  extract(epoch from started_at) * 1000 AS started_at_ms,
+                  extract(epoch from updated_at) * 1000 AS updated_at_ms,
+                  NULL::numeric AS completed_at_ms
+      `, [scanId, key]);
+      await client.query("COMMIT");
+      return topFollowersScanFromRow(inserted.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async appendTopFollowersPage(key, scanId, followers, cursor) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const current = await client.query(
+        "SELECT scanned FROM twidget_top_follower_scans WHERE scan_id = $1::uuid AND username = $2 AND status = 'running' FOR UPDATE",
+        [scanId, key],
+      );
+      if (!current.rows[0]) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const base = Number(current.rows[0].scanned || 0);
+      const payload = followers.map((value, index) => ({ ...value, scanIndex: base + index }));
+      if (payload.length) {
+        await client.query(`
+          INSERT INTO twidget_top_followers
+            (scan_id, scan_index, follower_id, follower_username, display_name, followers, verified, avatar, mutual)
+          SELECT $1::uuid, value.scan_index, value.id, value.username, value.name,
+                 value.followers, value.verified, value.avatar, value.mutual
+          FROM jsonb_to_recordset($2::jsonb) AS value(
+            scan_index integer, id varchar(80), username varchar(15), name varchar(100),
+            followers bigint, verified boolean, avatar text, mutual boolean
+          )
+          ON CONFLICT DO NOTHING
+        `, [scanId, JSON.stringify(payload.map((value) => ({
+          scan_index: value.scanIndex,
+          id: value.id,
+          username: value.username,
+          name: value.name,
+          followers: value.followers,
+          verified: value.verified,
+          avatar: value.avatar,
+          mutual: value.mutual,
+        })))]);
+      }
+      const updated = await client.query(`
+        UPDATE twidget_top_follower_scans SET
+          cursor = $3,
+          pages = pages + 1,
+          scanned = (SELECT count(*)::int FROM twidget_top_followers WHERE scan_id = $1::uuid),
+          updated_at = now()
+        WHERE scan_id = $1::uuid AND username = $2 AND status = 'running'
+        RETURNING scan_id::text, status, cursor, pages, scanned, error,
+                  extract(epoch from started_at) * 1000 AS started_at_ms,
+                  extract(epoch from updated_at) * 1000 AS updated_at_ms,
+                  extract(epoch from completed_at) * 1000 AS completed_at_ms
+      `, [scanId, key, cursor]);
+      await client.query("COMMIT");
+      return updated.rows[0] ? topFollowersScanFromRow(updated.rows[0]) : null;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async completeTopFollowersScan(key, scanId) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const updated = await client.query(`
+        UPDATE twidget_top_follower_scans SET status = 'complete', cursor = '', completed_at = now(), updated_at = now()
+        WHERE scan_id = $1::uuid AND username = $2 AND status = 'running' AND scanned > 0
+        RETURNING scan_id::text, status, cursor, pages, scanned, error,
+                  extract(epoch from started_at) * 1000 AS started_at_ms,
+                  extract(epoch from updated_at) * 1000 AS updated_at_ms,
+                  extract(epoch from completed_at) * 1000 AS completed_at_ms
+      `, [scanId, key]);
+      if (updated.rows[0]) {
+        await client.query(
+          "DELETE FROM twidget_top_follower_scans WHERE username = $1 AND scan_id <> $2::uuid",
+          [key, scanId],
+        );
+      }
+      await client.query("COMMIT");
+      return updated.rows[0] ? topFollowersScanFromRow(updated.rows[0]) : null;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async failTopFollowersScan(key, scanId, error) {
+    const result = await this.pool.query(`
+      UPDATE twidget_top_follower_scans SET status = 'failed', error = $3, updated_at = now()
+      WHERE scan_id = $1::uuid AND username = $2 AND status = 'running'
+      RETURNING scan_id::text, status, cursor, pages, scanned, error,
+                extract(epoch from started_at) * 1000 AS started_at_ms,
+                extract(epoch from updated_at) * 1000 AS updated_at_ms,
+                extract(epoch from completed_at) * 1000 AS completed_at_ms
+    `, [scanId, key, String(error || "scan_failed").slice(0, 160)]);
+    return result.rows[0] ? topFollowersScanFromRow(result.rows[0]) : null;
+  }
+  async getTopFollowersSnapshot(key, { offset = 0, limit = 250 } = {}) {
+    const scan = await this.pool.query(`
+      SELECT scan_id::text, status, cursor, pages, scanned, error,
+             extract(epoch from started_at) * 1000 AS started_at_ms,
+             extract(epoch from updated_at) * 1000 AS updated_at_ms,
+             extract(epoch from completed_at) * 1000 AS completed_at_ms
+      FROM twidget_top_follower_scans
+      WHERE username = $1 AND status = 'complete'
+      ORDER BY completed_at DESC LIMIT 1
+    `, [key]);
+    if (!scan.rows[0]) return null;
+    const followers = await this.pool.query(`
+      SELECT follower_id AS id, follower_username AS username, display_name AS name,
+             followers::text, verified, avatar, mutual, scan_index
+      FROM twidget_top_followers
+      WHERE scan_id = $1::uuid
+      ORDER BY followers DESC, lower(display_name), lower(follower_username), follower_id, scan_index
+      OFFSET $2 LIMIT $3
+    `, [scan.rows[0].scan_id, offset, limit]);
+    return {
+      ...topFollowersScanFromRow(scan.rows[0]),
+      total: Number(scan.rows[0].scanned || 0),
+      followers: followers.rows.map((value) => ({
+        id: value.id || "",
+        username: value.username,
+        name: value.name || value.username,
+        followers: Number(value.followers || 0),
+        verified: Boolean(value.verified),
+        avatar: value.avatar || "",
+        mutual: value.mutual === null ? null : Boolean(value.mutual),
+        scanIndex: Number(value.scan_index || 0),
+      })),
+    };
+  }
+  async pruneTopFollowers(retentionDays) {
+    if (retentionDays <= 0) return 0;
+    const result = await this.pool.query(`
+      DELETE FROM twidget_top_follower_scans
+      WHERE COALESCE(completed_at, updated_at) < now() - ($1::int * interval '1 day')
+    `, [retentionDays]);
+    return result.rowCount;
   }
   async storeSamples(key, samples, { preferExisting = false, touchAccess = true } = {}) {
     const client = await this.pool.connect();
@@ -642,3 +945,41 @@ function numberValue(value) {
 
 function stringValue(value) { return typeof value === "string" ? value : ""; }
 function objectValue(value) { return value && typeof value === "object" && !Array.isArray(value) ? value : {}; }
+
+function topFollowersScanSummary(scan) {
+  return {
+    scanId: String(scan.scanId || ""),
+    status: String(scan.status || ""),
+    cursor: String(scan.cursor || ""),
+    pages: Number(scan.pages || 0),
+    scanned: Number(scan.scanned || 0),
+    error: String(scan.error || ""),
+    startedAt: Number(scan.startedAt || 0),
+    updatedAt: Number(scan.updatedAt || 0),
+    completedAt: Number(scan.completedAt || 0),
+  };
+}
+
+function topFollowersScanFromRow(row) {
+  return topFollowersScanSummary({
+    scanId: row.scan_id,
+    status: row.status,
+    cursor: row.cursor,
+    pages: row.pages,
+    scanned: row.scanned,
+    error: row.error,
+    startedAt: row.started_at_ms,
+    updatedAt: row.updated_at_ms,
+    completedAt: row.completed_at_ms,
+  });
+}
+
+function topFollowerIdentity(value) {
+  return String(value?.id || value?.username || "").trim().toLowerCase();
+}
+
+function topFollowersRankOrder(left, right) {
+  return Number(right.followers || 0) - Number(left.followers || 0) ||
+    String(left.name || "").localeCompare(String(right.name || ""), "en", { sensitivity: "base" }) ||
+    String(left.username || "").localeCompare(String(right.username || ""), "en", { sensitivity: "base" });
+}

@@ -12,7 +12,10 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.tjg.twidget.brief.BriefEngine
+import com.tjg.twidget.brief.BriefSettingsStore
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.followers.TopFollowersBridgeSync
 import com.tjg.twidget.providers.RettiwtClient
 import java.util.concurrent.TimeUnit
 
@@ -27,14 +30,22 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
         if (!TwidgetStore.isOnboarded(context)) return Result.success()
 
         var anySuccess = false
+        val defaultAccount = TwidgetStore.settings(context).username
         accountsToSync(context).forEach { account ->
             runCatching {
                 TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
+                if (BriefSettingsStore.enabled(context) && account.equals(defaultAccount, ignoreCase = true)) {
+                    BriefEngine.rebuild(context, account, force = true)
+                }
+                if (TwidgetStore.settings(context).shareHistory) {
+                    runCatching { TopFollowersBridgeSync.refresh(context, account, notifyChanges = true) }
+                }
                 anySuccess = true
             }
         }
         if (anySuccess) {
             TwidgetWidget.updateAll(context)
+            TwidgetBriefWidget.updateAll(context)
             LockScreenFollowerServiceBoxReceiver.refresh(context)
         }
         return if (anySuccess) Result.success() else Result.retry()

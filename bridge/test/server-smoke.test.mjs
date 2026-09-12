@@ -117,6 +117,61 @@ test("public bridge accepts shared rankings only from its trusted publisher", as
   assert.equal(authorized.status, 201);
 });
 
+test("opted-in accounts can reuse a bridge-owned completed follower scan", async (t) => {
+  const base = await startBridge(t, {
+    BRIDGE_API_TOKEN: "",
+    HISTORY_ADMIN_TOKEN: "",
+    TWITTERAPIS_API_KEY: "server-only-key",
+    EXPENSIVE_RATE_LIMIT_MAX: "12",
+  });
+  assert.equal((await fetch(`${base}/history/example`)).status, 200);
+  const started = await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" });
+  assert.equal(started.status, 202);
+
+  let status;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await fetch(`${base}/history/example/top-followers/scan`);
+    status = await response.json();
+    if (status.status !== "running") break;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  assert.equal(status.status, "complete");
+  assert.equal(status.scanned, 2);
+
+  const all = await fetch(`${base}/history/example/top-followers/all?offset=0&limit=2000`);
+  assert.equal(all.status, 200);
+  const body = await all.json();
+  assert.equal(body.followers[0].username, "topfan");
+  assert.equal(body.limit, 2000);
+  assert.equal(body.nextOffset, null);
+
+  // Archive pagination is a bounded DB read, not a remote provider action. It
+  // must retain the general limiter but not exhaust the expensive-route budget.
+  for (let page = 0; page < 13; page += 1) {
+    const archived = await fetch(`${base}/history/example/top-followers/all?offset=0&limit=1`);
+    assert.equal(archived.status, 200);
+  }
+
+  const reused = await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" });
+  assert.equal(reused.status, 200);
+  assert.equal((await reused.json()).status, "complete");
+});
+
+test("public server scans enforce a separate daily start budget per client", async (t) => {
+  const base = await startBridge(t, {
+    BRIDGE_API_TOKEN: "",
+    HISTORY_ADMIN_TOKEN: "",
+    TWITTERAPIS_API_KEY: "server-only-key",
+    TOP_FOLLOWERS_DAILY_SCAN_LIMIT_PER_IP: "1",
+  });
+  assert.equal((await fetch(`${base}/history/example`)).status, 200);
+  assert.equal((await fetch(`${base}/history/another`)).status, 200);
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  const limited = await fetch(`${base}/history/another/top-followers/scan`, { method: "POST" });
+  assert.equal(limited.status, 429);
+  assert.deepEqual(await limited.json(), { error: "top_followers_client_daily_limit_reached" });
+});
+
 test("bridge security and health defaults", async (t) => {
   const port = await availablePort();
   const temp = await mkdtemp(path.join(os.tmpdir(), "twidget-bridge-test-"));
@@ -179,6 +234,10 @@ test("bridge security and health defaults", async (t) => {
   });
   assert.equal(analytics.status, 200);
   assert.match(analytics.headers.get("ratelimit-limit") ?? "", /^\d+$/);
+  const analyticsBody = await analytics.json();
+  assert.ok(Array.isArray(analyticsBody.activityTimestamps));
+  assert.ok(Array.isArray(analyticsBody.recentPosts));
+  assert.equal(analyticsBody.activityComplete, true);
 
   const unauthorized = await fetch(`${base}/official/user/example`);
   assert.equal(unauthorized.status, 401);

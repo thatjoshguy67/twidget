@@ -2,4 +2,5 @@
 <resources>
     <item name="profile_image_request" type="id" />
     <item name="drawer_avatar_render_guard" type="id" />
+    <item name="schedule_link_preview_pending" type="id" />
 </resources>

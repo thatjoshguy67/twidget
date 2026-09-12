@@ -6,11 +6,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
 import android.os.Build
 import androidx.core.content.ContextCompat
-import androidx.core.content.res.ResourcesCompat
 import com.tjg.twidget.R
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
@@ -19,6 +18,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 object WidgetArtworkRenderer {
+    internal const val ONE_UI_EMPHASIS_WEIGHT = 700
+
     fun render(
         context: Context,
         widthPx: Int,
@@ -58,12 +59,16 @@ object WidgetArtworkRenderer {
         val footerHeight = if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE) 20f * density else 26f * density
         val textMaxWidth = width - pad * 2
         val textMaxHeight = height - pad * 2 - footerHeight
-        val words = TwidgetWidget.followersInWords(stats.followersCount)
-            .split(" ")
-            .filter { it.isNotBlank() } + context.getString(R.string.followers)
+        val locale = AppLocales.resolve(settings.language)
+        val localizedContext = AppLocales.wrap(context, settings.language)
+        val words = TwidgetWidget.followersInWords(stats.followersCount, locale)
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() } + localizedContext.getString(R.string.followers)
         val textSize = findTextSize(context, settings, words, textMaxWidth, textMaxHeight)
         val lines = wrapWords(context, settings, words, textMaxWidth, textSize)
-        val lineHeight = textSize * 1.12f
+        val isGerman = locale.language == "de"
+        val lineHeightMultiplier = if (isGerman) 1.0f else 1.12f
+        val lineHeight = textSize * lineHeightMultiplier
         val top = pad + max(0f, (textMaxHeight - lines.size * lineHeight) / 2f) + textSize * 0.88f
 
         lines.forEachIndexed { lineIndex, line ->
@@ -112,7 +117,9 @@ object WidgetArtworkRenderer {
         maxHeight: Float,
     ): Float {
         var size = 42f * context.resources.displayMetrics.scaledDensity
-        val min = 15f * context.resources.displayMetrics.scaledDensity
+        val isGerman = AppLocales.resolve(settings.language).language == "de"
+        val minFactor = if (isGerman) 11f else 15f
+        val min = minFactor * context.resources.displayMetrics.scaledDensity
         while (size > min) {
             val lines = wrapWords(context, settings, words, maxWidth, size)
             if (lines.size * size * 1.12f <= maxHeight) return size
@@ -120,7 +127,6 @@ object WidgetArtworkRenderer {
         }
         return min
     }
-
     private fun wrapWords(
         context: Context,
         settings: TwidgetWidgetSettings,
@@ -138,6 +144,7 @@ object WidgetArtworkRenderer {
         val lines = mutableListOf<MutableList<String>>()
         var current = mutableListOf<String>()
         var currentWidth = 0f
+
         words.forEach { word ->
             val width = measure(word)
             if (current.isNotEmpty() && currentWidth + space + width > maxWidth) {
@@ -172,18 +179,20 @@ object WidgetArtworkRenderer {
         val canvas = Canvas(bitmap)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val primary = if (dark) Color.WHITE else Color.BLACK
-        val value = java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(stats.followersCount)
-        val label = context.getString(R.string.followers)
+        val locale = AppLocales.resolve(settings.language)
+        val value = AppLocales.integer(stats.followersCount, locale)
+        val label = AppLocales.wrap(context, settings.language).getString(R.string.followers)
 
         fun paintFor(weight: Int, color: Int, sizeSp: Float) =
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
                 this.color = color
                 textSize = sizeSp * density
                 typeface = if (settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX) {
-                    gsfTypeface(context, weight)
+                    gsfTypeface(context)
                 } else {
-                    TwidgetFonts.oneUiSans(context, weight)
+                    oneUiTypeface(context)
                 }
+                setFontVariationSettings("'wght' $weight")
             }
 
         if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1) {
@@ -270,7 +279,7 @@ object WidgetArtworkRenderer {
         return bitmap
     }
 
-    private fun drawWidgetBackground(
+    internal fun drawWidgetBackground(
         context: Context,
         canvas: Canvas,
         width: Int,
@@ -304,12 +313,20 @@ object WidgetArtworkRenderer {
         "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
         "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
         "Seventeen", "Eighteen", "Nineteen",
+        "Ein", "Eine", "Eins", "Zwei", "Drei", "Vier", "Fünf", "Sechs", "Sieben", "Acht", "Neun",
+        "Zehn", "Elf", "Zwölf", "Dreizehn", "Vierzehn", "Fünfzehn", "Sechzehn",
+        "Siebzehn", "Achtzehn", "Neunzehn", "Null",
     )
-    private val TENS_WORDS = setOf("Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety")
+    private val TENS_WORDS = setOf(
+        "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+        "Zwanzig", "Dreißig", "Vierzig", "Fünfzig", "Sechzig", "Siebzig", "Achtzig", "Neunzig",
+    )
     private val SCALE_WORDS = setOf(
         "Thousand", "Million", "Billion", "Trillion", "Quadrillion", "Quintillion",
+        "Tausend", "Millionen", "Milliarde", "Milliarden", "Billionen", "Billiarde", "Billiarden",
+        "Trillionen",
     )
-    private val CONNECTOR_WORDS = setOf("Hundred", "and")
+    private val CONNECTOR_WORDS = setOf("Hundred", "and", "Hundert", "und")
 
     // Typographic role per word. TENS carries the loudest emphasis, ONES next,
     // HUNDRED anchors the scale, SOFT words (thousand/million/"and") recede, and
@@ -318,21 +335,29 @@ object WidgetArtworkRenderer {
     private enum class WordRole { TENS, ONES, HUNDRED, SOFT, LABEL, STRONG }
 
     private fun roleOf(context: Context, word: String): WordRole {
-        if (word.equals(context.getString(R.string.followers), ignoreCase = true)) return WordRole.LABEL
+        val isLabel = word.equals("Follower", ignoreCase = true) ||
+            word.equals("Followers", ignoreCase = true) ||
+            word.equals(context.getString(R.string.followers), ignoreCase = true)
+        if (isLabel) return WordRole.LABEL
         return when (val bare = word.trim(',')) {
             in TENS_WORDS -> WordRole.TENS
             in ONES_WORDS -> WordRole.ONES
             in SCALE_WORDS -> WordRole.SOFT
-            in CONNECTOR_WORDS -> if (bare == "Hundred") WordRole.HUNDRED else WordRole.SOFT
-            else -> WordRole.STRONG // bare numerals or unknown tokens
+            in CONNECTOR_WORDS ->
+                if (bare.equals("Hundred", ignoreCase = true) || bare.equals("Hundert", ignoreCase = true)) {
+                    WordRole.HUNDRED
+                } else {
+                    WordRole.SOFT
+                }
+            else -> WordRole.STRONG
         }
     }
 
-    // Per-role weights, kept separate for the two families: One UI Sans reads
-    // heavy so its magnitude words sit at ExtraBold across the board, while
+    // Per-role weights, kept separate for the two families. One UI Sans keeps
+    // its emphasized magnitude words at Bold rather than ExtraBold, while
     // Google Sans Flex has a true Black and peaks only on the tens word.
     private fun oneUiWeightFor(role: WordRole): Int = when (role) {
-        WordRole.TENS, WordRole.ONES -> 800
+        WordRole.TENS, WordRole.ONES -> ONE_UI_EMPHASIS_WEIGHT
         WordRole.HUNDRED -> 600
         WordRole.STRONG -> 700
         WordRole.SOFT -> 400
@@ -366,9 +391,7 @@ object WidgetArtworkRenderer {
         return Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             // Label opacity (0.6) comes straight from the design.
             color = if (role == WordRole.LABEL) withAlpha(primary, 0.6f) else primary
-            typeface = if (gsf) gsfTypeface(context, weight) else oneUiTypeface(context, weight)
-            // Width axis is a no-op on the bundled static Google Sans Flex
-            // cuts; it takes effect once a true variable font is in res/font.
+            typeface = if (gsf) gsfTypeface(context) else oneUiTypeface(context)
             setFontVariationSettings(
                 if (gsf) "'wght' $weight, 'wdth' ${gsfWidthFor(role)}" else "'wght' $weight",
             )
@@ -378,39 +401,23 @@ object WidgetArtworkRenderer {
     private fun withAlpha(color: Int, fraction: Float): Int =
         Color.argb((255 * fraction).toInt(), Color.red(color), Color.green(color), Color.blue(color))
 
-    private val gsfWeightCache = mutableMapOf<Int, Typeface>()
+    private fun gsfTypeface(context: Context) =
+        TwidgetFonts.googleSansFlex(context)
 
-    private fun gsfTypeface(context: Context, weight: Int): Typeface =
-        gsfWeightCache.getOrPut(weight) {
-            val base = ResourcesCompat.getFont(
-                context,
-                if (weight >= 700) R.font.google_sans_flex_bold else R.font.google_sans_flex_regular,
-            ) ?: Typeface.DEFAULT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) Typeface.create(base, weight, false) else base
-        }
-
-    private val oneUiWeightCache = mutableMapOf<Int, Typeface>()
-
-    // One UI Sans (Samsung "sec") is a variable family; Typeface.create with an
-    // explicit weight picks up the real cut on API 28+, otherwise falls back to
-    // bold/regular. Weights below 400 can't be synthesized thinner than the base
-    // regular, which is why the label also leans on opacity for hierarchy.
-    private fun oneUiTypeface(context: Context, weight: Int): Typeface =
-        oneUiWeightCache.getOrPut(weight) {
-            TwidgetFonts.oneUiSans(context, weight)
-        }
+    // Use the bundled variable face rather than Samsung's system aliases. Some
+    // One UI releases map their nominal Bold face closer to ExtraBold.
+    private fun oneUiTypeface(context: Context) =
+        TwidgetFonts.oneUiSansVariable(context)
 
     private fun textPaint(context: Context, settings: TwidgetWidgetSettings, color: Int, bold: Boolean): Paint =
         Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             this.color = color
             typeface = if (settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX) {
-                ResourcesCompat.getFont(
-                    context,
-                    if (bold) R.font.google_sans_flex_bold else R.font.google_sans_flex_regular,
-                )
+                TwidgetFonts.googleSansFlex(context)
             } else {
-                TwidgetFonts.oneUiSans(context, if (bold) 700 else 400)
+                TwidgetFonts.oneUiSansVariable(context)
             }
+            setFontVariationSettings("'wght' ${if (bold) 700 else 400}")
         }
 
     private fun dp(context: Context, value: Int): Int =

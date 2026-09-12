@@ -57,6 +57,24 @@ internal object FxPostPolicy {
     }
 }
 
+internal object ActivityPostPolicy {
+    fun isOwnOriginalInWindow(
+        status: FxStatusCandidate,
+        requestedUsername: String,
+        windowStart: Long,
+        now: Long,
+    ): Boolean {
+        val username = requestedUsername.trim().trimStart('@').lowercase(Locale.US)
+        if (status.type != "status") return false
+        if (status.authorUsername.lowercase(Locale.US) != username) return false
+        if (status.isRepost || status.isReply) return false
+        if (!status.url.lowercase(Locale.US).contains("/$username/status/")) return false
+        if (status.timestamp !in windowStart..(now + 5 * 60 * 1000L)) return false
+        return status.conversationId.isBlank() || status.id.isBlank() ||
+            status.conversationId == status.id
+    }
+}
+
 internal object AnalyticsPaging {
     fun reachedWindowBoundary(pageTimestamps: List<Long>, windowStart: Long): Boolean {
         if (pageTimestamps.isEmpty()) return true

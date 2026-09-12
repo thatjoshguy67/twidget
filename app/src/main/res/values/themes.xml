@@ -8,11 +8,7 @@
         <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
     </style>
 
-    <!-- Used only by the launcher activity. Android displays this window
-         before MainActivity can draw its dashboard skeleton. -->
-    <style name="Theme.Twidget.Launcher" parent="Theme.Twidget">
-        <item name="android:windowBackground">@color/oneui_bg</item>
-    </style>
+    <style name="Theme.Twidget.Launcher" parent="Theme.Twidget" />
 
     <style name="WidgetPresetButton">
         <item name="android:layout_width">wrap_content</item>
@@ -41,5 +37,16 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:paddingStart">16dp</item>
         <item name="android:paddingEnd">20dp</item>
+    </style>
+
+    <style name="TwidgetBriefSectionLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">sec</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:paddingStart">19dp</item>
+        <item name="android:paddingEnd">19dp</item>
+        <item name="android:textColor">@color/oneui_text_primary</item>
+        <item name="android:textSize">14sp</item>
     </style>
 </resources>

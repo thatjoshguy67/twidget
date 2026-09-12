@@ -27,13 +27,13 @@ import androidx.picker.app.SeslDatePickerDialog
 import androidx.picker.app.SeslTimePickerDialog
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
+import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.UUID
@@ -379,6 +379,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         composeUi.refreshFromEditor()
     }
 
+    internal fun onComposeMoveThreadRequested(index: Int, offset: Int) {
+        val destination = index + offset
+        if (index !in editorItems.indices || destination !in editorItems.indices) return
+        val item = editorItems.removeAt(index)
+        editorItems.add(destination, item)
+        composeUi.refreshFromEditor(activeIndex = destination)
+    }
+
     internal fun composeItemCount(): Int = editorItems.size
     internal fun composeItemText(index: Int): String = editorItems.getOrNull(index)?.text.orEmpty()
     internal fun composeUpdateItemText(index: Int, value: String) {
@@ -394,17 +402,28 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         invalidateOptionsMenu()
     }
     internal fun composeHasContent(): Boolean = editorItems.any { it.text.isNotBlank() || it.media.isNotEmpty() }
+    internal fun composeIsVerified(): Boolean =
+        TwidgetStore.currentStats(this, editorAccount).isVerified == true
     internal fun composeCharacterLimit(): Int = SchedulePolicy.textLimit(
-        TwidgetStore.currentStats(this, editorAccount).isVerified
+        composeIsVerified()
     )
     internal fun composeHasInvalidLength(): Boolean = editorItems.any {
         SchedulePolicy.textLength(it.text) > composeCharacterLimit()
     }
     internal fun composeIsBusy(): Boolean = busy
     internal fun composeAvatarUsername(): String = requestedUsername().ifBlank { editorAccount }
-    internal fun composeTimeSummaryText(): String =
-        SimpleDateFormat("MMM d · h:mm a", Locale.getDefault()).format(editorTime.time)
-            .replace("AM", "am").replace("PM", "pm")
+    internal fun composeTimeSummaryText(): String {
+        val formatted = AppLocales.formatDate(
+            editorTime.timeInMillis,
+            "d. MMM · HH:mm",
+            "MMM d · h:mm a",
+        )
+        return if (AppLocales.applicationLocale().language == "de") {
+            formatted
+        } else {
+            formatted.replace("AM", "am").replace("PM", "pm")
+        }
+    }
     internal fun composeDp(value: Int): Int = dp(value)
 
     private fun showPublicUrlDialog() {

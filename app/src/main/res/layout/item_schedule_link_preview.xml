@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="20dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:orientation="vertical"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:visibility="gone">
+
+    <dev.oneuiproject.oneui.widget.RoundedFrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="219dp"
+        android:background="@drawable/schedule_media_preview_bg"
+        android:clipToOutline="true"
+        android:elevation="10dp"
+        android:outlineProvider="background"
+        android:translationZ="2dp"
+        app:roundedCorners="none">
+
+        <ImageView
+            android:id="@+id/schedule_link_preview_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/oneui_divider"
+            android:contentDescription="@string/schedule_link_preview_image"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/schedule_link_preview_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/schedule_link_preview_title_bg"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:paddingStart="10dp"
+            android:paddingTop="7dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="7dp"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
+    </dev.oneuiproject.oneui.widget.RoundedFrameLayout>
+
+    <TextView
+        android:id="@+id/schedule_link_preview_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/oneui_text_secondary"
+        android:textSize="14sp" />
+</LinearLayout>

@@ -17,20 +17,15 @@ class BufferPublishCheckWorker(context: Context, workerParams: WorkerParameters)
         val id = inputData.getString(KEY_SCHEDULE_ID)?.takeIf(String::isNotBlank) ?: return Result.failure()
         val store = ScheduleStore(applicationContext)
         val before = store.get(id) ?: return Result.success()
-        if (
-            before.provider != ScheduleProvider.BUFFER ||
-            before.status !in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.PUBLISHED)
-        ) {
-            return Result.success()
-        }
-        val sync = BufferScheduleSync(applicationContext).sync()
+        if (!BufferScheduleFallbackPolicy.needsConfirmation(before)) return Result.success()
+        val sync = BufferScheduleSync(applicationContext).sync(username = before.accountId)
         if (!sync.isSuccess) return Result.retry()
         val post = store.get(id) ?: return Result.success()
         return when (post.status) {
             // BufferScheduleSync owns terminal transition notifications so a manual
             // refresh and this worker cannot alert twice for the same outcome.
             ScheduleStatus.PUBLISHED, ScheduleStatus.NEEDS_ACTION -> Result.success()
-            ScheduleStatus.SCHEDULED -> Result.retry()
+            ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION -> Result.retry()
             else -> Result.success()
         }
     }
@@ -39,9 +34,9 @@ class BufferPublishCheckWorker(context: Context, workerParams: WorkerParameters)
         private const val KEY_SCHEDULE_ID = "schedule_id"
         private const val VERIFY_DELAY_MS = 2 * 60 * 1000L
 
-        fun enqueue(context: Context, post: ScheduledPost) {
-            if (post.provider != ScheduleProvider.BUFFER || post.status != ScheduleStatus.SCHEDULED || post.scheduledAt == null) return
-            val delay = (post.scheduledAt + VERIFY_DELAY_MS - System.currentTimeMillis()).coerceAtLeast(0L)
+        fun enqueue(context: Context, post: ScheduledPost, replaceExisting: Boolean = false) {
+            if (!BufferScheduleFallbackPolicy.needsConfirmation(post)) return
+            val delay = ((post.scheduledAt ?: post.createdAt) + VERIFY_DELAY_MS - System.currentTimeMillis()).coerceAtLeast(0L)
             val request = OneTimeWorkRequestBuilder<BufferPublishCheckWorker>()
                 .setInputData(workDataOf(KEY_SCHEDULE_ID to post.id))
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
@@ -49,7 +44,10 @@ class BufferPublishCheckWorker(context: Context, workerParams: WorkerParameters)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.MINUTES)
                 .build()
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-                "buffer-publish-check-${post.id}", ExistingWorkPolicy.REPLACE, request,
+                "buffer-publish-check-${post.id}",
+                // A sync inside this worker must not replace/cancel its own run.
+                if (replaceExisting) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
+                request,
             )
         }
 

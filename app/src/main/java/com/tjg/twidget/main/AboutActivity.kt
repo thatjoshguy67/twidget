@@ -84,6 +84,9 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<View>(R.id.about_kingowen_credit).setOnClickListener {
             openUrl(getString(R.string.link_kingowen))
         }
+        findViewById<View>(R.id.about_aaron_credit).setOnClickListener {
+            openUrl(getString(R.string.link_aaron))
+        }
         findViewById<View>(R.id.about_fxtwitter_credit).setOnClickListener {
             openUrl(getString(R.string.link_fxtwitter))
         }
@@ -591,6 +594,7 @@ class AboutActivity : FoldablePopOverActivity() {
     private fun setupCreditAvatars() {
         loadCreditAvatar(R.id.about_tjg_credit, TJG_X_USERNAME)
         loadCreditAvatar(R.id.about_kingowen_credit, KINGOWEN_X_USERNAME)
+        loadCreditAvatar(R.id.about_aaron_credit, AARON_X_USERNAME)
     }
 
     private fun loadCreditAvatar(rowId: Int, username: String) {
@@ -680,6 +684,7 @@ class AboutActivity : FoldablePopOverActivity() {
         private const val HEADER_ICON_EASTER_EGG_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
+        private const val AARON_X_USERNAME = "aaronthetechie"
         private const val PREF_BETA_RELEASES = "beta_releases"
         private const val PREF_UPDATE_CHANNEL = "update_channel"
         private const val MENU_APP_INFO = 1

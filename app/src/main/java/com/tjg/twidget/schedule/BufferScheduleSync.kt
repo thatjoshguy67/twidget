@@ -18,7 +18,7 @@ class BufferScheduleSync(
 ) {
     private val appContext = context.applicationContext
 
-    fun sync(userInitiated: Boolean = false): BufferSyncResult {
+    fun sync(userInitiated: Boolean = false, username: String? = null): BufferSyncResult {
         if (!BufferOAuth.isConnected(appContext)) {
             return BufferSyncResult()
         }
@@ -26,7 +26,7 @@ class BufferScheduleSync(
             return BufferSyncResult(errors = listOf(it))
         }
         if (!BufferRequestThrottle.beginSync(appContext, userInitiated)) return BufferSyncResult()
-        val trackedUsername = TwidgetStore.settings(appContext).username.trim().trimStart('@')
+        val trackedUsername = (username ?: TwidgetStore.settings(appContext).username).trim().trimStart('@')
         if (trackedUsername.isBlank()) return BufferSyncResult(errors = listOf("No default X account is configured"))
         val mappedId = ScheduleSettingsStore.bufferChannelFor(appContext, trackedUsername)
         val mappedOrganizationId = ScheduleSettingsStore.bufferOrganizationFor(appContext, trackedUsername)
@@ -88,9 +88,8 @@ class BufferScheduleSync(
                 createdAt = current?.createdAt ?: bufferPost.createdAt ?: now,
                 updatedAt = now,
                 publishedAt = when (status) {
-                    ScheduleStatus.PUBLISHED -> bufferPost.dueAt ?: current?.publishedAt
-                    ScheduleStatus.NEEDS_ACTION -> null
-                    else -> current?.publishedAt
+                    ScheduleStatus.PUBLISHED -> bufferPost.dueAt ?: current?.publishedAt ?: now
+                    else -> null
                 },
                 pinned = current?.pinned ?: false,
                 deletedAt = current?.deletedAt,
@@ -105,21 +104,8 @@ class BufferScheduleSync(
             if (ScheduleNotificationPolicy.shouldNotifyBufferFailed(current, status)) {
                 ScheduleNotificationHelper.showBufferFailed(appContext, local)
             }
-            if (status == ScheduleStatus.SCHEDULED) BufferPublishCheckWorker.enqueue(appContext, local)
+            BufferPublishCheckWorker.enqueue(appContext, local)
             if (current == null) imported++ else updated++
-        }
-
-        existing.filter {
-            shouldAssumePublished(it, seen, now)
-        }.forEach { current ->
-            val published = current.copy(
-                status = ScheduleStatus.PUBLISHED,
-                errorMessage = null,
-                updatedAt = now,
-                publishedAt = current.scheduledAt ?: now,
-            )
-            store.upsert(published)
-            updated++
         }
 
         var removed = 0
@@ -144,48 +130,28 @@ class BufferScheduleSync(
         private const val TERMINAL_QUERY_PADDING_MS = 24 * 60 * 60 * 1000L
         internal fun remoteLocalId(postId: String): String = "buffer-post-$postId"
 
-        /**
-         * Recently presumed posts remain in Buffer's terminal-status query long
-         * enough for a later explicit sent/error result to correct the fallback.
-         */
+        // Pending posts remain eligible even if the device was offline for days.
         internal fun terminalConfirmationTime(post: ScheduledPost, now: Long): Long? = when (post.status) {
             ScheduleStatus.SCHEDULED -> post.scheduledAt?.takeIf { it <= now + TERMINAL_LOOKAHEAD_MS }
+            ScheduleStatus.AWAITING_CONFIRMATION -> post.scheduledAt ?: post.createdAt
             ScheduleStatus.PUBLISHED -> (post.publishedAt ?: post.scheduledAt)?.takeIf {
                 now - it in 0L..TERMINAL_CONFIRMATION_GRACE_MS
             }
             else -> null
         }
 
-        /**
-         * Buffer can continue returning a due post as scheduled/sending after its
-         * publishing time. Unless Buffer explicitly reports an error, the local
-         * fallback treats that post as published so it cannot remain upcoming.
-         */
         internal fun resolvedStatus(remoteStatus: String, dueAt: Long?, now: Long): ScheduleStatus? =
-            when (remoteStatus.lowercase()) {
+            when (remoteStatus.lowercase(java.util.Locale.ROOT)) {
                 "draft" -> ScheduleStatus.DRAFT
                 "error" -> ScheduleStatus.NEEDS_ACTION
                 "sent" -> ScheduleStatus.PUBLISHED
                 "scheduled", "sending" -> if (dueAt != null && dueAt <= now) {
-                    ScheduleStatus.PUBLISHED
+                    ScheduleStatus.AWAITING_CONFIRMATION
                 } else {
                     ScheduleStatus.SCHEDULED
                 }
                 else -> null
             }
-
-        /**
-         * A due post may fall between Buffer's active and terminal result sets.
-         * Absence is not treated as a failure: at its scheduled time we presume it
-         * was published, while a later explicit Buffer error can still correct it.
-         */
-        internal fun shouldAssumePublished(post: ScheduledPost, seen: Set<String>, now: Long): Boolean {
-            val remoteId = post.remotePostId ?: return false
-            return post.provider == ScheduleProvider.BUFFER &&
-                post.status == ScheduleStatus.SCHEDULED &&
-                remoteId !in seen &&
-                post.scheduledAt?.let { it <= now } == true
-        }
 
         /**
          * A just-due post can briefly disappear from Buffer's active list before it

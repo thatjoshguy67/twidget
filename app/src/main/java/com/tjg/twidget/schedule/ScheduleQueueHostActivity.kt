@@ -925,6 +925,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun queueCardTitle(post: ScheduledPost): CharSequence = when {
+        post.status == ScheduleStatus.AWAITING_CONFIRMATION ->
+            "${queueDateTitle(post.scheduledAt)} · ${getString(R.string.schedule_status_awaiting_confirmation)}"
         post.status == ScheduleStatus.NEEDS_ACTION -> SpannableStringBuilder(
             getString(R.string.schedule_ready_now),
         ).apply {
@@ -1728,6 +1730,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun statusLabel(status: ScheduleStatus): Int = when (status) {
         ScheduleStatus.DRAFT -> R.string.schedule_status_draft
         ScheduleStatus.SCHEDULED -> R.string.schedule_status_scheduled
+        ScheduleStatus.AWAITING_CONFIRMATION -> R.string.schedule_status_awaiting_confirmation
         ScheduleStatus.NEEDS_ACTION -> R.string.schedule_status_needs_action
         ScheduleStatus.PUBLISHED -> R.string.schedule_status_published
         ScheduleStatus.FAILED -> R.string.schedule_status_failed

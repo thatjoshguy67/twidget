@@ -184,6 +184,7 @@ class ScheduleCoordinator(
         val submitted = readyPost ?: post
         val scheduled = submitted.copy(
             status = ScheduleStatus.SCHEDULED,
+            publishedAt = null,
             remotePostId = result.value ?: submitted.remotePostId,
             remoteSubmissionId = null,
             errorMessage = null,
@@ -191,7 +192,7 @@ class ScheduleCoordinator(
             updatedAt = nowMillis,
         )
         store.upsert(scheduled)
-        BufferPublishCheckWorker.enqueue(appContext, scheduled)
+        BufferPublishCheckWorker.enqueue(appContext, scheduled, replaceExisting = true)
         return ScheduleCoordinatorResult(scheduled)
     }
 

@@ -46,11 +46,11 @@ class ScheduleQueuePolicyTest {
         val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
             .copy(status = ScheduleStatus.SCHEDULED)
         val alreadyFailed = scheduled.copy(status = ScheduleStatus.NEEDS_ACTION)
-        val presumedPublished = scheduled.copy(status = ScheduleStatus.PUBLISHED)
+        val awaitingConfirmation = scheduled.copy(status = ScheduleStatus.AWAITING_CONFIRMATION)
         val local = scheduled.copy(provider = ScheduleProvider.LOCAL_REMINDER)
 
         assertTrue(ScheduleNotificationPolicy.shouldNotifyBufferFailed(scheduled, ScheduleStatus.NEEDS_ACTION))
-        assertTrue(ScheduleNotificationPolicy.shouldNotifyBufferFailed(presumedPublished, ScheduleStatus.NEEDS_ACTION))
+        assertTrue(ScheduleNotificationPolicy.shouldNotifyBufferFailed(awaitingConfirmation, ScheduleStatus.NEEDS_ACTION))
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(alreadyFailed, ScheduleStatus.NEEDS_ACTION))
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(local, ScheduleStatus.NEEDS_ACTION))
         assertFalse(ScheduleNotificationPolicy.shouldNotifyBufferFailed(scheduled, ScheduleStatus.PUBLISHED))
@@ -75,6 +75,7 @@ class ScheduleQueuePolicyTest {
         val posts = listOf(
             base.copy(id = "old-published", status = ScheduleStatus.PUBLISHED, publishedAt = 10L),
             base.copy(id = "draft", status = ScheduleStatus.DRAFT, updatedAt = 40L),
+            base.copy(id = "pending", status = ScheduleStatus.AWAITING_CONFIRMATION, scheduledAt = 10L),
             base.copy(id = "later", status = ScheduleStatus.SCHEDULED, scheduledAt = 30L),
             base.copy(id = "failed", status = ScheduleStatus.NEEDS_ACTION, updatedAt = 20L),
             base.copy(id = "recent-published", status = ScheduleStatus.PUBLISHED, publishedAt = 50L),
@@ -82,13 +83,13 @@ class ScheduleQueuePolicyTest {
         )
 
         assertEquals(
-            listOf("failed", "sooner", "later", "draft", "recent-published", "old-published"),
+            listOf("failed", "sooner", "later", "draft", "pending", "recent-published", "old-published"),
             ScheduleQueuePolicy.order(posts).map(ScheduledPost::id),
         )
     }
 
     @Test
-    fun overdueBufferScheduleIsPresumedPublished() {
+    fun overdueBufferScheduleWaitsForConfirmation() {
         val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
             status = ScheduleStatus.SCHEDULED,
             scheduledAt = 1_000L,
@@ -99,9 +100,9 @@ class ScheduleQueuePolicyTest {
 
         val reconciled = BufferScheduleFallbackPolicy.reconcile(scheduled, 1_001L)
 
-        assertEquals(ScheduleStatus.PUBLISHED, reconciled.status)
-        assertEquals(1_000L, reconciled.publishedAt)
-        assertEquals(null, reconciled.errorMessage)
+        assertEquals(ScheduleStatus.AWAITING_CONFIRMATION, reconciled.status)
+        assertEquals(null, reconciled.publishedAt)
+        assertEquals("Old error", reconciled.errorMessage)
         assertFalse(reconciled.pinned)
     }
 
@@ -118,7 +119,7 @@ class ScheduleQueuePolicyTest {
     }
 
     @Test
-    fun fallbackRepairsRejectedDeleteOfAlreadyPublishedPost() {
+    fun rejectedDeleteDoesNotProvePublication() {
         val failedDelete = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
             status = ScheduleStatus.FAILED,
             scheduledAt = 1_000L,
@@ -128,8 +129,8 @@ class ScheduleQueuePolicyTest {
 
         val reconciled = BufferScheduleFallbackPolicy.reconcile(failedDelete, 2_000L)
 
-        assertEquals(ScheduleStatus.PUBLISHED, reconciled.status)
-        assertEquals(null, reconciled.errorMessage)
+        assertEquals(failedDelete, reconciled)
+        assertTrue(BufferScheduleFallbackPolicy.requiresRemoteCancellation(reconciled))
     }
 
     @Test

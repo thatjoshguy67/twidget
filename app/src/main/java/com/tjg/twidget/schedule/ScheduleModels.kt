@@ -10,6 +10,7 @@ enum class ScheduleProvider {
 enum class ScheduleStatus {
     DRAFT,
     SCHEDULED,
+    AWAITING_CONFIRMATION,
     NEEDS_ACTION,
     PUBLISHED,
     FAILED,
@@ -25,7 +26,9 @@ object ScheduleStateTransitions {
                 ScheduleStatus.FAILED,
                 ScheduleStatus.CANCELLED,
             )
-            ScheduleStatus.SCHEDULED -> to in setOf(
+            ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION -> to in setOf(
+                ScheduleStatus.AWAITING_CONFIRMATION,
+                ScheduleStatus.SCHEDULED,
                 ScheduleStatus.DRAFT,
                 ScheduleStatus.NEEDS_ACTION,
                 ScheduleStatus.PUBLISHED,
@@ -143,7 +146,7 @@ object ScheduleQueuePolicy {
                 }
             }
             .thenByDescending {
-                if (it.status in setOf(ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED)) {
+                if (it.status in setOf(ScheduleStatus.AWAITING_CONFIRMATION, ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED)) {
                     it.publishedAt ?: it.scheduledAt ?: it.updatedAt
                 } else {
                     0L
@@ -155,42 +158,31 @@ object ScheduleQueuePolicy {
         ScheduleStatus.NEEDS_ACTION, ScheduleStatus.FAILED -> 0
         ScheduleStatus.SCHEDULED -> 1
         ScheduleStatus.DRAFT -> 2
-        ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED -> 3
+        ScheduleStatus.AWAITING_CONFIRMATION -> 3
+        ScheduleStatus.PUBLISHED, ScheduleStatus.CANCELLED -> 4
     }
 }
 
 object BufferScheduleFallbackPolicy {
-    private const val ALREADY_TERMINAL_DELETE_ERROR = "not allowed to perform this action on post"
-
-    /**
-     * Buffer can leave a post in its scheduled state after the due time. Keep the
-     * app useful offline (and when Buffer's active-post response is stale) by
-     * treating it as published until Buffer explicitly reports an error.
-     *
-     * The FAILED case repairs records produced by older builds when a user tried
-     * to delete an already-published Buffer post and Buffer rejected the request.
-     */
+    /** Passing the due time changes presentation, never proof of publication. */
     fun reconcile(post: ScheduledPost, nowMillis: Long): ScheduledPost {
-        val isDue = post.scheduledAt?.let { it <= nowMillis } == true
-        val isStaleScheduledPost = post.status == ScheduleStatus.SCHEDULED
-        val isRejectedTerminalDelete = post.status == ScheduleStatus.FAILED &&
-            post.errorMessage?.contains(ALREADY_TERMINAL_DELETE_ERROR, ignoreCase = true) == true
-        if (
-            post.provider != ScheduleProvider.BUFFER ||
-            post.deletedAt != null ||
-            !isDue ||
-            (!isStaleScheduledPost && !isRejectedTerminalDelete)
-        ) {
-            return post
-        }
+        if (post.provider != ScheduleProvider.BUFFER || post.deletedAt != null ||
+            post.status != ScheduleStatus.SCHEDULED ||
+            post.scheduledAt?.let { it <= nowMillis } != true
+        ) return post
         return post.copy(
-            status = ScheduleStatus.PUBLISHED,
-            errorMessage = null,
-            publishedAt = post.publishedAt ?: post.scheduledAt,
+            status = ScheduleStatus.AWAITING_CONFIRMATION,
+            publishedAt = null,
             pinned = false,
             updatedAt = nowMillis,
         )
     }
+
+    fun needsConfirmation(post: ScheduledPost): Boolean =
+        post.provider == ScheduleProvider.BUFFER &&
+            !post.remotePostId.isNullOrBlank() &&
+            post.deletedAt == null &&
+            post.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION)
 
     fun requiresRemoteCancellation(post: ScheduledPost): Boolean =
         post.provider == ScheduleProvider.BUFFER &&
@@ -201,12 +193,12 @@ object BufferScheduleFallbackPolicy {
 object ScheduleNotificationPolicy {
     fun shouldNotifyBufferPublished(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
         previous?.provider == ScheduleProvider.BUFFER &&
-            previous.status == ScheduleStatus.SCHEDULED &&
+            previous.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION) &&
             nextStatus == ScheduleStatus.PUBLISHED
 
     fun shouldNotifyBufferFailed(previous: ScheduledPost?, nextStatus: ScheduleStatus): Boolean =
         previous?.provider == ScheduleProvider.BUFFER &&
-            previous.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.PUBLISHED) &&
+            previous.status in setOf(ScheduleStatus.SCHEDULED, ScheduleStatus.AWAITING_CONFIRMATION, ScheduleStatus.PUBLISHED) &&
             nextStatus == ScheduleStatus.NEEDS_ACTION
 }
 

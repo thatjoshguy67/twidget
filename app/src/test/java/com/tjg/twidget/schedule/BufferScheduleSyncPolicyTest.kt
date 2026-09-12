@@ -13,7 +13,6 @@ class BufferScheduleSyncPolicyTest {
         val post = scheduledPost(scheduledAt = now - 1_000L)
 
         assertFalse(BufferScheduleSync.shouldRemoveMissing(post, emptySet(), now))
-        assertTrue(BufferScheduleSync.shouldAssumePublished(post, emptySet(), now))
     }
 
     @Test
@@ -35,17 +34,16 @@ class BufferScheduleSyncPolicyTest {
         val post = scheduledPost(scheduledAt = now + 10 * 60_000L)
 
         assertFalse(BufferScheduleSync.shouldRemoveMissing(post, setOf("remote-1"), now))
-        assertFalse(BufferScheduleSync.shouldAssumePublished(post, setOf("remote-1"), now))
     }
 
     @Test
-    fun overdueScheduledAndSendingStatusesFallBackToPublished() {
+    fun overdueScheduledAndSendingStatusesAwaitConfirmation() {
         assertEquals(
-            ScheduleStatus.PUBLISHED,
+            ScheduleStatus.AWAITING_CONFIRMATION,
             BufferScheduleSync.resolvedStatus("scheduled", now - 1L, now),
         )
         assertEquals(
-            ScheduleStatus.PUBLISHED,
+            ScheduleStatus.AWAITING_CONFIRMATION,
             BufferScheduleSync.resolvedStatus("sending", now, now),
         )
     }
@@ -64,27 +62,19 @@ class BufferScheduleSyncPolicyTest {
             ScheduleStatus.SCHEDULED,
             BufferScheduleSync.resolvedStatus("scheduled", now + 1L, now),
         )
-        assertFalse(BufferScheduleSync.shouldAssumePublished(
-            scheduledPost(scheduledAt = now + 1L),
-            emptySet(),
-            now,
-        ))
     }
 
     @Test
-    fun recentlyPresumedPostKeepsCheckingForAnExplicitTerminalStatus() {
+    fun unconfirmedPostKeepsCheckingAfterMoreThanADayOffline() {
         val post = scheduledPost(scheduledAt = now - 1_000L).copy(
-            status = ScheduleStatus.PUBLISHED,
+            status = ScheduleStatus.AWAITING_CONFIRMATION,
             publishedAt = now - 1_000L,
         )
 
         assertEquals(now - 1_000L, BufferScheduleSync.terminalConfirmationTime(post, now))
         assertEquals(
-            null,
-            BufferScheduleSync.terminalConfirmationTime(
-                post.copy(publishedAt = now - 24 * 60 * 60 * 1000L - 1L),
-                now,
-            ),
+            now - 1_000L,
+            BufferScheduleSync.terminalConfirmationTime(post, now + 3 * 24 * 60 * 60 * 1000L),
         )
     }
 

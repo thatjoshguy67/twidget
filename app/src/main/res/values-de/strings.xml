@@ -797,4 +797,5 @@
     <string name="brief_streak_heading">Dein Posting-Streak</string>
     <string name="back">Zurück</string>
     <string name="info">Informationen</string>
+    <string name="schedule_status_awaiting_confirmation">Bestätigung ausstehend</string>
 </resources>

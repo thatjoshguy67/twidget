@@ -94,6 +94,9 @@ personal visual experience across phones, tablets, foldables, and widgets.
 - Hardened Gemini Nano model selection with stable defaults, compatibility
   handling, automatic fallback, caching, and clearer loading diagnostics.
 - Prevented overdue Buffer posts from appearing as upcoming Brief items.
+- Keep overdue Buffer posts awaiting confirmation until Buffer reports a
+  publishing result, preserving remote cancellation, background retries, and
+  publication notifications, including for records saved by older betas.
 - Fixed Brief card ordering, missing editorial summaries and section headings,
   widget rendering, large-screen tiling, and launch-transition regressions.
 - Improved Top Followers scrolling and corrected several icon, theme, and

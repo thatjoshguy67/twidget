@@ -300,6 +300,9 @@
     <string name="about_tjg_summary">Created the app. Far too many red bulls consumed in the process.</string>
     <string name="about_kingowen_title">KingOwenFYI</string>
     <string name="about_kingowen_summary">Contributor, motivator and idea generator.</string>
+    <string name="about_aaron_title" translatable="false">Aaron the Techie</string>
+    <string name="about_aaron_summary">German localisation.</string>
+    <string name="link_aaron" translatable="false">https://x.com/aaronthetechie</string>
     <string name="about_fxtwitter_title">FxTwitter / FxEmbed</string>
     <string name="about_fxtwitter_summary">Default data source. Public profile, status, media, and recent-post analytics data</string>
     <string name="about_oneui_summary">One UI interface components. The magic behind the app\'s design</string>
@@ -797,4 +800,5 @@
     <string name="brief_streak_heading">Your posting streak</string>
     <string name="back">Back</string>
     <string name="info">Information</string>
+    <string name="schedule_status_awaiting_confirmation">Awaiting confirmation</string>
 </resources>

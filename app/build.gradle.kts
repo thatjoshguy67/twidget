@@ -1,6 +1,14 @@
 import java.io.File
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     id("com.android.application")
@@ -175,6 +183,22 @@ kotlin {
     }
 }
 
+abstract class GenerateDebugChangelog : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val changelogFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val directory = outputDirectory.get().asFile
+        directory.mkdirs()
+        changelogFile.get().asFile.copyTo(directory.resolve("upcoming-changelog.md"), overwrite = true)
+    }
+}
+
 androidComponents {
     onVariants(selector().all()) { variant ->
         val versionCode = when (variant.buildType) {
@@ -184,6 +208,13 @@ androidComponents {
         }
         variant.outputs.forEach { output ->
             output.versionCode.set(versionCode)
+        }
+        if (variant.buildType == "debug") {
+            val changelog = tasks.register<GenerateDebugChangelog>("generateDebugChangelog") {
+                changelogFile.set(rootProject.layout.projectDirectory.file("CHANGELOG.md"))
+                outputDirectory.set(layout.buildDirectory.dir("generated/debugChangelog/assets"))
+            }
+            variant.sources.assets?.addGeneratedSourceDirectory(changelog, GenerateDebugChangelog::outputDirectory)
         }
     }
 }

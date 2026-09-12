@@ -43,9 +43,7 @@ class NoticesActivity : FoldablePopOverActivity() {
             .setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         applyEdgeToEdgeInsets(findViewById(R.id.notices_root))
 
-        ReleaseNoticesStore.cached(this).let {
-            notices = it.notices
-        }
+        notices = ReleaseNoticesStore.visible(this)
         ReleaseNoticesStore.markCurrentAsSeen(this)
         render()
         refreshNotices()
@@ -77,7 +75,7 @@ class NoticesActivity : FoldablePopOverActivity() {
                 if (token != generation || isFinishing || isDestroyed) return@runOnUiThread
                 refresh.isRefreshing = false
                 result.onSuccess {
-                    notices = it
+                    notices = ReleaseNoticesStore.visible(this)
                 }.onFailure {
                     errorMessage = getString(R.string.notices_load_failed)
                 }
@@ -91,7 +89,7 @@ class NoticesActivity : FoldablePopOverActivity() {
         errorMessage?.let {
             content.addView(card().apply {
                 addView(titleText(it))
-                if (notices.isNotEmpty()) addView(metaText(getString(R.string.notices_showing_cache)))
+                if (notices.any { !it.upcoming }) addView(metaText(getString(R.string.notices_showing_cache)))
             })
         }
         if (notices.isEmpty()) {
@@ -118,9 +116,9 @@ class NoticesActivity : FoldablePopOverActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(titleText(notice.title), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            if (notice.prerelease) {
+            if (notice.prerelease || notice.upcoming) {
                 addView(TextView(this@NoticesActivity).apply {
-                    setText(R.string.notices_beta)
+                    setText(if (notice.upcoming) R.string.notices_upcoming else R.string.notices_beta)
                     textSize = 12f
                     typeface = Typeface.create("sec", Typeface.BOLD)
                     setTextColor(getColor(R.color.oneui_accent))
@@ -145,6 +143,7 @@ class NoticesActivity : FoldablePopOverActivity() {
     }
 
     private fun releaseMeta(notice: ReleaseNotice): String {
+        if (notice.upcoming) return getString(R.string.notices_upcoming_summary)
         val date = runCatching {
             DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
                 .format(Instant.parse(notice.publishedAt).atZone(ZoneId.systemDefault()))

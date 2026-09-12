@@ -235,6 +235,8 @@
     <string name="notices_load_failed">Couldn’t refresh release notes.</string>
     <string name="notices_showing_cache">Showing the last successfully downloaded notices.</string>
     <string name="notices_beta">BETA</string>
+    <string name="notices_upcoming">UPCOMING</string>
+    <string name="notices_upcoming_summary">Preview of the next release. Details may change.</string>
     <string name="notices_no_details">No additional release details were published.</string>
     <string name="notices_view_on_github">View full release on GitHub</string>
     <string name="notices_view_changelog">View changelog</string>

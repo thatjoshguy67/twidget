@@ -235,6 +235,8 @@
     <string name="notices_load_failed">Versionshinweise konnten nicht aktualisiert werden.</string>
     <string name="notices_showing_cache">Zuletzt geladene Hinweise werden angezeigt.</string>
     <string name="notices_beta">BETA</string>
+    <string name="notices_upcoming">DEMNÄCHST</string>
+    <string name="notices_upcoming_summary">Vorschau auf die nächste Version. Änderungen vorbehalten.</string>
     <string name="notices_no_details">Es wurden keine zusätzlichen Release-Details veröffentlicht.</string>
     <string name="notices_view_on_github">Vollständige Version auf GitHub ansehen</string>
     <string name="notices_view_changelog">Changelog ansehen</string>

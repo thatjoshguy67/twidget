@@ -174,9 +174,12 @@ object LockScreenFollowerViews {
         val locale = AppLocales.resolve(widgetSettings.language)
         val count = AppLocales.integer(stats.followersCount, locale)
         val strings = AppLocales.wrap(context, widgetSettings.language)
+        val rawFollowers = strings.getString(R.string.followers)
         val deltaText = when {
             !widgetSettings.showDelta -> ""
-            delta == 0L -> strings.getString(R.string.followers).lowercase()
+            delta == 0L -> {
+                if (locale.language == "de") rawFollowers else rawFollowers.lowercase()
+            }
             else -> TwidgetStore.signedNumber(delta)
         }
         // Transparent widget over the wallpaper, so text is white like the

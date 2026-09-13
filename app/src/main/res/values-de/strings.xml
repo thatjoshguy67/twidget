@@ -279,7 +279,8 @@
     <string name="about_twidget">Über Twidget</string>
     <string name="save">Speichern</string>
     <string name="cancel">Abbrechen</string>
-    <string name="add_widget">Widget hinzufügen</string>
+    <string name="add_widget_title">Widget hinzufügen</string>
+    <string name="add_widget">Hinzufügen</string>
     <string name="add_widget_requested">Wähle einen freien Platz auf dem Startbildschirm.</string>
     <string name="add_widget_not_supported">Dein Launcher unterstützt das direkte Hinzufügen von Widgets aus der App nicht.</string>
     <string name="about">Über</string>
@@ -339,9 +340,9 @@
     <string name="onboarding_profile_title">Nutzernamen eingeben</string>
     <string name="onboarding_profile_summary">Keine Sorge, du kannst später weitere hinzufügen</string>
     <string name="onboarding_scheduling_title">Wähle die Art zu Posten</string>
-    <string name="onboarding_scheduling_summary">Verbinde Buffer, um Entwürfe und geplante Beiträge zu synchronisieren und automatisch zu veröffentlichen – oder behalte alles lokal und poste selbst über X.</string>
-    <string name="onboarding_connect_buffer">Mit Buffer verbinden</string>
-    <string name="onboarding_run_locally">Lokal ausführen</string>
+    <string name="onboarding_scheduling_summary">Verbinde Buffer, um Entwürfe und geplante Beiträge zu synchronisieren und automatisch zu veröffentlichen – oder behalte alles lokal und poste selbst auf X.</string>
+    <string name="onboarding_connect_buffer">Buffer verbinden</string>
+    <string name="onboarding_run_locally">Lokal erinnern</string>
     <string name="onboarding_buffer_no_x_account">Verbinde zuerst einen X-Channel in Buffer.</string>
     <string name="onboarding_choose_buffer_account">Wähle deinen Standard-X-Channel</string>
     <string name="connect">Verbinden</string>
@@ -703,7 +704,7 @@
     <string name="brief_settings_off">Aus</string>
     <string name="brief_settings_preview_description">Vorschau deines personalisierten Briefings</string>
     <string name="brief_settings_intro">Erhalte ein personalisiertes tägliches Briefing basierend auf deiner X-Aktivität, deinen neuesten Tweets, deinen Zielen und deinem Tweet-Zeitplan. Es passt sich deinem Tag an und erscheint in deinem Dashboard sowie als Startbildschirm-Widget.</string>
-    <string name="brief_settings_ai_intro">Es nutzt eine Datenaggregations-Engine sowie wahlweise lokale oder cloudbasierte Modelle. Lokal benutzt auf unterstützten Geräten Gemini Nano, während bei der Option Cloud die Google AI Studio API für Gemini-Modelle genutzt wird.</string>
+    <string name="brief_settings_ai_intro">Das Briefing nutzt eine Datenaggregations-Engine sowie wahlweise lokale oder cloudbasierte Modelle. Lokal benutzt auf unterstützten Geräten Gemini Nano, während bei der Option Cloud die Google AI Studio API für Gemini-Modelle genutzt wird.</string>
     <string name="brief_manage_content">Inhalte zum Einbeziehen verwalten</string>
     <string name="brief_content_top_tweet">Top-Tweet dieser Woche</string>
     <string name="brief_content_worst_tweet">Schlechtester Tweet dieser Woche</string>
@@ -728,7 +729,7 @@
     <string name="brief_ai_studio_key">AI-Studio-API-Key </string>
     <string name="brief_api_key_required_title">Einrichtung von KI erforderlich</string>
     <string name="brief_api_key_required_body">Gemini Nano ist auf diesem Gerät nicht verfügbar. Füge einen Gemini API-Key von Google AI Studio hinzu.</string>
-    <string name="brief_api_key_settings_body">Erstelle oder verwalte einen Gemini-API-Schlüssel in Google AI Studio und füge ihn unten ein.</string>
+    <string name="brief_api_key_settings_body">Erstelle oder verwalte einen Gemini-API-Key in Google AI Studio und füge ihn unten ein.</string>
     <string name="brief_api_key_get_link">Einen API-Key in Google AI Studio erstellen</string>
     <string name="brief_api_key_hint">Gemini-API-Key</string>
     <string name="brief_api_key_save">Key speichern</string>
@@ -751,7 +752,7 @@
     <string name="brief_provider_local_summary">Nur Gemini Nano verwenden. Account-Stats bleiben lokal auf diesem Gerät.</string>
     <string name="brief_provider_cloud_summary">Gemini Cloud mit deinem eigenen API-Key nutzen</string>
     <string name="brief_cloud_key">Gemini-API-Key</string>
-    <string name="brief_cloud_key_summary">Wird nur an Googles Gemini-API übermittelt und ist sicher im Android Keystore verschlüsselt</string>
+    <string name="brief_cloud_key_summary">Dein Key wird nur an Googles Gemini-API übermittelt und ist sicher im Android Keystore verschlüsselt</string>
     <string name="brief_cloud_key_configured">Konfiguriert und verschlüsselt</string>
     <string name="brief_open">Dein Briefing öffnen</string>
     <string name="brief_followers">Follower</string>
@@ -797,23 +798,23 @@
         <item quantity="other">%1$s Follower</item>
     </plurals>
     <string name="brief_provider_note_template">Auf dem Gerät aus deinen Twidget-Daten erstellt</string>
-    <string name="brief_provider_note_nano">Privat mit Gemini Nano auf diesem Gerät geschrieben</string>
-    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Schlüssel geschrieben</string>
-    <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Brief nicht fertigstellen; Gemini Cloud mit deinem API-Schlüssel wurde verwendet</string>
+    <string name="brief_provider_note_nano">Privat mit Gemini Nano auf diesem Gerät generiert</string>
+    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key geschrieben</string>
+    <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Brief nicht fertigstellen; Gemini Cloud mit deinem API-Key wurde verwendet</string>
     <string name="brief_provider_note_nano_downloadable">Gemini Nano wird unterstützt und kann heruntergeladen werden</string>
     <string name="brief_provider_note_nano_downloading">Gemini Nano wird noch heruntergeladen</string>
     <string name="brief_provider_note_nano_failed">Gemini Nano ist verfügbar, konnte dieses Brief aber nicht fertigstellen</string>
     <string name="brief_provider_note_nano_unavailable">Gemini Nano ist auf diesem Gerät nicht verfügbar</string>
-    <string name="brief_provider_note_cloud_needs_key">Füge in den Einstellungen einen Gemini-API-Schlüssel hinzu, um Cloud-Texte zu aktivieren</string>
-    <string name="brief_provider_note_auto_downloadable">Gemini Nano kann heruntergeladen werden; vorerst werden private Faktentexte verwendet</string>
-    <string name="brief_provider_note_auto_none">Kein KI-Anbieter ist bereit; private Faktentexte werden verwendet</string>
-    <string name="brief_provider_note_unreachable">KI war nicht erreichbar; private Faktentexte werden verwendet</string>
+    <string name="brief_provider_note_cloud_needs_key">Füge in den Einstellungen einen Gemini-API-Key hinzu, um Cloud-Texte zu aktivieren</string>
+    <string name="brief_provider_note_auto_downloadable">Gemini Nano kann heruntergeladen werden; vorerst werden private Datenbanken verwendet</string>
+    <string name="brief_provider_note_auto_none">Kein KI-Anbieter ist bereit; private Datenbanken werden verwendet</string>
+    <string name="brief_provider_note_unreachable">KI war nicht erreichbar; private Datenbanken werden verwendet</string>
     <string name="brief_summary_title_moving_closer">Du kommst näher</string>
     <string name="brief_summary_title_momentum">Der Schwung nimmt zu</string>
     <string name="brief_summary_title_reset">Ein Moment zum Neustart</string>
     <string name="brief_summary_title_next_move">Dein nächster Schritt</string>
     <string name="brief_summary_title_week">Deine Woche im Überblick</string>
-    <string name="brief_summary_title_default">Dein Twidget Brief</string>
+    <string name="brief_summary_title_default">Dein Twidget-Briefing</string>
     <string name="brief_summary_goal_closer">Dieser Fortschritt bringt dich deinem Ziel näher.</string>
     <string name="brief_summary_goal_in_view">Dein Ziel bleibt in Sicht.</string>
     <string name="brief_summary_post_both">Ein aktueller Tweet ist herausgestochen, ein anderer bietet etwas zum Lernen.</string>
@@ -824,7 +825,7 @@
         <item quantity="other">%1$d geplante Tweets stehen bereit.</item>
     </plurals>
     <string name="brief_summary_top_followers">Bei deinen Top-Followern gibt es eine bedeutende Veränderung.</string>
-    <string name="brief_summary_streak_restart">Es könnte Zeit sein, deinen Posting-Rhythmus neu zu starten.</string>
+    <string name="brief_summary_streak_restart">Zeit, deinen Posting-Rhythmus neu zu starten?</string>
     <string name="brief_summary_streak_active">Dein Posting-Rhythmus ist aktiv.</string>
     <string name="brief_summary_schedule_step">In deinem Zeitplan wartet ein sinnvoller nächster Schritt.</string>
     <string name="brief_summary_follow_through">Ein kürzlich geplanter Tweet liefert eine Lektion für deinen nächsten Post.</string>
@@ -860,7 +861,7 @@
     <string name="brief_card_post_likes">Dieser Tweet hat %1$s Likes erhalten.</string>
     <string name="brief_card_slowdown_title">Das Wachstum hat sich verlangsamt</string>
     <string name="brief_card_slowdown_body">Dein aktuelles Tempo liegt %1$s hinter den vorherigen Tagen. Ein neuer Post könnte es wieder ankurbeln.</string>
-    <string name="brief_card_streak_start_title">Starte einen Posting-Streak</string>
+    <string name="brief_card_streak_start_title">Starte einen Streak</string>
     <string name="brief_card_streak_start_buffer">Ein Tweet wird heute veröffentlicht und kann einen neuen täglichen Rhythmus starten.</string>
     <string name="brief_card_streak_start_ready">Ein Tweet ist jetzt bereit. Veröffentliche ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um einen neuen täglichen Rhythmus zu starten.</string>
@@ -934,7 +935,7 @@
     <string name="tweet_performance_strong_unexplained">Er lief insgesamt gut, ohne dass eine Kennzahl das Ergebnis klar erklärt.</string>
     <string name="tweet_performance_quiet_unexplained">Er war der ruhigste Tweet dieser Woche, aber keine einzelne Kennzahl erklärt das Ergebnis klar.</string>
     <string name="milestone_noun_follower">Follower</string>
-    <string name="milestone_noun_verified_follower">verifizierte Follower</string>
+    <string name="milestone_noun_verified_follower">Verifizierte-Follower</string>
     <string name="milestone_noun_engagement_rate">Engagement-Rate</string>
     <string name="milestone_noun_impression">Impressionen</string>
 </resources>

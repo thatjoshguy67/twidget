@@ -4,8 +4,19 @@ Prepared 19 September 2026, before application-code changes.
 
 Branch: `feat-multiplat`, based on `staging` at `b196d1e7`.
 
-Status: design and architecture investigation complete; implementation pending.
+Status: initial account/profile persistence, legacy X mirroring, audience
+aggregation and the public Bluesky provider are implemented and verified. The new
+onboarding/UI and OAuth exchange are not implemented yet.
 Developer applications will be registered from scratch, per the maintainer.
+See [the developer setup checklist](MULTIPLATFORM_SETUP.md) for registration tasks.
+
+Foundation checkpoint: 340 GitHub and 342 Play JVM tests pass (29 new tests per
+distribution), both debug APKs and lint pass, and 11 database/migration tests pass
+on a disposable API 37 emulator. App startup with background migration succeeds.
+A read-only live request confirmed Bluesky's public profile response fields;
+provider parsing/identity/error behavior is covered by fixtures. The provider is
+not exposed through onboarding yet. Existing goals, Brief and scheduling stores
+remain intact in their current format pending consumer migration.
 
 ## Outcome
 
@@ -88,8 +99,10 @@ Introduce these separate concepts:
 - `DashboardCardSpec`: profile/account scope + metric + configuration, with a
   stable card ID. Preserve ordering and disabled cards per profile.
 
-Use a transactional, versioned store for the new account/profile/metric tables
-(Room is the proposed implementation). Keep unrelated global preferences in
+Use a transactional, versioned store for the new account/profile/metric tables.
+Implementation choice: Android SQLiteOpenHelper provides the required atomic
+transactions and foreign keys without introducing Room/KSP into the current
+AGP built-in Kotlin configuration. Keep unrelated global preferences in
 their current store. Extract pure migration and aggregation policies so they
 can be tested without an Android activity. Expose repositories to screens and
 workers rather than adding more unrelated responsibilities to `TwidgetStore`.

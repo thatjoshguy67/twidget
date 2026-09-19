@@ -17,6 +17,7 @@ class TwidgetApplication : Application(), Configuration.Provider {
         super.onCreate()
         com.tjg.twidget.ui.AppAppearance.apply(this)
         AppPaletteManager.reconcile(this)
+        com.tjg.twidget.social.LegacySocialBridge.initialize(this)
         AppExecutors.execute {
             runCatching { com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(this) }
         }

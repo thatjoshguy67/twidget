@@ -412,6 +412,39 @@ object TwidgetStore {
             .distinctBy { it.lowercase(Locale.US) }
     }
 
+    /** A single preference snapshot, without demo data or render-time history backfills. */
+    internal fun socialMigrationSnapshot(context: Context): com.tjg.twidget.social.LegacySocialSnapshot {
+        val saved = prefs(context).all
+        val default = normalizeUsername(saved[KEY_USERNAME] as? String ?: "")
+        val widgets = saved.entries.mapNotNull { (key, value) ->
+            val id = key.removePrefix("widget_account_").toIntOrNull()
+            if (key.startsWith("widget_account_") && id != null && id > 0 && value is String) id to value else null
+        }.toMap()
+        val encodedAccounts = saved[KEY_ACCOUNTS] as? String
+        val explicit = encodedAccounts?.let { encoded ->
+            val array = JSONArray(encoded)
+            List(array.length()) { array.getString(it) }
+        }.orEmpty()
+        val handles = (explicit + default + widgets.values + (saved["widget_account"] as? String).orEmpty())
+            .map(::normalizeUsername).filter(String::isNotBlank).distinctBy { it.lowercase(Locale.US) }
+        val accounts = handles.map { handle ->
+            val isDefault = handle.equals(default, ignoreCase = true)
+            val profile = (saved[profileKey(handle)] as? String)
+                ?: (saved[KEY_PROFILE] as? String).takeIf { isDefault }
+            val history = (saved[historyKey(handle)] as? String)
+                ?: (saved[KEY_HISTORY] as? String).takeIf { isDefault }
+            com.tjg.twidget.social.LegacySocialAccount(handle,
+                profile?.let { statsFromJson(JSONObject(it)) },
+                history?.let { encoded ->
+                    val array = JSONArray(encoded)
+                    assignTimestamps(List(array.length()) { historyFromJson(array.getJSONObject(it)) }
+                        .filter { it.timestamp > 0 || it.dayLabel.isNotBlank() })
+                }.orEmpty())
+        }
+        return com.tjg.twidget.social.LegacySocialSnapshot(accounts, default, widgets,
+            saved[KEY_ONBOARDED] == true || default.isNotBlank())
+    }
+
     fun addAccount(context: Context, username: String) {
         val cleanUsername = normalizeUsername(username)
         if (cleanUsername.isBlank()) return

@@ -84,7 +84,27 @@ class SettingsNavigationInstrumentedTest {
     }
 
     @Test fun briefContentIconsShareOneColumnAndSwitchActionsRemainSeparate() {
-        val activity = launch(Intent(context, BriefContentSettingsActivity::class.java))
+        val settings = launch(Intent(context, BriefSettingsActivity::class.java))
+        val monitor = instrumentation.addMonitor(BriefContentSettingsActivity::class.java.name, null, false)
+        val activity = try {
+            onMain { fragment(settings).findPreference<Preference>("brief_content_pref")!!.performClick() }
+            (instrumentation.waitForMonitorWithTimeout(monitor, 5000) as? AppCompatActivity)
+                ?: error("Manage content did not open")
+        } finally {
+            instrumentation.removeMonitor(monitor)
+        }
+        activities.add(activity)
+        instrumentation.waitForIdleSync()
+        // Exercise recycled standard platform rows as well as the custom switch-screen rows.
+        onMain { fragment(activity).listView.scrollToPosition(fragment(activity).listView.adapter!!.itemCount - 1) }
+        instrumentation.waitForIdleSync()
+        onMain {
+            val content = fragment(activity)
+            assertNotNull(content.findPreference<Preference>("social_brief_instagram"))
+            assertNotNull(content.findPreference<Preference>("social_brief_github"))
+            content.listView.scrollToPosition(0)
+        }
+        instrumentation.waitForIdleSync()
         onMain {
             val content = fragment(activity)
             val list = content.listView

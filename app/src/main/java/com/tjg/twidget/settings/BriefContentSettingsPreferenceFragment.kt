@@ -25,7 +25,8 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         fun centreIcon(row: View) {
-            row.findViewById<LinearLayout>(androidx.preference.R.id.icon_frame)?.apply {
+            // Only switch-screen rows use a LinearLayout; standard SESL rows use a FrameLayout.
+            (row.findViewById<View>(androidx.preference.R.id.icon_frame) as? LinearLayout)?.apply {
                 gravity = Gravity.CENTER
                 // Balance the row's leading inset inside the existing SESL icon column.
                 setPaddingRelative(0, paddingTop, row.paddingStart, paddingBottom)

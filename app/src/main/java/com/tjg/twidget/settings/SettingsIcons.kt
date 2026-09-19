@@ -1,5 +1,6 @@
 package com.tjg.twidget.settings
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -14,6 +15,8 @@ import com.tjg.twidget.ui.AppPaletteManager
 import com.tjg.twidget.ui.AppPaletteMode
 
 internal object SettingsIcons {
+    // This pinned SESL API reads Samsung's palette-enabled setting without hidden APIs.
+    @SuppressLint("RestrictedApi")
     fun load(context: Context, iconRes: Int): Drawable {
         val usePalette = AppPaletteManager.mode(context) != AppPaletteMode.SYSTEM ||
             SeslMisc.isColorPaletteApplied(context)

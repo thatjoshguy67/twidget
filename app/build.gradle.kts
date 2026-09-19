@@ -4,6 +4,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.PathSensitive
@@ -226,11 +228,41 @@ abstract class GenerateDebugChangelog : DefaultTask() {
     }
 }
 
+abstract class GenerateSamsungThemeMetadata : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val templateFile: RegularFileProperty
+
+    @get:Input
+    abstract val applicationId: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val xmlDirectory = outputDirectory.get().asFile.resolve("xml")
+        xmlDirectory.mkdirs()
+        xmlDirectory.resolve("meta_998_sesl_app.xml").writeText(
+            templateFile.get().asFile.readText().replace("@APPLICATION_ID@", applicationId.get()),
+        )
+    }
+}
+
 androidComponents {
     beforeVariants(selector().all()) { variant ->
         if (sesl9Prototype && variant.buildType != "debug") variant.enable = false
     }
     onVariants(selector().all()) { variant ->
+        // Samsung requires the installed package, including any prototype suffix.
+        val themeMetadata = tasks.register<GenerateSamsungThemeMetadata>(
+            "generate${variant.name.replaceFirstChar(Char::uppercaseChar)}SamsungThemeMetadata",
+        ) {
+            templateFile.set(layout.projectDirectory.file("src/main/theme/meta_998_sesl_app.xml"))
+            applicationId.set(variant.applicationId)
+            outputDirectory.set(layout.buildDirectory.dir("generated/${variant.name}SamsungThemeMetadata/res"))
+        }
+        variant.sources.res?.addGeneratedSourceDirectory(themeMetadata, GenerateSamsungThemeMetadata::outputDirectory)
         val versionCode = when (variant.buildType) {
             "debug" -> versionCodeBase + 98
             "beta" -> versionCodeBase + 79 + betaNumber

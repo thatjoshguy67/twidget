@@ -3,7 +3,7 @@
     <AppMetaData
         Name="Twidget"
         TargetApi="21"
-        TargetPackageName="com.tjg.twidget.sesl9"
+        TargetPackageName="@APPLICATION_ID@"
         VersionCode="1"
         VersionName="">
         <Include RefName="SESL" />

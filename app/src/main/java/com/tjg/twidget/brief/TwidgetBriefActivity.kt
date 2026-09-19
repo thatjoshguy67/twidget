@@ -445,36 +445,30 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
-    private fun followerChartCard(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
+    private fun followerChartCard(): View = layoutInflater.inflate(R.layout.metric_card_followers, null, false).apply {
+        (this as dev.oneuiproject.oneui.widget.RoundedLinearLayout).roundedCorners = 0
         setBackgroundResource(R.drawable.brief_card_background)
-        setPadding(0, dp(16), 0, 0)
-
         val stats = TwidgetStore.currentStats(this@TwidgetBriefActivity, username)
-        addView(LinearLayout(this@TwidgetBriefActivity).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(20), 0, dp(20), 0)
-            addView(ImageView(this@TwidgetBriefActivity).apply {
-                setImageDrawable(AppCompatResources.getDrawable(this@TwidgetBriefActivity, OneUiIconR.drawable.ic_oui_community))
-                imageTintList = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
-            }, LinearLayout.LayoutParams(dp(24), dp(24)))
-            addView(primaryText(format(stats.followersCount), 22f, true).apply {
-                setPadding(dp(20), 0, 0, 0)
-            })
-            val delta = TwidgetStore.followersDelta(this@TwidgetBriefActivity, username)
-            if (delta != 0L) addView(primaryText(TwidgetStore.signedNumber(delta), 18f).apply {
-                setPadding(dp(6), 0, 0, 0)
-                setTextColor(getColor(if (delta < 0) R.color.metric_red else R.color.metric_green))
-            })
-        })
+        findViewById<TextView>(R.id.followers_value).text = format(stats.followersCount)
+        findViewById<ImageView>(R.id.metric_platform_icon).apply {
+            visibility = View.VISIBLE
+            setImageDrawable(SocialPlatform.X.icon(context))
+            contentDescription = SocialPlatform.X.label
+        }
+        val delta = TwidgetStore.followersDelta(this@TwidgetBriefActivity, username)
+        findViewById<TextView>(R.id.followers_delta).apply {
+            visibility = if (delta == 0L) View.GONE else View.VISIBLE
+            text = TwidgetStore.signedNumber(delta)
+            setTextColor(getColor(if (delta < 0) R.color.metric_red else R.color.metric_green))
+        }
         val full = TwidgetStore.fullHistory(this@TwidgetBriefActivity, username).filter { it.followersKnown }
         val visible = TwidgetStore.chartHistory(this@TwidgetBriefActivity, username, HistoryRange.WEEK)
             .filter { it.followersKnown }
-        addView(MetricChartView(this@TwidgetBriefActivity).apply {
+        findViewById<MetricChartView>(R.id.followers_chart).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(194))
             setData(visible, { it.followers })
             setAverageSeries(AccountAverageSeries.values(full, visible, { it.followers }))
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(194)))
+        }
     }
 
     private fun postCard(post: PostSummary, sourceAttribution: String = ""): View = LinearLayout(this).apply {
@@ -967,7 +961,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             else -> genericCard(card)
         }
         addView(content, matchWrap(top = 10))
-        if (profileId != null && card.sourceAttribution.isNotBlank()) {
+        val hasPlatformIcon = content.findViewById<View>(R.id.metric_platform_icon)?.visibility == View.VISIBLE
+        if (profileId != null && card.sourceAttribution.isNotBlank() && !hasPlatformIcon) {
             addView(supportingText(card.sourceAttribution, 12f), matchWrap(top = 6))
         }
     }
@@ -976,6 +971,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val profile = profileCatalog.profiles.firstOrNull { it.id == profileId } ?: return null
         if (card.id == "profile:${profile.id}:${profile.membershipVersion}:audience") {
             return SocialMetricCardFactory.audience(this, profileCatalog, profile, profileObservations).apply {
+                // The Brief has a gradient behind cards, not the dashboard's flat window colour.
+                // Let its rounded shape show through instead of drawing SESL's corner masks.
+                (this as? dev.oneuiproject.oneui.widget.RoundedLinearLayout)?.roundedCorners = 0
                 setBackgroundResource(R.drawable.brief_card_background)
             }
         }
@@ -984,6 +982,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val metric = SocialMetricCardFactory.metrics(account.platform).firstOrNull { card.id == "${account.id}:${it.storageId}" } ?: return null
         return FrameLayout(this).apply {
             addView(SocialMetricCardFactory.create(this@TwidgetBriefActivity, account, metric, profileObservations).apply {
+                (this as? dev.oneuiproject.oneui.widget.RoundedLinearLayout)?.roundedCorners = 0
                 setBackgroundResource(R.drawable.brief_card_background)
             }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(260)))
         }

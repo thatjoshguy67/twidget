@@ -13,6 +13,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.graphics.ColorUtils
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ImportedChartPoint
 import com.tjg.twidget.data.HistorySample
@@ -151,12 +152,13 @@ class MetricChartView @JvmOverloads constructor(
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         val density = resources.displayMetrics.density
         val top = 18f * density
+        val accent = context.getColor(R.color.oneui_accent)
         barGradient = LinearGradient(
             0f,
             top,
             0f,
             (height - 30f * density).coerceAtLeast(top + 1f),
-            intArrayOf(Color.rgb(56, 122, 255), Color.rgb(133, 163, 222)),
+            intArrayOf(accent, ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
             null,
             Shader.TileMode.CLAMP,
         )

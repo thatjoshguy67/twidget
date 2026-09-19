@@ -2,9 +2,9 @@ name: Debug Build
 
 on:
   push:
-    branches: [main, staging, feat-twidgetbrief]
+    branches: [main, staging, feat-twidgetbrief, feat-multiplat]
   pull_request:
-    branches: [main, staging]
+    branches: [main, staging, feat-multiplat]
   workflow_dispatch:
 
 permissions:
@@ -160,7 +160,7 @@ jobs:
       - name: Upload debug APK and AAB
         uses: actions/upload-artifact@v4
         with:
-          name: twidget-v${{ steps.version.outputs.version }}
+          name: twidget-v${{ steps.version.outputs.version }}-${{ github.sha }}
           path: debug-artifacts/
           if-no-files-found: error
 
@@ -174,7 +174,9 @@ jobs:
 
   publish-debug:
     name: Publish rolling debug build
-    if: github.event_name != 'pull_request'
+    # Multi-platform builds remain downloadable from Actions without replacing
+    # the rolling release consumed by existing users' debug updater.
+    if: github.event_name != 'pull_request' && contains(fromJSON('["main", "staging", "feat-twidgetbrief"]'), github.ref_name)
     needs: [bridge, build]
     runs-on: ubuntu-latest
     permissions:
@@ -183,7 +185,7 @@ jobs:
       - name: Download verified debug APK and AAB
         uses: actions/download-artifact@v4
         with:
-          name: twidget-v${{ needs.build.outputs.version }}
+          name: twidget-v${{ needs.build.outputs.version }}-${{ github.sha }}
           path: debug-release
 
       - name: Publish latest successful debug build

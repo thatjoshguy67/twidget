@@ -30,37 +30,26 @@ object ProfileBriefEngine {
         val observations = profile.accountIds.flatMap(repository::observations)
         val cards = mutableListOf<BriefCard>()
         val now = System.currentTimeMillis()
-        if (profile.linked && enabled(context, "combined_audience")) {
-            val total = AudienceAggregation.total(profile, catalog.accountsById, observations, now, 24 * 60 * 60 * 1000L)
-            cards += BriefCard("profile:${profile.id}:${profile.membershipVersion}:audience", BriefCardType.SUMMARY,
-                context.getString(R.string.social_all_audience),
-                (total.value?.let { (if (total.approximate) "≈ " else "") + NumberFormat.getIntegerInstance().format(it) }
-                    ?: context.getString(R.string.social_partial)) + ". " + context.getString(R.string.social_audience_note), 90,
-                sourceAttribution = profile.accountIds.joinToString(" · ") { catalog.accountsById.getValue(it).platform.label })
-        }
-        profile.accountIds.map(catalog.accountsById::getValue).forEach { account ->
-            if (!enabled(context, account.platform.storageId)) return@forEach
-            if (account.platform == SocialPlatform.X) {
-                // Preserve the mature X ranking, goals and scheduled-post analysis with its own account scope.
-                cards += (xSnapshot ?: BriefEngine.rebuild(context, account.handle)).cards.map { card ->
-                    card.copy(sourceAttribution = "Twitter/X · @${account.handle}")
-                }
-            } else {
-                observations.filter { it.accountId == account.id && !it.estimated }.groupBy { it.metric }.forEach { (metric, samples) ->
-                    if (!metricEnabled(context, account.platform, metric)) return@forEach
-                    val latest = samples.filter { it.observedAt <= now }.maxByOrNull { it.observedAt } ?: return@forEach
-                    val baseline = samples.filter { it.observedAt <= now - 24 * 60 * 60 * 1000L && now - it.observedAt <= 48 * 60 * 60 * 1000L && it.value != null }.maxByOrNull { it.observedAt }
-                    val fresh = now - latest.observedAt <= 24 * 60 * 60 * 1000L
-                    val delta = if (fresh && latest.value != null && baseline?.value != null && latest.precision == MetricPrecision.EXACT && baseline.precision == MetricPrecision.EXACT) latest.value - baseline.value else null
-                    val value = if (fresh) latest.displayValue(context) else context.getString(R.string.social_partial)
-                    cards += BriefCard("${account.id}:${metric.storageId}", BriefCardType.SUMMARY,
-                        "${account.platform.label} · ${context.getString(metric.labelRes)}",
-                        value + if (delta == null) "" else " · " + context.getString(R.string.social_daily_change, (if (delta > 0) "+" else "") + NumberFormat.getIntegerInstance().format(delta)),
-                        if (metric == account.platform.audienceMetric) 85 else 60, sourceAttribution = "${account.platform.label} · @${account.handle}")
-                }
+        val members = profile.accountIds.map(catalog.accountsById::getValue)
+        members.filter { it.platform == SocialPlatform.X && enabled(context, it.platform.storageId) }.forEach { account ->
+            // Keep the established X editorial selection, goals and rich post evidence.
+            cards += (xSnapshot ?: BriefEngine.rebuild(context, account.handle)).cards.map {
+                it.copy(sourceAttribution = "Twitter/X · @${account.handle}")
             }
         }
-        ProfileBrief(profile.id, profile.membershipVersion, profile.displayName(catalog.accountsById), cards.sortedByDescending { it.score }).also {
+        ProfileBriefHighlights.select(members, observations, now) { account, metric ->
+            enabled(context, account.platform.storageId) && metricEnabled(context, account.platform, metric)
+        }.forEach { highlight ->
+            val account = catalog.accountsById.getValue(highlight.accountId)
+            val metricName = context.getString(highlight.metric.labelRes).let {
+                if (java.util.Locale.getDefault().language == "en") it.lowercase(java.util.Locale.ENGLISH) else it
+            }
+            val explanation = context.getString(if (highlight.delta > 0) R.string.social_brief_gain else R.string.social_brief_loss,
+                account.platform.label, NumberFormat.getIntegerInstance().format(kotlin.math.abs(highlight.delta)), metricName)
+            cards += BriefCard("${account.id}:${highlight.metric.storageId}", BriefCardType.SUMMARY,
+                explanation, explanation, highlight.score, sourceAttribution = "${account.platform.label} · @${account.handle}")
+        }
+        ProfileBrief(profile.id, profile.membershipVersion, profile.displayName(catalog.accountsById), cards.sortedByDescending { it.score }.take(6)).also {
             ProfileBriefCache.write(context, it, SocialWidgetCache.signature(profile, observations))
         }
     }

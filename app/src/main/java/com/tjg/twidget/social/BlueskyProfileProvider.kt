@@ -10,7 +10,7 @@ import org.json.JSONObject
 enum class SocialProviderError { INVALID_ACCOUNT, NOT_FOUND, RATE_LIMITED, UNAVAILABLE, INVALID_RESPONSE, REAUTHORIZATION_REQUIRED }
 
 sealed interface SocialProfileResult {
-    data class Success(val account: PlatformAccount, val observations: List<MetricObservation>) : SocialProfileResult
+    data class Success(val account: PlatformAccount, val observations: List<MetricObservation>, internal val youtubeVideos: YouTubeVideoSnapshot? = null) : SocialProfileResult
     data class Failure(val reason: SocialProviderError, val retryAfterSeconds: Long? = null) : SocialProfileResult
 }
 

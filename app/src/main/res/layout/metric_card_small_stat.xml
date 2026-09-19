@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_horizontal"
+    android:padding="12dp" android:background="@drawable/metric_card_bg">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:orientation="horizontal">
+        <ImageView android:id="@+id/metric_platform_icon" android:layout_width="16dp" android:layout_height="16dp"
+            android:layout_marginEnd="8dp" android:contentDescription="@null" app:tint="@color/oneui_text_secondary" />
+        <TextView android:id="@+id/metric_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:maxLines="2" android:gravity="center" android:textColor="@color/oneui_text_secondary" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <androidx.appcompat.widget.AppCompatTextView android:id="@+id/followers_value"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:gravity="center" android:maxLines="1" android:includeFontPadding="false"
+        android:textColor="@color/oneui_text_primary" android:textSize="56sp" android:textStyle="bold"
+        app:autoSizeTextType="uniform" app:autoSizeMinTextSize="16sp" app:autoSizeMaxTextSize="56sp" app:autoSizeStepGranularity="1sp" />
+    <TextView android:id="@+id/stat_detail" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center" android:maxLines="2" android:ellipsize="end"
+        android:textColor="@color/oneui_text_secondary" android:textSize="12sp" />
+</LinearLayout>

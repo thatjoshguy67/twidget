@@ -919,4 +919,13 @@
     <string name="milestone_noun_impression">Impressionen</string>
     <string name="top_followers_enable_shared_history">Geteilten Verlauf aktivieren</string>
     <string name="notices_loading">Versionshinweise werden geladen…</string>
+    <string name="youtube_best_video">Bestes Video der Woche</string>
+    <string name="youtube_top_recent_video">Erfolgreiches neues Video</string>
+    <string name="youtube_no_recent_video">In den letzten 7 Tagen wurden keine öffentlichen Videos veröffentlicht.</string>
+    <string name="youtube_video_unavailable">Video-Highlights sind nicht verfügbar. Aktualisiere dein Profil, um es erneut zu versuchen.</string>
+    <string name="youtube_video_views">%1$s Aufrufe · %2$s</string>
+    <string name="youtube_video_basis">Meistgesehenes öffentliches Video aus den letzten 7 Tagen. Angezeigt werden alle bisherigen Aufrufe.</string>
+    <string name="social_brief_gain">%1$s: %2$s zusätzliche %3$s seit gestern.</string>
+    <string name="social_brief_loss">%1$s: %2$s weniger %3$s als gestern.</string>
+    <string name="youtube_video_partial_basis">Meistgesehenes Video aus den letzten 7 Tagen unter den neuesten 200 Uploads. Angezeigt werden alle bisherigen Aufrufe.</string>
 </resources>

@@ -91,8 +91,10 @@ class NativeSocialScreensInstrumentedTest {
                     assertNotNull(activity.findViewById<View>(R.id.brief_summary_title))
                     val body = activity.findViewById<LinearLayout>(R.id.brief_cards)
                     val text = labels(body)
-                    assertTrue(text.any { it.contains("YouTube") })
-                    assertTrue(text.any { it.contains("Twitter/X") })
+                    assertFalse(text.any { it.startsWith("Twitter/X · @") || it.startsWith("YouTube · @") })
+                    assertFalse(text.any { it.contains(context.getString(R.string.social_all_audience)) })
+                    // Rounded subscriber totals with no exact change are dashboard evidence, not a Brief item.
+                    assertFalse(text.any { it == "≈ 173" })
                     fun hasChart(view: View): Boolean = view is MetricChartView ||
                         view is android.view.ViewGroup && (0 until view.childCount).any { hasChart(view.getChildAt(it)) }
                     assertTrue(hasChart(body))

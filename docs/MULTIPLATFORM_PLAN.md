@@ -380,3 +380,34 @@ requires live authorized accounts for all four additions plus preserved X behavi
 - [Meta's Instagram introduction](https://www.linkedin.com/posts/meta-for-developers_introducing-instagram-api-with-instagram-activity-7226980956711063552-CD7p):
   professional-account integration. [Current Meta documentation](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/)
   needs revalidation during setup because access was rate-limited in this session.
+
+### Dashboard and Brief refinement (19 September 2026)
+
+All linked-profile dashboard cards now share the existing edit wrapper and card
+picker. Layouts persist per profile using stable account/card IDs; refreshed data
+cannot restore a removed card. Connecting a new platform introduces its defaults
+without resetting the existing order. Small stats use the centered 160dp layout,
+audience graphs retain metric and platform icons, and the combined audience count
+uses the full-width large-stat layout. X posts, follower scans and compact stats
+also carry platform icons.
+
+YouTube's weekly video card uses the existing read-only authorization. The channel
+response supplies the uploads playlist; `playlistItems.list` and `videos.list`
+retrieve publication dates, public visibility, thumbnails and lifetime view counts.
+Only public, already-published, non-live videos from the connected channel and the
+past seven days qualify. The highest lifetime view count wins. This is not views
+earned during that week. Requests cover at most four 50-item pages; a capped scan
+is labelled “Top recent video” rather than claiming the full weekly winner. A
+failed lookup does not fail the channel refresh, and cached video results expire
+after 24 hours. No new Google scope or developer-app configuration is required.
+API references: https://developers.google.com/youtube/v3/docs/playlistItems/list
+and https://developers.google.com/youtube/v3/docs/videos/list.
+
+Your Brief no longer emits combined audience totals or every connected account's
+current counters. New-source candidates require a fresh, exact, comparable change
+since the previous daily observation. Rounded, missing, estimated, unchanged or
+stale values do not qualify. Audience changes and repository engagement require
+both an absolute and relative significance threshold; channel views have a higher
+absolute floor. Selection admits at most one candidate per account and two across
+new sources, with a six-item overall Brief limit. Platform footer labels have been
+removed; attribution remains in the evidence card's icon and contextual sentence.

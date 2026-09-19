@@ -45,6 +45,7 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
             it.remoteId == snapshot.account.remoteId }
         saveCatalog(db, catalog)
         snapshot.observations.forEach { saveObservation(db, it.copy(accountId = account.id)) }
+        if (publishesWidgets) snapshot.youtubeVideos?.let { YouTubeVideoCache.write(appContext, account.id, it) }
         account
     }
 
@@ -57,6 +58,7 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
         else {
             saveCatalog(db, catalog.copy(accounts = catalog.accounts.map { if (it.id == existing.id) snapshot.account else it }))
             snapshot.observations.forEach { saveObservation(db, it) }
+            if (publishesWidgets) snapshot.youtubeVideos?.let { YouTubeVideoCache.write(appContext, existing.id, it) }
             true
         }
     }
@@ -164,7 +166,10 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
         val oldIds = db.rawQuery("SELECT id FROM accounts", null).use { rows -> buildList {
             while (rows.moveToNext()) add(rows.getString(0))
         } }
-        (oldIds - catalog.accounts.map { it.id }.toSet()).forEach { db.delete("accounts", "id = ?", arrayOf(it)) }
+        (oldIds - catalog.accounts.map { it.id }.toSet()).forEach {
+            db.delete("accounts", "id = ?", arrayOf(it))
+            if (publishesWidgets) YouTubeVideoCache.clear(appContext, it)
+        }
         catalog.accounts.forEach { account ->
             val fields = ContentValues().apply {
                 put("id", account.id); put("platform", account.platform.storageId); put("remote_id", account.remoteId)

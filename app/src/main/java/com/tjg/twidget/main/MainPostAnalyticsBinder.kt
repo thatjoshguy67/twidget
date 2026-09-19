@@ -15,6 +15,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
+import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.icon
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.banger.BangerScanWorker
@@ -88,6 +90,8 @@ internal class MainPostAnalyticsBinder(
 
             addView(TextView(activity).apply {
                 text = label
+                setCompoundDrawablesRelative(SocialPlatform.X.icon(activity)?.apply { setBounds(0, 0, activity.dp(16), activity.dp(16)) }, null, null, null)
+                compoundDrawablePadding = activity.dp(8)
                 includeFontPadding = false
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END

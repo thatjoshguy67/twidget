@@ -59,63 +59,54 @@ internal class MainEditModeController(
             .setMessage(R.string.reset_layout_confirm)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.reset_layout) { _, _ ->
-                TwidgetStore.resetDashboardCards(activity)
+                activity.dashboardBinder.resetDashboardCards()
                 activity.render()
             }
             .show()
     }
 
     fun removeDashboardCard(cardId: String) {
-        val current = TwidgetStore.dashboardCards(activity)
+        val current = activity.dashboardBinder.dashboardCards()
         if (current.size <= 1) {
             Toast.makeText(activity, R.string.cannot_remove_last_card, Toast.LENGTH_SHORT).show()
             return
         }
-        TwidgetStore.saveDashboardCards(activity, current.filterNot { it == cardId })
+        activity.dashboardBinder.saveDashboardCards(current.filterNot { it == cardId })
         activity.render()
     }
 
     fun showAddCardDialog() {
-        val current = TwidgetStore.dashboardCards(activity)
-        val hidden = TwidgetStore.DEFAULT_DASHBOARD_CARDS
-            .filterNot { it in current }
-            .mapNotNull(DashboardCardType::fromId)
-            .filter { !it.requiresAnalyticsImport() || hasAnalyticsImport() }
-            .filter {
-                it != DashboardCardType.MILESTONE || activity.selectedAccount.equals(
-                    TwidgetStore.settings(activity).username,
-                    ignoreCase = true,
-                )
-            }
+        val current = activity.dashboardBinder.dashboardCards()
+        val hidden = activity.dashboardBinder.availableCards().filterNot { it.id in current }
         if (hidden.isEmpty()) {
             Toast.makeText(activity, R.string.all_cards_added, Toast.LENGTH_SHORT).show()
             return
         }
         AlertDialog.Builder(activity)
             .setTitle(R.string.add_cards_title)
-            .setItems(hidden.map { activity.getString(it.labelRes) }.toTypedArray()) { _, which ->
-                TwidgetStore.saveDashboardCards(activity, current + hidden[which].id)
+            .setItems(hidden.map { it.label }.toTypedArray()) { _, which ->
+                activity.dashboardBinder.saveDashboardCards(current + hidden[which].id)
                 activity.render()
             }
             .show()
     }
 
     fun previewMoveDashboardCard(draggedId: String, targetId: String) {
-        val cards = (dragPreviewOrder ?: TwidgetStore.dashboardCards(activity)).toMutableList()
+        val cards = (dragPreviewOrder ?: activity.dashboardBinder.dashboardCards()).toMutableList()
         val from = cards.indexOf(draggedId)
         val to = cards.indexOf(targetId)
         if (from == -1 || to == -1 || from == to) return
         val moved = cards.removeAt(from)
-        cards.add(if (from < to) to - 1 else to, moved)
+        cards.add(to, moved)
         if (cards == dragPreviewOrder) return
         dragPreviewOrder = cards
-        DashboardCardType.fromId(draggedId)?.let { activity.dashboardBinder.moveDropPlaceholder(it, targetId) }
+        activity.dashboardBinder.availableCards().firstOrNull { it.id == draggedId }?.let { activity.dashboardBinder.moveDropPlaceholder(it, targetId) }
     }
 
     fun finishDashboardDrag(commit: Boolean) {
         if (draggedCardId == null) return
         if (commit) {
-            dragPreviewOrder?.let { TwidgetStore.saveDashboardCards(activity, it) }
+            dragPreviewOrder?.let { activity.dashboardBinder.saveDashboardCards(it) }
         }
         clearDragPreview()
         if (commit) activity.render()

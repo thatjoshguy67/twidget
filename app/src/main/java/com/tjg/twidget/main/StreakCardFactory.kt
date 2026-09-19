@@ -9,6 +9,9 @@ import android.view.Gravity
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.icon
+import com.tjg.twidget.social.label
 import com.tjg.twidget.R
 import com.tjg.twidget.data.StreakSnapshot
 import java.time.LocalTime
@@ -80,6 +83,11 @@ internal object StreakCardFactory {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
 
+                addView(ImageView(context).apply {
+                    setImageDrawable(SocialPlatform.X.icon(context))
+                    imageTintList = ColorStateList.valueOf(Color.BLACK)
+                    contentDescription = SocialPlatform.X.label
+                }, LinearLayout.LayoutParams(dp(context, 16), dp(context, 16)).apply { bottomMargin = dp(context, 4) })
                 addView(TextView(context).apply {
                     text = title
                     includeFontPadding = false

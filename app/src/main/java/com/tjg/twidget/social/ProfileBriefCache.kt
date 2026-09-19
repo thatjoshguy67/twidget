@@ -33,6 +33,6 @@ object ProfileBriefCache {
     fun summary(context: Context): BriefEditorialSummary? = readDefault(context)?.let {
         BriefEditorialSummary(it.name, it.cards.firstOrNull()?.body.orEmpty())
     }
-    private fun contentSignature(context: Context) = context.getSharedPreferences("social_brief_content", Context.MODE_PRIVATE).all.toSortedMap().toString() +
+    private fun contentSignature(context: Context) = "contextual-v2:" + context.getSharedPreferences("social_brief_content", Context.MODE_PRIVATE).all.toSortedMap().toString() +
         com.tjg.twidget.brief.BriefSettingsStore.enabledContent(context).sortedBy { it.storageId }.toString()
 }

@@ -29,6 +29,8 @@ class SocialRefinementsInstrumentedTest {
             val fixture = SocialRepository(context).use { repo ->
                 val now = System.currentTimeMillis()
                 repo.connect(SocialProfileResult.Success(github, listOf(
+                    MetricObservation(github.id, SocialMetric.STARS, 0, now - 86400000L, "fixture"),
+                    MetricObservation(github.id, SocialMetric.FORKS, 0, now - 86400000L, "fixture"),
                     MetricObservation(github.id, SocialMetric.STARS, 12, now, "fixture"),
                     MetricObservation(github.id, SocialMetric.FORKS, 3, now, "fixture"))))
                 repo.connect(SocialProfileResult.Success(instagram, emptyList()))

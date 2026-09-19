@@ -45,15 +45,20 @@
             app:tint="@color/oneui_text_secondary" />
     </LinearLayout>
 
-    <TextView
+    <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/followers_value"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="84dp"
+        android:layout_height="100dp"
+        android:maxLines="1"
         android:gravity="center"
         android:paddingBottom="16dp"
         android:paddingEnd="8dp"
+        android:paddingStart="8dp"
         android:textColor="@color/oneui_accent"
-        android:textSize="36sp"
+        android:textSize="60sp"
+        app:autoSizeTextType="uniform"
+        app:autoSizeMinTextSize="20sp"
+        app:autoSizeMaxTextSize="60sp"
+        app:autoSizeStepGranularity="1sp"
         android:textStyle="bold" />
 </dev.oneuiproject.oneui.widget.RoundedLinearLayout>

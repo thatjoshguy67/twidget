@@ -12,7 +12,7 @@ object AuthenticatedProfileProviders {
         val response = when (platform) {
             SocialPlatform.GITHUB -> HttpTransport.get(if (existing == null) "https://api.github.com/user" else
                 "https://api.github.com/user/${existing.remoteId}", headers + mapOf("X-GitHub-Api-Version" to "2022-11-28"), userAgent = "Twidget")
-            SocialPlatform.YOUTUBE -> HttpTransport.get("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true", headers)
+            SocialPlatform.YOUTUBE -> HttpTransport.get("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true", headers)
             SocialPlatform.INSTAGRAM -> HttpTransport.get("https://graph.instagram.com/me?fields=user_id,username,name,profile_picture_url,followers_count,follows_count,media_count", headers)
             else -> error("Unsupported authenticated provider")
         }
@@ -21,7 +21,10 @@ object AuthenticatedProfileProviders {
         if (response.code !in 200..299) return SocialProfileResult.Failure(SocialProviderError.UNAVAILABLE)
         val payload = JSONObject(response.body)
         if (platform == SocialPlatform.GITHUB) payload.put("twidget_repository_totals", githubRepositoryTotals(payload, headers))
-        parse(platform, payload, existing)
+        val result = parse(platform, payload, existing)
+        if (result is SocialProfileResult.Success && platform == SocialPlatform.YOUTUBE) {
+            result.copy(youtubeVideos = YouTubeVideos.fetch(payload.getJSONArray("items").getJSONObject(0), headers))
+        } else result
     }.getOrElse { SocialProfileResult.Failure(SocialProviderError.UNAVAILABLE) }
 
     internal fun parse(platform: SocialPlatform, payload: JSONObject, existing: PlatformAccount? = null,

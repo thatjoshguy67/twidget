@@ -128,16 +128,6 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
                 })
             }
         }
-        if (platforms.size > 1) {
-            screen.addPreference(PreferenceCategory(context).apply { setTitle(R.string.social_all_platforms) })
-            screen.addPreference(SwitchPreferenceCompat(context).apply {
-                layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
-                key = "combined_audience"; setTitle(R.string.social_all_audience); isPersistent = false
-                icon = AppCompatResources.getDrawable(context, R.drawable.ic_settings_community)
-                isChecked = ProfileBriefEngine.enabled(context, key)
-                setOnPreferenceChangeListener { _, value -> ProfileBriefEngine.setEnabled(context, key, value == true); true }
-            })
-        }
         screen.addBottomInset()
         preferenceScreen = screen
         // SESL resolves dependencies immediately. Publish the complete hierarchy first.

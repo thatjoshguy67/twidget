@@ -38,6 +38,42 @@ object SocialMetricCardFactory {
         else -> listOf(SocialMetric.FOLLOWERS, SocialMetric.FOLLOWING, SocialMetric.POSTS)
     }
 
+    fun stat(context: Context, platform: SocialPlatform, label: String, value: String, detail: String): View =
+        LayoutInflater.from(context).inflate(R.layout.metric_card_small_stat, null, false).apply {
+            findViewById<ImageView>(R.id.metric_platform_icon).apply {
+                setImageDrawable(platform.icon(context)); contentDescription = platform.label
+            }
+            findViewById<TextView>(R.id.metric_label).text = label
+            findViewById<TextView>(R.id.followers_value).text = value
+            findViewById<TextView>(R.id.stat_detail).apply {
+                text = detail; visibility = if (detail.isBlank()) View.GONE else View.VISIBLE
+            }
+        }
+
+    fun smallStat(context: Context, account: PlatformAccount, metric: SocialMetric, observations: List<MetricObservation>): View {
+        val now = System.currentTimeMillis()
+        val samples = observations.filter { it.accountId == account.id && it.metric == metric && !it.estimated && it.observedAt <= now }
+        val latest = samples.maxByOrNull { it.observedAt }
+        val baseline = samples.filter { it.observedAt <= now - DAY && it.observedAt >= now - 2 * DAY }.maxByOrNull { it.observedAt }
+        val delta = if (latest?.value != null && baseline?.value != null && now - latest.observedAt <= DAY &&
+            latest.precision == MetricPrecision.EXACT && baseline.precision == MetricPrecision.EXACT) latest.value - baseline.value else null
+        val detail = when {
+            latest?.value == null -> context.getString(R.string.social_unavailable)
+            now - latest.observedAt > DAY -> context.getString(R.string.social_updated_at,
+                DateFormat.getDateInstance(DateFormat.SHORT).format(Date(latest.observedAt)))
+            delta != null && delta != 0L -> context.getString(R.string.social_daily_change,
+                (if (delta > 0) "+" else "") + NumberFormat.getIntegerInstance().format(delta))
+            else -> ""
+        }
+        val value = latest?.value?.let {
+            (if (latest.precision == MetricPrecision.ROUNDED) "≈ " else "") + com.tjg.twidget.data.TwidgetStore.compactNumber(it)
+        } ?: "—"
+        return stat(context, account.platform, context.getString(metric.labelRes), value, detail).apply {
+            tag = "metric:${account.id}:${metric.storageId}"
+            contentDescription = "${account.platform.label} · @${account.handle} · ${context.getString(metric.labelRes)}"
+        }
+    }
+
     fun create(context: Context, account: PlatformAccount, metric: SocialMetric, observations: List<MetricObservation>): View {
         val root = LayoutInflater.from(context).inflate(R.layout.metric_card_followers, null, false)
         val now = System.currentTimeMillis()

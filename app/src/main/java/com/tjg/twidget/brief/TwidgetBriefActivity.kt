@@ -961,10 +961,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             else -> genericCard(card)
         }
         addView(content, matchWrap(top = 10))
-        val hasPlatformIcon = content.findViewById<View>(R.id.metric_platform_icon)?.visibility == View.VISIBLE
-        if (profileId != null && card.sourceAttribution.isNotBlank() && !hasPlatformIcon) {
-            addView(supportingText(card.sourceAttribution, 12f), matchWrap(top = 6))
-        }
+
     }
 
     private fun socialEvidenceCard(card: BriefCard): View? {

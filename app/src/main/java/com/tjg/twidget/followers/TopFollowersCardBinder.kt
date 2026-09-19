@@ -21,6 +21,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
+import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.icon
+import com.tjg.twidget.social.label
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MainActivity
@@ -58,6 +61,8 @@ internal class TopFollowersCardBinder(
             }
             addView(label(activity.getString(R.string.top_followers_question), 14f, primaryColor, 700).apply {
                 gravity = Gravity.CENTER
+                setCompoundDrawablesRelative(SocialPlatform.X.icon(activity)?.apply { setBounds(0, 0, dp(16), dp(16)) }, null, null, null)
+                compoundDrawablePadding = dp(8)
             }, matchFrameParams(19).apply { topMargin = dp(20) })
             addView(label(activity.getString(R.string.top_followers_hero), 48f, accentColor, 700).apply {
                 gravity = Gravity.CENTER
@@ -142,6 +147,9 @@ internal class TopFollowersCardBinder(
                 contentDescription = "$title. ${activity.getString(R.string.top_followers_view_all)}"
                 setOnClickListener { openBrowse(account) }
             }
+            addView(ImageView(activity).apply {
+                setImageDrawable(SocialPlatform.X.icon(activity)); contentDescription = SocialPlatform.X.label
+            }, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(8) })
             addView(label(title, 13f, secondaryColor, 700).apply { gravity = Gravity.CENTER_VERTICAL },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
             addView(ImageView(activity).apply {

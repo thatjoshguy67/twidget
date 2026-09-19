@@ -18,10 +18,8 @@ import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.widget.TextViewCompat
 import com.tjg.twidget.social.*
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ActivityClient
@@ -53,9 +51,9 @@ import kotlin.math.roundToLong
 // Two grid footprints only: half-width and full-width. Charts are
 // full-width cards with extra height.
 internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
-    HALF(1, 140),
+    HALF(1, 160),
     MILESTONE(2, 112),
-    FULL(2, 156),
+    FULL(2, 160),
     CHART(2, 260),
     TOP_FOLLOWERS(2, 430),
     POST(2, 360),
@@ -138,36 +136,62 @@ internal class MainDashboardBinder(
         skeleton?.let(host::removeView)
     }
 
+    internal fun availableCards(): List<DashboardCardSpec> = buildList {
+        val profile = activity.selectedProfile
+        val members = profile?.accountIds?.map(activity.socialCatalog.accountsById::getValue).orEmpty()
+        val hasX = !activity.usesSocialDashboard || members.any { it.platform == SocialPlatform.X }
+        DashboardCardType.entries.filter { hasX || it == DashboardCardType.MILESTONE }
+            .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
+            .filter { it != DashboardCardType.MILESTONE || activity.usesSocialDashboard || isDefaultAccount(activity.selectedAccount) }
+            .forEach { add(DashboardCardSpec(it.id, activity.getString(it.labelRes), it.size, legacy = it)) }
+        if (activity.usesSocialDashboard && profile != null) {
+            if (profile.linked) add(DashboardCardSpec("combined_audience", activity.getString(R.string.social_all_audience), DashboardCardSize.FULL))
+            members.filter { it.platform != SocialPlatform.X }.forEach { account ->
+                SocialMetricCardFactory.metrics(account.platform).forEach { metric ->
+                    add(DashboardCardSpec("metric:${account.id}:${metric.storageId}",
+                        "${account.platform.label} · ${activity.getString(metric.labelRes)}",
+                        if (metric == account.platform.audienceMetric) DashboardCardSize.CHART else DashboardCardSize.HALF,
+                        account = account, metric = metric))
+                }
+                if (account.platform == SocialPlatform.YOUTUBE) add(DashboardCardSpec("video:${account.id}",
+                    activity.getString(R.string.youtube_best_video), DashboardCardSize.POST, account = account))
+            }
+        }
+    }
+
+    internal fun dashboardCards(): List<String> {
+        if (!activity.usesSocialDashboard) return TwidgetStore.dashboardCards(activity)
+        val available = availableCards()
+        val defaults = TwidgetStore.dashboardCards(activity).toMutableList().apply {
+            if (available.any { it.id == "combined_audience" }) add(if (firstOrNull() == "milestone") 1 else 0, "combined_audience")
+            addAll(available.filter { it.legacy == null && it.id != "combined_audience" }.map { it.id })
+        }
+        return ProfileDashboardLayout.read(activity, activity.selectedProfileId, available.map { it.id }, defaults)
+    }
+
+    internal fun saveDashboardCards(cards: List<String>) {
+        if (activity.usesSocialDashboard) ProfileDashboardLayout.save(activity, activity.selectedProfileId, cards)
+        else TwidgetStore.saveDashboardCards(activity, cards)
+    }
+
+    internal fun resetDashboardCards() {
+        if (activity.usesSocialDashboard) {
+            ProfileDashboardLayout.reset(activity, activity.selectedProfileId)
+            val available = availableCards()
+            ProfileDashboardLayout.save(activity, activity.selectedProfileId,
+                TwidgetStore.DEFAULT_DASHBOARD_CARDS.filter { id -> available.any { it.id == id } } +
+                    available.filter { it.legacy == null }.map { it.id })
+        }
+        else TwidgetStore.resetDashboardCards(activity)
+    }
+
     private fun bindProfilePage(page: View) {
         val profile = activity.selectedProfile ?: return
-        val members = profile.accountIds.map(activity.socialCatalog.accountsById::getValue)
-        val x = members.firstOrNull { it.platform == SocialPlatform.X }
-        val container = page.findViewById<GridLayout>(R.id.dashboard_content)
-        if (x != null) {
-            // Keep the established X cards, rankings, goals and user-selected layout.
-            bindPage(page, x.handle)
-        } else {
-            container.removeAllViews()
-            container.columnCount = DASHBOARD_GRID_COLUMNS
+        val x = profile.accountIds.map(activity.socialCatalog.accountsById::getValue).firstOrNull { it.platform == SocialPlatform.X }
+        bindPage(page, x?.handle.orEmpty())
+        if (x == null) {
             page.findViewById<View>(R.id.private_account_notice).visibility = View.GONE
             page.findViewById<View>(R.id.history_notice).visibility = View.GONE
-            container.addView(createBriefCard(TwidgetStore.currentStats(activity), ""),
-                dashboardCardLayoutParams(DashboardCardType.MILESTONE))
-        }
-        if (profile.linked) {
-            val index = if (container.childCount > 0) 1 else 0
-            container.addView(SocialMetricCardFactory.audience(activity, activity.socialCatalog, profile, activity.socialObservations),
-                index, dashboardCardLayoutParams(DashboardCardType.ACCOUNT_HEALTH).apply {
-                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 2, 1f)
-                    height = ViewGroup.LayoutParams.WRAP_CONTENT
-                })
-        }
-        members.filter { it.platform != SocialPlatform.X }.forEach { account ->
-            val samples = activity.socialObservations.filter { it.accountId == account.id }
-            SocialMetricCardFactory.metrics(account.platform).forEach { metric ->
-                container.addView(SocialMetricCardFactory.create(activity, account, metric, samples),
-                    dashboardCardLayoutParams(DashboardCardType.FOLLOWERS))
-            }
         }
     }
 
@@ -211,33 +235,26 @@ internal class MainDashboardBinder(
         }
         container.removeAllViews()
 
-        TwidgetStore.dashboardCards(activity)
-            .mapNotNull(DashboardCardType::fromId)
-            .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
-            .filter { it != DashboardCardType.MILESTONE || activity.usesSocialDashboard || isDefaultAccount(account) }
-            .forEach { card ->
-                val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
-                    createTopFollowersCard(account)
-                } else if (card in POST_CARD_TYPES) {
-                    activity.postAnalyticsBinder.createGridCard(card, account)
-                } else if (card.size == DashboardCardSize.CHART) {
-                    createChartCard(card, account, stats, chartHistory, fullHistory)
-                } else if (card == DashboardCardType.MILESTONE) {
-                    createBriefCard(stats, account)
-                } else if (card == DashboardCardType.DAILY_STREAK) {
-                    createStreakCard(stats)
-                } else {
-                    createInsightCard(card, stats, history)
-                }
-                val wrapper = createDashboardCardWrapper(card, content)
-                container.addView(
-                    wrapper,
-                    dashboardCardLayoutParams(
-                        card,
-                        content.minimumHeight.takeIf { card == DashboardCardType.TOP_FOLLOWERS && it > 0 },
-                    ),
-                )
+        val available = availableCards().associateBy { it.id }
+        dashboardCards().mapNotNull(available::get).forEach { spec ->
+            val card = spec.legacy
+            val content = when {
+                spec.id == "combined_audience" -> SocialMetricCardFactory.audience(activity, activity.socialCatalog,
+                    requireNotNull(activity.selectedProfile), activity.socialObservations)
+                spec.metric != null -> if (spec.size == DashboardCardSize.CHART)
+                    SocialMetricCardFactory.create(activity, requireNotNull(spec.account), spec.metric, activity.socialObservations)
+                    else SocialMetricCardFactory.smallStat(activity, requireNotNull(spec.account), spec.metric, activity.socialObservations)
+                spec.account?.platform == SocialPlatform.YOUTUBE -> YouTubeVideoCard.create(activity, spec.account)
+                card == DashboardCardType.TOP_FOLLOWERS -> createTopFollowersCard(account)
+                card in POST_CARD_TYPES -> activity.postAnalyticsBinder.createGridCard(requireNotNull(card), account)
+                card?.size == DashboardCardSize.CHART -> createChartCard(card, account, stats, chartHistory, fullHistory)
+                card == DashboardCardType.MILESTONE -> createBriefCard(stats, account)
+                card == DashboardCardType.DAILY_STREAK -> createStreakCard(stats)
+                else -> createInsightCard(requireNotNull(card), stats, history)
             }
+            container.addView(createDashboardCardWrapper(spec, content), dashboardCardLayoutParams(spec,
+                content.minimumHeight.takeIf { card == DashboardCardType.TOP_FOLLOWERS && it > 0 }))
+        }
 
         // Card movement still animates in edit mode, but initial/rebound cards
         // are immediately visible when the skeleton is removed.
@@ -250,8 +267,10 @@ internal class MainDashboardBinder(
             setDuration(140)
         }
 
-        activity.syncController.maybeRefreshAnalytics(account)
-        activity.syncController.maybeRefreshStreak(account)
+        if (account.isNotBlank()) {
+            activity.syncController.maybeRefreshAnalytics(account)
+            activity.syncController.maybeRefreshStreak(account)
+        }
     }
 
     private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
@@ -279,102 +298,7 @@ internal class MainDashboardBinder(
 
     private fun createInsightCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
         val spec = insightSpec(card, stats, history)
-        val valueTextSize = if (card.size == DashboardCardSize.FULL) 38f else 32f
-        val labelTextSize = 13f
-        val detailTextSize = 14f
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(activity.dp(16), activity.dp(14), activity.dp(16), activity.dp(14))
-            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_bg)
-
-            val labelRow = LinearLayout(activity).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                orientation = LinearLayout.HORIZONTAL
-            }
-            labelRow.addView(View(activity).apply {
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(spec.accent)
-                }
-            }, LinearLayout.LayoutParams(activity.dp(8), activity.dp(8)))
-            labelRow.addView(TextView(activity).apply {
-                text = spec.label
-                includeFontPadding = false
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = labelTextSize
-                typeface = Typeface.create("sec", Typeface.BOLD)
-                setPadding(activity.dp(6), 0, 0, 0)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(labelRow, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
-
-            // Auto-size needs a bounded height to reach the max size — with
-            // wrap_content it locks to the first measured bounds. Fix the row
-            // height to the max text size's line and let width do the shrinking.
-            val valueHeight = (valueTextSize * 1.3f * resources.displayMetrics.scaledDensity).toInt()
-            addView(TextView(activity).apply {
-                text = spec.value
-                includeFontPadding = false
-                maxLines = 1
-                gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                setTextColor(activity.getColor(R.color.oneui_text_primary))
-                typeface = heavyTypeface
-                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                    this, 16, valueTextSize.toInt(), 1, TypedValue.COMPLEX_UNIT_SP,
-                )
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                valueHeight,
-            ).apply {
-                topMargin = activity.dp(4)
-            })
-
-            if (spec.progress != null) {
-                val progressValue = spec.progress.coerceIn(0, 100)
-                addView(TextView(activity).apply {
-                    text = activity.getString(R.string.milestone_progress_percent, progressValue)
-                    includeFontPadding = false
-                    gravity = Gravity.END
-                    setTextColor(spec.accent)
-                    textSize = 12f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                }, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = activity.dp(9)
-                })
-                addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
-                    max = 100
-                    progress = progressValue
-                    progressTintList = ColorStateList.valueOf(spec.accent)
-                    progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
-                }, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    activity.dp(6),
-                ).apply {
-                    topMargin = activity.dp(4)
-                })
-            }
-
-            addView(TextView(activity).apply {
-                text = spec.detail
-                includeFontPadding = false
-                maxLines = if (spec.progress == null) 2 else 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = detailTextSize
-                setPadding(0, activity.dp(7), 0, 0)
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
-        }
+        return SocialMetricCardFactory.stat(activity, SocialPlatform.X, spec.label, spec.value, spec.detail)
     }
 
     private fun createBriefCard(stats: ProfileStats, account: String): View {
@@ -482,12 +406,11 @@ internal class MainDashboardBinder(
             else -> error("Compact cards do not have chart layouts.")
         }
         return LayoutInflater.from(activity).inflate(layoutRes, null, false).also { root ->
-            if (activity.usesSocialDashboard) {
-                root.findViewById<ImageView>(R.id.metric_platform_icon).apply {
-                    visibility = View.VISIBLE; setImageDrawable(SocialPlatform.X.icon(activity))
-                }
-                root.findViewById<TextView>(R.id.metric_label).setText(card.labelRes)
+            root.findViewById<ImageView>(R.id.metric_platform_icon).apply {
+                visibility = View.VISIBLE; setImageDrawable(SocialPlatform.X.icon(activity))
+                contentDescription = SocialPlatform.X.label
             }
+            root.findViewById<TextView>(R.id.metric_label).setText(card.labelRes)
             bindMetric(
                 root,
                 valueId,
@@ -516,7 +439,7 @@ internal class MainDashboardBinder(
         }
     }
 
-    private fun createDropPlaceholder(card: DashboardCardType): View =
+    private fun createDropPlaceholder(card: DashboardCardSpec): View =
         FrameLayout(activity).apply {
             background = GradientDrawable().apply {
                 cornerRadius = activity.dp(22).toFloat()
@@ -524,10 +447,10 @@ internal class MainDashboardBinder(
                 setStroke(activity.dp(2), activity.getColor(R.color.oneui_accent), activity.dp(10).toFloat(), activity.dp(6).toFloat())
             }
             alpha = 0.75f
-            contentDescription = activity.getString(card.labelRes)
+            contentDescription = card.label
         }
 
-    private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
+    private fun createDashboardCardWrapper(card: DashboardCardSpec, content: View): FrameLayout =
         FrameLayout(activity).apply {
             tag = card.id
             val longPressHandler = View.OnLongClickListener {
@@ -584,12 +507,12 @@ internal class MainDashboardBinder(
             }
         }
 
-    private fun handleDashboardCardLongPress(card: DashboardCardType, dragView: View): Boolean {
+    private fun handleDashboardCardLongPress(card: DashboardCardSpec, dragView: View): Boolean {
         if (!editModeController.editMode) {
             editModeController.setEditMode(true)
         } else {
             editModeController.draggedCardId = card.id
-            editModeController.dragPreviewOrder = TwidgetStore.dashboardCards(activity)
+            editModeController.dragPreviewOrder = dashboardCards()
             editModeController.dragSourceView = dragView
             val dragShadow = View.DragShadowBuilder(dragView)
             moveDropPlaceholder(card, card.id)
@@ -627,7 +550,7 @@ internal class MainDashboardBinder(
         }
     }
 
-    private fun removeCardButton(card: DashboardCardType): ImageButton =
+    private fun removeCardButton(card: DashboardCardSpec): ImageButton =
         ImageButton(activity).apply {
             setImageResource(OneUiIconR.drawable.ic_oui_remove)
             imageTintList = ColorStateList.valueOf(activity.getColor(R.color.metric_red))
@@ -991,7 +914,7 @@ internal class MainDashboardBinder(
             String.format(Locale.US, "%s%.1f", sign, value)
         }
 
-    fun moveDropPlaceholder(card: DashboardCardType, targetId: String) {
+    fun moveDropPlaceholder(card: DashboardCardSpec, targetId: String) {
         val container = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         val placeholder = editModeController.dragPlaceholderView ?: FrameLayout(activity).apply {
             tag = DRAG_PLACEHOLDER_TAG
@@ -1020,7 +943,10 @@ internal class MainDashboardBinder(
         }.also { editModeController.dragPlaceholderView = it }
 
         val existingParent = placeholder.parent as? ViewGroup
-        var targetIndex = container.childIndexWithTag(targetId)
+        val preview = editModeController.dragPreviewOrder
+        val position = preview?.indexOf(card.id) ?: -1
+        val nextId = if (position >= 0) preview?.getOrNull(position + 1) else targetId
+        var targetIndex = nextId?.let { container.childIndexWithTag(it) } ?: container.childCount
         if (targetIndex == -1) targetIndex = container.childCount
         if (existingParent === container) {
             val oldIndex = container.indexOfChild(placeholder)
@@ -1043,7 +969,7 @@ internal class MainDashboardBinder(
         return -1
     }
 
-    private fun dashboardCardLayoutParams(card: DashboardCardType, dragHeight: Int? = null): GridLayout.LayoutParams =
+    private fun dashboardCardLayoutParams(card: DashboardCardSpec, dragHeight: Int? = null): GridLayout.LayoutParams =
         GridLayout.LayoutParams().apply {
             width = 0
             height = when {

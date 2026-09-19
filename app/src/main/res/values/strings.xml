@@ -958,4 +958,13 @@
     <string name="milestone_noun_engagement_rate">engagement rate</string>
     <string name="milestone_noun_impression">impression</string>
     <string name="top_followers_enable_shared_history">Enable shared history</string>
+    <string name="youtube_best_video">Best video of the week</string>
+    <string name="youtube_top_recent_video">Top recent video</string>
+    <string name="youtube_no_recent_video">No public videos published in the past 7 days.</string>
+    <string name="youtube_video_unavailable">Video highlights are unavailable. Refresh your profile to try again.</string>
+    <string name="youtube_video_views">%1$s views · %2$s</string>
+    <string name="youtube_video_basis">Most viewed public upload from the past 7 days. Views are lifetime totals.</string>
+    <string name="social_brief_gain">%1$s gained %2$s %3$s since yesterday.</string>
+    <string name="social_brief_loss">%1$s has %2$s fewer %3$s than yesterday.</string>
+    <string name="youtube_video_partial_basis">Most viewed among the latest 200 uploads published in the past 7 days. Views are lifetime totals.</string>
 </resources>

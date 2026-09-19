@@ -41,17 +41,7 @@ class BriefSettingsPreferenceFragment : InsetPreferenceFragment() {
         })
 
         screen.addPreference(spacerCategory())
-        val preview = androidx.appcompat.widget.AppCompatImageView(context).apply {
-            layoutParams = android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                (220 * resources.displayMetrics.density).toInt(),
-            )
-            setImageResource(R.drawable.brief_settings_preview)
-            setBackgroundResource(R.drawable.brief_settings_preview_background)
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            clipToOutline = true
-            contentDescription = getString(R.string.brief_settings_preview_description)
-        }
+        val preview = layoutInflater.inflate(R.layout.preference_brief_preview, null)
         screen.addPreference(dev.oneuiproject.oneui.preference.LayoutPreference(context, preview).apply {
             key = "brief_preview"
             isSelectable = false

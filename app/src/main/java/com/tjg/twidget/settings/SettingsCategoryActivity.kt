@@ -21,13 +21,13 @@ class SettingsCategoryActivity : FoldablePopOverActivity() {
         setContentView(R.layout.activity_preference_screen)
         applyEdgeToEdgeInsets(findViewById(R.id.preference_toolbar_layout))
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
-            setTitle(getString(page.titleRes))
+            setTitle(getString(if (page == SettingsPage.ACCOUNTS) R.string.social_accounts else page.titleRes))
             setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction().replace(
                 R.id.preference_fragment_container,
-                SettingsCategoryPreferenceFragment().apply {
+                if (page == SettingsPage.ACCOUNTS) com.tjg.twidget.social.SocialProfilesFragment() else SettingsCategoryPreferenceFragment().apply {
                     arguments = Bundle().apply { putString(EXTRA_PAGE, page.name) }
                 },
             ).commit()

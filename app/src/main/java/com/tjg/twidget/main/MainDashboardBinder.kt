@@ -126,6 +126,7 @@ internal class MainDashboardBinder(
     private val editModeController get() = activity.editModeController
 
     fun bindContent() {
+        if (activity.bindSocialDashboard()) return
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
         val skeleton = host.findViewById<View>(R.id.main_launch_skeleton)
         val page = host.findViewById<View>(R.id.main_account_page)

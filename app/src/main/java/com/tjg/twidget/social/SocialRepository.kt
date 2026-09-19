@@ -10,11 +10,13 @@ import org.json.JSONObject
 
 /** Disk operations belong on the IO executor. No provider token is stored in this database. */
 class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) : Closeable {
+    private val appContext = context.applicationContext
+    private val publishesWidgets = databaseName == DATABASE_NAME
     private val helper = SocialDatabase(context.applicationContext, databaseName)
 
     fun catalog(): SocialCatalog = transaction { readCatalog(it) }
 
-    fun edit(transform: (SocialCatalog) -> SocialCatalog): SocialCatalog = transaction { db ->
+    fun edit(transform: (SocialCatalog) -> SocialCatalog): SocialCatalog = writeTransaction { db ->
         transform(readCatalog(db)).validate().also { saveCatalog(db, it) }
     }
 
@@ -28,14 +30,14 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
     } }
 
     /** Refresh callbacks for removed accounts cannot recreate their identity. */
-    fun recordObservations(accountId: String, observations: List<MetricObservation>): Boolean = transaction { db ->
+    fun recordObservations(accountId: String, observations: List<MetricObservation>): Boolean = writeTransaction { db ->
         require(observations.all { it.accountId == accountId })
         if (readCatalog(db).accounts.none { it.id == accountId }) false
         else { observations.forEach { saveObservation(db, it) }; true }
     }
 
     /** A successful connection and its first observations become visible together. */
-    fun connect(snapshot: SocialProfileResult.Success): PlatformAccount = transaction { db ->
+    fun connect(snapshot: SocialProfileResult.Success): PlatformAccount = writeTransaction { db ->
         requireNotNull(snapshot.account.remoteId) { "A connection needs a resolved provider identity" }
         require(snapshot.observations.all { it.accountId == snapshot.account.id })
         val catalog = SocialProfilePolicy.add(readCatalog(db), snapshot.account)
@@ -47,7 +49,7 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
     }
 
     /** Refresh is distinct from connecting: it must not resurrect an account removed during a request. */
-    fun applyRefresh(snapshot: SocialProfileResult.Success): Boolean = transaction { db ->
+    fun applyRefresh(snapshot: SocialProfileResult.Success): Boolean = writeTransaction { db ->
         require(snapshot.observations.all { it.accountId == snapshot.account.id })
         val catalog = readCatalog(db)
         val existing = catalog.accounts.firstOrNull { it.id == snapshot.account.id }
@@ -70,7 +72,11 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
      * Reconcile them without resetting new links, display choices, or non-X accounts.
      * All converted rows and the migration marker commit together; legacy data is untouched.
      */
-    fun synchronizeLegacy(snapshot: LegacySocialSnapshot): SocialCatalog = transaction { db ->
+    fun synchronizeLegacyFrom(context: Context): SocialCatalog = synchronized(writeLock) {
+        synchronizeLegacy(com.tjg.twidget.data.TwidgetStore.socialMigrationSnapshot(context))
+    }
+
+    fun synchronizeLegacy(snapshot: LegacySocialSnapshot): SocialCatalog = writeTransaction { db ->
         val imported = LegacySocialMigration.catalog(snapshot)
         var catalog = readCatalog(db)
         val previousIds = metadata(db, "legacy_account_ids")?.let { encoded ->
@@ -208,6 +214,15 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
             SQLiteDatabase.CONFLICT_REPLACE).also { check(it != -1L) { "Unable to store migration state" } }
     }
 
+    private fun <T> writeTransaction(block: (SQLiteDatabase) -> T): T = synchronized(writeLock) {
+        val result = transaction(block)
+        if (publishesWidgets) {
+            val current = catalog()
+            SocialWidgetCache.publish(appContext, current, current.accounts.flatMap { observations(it.id) })
+        }
+        result
+    }
+
     private fun <T> transaction(block: (SQLiteDatabase) -> T): T {
         val db = helper.writableDatabase
         db.beginTransaction()
@@ -220,7 +235,7 @@ class SocialRepository(context: Context, databaseName: String = DATABASE_NAME) :
 
     override fun close() = helper.close()
 
-    companion object { const val DATABASE_NAME = "twidget_social.db" }
+    companion object { const val DATABASE_NAME = "twidget_social.db"; private val writeLock = Any() }
 }
 
 private fun Cursor.string(column: String): String = getString(getColumnIndexOrThrow(column))

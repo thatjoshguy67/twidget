@@ -43,6 +43,8 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
                 anySuccess = true
             }
         }
+        val social = runCatching { com.tjg.twidget.social.SocialRefresh.refresh(context, includeX = false) }.getOrNull()
+        if (social?.values?.any { it == null } == true) anySuccess = true
         if (anySuccess) {
             TwidgetWidget.updateAll(context)
             TwidgetBriefWidget.updateAll(context)

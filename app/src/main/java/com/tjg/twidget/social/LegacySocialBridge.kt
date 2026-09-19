@@ -38,8 +38,7 @@ object LegacySocialBridge {
             while (true) {
                 synchronized(lock) { dirty = false }
                 runCatching {
-                    val snapshot = TwidgetStore.socialMigrationSnapshot(context)
-                    SocialRepository(context).use { it.synchronizeLegacy(snapshot) }
+                    SocialRepository(context).use { it.synchronizeLegacyFrom(context) }
                 }.onFailure {
                     // Keep the old store usable; retry on the next account write or app launch.
                     // Do not log account data, preference payloads or exception messages.

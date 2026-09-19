@@ -88,6 +88,12 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!intent.getBooleanExtra(EXTRA_SHOW_WIDGET_STEP, false)) {
+            startActivity(Intent(this, com.tjg.twidget.social.SocialOnboardingActivity::class.java)
+                .putExtra(EXTRA_ADD_ACCOUNT, intent.getBooleanExtra(EXTRA_ADD_ACCOUNT, false)))
+            finish()
+            return
+        }
         addAccountMode = intent.getBooleanExtra(EXTRA_ADD_ACCOUNT, false)
         startedOnWidgetStep = intent.getBooleanExtra(EXTRA_SHOW_WIDGET_STEP, false)
         if (addAccountMode) step = STEP_PROFILE

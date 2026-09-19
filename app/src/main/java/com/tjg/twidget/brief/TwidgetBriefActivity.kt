@@ -84,6 +84,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(this)) {
+            startActivity(Intent(this, com.tjg.twidget.social.ProfileBriefActivity::class.java))
+            finish(); return
+        }
         setContentView(R.layout.activity_twidget_brief)
         username = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
             .ifBlank { TwidgetStore.settings(this).username }

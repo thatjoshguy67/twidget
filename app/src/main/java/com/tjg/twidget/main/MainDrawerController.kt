@@ -13,6 +13,7 @@ import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.drawable.DrawableCompat
+import com.tjg.twidget.social.*
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsImportActivity
 import com.tjg.twidget.core.AppExecutors
@@ -37,6 +38,8 @@ internal class MainDrawerController(
     private val drawerNavigationId: Int,
     private val accounts: () -> List<String>,
     private val selectedAccount: () -> String,
+    private val socialCatalog: () -> SocialCatalog = { SocialCatalog() },
+    private val selectedProfileId: () -> String = { "" },
     private val onAccountSelected: (String) -> Unit,
     private val isEditMode: () -> Boolean = { false },
     private val exitEditMode: () -> Unit = {},
@@ -82,7 +85,22 @@ internal class MainDrawerController(
         drawerAccountItemIds.clear()
         drawerAvatarItemIds.clear()
         menu.clear()
-        drawerAccounts.forEachIndexed { index, account ->
+        val catalog = socialCatalog()
+        catalog.profiles.forEachIndexed { index, profile ->
+            val itemId = DRAWER_ACCOUNT_ITEM_BASE + index
+            drawerAccountItemIds[itemId] = "profile:${profile.id}"
+            val title = profile.displayName(catalog.accountsById)
+            val avatar = profile.avatarUrl(catalog.accountsById)
+            val stats = ProfileStats(title, "", 0, 0, 0, 0, profileImage = avatar)
+            menu.add(DRAWER_GROUP_ACCOUNTS, itemId, index, title).apply {
+                val (icon, isAvatar) = drawerAccountIcon(stats)
+                setIcon(icon)
+                if (isAvatar) drawerAvatarItemIds += itemId
+                isCheckable = true; isChecked = profile.id == selectedProfileId()
+                contentDescription = title
+            }
+        }
+        if (catalog.profiles.isEmpty()) drawerAccounts.forEachIndexed { index, account ->
             val stats = TwidgetStore.currentStats(activity, account)
             val itemId = DRAWER_ACCOUNT_ITEM_BASE + index
             drawerAccountItemIds[itemId] = account
@@ -120,6 +138,7 @@ internal class MainDrawerController(
             setIcon(OneUiIconR.drawable.ic_oui_time_outline)
             isCheckable = true
             isChecked = isSchedulePage()
+            isEnabled = selectedAccount().isNotBlank()
             contentDescription = activity.getString(R.string.schedule_title)
         }
         drawerNav.refreshDrawerMenu()
@@ -130,6 +149,16 @@ internal class MainDrawerController(
     }
 
     fun renderHeader() {
+        val catalog = socialCatalog()
+        val profile = catalog.profiles.firstOrNull { it.id == selectedProfileId() }
+        if (profile != null && !isEditMode()) {
+            activity.findViewById<DrawerLayout>(drawerLayoutId).apply {
+                renderDrawerNavigation(this)
+                setTitle(profile.displayName(catalog.accountsById))
+                setSubtitle(profile.accountIds.joinToString(" · ") { catalog.accountsById.getValue(it).platform.label })
+            }
+            return
+        }
         val stats = TwidgetStore.currentStats(activity, selectedAccount())
         activity.findViewById<DrawerLayout>(drawerLayoutId).apply {
             if (isEditMode()) {
@@ -233,11 +262,17 @@ internal class MainDrawerController(
 
     private fun attachDrawerAccountLongPresses(drawerNav: DrawerNavigationView) {
         drawerAccountItemIds.forEach { (itemId, account) ->
+            val handle = if (account.startsWith("profile:")) {
+                val catalog = socialCatalog()
+                catalog.profiles.firstOrNull { it.id == account.removePrefix("profile:") }?.accountIds
+                    ?.map(catalog.accountsById::getValue)?.firstOrNull { it.platform == SocialPlatform.X }?.handle
+            } else account
+            if (handle == null) return@forEach
             drawerNav.findViewById<View>(itemId)?.setOnLongClickListener {
                 closeDrawerOnCompactScreens()
                 activity.startActivity(
                     Intent(activity, AnalyticsImportActivity::class.java)
-                        .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, account),
+                        .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, handle),
                 )
                 true
             }

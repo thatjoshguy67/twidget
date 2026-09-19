@@ -12,6 +12,7 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.SeslSwitchPreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.tjg.twidget.social.label
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefContentCategory
 import com.tjg.twidget.brief.BriefSettingsStore
@@ -40,6 +41,7 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
+        screen.addPreference(PreferenceCategory(context).apply { title = "Twitter/X" })
 
         screen.addPreference(categorySwitch(BriefContentCategory.TOP_TWEET, R.string.brief_content_top_tweet))
         screen.addPreference(categorySwitch(BriefContentCategory.WORST_TWEET, R.string.brief_content_worst_tweet))
@@ -92,6 +94,22 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
+        screen.addPreference(PreferenceCategory(requireContext()).apply { title = getString(R.string.social_accounts) })
+        val socialChoices = com.tjg.twidget.social.SocialPlatform.entries.map { it.storageId to it.label }
+        socialChoices.forEach { (id, name) ->
+            screen.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+                key = "social_brief_$id"; title = name; isPersistent = false
+                isChecked = com.tjg.twidget.social.ProfileBriefEngine.enabled(context, id)
+                setOnPreferenceChangeListener { _, value -> com.tjg.twidget.social.ProfileBriefEngine.setEnabled(context, id, value == true); true }
+            })
+        }
+        listOf("combined_audience" to R.string.social_all_audience, "github_repositories" to R.string.social_repositories).forEach { (id, label) ->
+            screen.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+                key = id; setTitle(label); isPersistent = false
+                isChecked = com.tjg.twidget.social.ProfileBriefEngine.enabled(context, id)
+                setOnPreferenceChangeListener { _, value -> com.tjg.twidget.social.ProfileBriefEngine.setEnabled(context, id, value == true); true }
+            })
+        }
         screen.addBottomInset()
         preferenceScreen = screen
     }

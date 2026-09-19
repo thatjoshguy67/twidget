@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.widget.RemoteViews
+import com.tjg.twidget.social.SocialWidgetCache
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
@@ -169,12 +170,12 @@ object LockScreenFollowerViews {
         val canvas = Canvas(bitmap)
 
         val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
-        val stats = TwidgetStore.currentStats(context, account)
-        val delta = TwidgetStore.followersDelta(context, account)
+        val stats = SocialWidgetCache.stats(context, widgetSettings)
+        val delta = SocialWidgetCache.delta(context, widgetSettings)
         val locale = AppLocales.resolve(widgetSettings.language)
-        val count = AppLocales.integer(stats.followersCount, locale)
+        val count = if (stats.followersKnown) (if (SocialWidgetCache.approximate(context, widgetSettings)) "≈ " else "") + AppLocales.integer(stats.followersCount, locale) else "—"
         val strings = AppLocales.wrap(context, widgetSettings.language)
-        val rawFollowers = strings.getString(R.string.followers)
+        val rawFollowers = strings.getString(SocialWidgetCache.label(context, widgetSettings))
         val deltaText = when {
             !widgetSettings.showDelta -> ""
             delta == 0L -> {
@@ -200,7 +201,7 @@ object LockScreenFollowerViews {
 
         val logo = androidx.core.content.ContextCompat.getDrawable(
             context,
-            if (widgetSettings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x,
+            SocialWidgetCache.logo(context, widgetSettings),
         )?.mutate()?.apply {
             setTint(primary)
         }

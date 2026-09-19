@@ -92,6 +92,7 @@ data class TwidgetWidgetSettings(
     val fontFamily: String,
     val showDelta: Boolean = true,
     val language: String = "DEFAULT",
+    val socialAccountId: String = "",
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -328,6 +329,11 @@ object TwidgetStore {
             normalizeUsername(prefs.getString(KEY_USERNAME, "").orEmpty()).isNotBlank()
     }
 
+    /** A new user can finish with a non-X account and no legacy default handle. */
+    fun completeSocialOnboarding(context: Context) {
+        prefs(context).edit().putBoolean(KEY_ONBOARDED, true).apply()
+    }
+
     fun completeOnboarding(context: Context, username: String) {
         val cleanUsername = normalizeUsername(username)
         val current = settings(context)
@@ -363,6 +369,9 @@ object TwidgetStore {
         val prefs = prefs(context)
         val suffix = if (appWidgetId > 0) "_$appWidgetId" else ""
         return TwidgetWidgetSettings(
+            socialAccountId = prefs.getString("widget_social_account$suffix", null) ?: if (
+                prefs.getString("widget_account$suffix", "").isNullOrBlank() && com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(context)
+            ) com.tjg.twidget.social.SocialWidgetCache.defaultAccountId(context) else "",
             tintAlpha = prefs.getInt("widget_tint_alpha$suffix", prefs.getInt("widget_tint_alpha", 205)).coerceIn(30, 245),
             tintColor = prefs.getInt("widget_tint_color$suffix", prefs.getInt("widget_tint_color", 0x00FFFFFF)),
             logo = prefs.getString("widget_logo$suffix", prefs.getString("widget_logo", LOGO_X)) ?: LOGO_X,
@@ -385,6 +394,7 @@ object TwidgetStore {
             .putString("widget_logo$suffix", settings.logo)
             .putString("widget_tap_action$suffix", settings.tapAction)
             .putString("widget_account$suffix", normalizeUsername(settings.accountUsername))
+            .putString("widget_social_account$suffix", settings.socialAccountId)
             .putString("widget_color_mode$suffix", settings.colorMode)
             .putString("widget_font_family$suffix", normalizeWidgetFont(settings.fontFamily))
             .putBoolean("widget_show_delta$suffix", settings.showDelta)

@@ -167,6 +167,7 @@ object SecureCredentialStore {
     }
 
     private fun requireCredentialName(name: String) {
-        require(name in credentialNames) { "Unknown credential name" }
+        require(name in credentialNames || name == "social_oauth_pending" ||
+            name.matches(Regex("social_[a-f0-9-]{36}_session"))) { "Unknown credential name" }
     }
 }

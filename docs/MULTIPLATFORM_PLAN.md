@@ -4,19 +4,44 @@ Prepared 19 September 2026, before application-code changes.
 
 Branch: `feat-multiplat`, based on `staging` at `b196d1e7`.
 
-Status: initial account/profile persistence, legacy X mirroring, audience
-aggregation and the public Bluesky provider are implemented and verified. The new
-onboarding/UI and OAuth exchange are not implemented yet.
-Developer applications will be registered from scratch, per the maintainer.
-See [the developer setup checklist](MULTIPLATFORM_SETUP.md) for registration tasks.
+Status: experimental feature implementation on `feat-multiplat`. Platform/profile
+persistence, legacy X mirroring, provider adapters, OAuth exchange code, account
+management, linked-profile dashboard/Brief and widget consumers are implemented.
+Live public Bluesky lookup has been exercised through Android onboarding. The
+GitHub/Instagram bridge routes are **not deployed**, and OAuth has not yet been
+accepted against real GitHub, Instagram or YouTube accounts.
 
-Foundation checkpoint: 340 GitHub and 342 Play JVM tests pass (29 new tests per
-distribution), both debug APKs and lint pass, and 11 database/migration tests pass
-on a disposable API 37 emulator. App startup with background migration succeeds.
-A read-only live request confirmed Bluesky's public profile response fields;
-provider parsing/identity/error behavior is covered by fixtures. The provider is
-not exposed through onboarding yet. Existing goals, Brief and scheduling stores
-remain intact in their current format pending consumer migration.
+The new and upgrade onboarding use the original full-page onboarding shell,
+SESL contained buttons, exported platform assets and Figma's centred headings,
+stacked platform cards, inline handles, avatar/name choices and widget radio rows.
+There is no preference toolbar in onboarding. Linking is staged until the profile
+display is confirmed; name and avatar selections survive activity recreation.
+
+See [the developer setup checklist](MULTIPLATFORM_SETUP.md) for registrations,
+callback URLs and server configuration. Its registration status is maintained
+alongside the implementation.
+
+Current verification: 346 GitHub and 348 Play JVM tests, 38 bridge tests, and
+15 Android UI/database tests. Both debug distributions build. Screenshot review
+covers welcome, selection, handle entry, OAuth introduction, linking and display;
+light/dark profile display was visually reviewed on the disposable API 37 emulator.
+The four UI tests also pass at 130% system text size. Both GitHub and Play lint
+checks pass. This is not a claim of physical Samsung device acceptance.
+
+Remaining acceptance work before this is a finished release:
+
+- Deploy and exercise OAuth callbacks/refresh with the registered developer apps;
+  verify real account eligibility, grants, expiry and cancellation.
+- Extend the linked dashboard's first-pass cards to the existing editor/adaptive
+  grid, including X-specific rich cards within a linked profile. Standalone X
+  retains its existing dashboard. Linked cards currently show metric groups.
+- Extend profile Brief facts into the cloud/local AI pipeline and add the remaining
+  source-specific activity categories. The initial profile Brief is deterministic
+  and combines available platform metrics with existing X brief cards.
+- Complete source/session controls, owner analytics where supported, and physical
+  Samsung launcher/lock-screen and minified-build acceptance.
+
+Do not treat successful fixture tests as live provider acceptance.
 
 ## Outcome
 

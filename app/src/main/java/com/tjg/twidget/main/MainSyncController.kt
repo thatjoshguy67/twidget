@@ -24,6 +24,27 @@ internal class MainSyncController(
     private val analyticsInFlight = mutableSetOf<String>()
     private val streakInFlight = mutableSetOf<String>()
 
+    private fun syncSocial() {
+        if (isSyncing) return
+        val ids = activity.selectedProfile?.accountIds?.toSet() ?: return
+        isSyncing = true
+        val lifecycleToken = lifecycleGeneration
+        activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = true
+        AppExecutors.execute(onRejected = { postUiIfCurrent(lifecycleToken) {
+            isSyncing = false
+            activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+        } }) {
+            val result = runCatching { com.tjg.twidget.social.SocialRefresh.refresh(activity.applicationContext, ids) }
+            postUiIfCurrent(lifecycleToken) {
+                isSyncing = false
+                activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+                activity.render()
+                if (result.isFailure || result.getOrNull()?.values?.any { it != null } == true)
+                    Toast.makeText(activity, R.string.social_partial, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     fun invalidateLifecycle() {
         lifecycleGeneration++
     }
@@ -46,6 +67,12 @@ internal class MainSyncController(
     }
 
     fun sync() {
+        if (activity.usesSocialDashboard) { syncSocial(); return }
+        if (activity.selectedAccount.isBlank() && TwidgetStore.settings(activity).username.isBlank()) {
+            activity.render()
+            activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
+            return
+        }
         if (isSyncing) {
             activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
             return

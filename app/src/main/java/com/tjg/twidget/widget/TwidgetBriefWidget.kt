@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
+import android.content.Intent
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
@@ -48,8 +49,16 @@ class TwidgetBriefWidget : AppWidgetProvider() {
 
         fun updateWidget(context: Context, manager: AppWidgetManager, id: Int) {
             val account = TwidgetStore.settings(context).username
-            val snapshot = BriefStore.read(context, account)
-                ?: if (account.isNotBlank()) BriefEngine.rebuild(context, account) else null
+            val social = com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(context)
+            val snapshot = if (social) null else BriefStore.read(context, account)
+                ?: if (!social && account.isNotBlank()) BriefEngine.rebuild(context, account) else null
+            if (social && com.tjg.twidget.social.ProfileBriefCache.readDefault(context) == null) {
+                val app = context.applicationContext
+                com.tjg.twidget.core.AppExecutors.execute {
+                    val result = runCatching { com.tjg.twidget.social.ProfileBriefEngine.rebuild(app, com.tjg.twidget.social.SocialWidgetCache.defaultProfileId(app)) }
+                    if (result.isSuccess && com.tjg.twidget.social.ProfileBriefCache.readDefault(app) != null) updateWidget(app, manager, id)
+                }
+            }
             val options = manager.getAppWidgetOptions(id)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 352)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 175)
@@ -107,7 +116,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             snapshot: com.tjg.twidget.brief.BriefSnapshot?,
         ): RemoteViews {
             val oneRow = height <= 110
-            val summary = snapshot?.let { BriefEditorialSummary.from(it, BriefStrings.from(context)) }
+            val summary = com.tjg.twidget.social.ProfileBriefCache.summary(context) ?: snapshot?.let { BriefEditorialSummary.from(it, BriefStrings.from(context)) }
             val settings = TwidgetStore.widgetSettings(context, id)
             val dark = isDark(context, settings.colorMode)
             val base = if (dark) 16 else 255
@@ -144,13 +153,13 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                     listOfNotNull(summary?.title, summary?.body).joinToString(". ")
                         .ifBlank { context.getString(R.string.brief_widget_empty_title) },
                 )
-                if (account.isNotBlank()) {
+                if (account.isNotBlank() || com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(context)) {
                     setOnClickPendingIntent(
                         android.R.id.background,
                         PendingIntent.getActivity(
                             context,
                             9321 + id,
-                            TwidgetBriefActivity.intent(context, account),
+                            if (com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(context)) Intent(context, com.tjg.twidget.social.ProfileBriefActivity::class.java) else TwidgetBriefActivity.intent(context, account),
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         ),
                     )

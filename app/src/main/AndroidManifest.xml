@@ -36,6 +36,18 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Twidget">
+        <activity android:name=".social.ProfileBriefActivity" android:exported="false" />
+        <activity android:name=".social.SocialOnboardingActivity" android:exported="false" android:launchMode="singleTop" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".social.SocialOAuthCallbackActivity" android:exported="true" android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="twidget" android:host="oauth" android:path="/github" />
+                <data android:scheme="twidget" android:host="oauth" android:path="/instagram" />
+            </intent-filter>
+        </activity>
+
 
         <!-- Persists per-app language on API 32 and lower. Android 13+ uses
              localeConfig above for system Settings and Play Store language. -->

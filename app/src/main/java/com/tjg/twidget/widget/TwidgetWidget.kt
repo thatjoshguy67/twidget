@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
+import com.tjg.twidget.social.SocialWidgetCache
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.ProfileStats
@@ -85,8 +86,8 @@ open class TwidgetWidget : AppWidgetProvider() {
             }
             val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
-            val stats = TwidgetStore.currentStats(context, account)
-            val delta = TwidgetStore.followersDelta(context, account)
+            val stats = SocialWidgetCache.stats(context, widgetSettings)
+            val delta = SocialWidgetCache.delta(context, widgetSettings)
 
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
@@ -317,7 +318,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                 TwidgetStore.TAP_PROFILE -> PendingIntent.getActivity(
                     context,
                     2000 + appWidgetId,
-                    Intent(Intent.ACTION_VIEW, Uri.parse("twitter://user?screen_name=${accountUsername.trimStart('@')}")),
+                    Intent(Intent.ACTION_VIEW, Uri.parse(SocialWidgetCache.url(context, TwidgetStore.widgetSettings(context, appWidgetId)))),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
                 TwidgetStore.TAP_APP -> PendingIntent.getActivity(
@@ -527,9 +528,12 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
         }) {
             try {
                 runCatching {
-                    val account = TwidgetStore.widgetSettings(context, appWidgetId).accountUsername
-                        .ifBlank { TwidgetStore.settings(context).username }
-                    TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
+                    val settings = TwidgetStore.widgetSettings(context, appWidgetId)
+                    if (settings.socialAccountId.isNotBlank()) com.tjg.twidget.social.SocialRefresh.refresh(context, setOf(settings.socialAccountId))
+                    else {
+                        val account = settings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
+                        if (account.isNotBlank()) TwidgetStore.saveStats(context, RettiwtClient.refresh(context, account))
+                    }
                 }
                 TwidgetWidget.updateAll(context)
             } finally {

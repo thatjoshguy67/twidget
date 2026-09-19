@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reuse the original onboarding's full-bleed gradient and pinned SESL controls. -->
+<dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/social_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/social_onboarding_gradient_bg">
+    <View android:id="@+id/social_settle" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/onboarding_settle_overlay" android:visibility="gone" />
+    <LinearLayout android:id="@+id/social_content" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <FrameLayout android:id="@+id/social_fragment" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+        <LinearLayout android:id="@+id/social_buttons" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:paddingHorizontal="20dp" android:paddingTop="8dp" android:paddingBottom="24dp">
+            <androidx.appcompat.widget.AppCompatButton android:id="@+id/social_back" style="@style/OneUI.ContainedButton" android:theme="@style/OneUI.ContainedButtonTheme"
+                android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:layout_marginEnd="6dp"
+                android:fontFamily="sec" android:textStyle="bold" android:textSize="17sp" android:textAllCaps="false" android:includeFontPadding="false" android:text="@string/back" />
+            <androidx.appcompat.widget.AppCompatButton android:id="@+id/social_next" style="@style/OneUI.ContainedButton" android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
+                android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:layout_marginStart="6dp"
+                android:fontFamily="sec" android:textStyle="bold" android:textSize="17sp" android:textAllCaps="false" android:includeFontPadding="false" android:text="@string/social_continue" />
+        </LinearLayout>
+    </LinearLayout>
+</dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout>

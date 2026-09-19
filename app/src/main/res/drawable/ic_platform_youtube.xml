@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mechanically converted from the exact Figma SVG in docs/design-assets/multiplatform. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FF000000" android:fillType="nonZero" android:pathData="M9.95454 14.9848V9.05775L15.1818 12.0214L9.95454 14.9848ZM21.582 7.19279C21.352 6.32963 20.6743 5.64992 19.8139 5.41924C18.2542 5 12 5 12 5C12 5 5.74583 5 4.18612 5.41924C3.32564 5.64992 2.6479 6.32963 2.41792 7.19279C2 8.75721 2 12.0213 2 12.0213C2 12.0213 2 15.2853 2.41792 16.8498C2.6479 17.7129 3.32564 18.3926 4.18612 18.6234C5.74583 19.0426 12 19.0426 12 19.0426C12 19.0426 18.2542 19.0426 19.8139 18.6234C20.6743 18.3926 21.352 17.7129 21.582 16.8498C22 15.2853 22 12.0213 22 12.0213C22 12.0213 22 8.75721 21.582 7.19279Z" />
+</vector>

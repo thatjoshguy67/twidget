@@ -66,6 +66,12 @@
                 android:background="?android:colorBackground"
                 android:orientation="vertical" />
 
+            <dev.oneuiproject.oneui.widget.CardItemView
+                android:id="@+id/widget_platform_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:title="@string/social_choose_platform" />
             <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -1,3 +1,4 @@
+import { createSocialOAuthRouter } from "./social-oauth.js";
 import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -235,6 +236,9 @@ app.get("/health", async (_req, res) => {
     sharedState: redisClient ? "redis" : "local",
   });
 });
+
+// Multi-platform callbacks use encrypted, proof-bound, single-use tickets.
+app.use("/oauth", createSocialOAuthRouter({ redis: redisClient }));
 
 app.get("/oauth/x/start", (req, res) => {
   const clientId = process.env.X_CLIENT_ID;

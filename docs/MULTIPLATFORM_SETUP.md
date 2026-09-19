@@ -18,6 +18,30 @@ ticket to Android, not expose provider tokens in a browser redirect.
 
 ## Google / YouTube
 
+### Registered development configuration (19 September 2026)
+
+Project: **Twidget** (`twidget-509111`). Both Android clients were confirmed
+created in the maintainer's Google Cloud credentials screen:
+
+| Client name | Android OAuth client ID |
+| --- | --- |
+| Twidget OAuth - Debug | `290048267551-id2rqp7fpk8t075705n9marphh772uoe.apps.googleusercontent.com` |
+| Twidget OAuth - GitHub & CI | `290048267551-d92e5ttjqhjv5u60ilt0cqtru35hppf6.apps.googleusercontent.com` |
+
+Both registrations use `com.tjg.twidget`. The maintainer supplied the Play app
+signing SHA-1, which matches the production fingerprint below, so the GitHub/CI
+client also covers Play distribution; a third client is unnecessary.
+
+The maintainer reports YouTube Data API v3, External/Testing audience, test-user
+access and the `youtube.readonly` scope configured. Those settings have not been
+independently inspected. The console registrations are ready for development;
+successful authorization and a YouTube API call in Twidget remain unverified.
+These client IDs and certificate fingerprints are public configuration, not
+secrets. No Google client secret or bridge callback is required for the planned
+on-device `AuthorizationClient` flow.
+
+### Registration reference
+
 1. Create/select a **Twidget** project in [Google Cloud Console](https://console.cloud.google.com/).
 2. Enable **YouTube Data API v3** in the API Library. The initial read scope is
    `https://www.googleapis.com/auth/youtube.readonly`. Owner analytics will use
@@ -54,7 +78,7 @@ Verified from this checkout's signing report on 19 September 2026:
 | --- | --- |
 | Checked-in debug key (local/contributor builds) | `65:12:D7:58:C8:A1:7F:52:E7:E6:01:DF:21:DB:E0:E9:48:F5:0E:EF` |
 | Production key (release/beta and trusted feature-branch CI) | `F1:12:10:48:CB:16:BE:49:71:9A:90:C1:1C:3D:95:0F:B5:38:D9:9B` |
-| Play-distributed build | Obtain the **app signing** certificate SHA-1 from Play Console. |
+| Play-distributed build (maintainer-confirmed) | `F1:12:10:48:CB:16:BE:49:71:9A:90:C1:1C:3D:95:0F:B5:38:D9:9B` (same client as production) |
 
 These are public certificate fingerprints. The APK/AAB certificate from
 [feature CI run 35439107834](https://github.com/thatjoshguy67/twidget/actions/runs/35439107834)
@@ -64,6 +88,16 @@ Source: [Google's Android authorization setup](https://developer.android.com/ide
 
 ## GitHub
 
+OAuth App client ID supplied by the maintainer on 19 September 2026:
+`Ov23liPX2kvl57lZ7ehI`.
+
+The bridge expects `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`.
+After the maintainer set both with `--skip-deploys`, a read-back on 19 September
+2026 confirmed the matching client ID and a nonempty secret with no surrounding
+whitespace in Railway's `twidget-bridge` service, `production` environment. The
+verification did not display or persist secret values. This verifies stored
+configuration only; secret validity and live GitHub authorization remain untested.
+
 1. Open [Developer settings → OAuth Apps](https://github.com/settings/developers)
    under the account/organization that should own Twidget's registration.
 2. Register an OAuth app such as **Twidget development**. Set its homepage to the
@@ -71,6 +105,12 @@ Source: [Google's Android authorization setup](https://developer.android.com/ide
 3. Copy the client ID. Generate a client secret and save it privately.
 4. We will use browser authorization plus the server-side code exchange. Device
    flow does not need to be enabled for this design.
+   Keep **Expire user access tokens** enabled if offered. Current GitHub docs
+   describe expiring OAuth App tokens as the default. Before live testing, the
+   bridge/device integration now preserves both token expiries and the rotating
+   refresh token. `/oauth/github/refresh` exchanges it server-side; Android stores
+   the replacement in Keystore-backed storage. Fixture tests cover rotation; live
+   expiring-grant verification remains required.
 5. The first integration reads public account/repository analytics. Do not request
    private `repo` or write permissions just to read follower or public-star totals.
 6. Send the client ID and a test username when ready. The secret can be configured
@@ -80,6 +120,31 @@ Source: [GitHub OAuth app registration](https://docs.github.com/en/apps/oauth-ap
 and [authorization/code exchange](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps).
 
 ## Meta / Instagram
+
+Created Meta app: **Twidget** (`1085129303901685`), with Instagram and Threads
+use cases; Threads is reserved for future work. The Instagram Login setup shows
+Instagram app **Twidget-IG**, client ID **`1731035707968772`**. Use this Instagram
+client ID for `INSTAGRAM_OAUTH_CLIENT_ID`, not the parent Meta app ID.
+
+On 19 September 2026, Railway read-back confirmed the matching Instagram client
+ID and a nonempty `INSTAGRAM_OAUTH_CLIENT_SECRET` with no surrounding whitespace
+in `twidget-bridge` / `production`. The maintainer used `--skip-deploys`; this
+verifies stored configuration, not a deployed OAuth flow or secret validity.
+Secret values were not displayed or persisted by the verification.
+
+The maintainer reports saving the business-login redirect URI from the table and
+accepting the Instagram tester invitation. Their Meta setup screen confirms
+`thatjoshguy69` (Instagram account ID `17841455280723932`) is now in the account
+list, with webhook subscriptions off. Live Twidget authorization and API calls
+remain untested.
+
+The maintainer's live permissions screen on 19 September 2026 confirms
+`instagram_business_basic` is ready for testing and
+`instagram_business_manage_insights` is available to add. Its description covers
+professional-account and media insights, so retain Instagram Login despite the
+setup banner directing insights users to Facebook Login. Adding the permission,
+consent and live analytics endpoint access are not yet verified. Request insights
+in the authorization flow when the implementation actually uses those endpoints.
 
 1. Create/select a Twidget app in [Meta for Developers](https://developers.facebook.com/apps/).
 2. Add/configure **Instagram API with Instagram Login**. This integration supports
@@ -91,10 +156,9 @@ and [authorization/code exchange](https://docs.github.com/en/apps/oauth-apps/bui
 4. Record the **Instagram client/app ID associated with this login product** and
    keep its corresponding secret privately. Do not confuse credentials from a
    different Meta login product with this Instagram registration.
-5. Start with `instagram_business_basic`. The exact additional insights permission
-   and access level must be verified in the current app dashboard/official guide
-   before requesting it. Do not enable messaging, comment moderation or publishing
-   permissions for follower analytics.
+5. Configure `instagram_business_basic` and add
+   `instagram_business_manage_insights` for the planned owner analytics. Do not
+   request messaging, comment moderation or publishing permissions for analytics.
 6. Keep development/testing access initially. Public distribution needs the
    applicable Meta review/access approval, working login, accurate privacy and
    deletion information, and a reproducible test flow. Prepare that submission
@@ -103,8 +167,8 @@ and [authorization/code exchange](https://docs.github.com/en/apps/oauth-apps/bui
 Meta's official [Postman collection](https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login)
 confirms professional-account support and `instagram_business_basic`.
 The [developer guide](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/)
-was rate-limited during this session; the collection's overview does not establish
-the current insights permission, so that remains a setup verification step.
+was rate-limited during this session; the insights permission above was verified
+from the maintainer-provided live Meta permissions screen instead.
 
 ## Bluesky and Twitter/X
 
@@ -127,3 +191,47 @@ usable. No new X developer registration is required for this feature.
 
 No backend deployment or developer-app review has been performed by this code
 change. Live OAuth verification follows registration and exchange implementation.
+
+
+## Feature-branch implementation configuration
+
+Setup handoff verified on 19 September 2026: Railway `twidget-bridge` /
+`production` has both matching provider client IDs, both nonempty provider
+secrets, a Base64 `SOCIAL_OAUTH_TICKET_KEY` decoding to 32 bytes, and `REDIS_URL`.
+The maintainer set these variables with `--skip-deploys`. Verification exposed
+only boolean results; no secrets were printed or written into the repository.
+Developer-app setup work is complete for development testing. The implementation
+agent still needs to deploy the reviewed bridge changes and perform live OAuth
+and API acceptance tests. Google/Meta public-release verification or review is
+separate from this development setup; neither was completed here.
+
+The OAuth routes are implemented on `feat-multiplat`, **not deployed by this
+implementation task**. Registration/variables alone do not make login live.
+Keep the existing bridge deployment on its current code until this branch's
+bridge changes are reviewed and a deployment is authorized.
+
+Required bridge environment (private service variables; never Android resources):
+
+| Variable | Purpose |
+| --- | --- |
+| `SOCIAL_OAUTH_TICKET_KEY` | Random 32-byte key encoded as Base64, shared across bridge replicas. Encrypts ten-minute OAuth state and two-minute token tickets. Generate privately; do not paste it into chat. |
+| `SOCIAL_OAUTH_ORIGIN` | Optional; defaults to `https://twidget-bridge-production.up.railway.app`. Must be an HTTPS origin without a path. |
+| `GITHUB_OAUTH_CLIENT_ID` / `GITHUB_OAUTH_CLIENT_SECRET` | GitHub registration. |
+| `INSTAGRAM_OAUTH_CLIENT_ID` / `INSTAGRAM_OAUTH_CLIENT_SECRET` | Instagram Login registration. |
+| `REDIS_URL` | Existing shared Redis connection; required when running multiple bridge replicas. A single instance can use bounded in-memory pending sessions, which expire on restart. |
+
+Readiness endpoints are `/oauth/github/status` and `/oauth/instagram/status`.
+They report only whether required configuration is present. They do not verify
+provider approval or credential validity. Missing configuration fails closed.
+
+Android uses Google `AuthorizationClient` with `youtube.readonly`; no Google
+client secret or web redirect is included in the APK. Background authorization
+may renew access only when Google does not require interaction, and the returned
+channel ID must match the saved channel before data is applied. Instagram tokens
+are refreshed shortly before their long-lived expiry; revoked grants require
+reconnection. GitHub refresh-token rotation is persisted before the next read.
+
+Meta profile fields/permissions and all authenticated providers still need live
+acceptance with authorized test accounts. Do not treat mocked token exchanges as
+proof of a working developer registration. Public Bluesky lookup has been exercised
+through the Android UI on the disposable emulator.

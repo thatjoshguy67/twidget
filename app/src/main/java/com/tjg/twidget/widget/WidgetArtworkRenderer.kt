@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.tjg.twidget.social.SocialWidgetCache
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.ProfileStats
@@ -61,9 +62,9 @@ object WidgetArtworkRenderer {
         val textMaxHeight = height - pad * 2 - footerHeight
         val locale = AppLocales.resolve(settings.language)
         val localizedContext = AppLocales.wrap(context, settings.language)
-        val words = TwidgetWidget.followersInWords(stats.followersCount, locale)
+        val words = (if (stats.followersKnown) (if (SocialWidgetCache.approximate(context, settings)) "≈ " else "") + TwidgetWidget.followersInWords(stats.followersCount, locale) else localizedContext.getString(R.string.social_unavailable))
             .split(Regex("\\s+"))
-            .filter { it.isNotBlank() } + localizedContext.getString(R.string.followers)
+            .filter { it.isNotBlank() } + localizedContext.getString(SocialWidgetCache.label(context, settings))
         val textSize = findTextSize(context, settings, words, textMaxWidth, textMaxHeight)
         val lines = wrapWords(context, settings, words, textMaxWidth, textSize)
         val isGerman = locale.language == "de"
@@ -88,7 +89,7 @@ object WidgetArtworkRenderer {
         val logoSize = 13f * density
         val logo = ContextCompat.getDrawable(
             context,
-            if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x,
+            SocialWidgetCache.logo(context, settings),
         )?.mutate()?.apply { setTint(primary) }
         val logoCenterY = footerY - 4.5f * density
         logo?.setBounds(
@@ -180,8 +181,8 @@ object WidgetArtworkRenderer {
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val primary = if (dark) Color.WHITE else Color.BLACK
         val locale = AppLocales.resolve(settings.language)
-        val value = AppLocales.integer(stats.followersCount, locale)
-        val label = AppLocales.wrap(context, settings.language).getString(R.string.followers)
+        val value = if (stats.followersKnown) (if (SocialWidgetCache.approximate(context, settings)) "≈ " else "") + AppLocales.integer(stats.followersCount, locale) else "—"
+        val label = AppLocales.wrap(context, settings.language).getString(SocialWidgetCache.label(context, settings))
 
         fun paintFor(weight: Int, color: Int, sizeSp: Float) =
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
@@ -264,7 +265,7 @@ object WidgetArtworkRenderer {
             var x2 = (width - line2Width) / 2f
             val logo = ContextCompat.getDrawable(
                 context,
-                if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x,
+                SocialWidgetCache.logo(context, settings),
             )?.mutate()?.apply { setTint(primary) }
             logo?.setBounds(x2.toInt(), line2Top.toInt(), (x2 + logoSize).toInt(), (line2Top + logoSize).toInt())
             logo?.draw(canvas)

@@ -272,6 +272,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
     implementation("io.github.tribalfs:oneui-design:0.9.13+oneui8")
     implementation("com.airbnb.android:lottie:6.6.2")
     implementation("androidx.work:work-runtime:2.11.2")

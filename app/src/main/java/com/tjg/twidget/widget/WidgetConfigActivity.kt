@@ -20,6 +20,8 @@ import android.widget.ListPopupWindow
 import android.widget.RadioButton
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
+import com.tjg.twidget.social.*
+import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefStore
 import com.tjg.twidget.data.TwidgetStore
@@ -37,6 +39,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var tintColor = 0x00FFFFFF
     private var logo = TwidgetStore.LOGO_X
     private var tapAction = TwidgetStore.TAP_REFRESH
+    private var socialAccountId = ""
+    private var socialCatalog = SocialCatalog()
     private var accountUsername = ""
     private var colorMode = TwidgetStore.COLOR_MODE_SYSTEM
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
@@ -98,14 +102,33 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         logo = settings.logo
         tapAction = settings.tapAction
         accountUsername = settings.accountUsername
+        socialAccountId = settings.socialAccountId
+        if (appWidgetId > 0 && !getSharedPreferences(TwidgetStore.PREFS, MODE_PRIVATE).contains("widget_tint_alpha_$appWidgetId"))
+            SocialWidgetCache.pendingPin(this).takeIf(String::isNotBlank)?.let { socialAccountId = it }
         colorMode = settings.colorMode
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
         language = settings.language
-        if (isBriefWidget) accountUsername = ""
+        savedInstanceState?.let { saved ->
+            tintAlpha = saved.getInt("alpha", tintAlpha); tintColor = saved.getInt("tint", tintColor)
+            logo = saved.getString("logo", logo); tapAction = saved.getString("tap", tapAction)
+            accountUsername = saved.getString("account", accountUsername); socialAccountId = saved.getString("social", socialAccountId)
+            colorMode = saved.getString("mode", colorMode); fontFamily = saved.getString("font", fontFamily)
+            showDelta = saved.getBoolean("delta", showDelta); language = saved.getString("language", language)
+            currentLevel = closestOpacityLevel(tintAlpha)
+        }
+        if (isBriefWidget) { accountUsername = ""; socialAccountId = "" }
         bindControls()
         if (!isBriefWidget) buildAccountRows()
         render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("alpha", tintAlpha); outState.putInt("tint", tintColor)
+        outState.putString("logo", logo); outState.putString("tap", tapAction); outState.putString("account", accountUsername)
+        outState.putString("social", socialAccountId); outState.putString("mode", colorMode); outState.putString("font", fontFamily)
+        outState.putBoolean("delta", showDelta); outState.putString("language", language)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -156,6 +179,54 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     }
 
     private fun buildAccountRows() {
+        if (!isBriefWidget) {
+            AppExecutors.execute {
+                val result = runCatching { SocialRepository(applicationContext).use { it.synchronizeLegacyFrom(applicationContext) } }
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    result.onSuccess { socialCatalog = it; buildSocialAccountRows(); render() }
+                }
+            }
+            return
+        }
+        buildLegacyAccountRows()
+    }
+
+    private fun buildSocialAccountRows() {
+        val group = findViewById<LinearLayout>(R.id.account_group)
+        group.removeAllViews()
+        if (socialAccountId.isBlank()) {
+            val legacyHandle = accountUsername.ifBlank { TwidgetStore.settings(this).username }
+            socialAccountId = socialCatalog.accounts.firstOrNull { it.platform == SocialPlatform.X && it.handle.equals(legacyHandle, true) }?.id
+                ?: socialCatalog.profiles.firstOrNull { it.id == socialCatalog.defaultProfileId }?.accountIds?.firstOrNull().orEmpty()
+        }
+        val selectedProfile = socialCatalog.profileFor(socialAccountId)
+        socialCatalog.profiles.forEach { profile ->
+            group.addView(dev.oneuiproject.oneui.widget.RadioItemView(this).apply {
+                title = profile.displayName(socialCatalog.accountsById)
+                summary = profile.accountIds.joinToString(" · ") { socialCatalog.accountsById.getValue(it).platform.label }
+                isChecked = selectedProfile?.id == profile.id
+                setOnClickListener {
+                    socialAccountId = profile.accountIds.first()
+                    buildSocialAccountRows(); render()
+                }
+            })
+        }
+        findViewById<CardItemView>(R.id.widget_platform_row).apply {
+            visibility = if (selectedProfile?.linked == true) View.VISIBLE else View.GONE
+            title = getString(R.string.social_choose_platform)
+            summary = socialCatalog.accountsById[socialAccountId]?.platform?.label
+            setOnClickListener {
+                val members = selectedProfile?.accountIds?.map(socialCatalog.accountsById::getValue).orEmpty()
+                androidx.appcompat.app.AlertDialog.Builder(this@WidgetConfigActivity).setTitle(R.string.social_choose_platform)
+                    .setSingleChoiceItems(members.map { it.platform.label }.toTypedArray(), members.indexOfFirst { it.id == socialAccountId }) { dialog, index ->
+                        socialAccountId = members[index].id; dialog.dismiss(); buildSocialAccountRows(); render()
+                    }.setNegativeButton(android.R.string.cancel, null).show()
+            }
+        }
+    }
+
+    private fun buildLegacyAccountRows() {
         val group = findViewById<LinearLayout>(R.id.account_group)
         group.removeAllViews()
         accountRadios.clear()
@@ -248,6 +319,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
         findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
         findViewById<CardItemView>(R.id.logo_row).apply {
+            visibility = if (!isBriefWidget && socialCatalog.accountsById[socialAccountId]?.platform?.let { it != SocialPlatform.X } == true) View.GONE else View.VISIBLE
             summary = when (logo) {
                 TwidgetStore.LOGO_TWITTER -> getString(R.string.widget_logo_twitter)
                 else -> getString(R.string.widget_logo_x)
@@ -268,7 +340,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language, socialAccountId)
 
         if (isLockWidget) {
             preview.background = null
@@ -314,7 +386,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             return
         }
 
-        val stats = TwidgetStore.currentStats(this, selectedAccount)
+        val stats = SocialWidgetCache.stats(this, previewSettings)
         val previewSpec = homePreviewSpec()
         // Match the live widget's resolved color mode. The old tint-color
         // shortcut treated System/Dark as a light card whenever the stored
@@ -417,8 +489,28 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     }
 
     private fun saveAndFinish() {
+        if (!isBriefWidget && socialAccountId.isNotBlank()) {
+            findViewById<View>(R.id.btn_save).isEnabled = false
+            AppExecutors.execute(onRejected = { runOnUiThread { findViewById<View>(R.id.btn_save).isEnabled = true } }) {
+                val result = runCatching { SocialRepository(applicationContext).use { repository -> repository.edit { catalog ->
+                    require(catalog.accounts.any { it.id == socialAccountId })
+                    catalog.copy(widgets = catalog.widgets.filterNot { it.widgetId == appWidgetId } + SocialWidgetBinding(appWidgetId, socialAccountId))
+                } } }
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    result.onSuccess { persistAndFinish() }.onFailure {
+                        findViewById<View>(R.id.btn_save).isEnabled = true
+                        android.widget.Toast.makeText(this, R.string.social_load_failed, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        } else persistAndFinish()
+    }
+
+    private fun persistAndFinish() {
+        SocialWidgetCache.clearPin(this)
         tintAlpha = OPACITY_PRESETS[currentLevel]
-        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language))
+        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, socialAccountId))
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             val manager = AppWidgetManager.getInstance(this)
             if (isLockWidget) {

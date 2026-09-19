@@ -89,14 +89,15 @@ internal object BriefWidgetArtworkRenderer {
         val density = context.resources.displayMetrics.density
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val card = snapshot?.cards?.firstOrNull() ?: BriefCard(
+        val social = com.tjg.twidget.social.ProfileBriefCache.readDefault(context)
+        val card = social?.cards?.firstOrNull() ?: snapshot?.cards?.firstOrNull() ?: BriefCard(
             id = "empty",
             type = BriefCardType.SUMMARY,
             title = context.getString(R.string.brief_widget_empty_title),
             body = context.getString(R.string.brief_widget_empty_body),
             score = 0,
         )
-        val summary = snapshot?.let { BriefEditorialSummary.from(it, BriefStrings.from(context)) }
+        val summary = com.tjg.twidget.social.ProfileBriefCache.summary(context) ?: snapshot?.let { BriefEditorialSummary.from(it, BriefStrings.from(context)) }
         val displayCard = card.copy(
             title = summary?.title ?: card.title,
             body = summary?.shortDescription ?: card.body,

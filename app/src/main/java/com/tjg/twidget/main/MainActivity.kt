@@ -1,5 +1,6 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.social.*
 import com.tjg.twidget.BuildConfig
 
 import android.Manifest
@@ -48,6 +49,13 @@ import dev.oneuiproject.oneui.layout.ToolbarLayout
 class MainActivity : ScheduleQueueHostActivity() {
     override val embedsScheduleQueue: Boolean = true
 
+    internal var socialCatalog = SocialCatalog()
+    internal var selectedProfileId = ""
+    internal var socialObservations = emptyList<MetricObservation>()
+    private var renderGeneration = 0
+    private var initialSocialRefresh = false
+    internal val selectedProfile get() = socialCatalog.profiles.firstOrNull { it.id == selectedProfileId }
+    internal val usesSocialDashboard get() = selectedProfile?.let { it.linked || socialCatalog.accountsById.getValue(it.accountIds.first()).platform != SocialPlatform.X } == true
     private var destination = MainDestination.DASHBOARD
     private lateinit var scheduleBackCallback: androidx.activity.OnBackPressedCallback
     internal var accounts = emptyList<String>()
@@ -89,6 +97,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             finish()
             return
         }
+        selectedProfileId = savedInstanceState?.getString("social_profile").orEmpty()
         editModeController = MainEditModeController(this)
         dashboardBinder = MainDashboardBinder(this)
         drawerController = MainDrawerController(
@@ -96,10 +105,16 @@ class MainActivity : ScheduleQueueHostActivity() {
             drawerLayoutId = R.id.main_toolbar_layout,
             drawerNavigationId = R.id.drawer_nav,
             accounts = { accounts },
+            socialCatalog = { socialCatalog },
+            selectedProfileId = { selectedProfileId },
             selectedAccount = { selectedAccount },
             onAccountSelected = { account ->
                 destination = MainDestination.DASHBOARD
-                selectedAccount = account
+                if (account.startsWith("profile:")) selectedProfileId = account.removePrefix("profile:")
+                else {
+                    selectedAccount = account
+                    selectedProfileId = socialCatalog.accounts.firstOrNull { it.platform == SocialPlatform.X && it.handle.equals(account, true) }?.let { socialCatalog.profileFor(it.id)?.id }.orEmpty()
+                }
                 render()
             },
             isEditMode = { editModeController.editMode },
@@ -233,8 +248,8 @@ class MainActivity : ScheduleQueueHostActivity() {
         updateNoticesMenuIcon(menu)
         menu.findItem(R.id.menu_add_widget)?.isVisible = !editModeController.editMode
         menu.findItem(R.id.menu_open_profile)?.isVisible = !editModeController.editMode
-        menu.findItem(R.id.menu_edit_layout)?.isVisible = !editModeController.editMode
-        menu.findItem(R.id.menu_reset_layout)?.isVisible = !editModeController.editMode
+        menu.findItem(R.id.menu_edit_layout)?.isVisible = !usesSocialDashboard && !editModeController.editMode
+        menu.findItem(R.id.menu_reset_layout)?.isVisible = !usesSocialDashboard && !editModeController.editMode
         menu.findItem(R.id.menu_add_card)?.isVisible = editModeController.editMode
         menu.findItem(R.id.menu_done_editing)?.isVisible = false
         return true
@@ -262,6 +277,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("social_profile", selectedProfileId)
         outState.putString(STATE_DESTINATION, destination.name)
         super.onSaveInstanceState(outState)
     }
@@ -312,12 +328,44 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     internal fun render(bindDashboard: Boolean = true) {
+        val generation = ++renderGeneration
+        val context = applicationContext
+        AppExecutors.execute {
+            val result = runCatching {
+                SocialRepository(context).use { repository ->
+                    val catalog = repository.synchronizeLegacyFrom(context)
+                    Triple(catalog, catalog.accounts.flatMap { repository.observations(it.id) }, repository.needsUpgradeIntroduction())
+                }
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed || generation != renderGeneration) return@runOnUiThread
+                result.onSuccess { (catalog, observations, introduce) ->
+                    if (introduce) {
+                        startActivity(Intent(this, SocialOnboardingActivity::class.java).putExtra(SocialOnboardingActivity.EXTRA_UPGRADE, true))
+                        finish(); return@onSuccess
+                    }
+                    socialCatalog = catalog; socialObservations = observations
+                    if (catalog.profiles.none { it.id == selectedProfileId }) selectedProfileId = catalog.defaultProfileId.orEmpty()
+                    val x = selectedProfile?.accountIds?.map(catalog.accountsById::getValue)?.firstOrNull { it.platform == SocialPlatform.X }
+                    selectedAccount = x?.handle.orEmpty()
+                    renderLoaded(bindDashboard)
+                    if (usesSocialDashboard && !initialSocialRefresh && TwidgetStore.settings(this).refreshOnLaunch) {
+                        initialSocialRefresh = true; syncController.sync()
+                    }
+                }.onFailure { Toast.makeText(this, R.string.social_load_failed, Toast.LENGTH_LONG).show() }
+            }
+        }
+    }
+
+    private fun renderLoaded(bindDashboard: Boolean) {
         accounts = TwidgetStore.accounts(this)
             .ifEmpty { listOf(TwidgetStore.settings(this).username) }
             .filter { it.isNotBlank() }
-        if (accounts.isEmpty()) return
-        if (selectedAccount.isBlank() || accounts.none { it.equals(selectedAccount, ignoreCase = true) }) {
-            selectedAccount = accounts.first()
+        if (socialCatalog.profiles.isEmpty()) {
+            startActivity(Intent(this, SocialOnboardingActivity::class.java)); finish(); return
+        }
+        if (!usesSocialDashboard && (selectedAccount.isBlank() || accounts.none { it.equals(selectedAccount, ignoreCase = true) })) {
+            selectedAccount = accounts.firstOrNull().orEmpty()
         }
         val dashboard = findViewById<SwipeRefreshLayout>(R.id.main_refresh)
         val schedule = findViewById<View>(R.id.main_schedule_host)
@@ -344,6 +392,23 @@ class MainActivity : ScheduleQueueHostActivity() {
             drawerController.renderHeader()
         }
         updateScheduleFabVisibility()
+        invalidateOptionsMenu()
+    }
+
+    internal fun bindSocialDashboard(): Boolean {
+        val host = findViewById<android.widget.FrameLayout>(R.id.main_content_host)
+        val existing = host.findViewWithTag<SocialDashboardView>("social_dashboard")
+        if (!usesSocialDashboard) {
+            existing?.visibility = View.GONE
+            host.findViewById<View>(R.id.main_account_page)?.visibility = View.VISIBLE
+            return false
+        }
+        host.findViewById<View>(R.id.main_launch_skeleton)?.visibility = View.GONE
+        host.findViewById<View>(R.id.main_account_page)?.visibility = View.GONE
+        val view = existing ?: SocialDashboardView(this).apply { tag = "social_dashboard"; host.addView(this) }
+        view.visibility = View.VISIBLE
+        selectedProfile?.let { view.bind(socialCatalog, it, socialObservations) }
+        return true
     }
 
     private fun setupScheduleAction() {
@@ -380,7 +445,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         val defaultAccount = TwidgetStore.settings(this).username
         findViewById<View>(R.id.schedule_fab)?.visibility = if (
             destination == MainDestination.DASHBOARD &&
-                !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
+                !editModeController.editMode && selectedAccount.isNotBlank() && selectedAccount.equals(defaultAccount, ignoreCase = true)
         ) View.VISIBLE else View.GONE
     }
 
@@ -414,6 +479,13 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     private fun openActiveProfile() {
+        if (usesSocialDashboard) {
+            val members = selectedProfile?.accountIds?.map(socialCatalog.accountsById::getValue).orEmpty()
+            fun open(account: PlatformAccount) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(account.platform.profileUrl(account)))) }
+            if (members.size == 1) open(members.first()) else androidx.appcompat.app.AlertDialog.Builder(this)
+                .setItems(members.map { it.platform.label }.toTypedArray()) { _, index -> open(members[index]) }.show()
+            return
+        }
         val username = selectedAccount.ifBlank { TwidgetStore.settings(this).username }
             .trim()
             .trimStart('@')

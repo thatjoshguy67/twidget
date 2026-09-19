@@ -15,7 +15,8 @@
         android:includeFontPadding="false"
         android:text="@string/brief_settings_intro"
         android:textColor="@color/oneui_text_primary"
-        android:textSize="14sp" />
+        android:lineSpacingExtra="2dp"
+        android:textSize="16sp" />
 
     <TextView
         android:layout_width="match_parent"
@@ -25,5 +26,6 @@
         android:includeFontPadding="false"
         android:text="@string/brief_settings_ai_intro"
         android:textColor="@color/oneui_text_primary"
-        android:textSize="14sp" />
+        android:lineSpacingExtra="2dp"
+        android:textSize="16sp" />
 </LinearLayout>

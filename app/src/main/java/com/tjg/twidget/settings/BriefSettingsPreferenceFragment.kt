@@ -58,10 +58,12 @@ class BriefSettingsPreferenceFragment : InsetPreferenceFragment() {
             setAllowDividerAbove(false)
             setAllowDividerBelow(false)
         })
-        screen.addPreference(androidx.preference.SeslPreferenceCaption(context).apply {
+        val intro = layoutInflater.inflate(R.layout.preference_brief_intro, null)
+        screen.addPreference(dev.oneuiproject.oneui.preference.LayoutPreference(context, intro).apply {
             key = "brief_intro"
-            title = getString(R.string.settings_brief_description,
-                getString(R.string.brief_settings_intro), getString(R.string.brief_settings_ai_intro))
+            isSelectable = false
+            setAllowDividerAbove(false)
+            setAllowDividerBelow(false)
         })
 
         screen.addPreference(spacerCategory())

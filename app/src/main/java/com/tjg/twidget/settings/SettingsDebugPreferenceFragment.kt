@@ -245,7 +245,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         }
         val overlay = when {
             !state.supported -> getString(R.string.debug_palette_overlay_unsupported)
-            state.overlayRegistered -> getString(R.string.debug_palette_overlay_registered)
+            state.customPaletteApplied -> getString(R.string.debug_palette_overlay_registered)
             else -> getString(R.string.debug_palette_overlay_not_registered)
         }
         return "$mode • $overlay"
@@ -271,7 +271,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
             AppPaletteManager.resolvedColors(context).forEach { (label, color) ->
                 add(getString(R.string.settings_palette_token, label, AppPaletteManager.colorHex(color)))
             }
-            addAll(state.overlayDetails)
+            addAll(state.loaderDetails)
         }
         AlertDialog.Builder(context)
             .setTitle(R.string.debug_palette_view)

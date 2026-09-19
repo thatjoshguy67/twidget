@@ -386,7 +386,7 @@
     <string name="debug_palette_generated">Erstellte Farbrollen</string>
     <string name="debug_palette_resolved">Zusammensetzung der Ressourcen</string>
     <string name="debug_palette_requires_android_14">Eigene Paletten erfordern Android 14 oder neuer</string>
-    <string name="debug_palette_overlay_registered">Overlay registriert</string>
+    <string name="debug_palette_overlay_registered">Eigene Palette aktiv</string>
     <string name="debug_palette_overlay_not_registered">Vom System verwaltet</string>
     <string name="debug_palette_overlay_unsupported">Overlay nicht unterstützt</string>
     <string name="debug_palette_apply_failed">Farbpalette konnte nicht angewandt werden: %1$s</string>

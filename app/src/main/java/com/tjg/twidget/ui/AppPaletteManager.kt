@@ -7,12 +7,11 @@ import android.content.om.OverlayManager
 import android.content.om.OverlayManagerTransaction
 import android.content.res.Resources
 import android.content.res.loader.ResourcesLoader
-import android.content.res.loader.ResourcesProvider
 import android.graphics.Color
 import android.os.Build
-import android.util.TypedValue
 import androidx.annotation.RequiresApi
 import androidx.core.graphics.ColorUtils
+import com.google.android.material.color.TwidgetPaletteLoader
 import java.util.WeakHashMap
 
 enum class AppPaletteMode(val storedValue: String) {
@@ -43,18 +42,16 @@ data class PaletteApplyResult(
 data class PaletteDebugState(
     val mode: AppPaletteMode,
     val supported: Boolean,
-    val overlayRegistered: Boolean,
-    val overlayDetails: List<String>,
+    val customPaletteApplied: Boolean,
+    val loaderDetails: List<String>,
     val customSeed: Int,
     val lastError: String?,
 )
 
 /**
- * Owns Twidget's optional self-targeted runtime resource overlay.
- *
- * Samsung's theming metadata remains the source for [AppPaletteMode.SYSTEM].
- * Android 14's public fabricated-overlay API supplies the two app-owned modes
- * without modifying the device palette or any other package.
+ * Leaves Samsung's system palette overlays in control in SYSTEM mode. Custom
+ * accents use an in-process resource table, without declaring overlayable groups:
+ * a named overlayable group prevents Samsung's unnamed SESL overlay from loading.
  */
 @SuppressLint("ApplySharedPref", "UseKtx")
 object AppPaletteManager {
@@ -65,7 +62,6 @@ object AppPaletteManager {
     private const val KEY_PENDING_WIDGET_REFRESH = "pending_widget_refresh"
     private const val KEY_LAST_ERROR = "last_error"
     private const val OVERLAY_NAME = "twidget_custom_palette"
-    private const val OVERLAYABLE_NAME = "TwidgetPalette"
     private const val DEFAULT_SEED = 0xFF387AFF.toInt()
 
     val isSupported: Boolean
@@ -90,7 +86,7 @@ object AppPaletteManager {
             return PaletteApplyResult(
                 success = false,
                 changed = false,
-                error = "Custom resource overlays require Android 14 or newer.",
+                error = "Custom palettes require Android 14 or newer.",
             )
         }
         prefs(context).edit()
@@ -100,23 +96,20 @@ object AppPaletteManager {
         return reconcile(context)
     }
 
-    /** Ensures a persisted custom overlay survives process starts and updates. */
+    /** Migrates old self-overlays, then applies the saved app-local palette. */
     fun reconcile(context: Context): PaletteApplyResult {
         if (!isSupported) return PaletteApplyResult(success = true, changed = false)
-        val overlayResult = Api34.reconcile(
-            context.applicationContext,
-            mode(context),
-            customSeed(context),
-        )
-        if (!overlayResult.success) return overlayResult
-        val loaderResult = attachResources(context)
-        return if (loaderResult.success) overlayResult else loaderResult.copy(changed = overlayResult.changed)
+        return runCatching {
+            Api34.removeLegacyOverlays(context.applicationContext)
+            attachResources(context)
+        }.getOrElse { failure(context, it.message ?: it.javaClass.simpleName) }
     }
 
-    /** Adds the persisted self-overlay to this context's Resources instance. */
+    /** Attach the custom table to application and activity resources, or remove it for SYSTEM. */
     fun attachResources(context: Context): PaletteApplyResult {
         if (!isSupported) return PaletteApplyResult(success = true, changed = false)
-        return Api34.attachResources(context, mode(context))
+        return runCatching { Api34.attachResources(context, mode(context)) }
+            .getOrElse { failure(context, it.message ?: it.javaClass.simpleName) }
     }
 
     /** Returns true once after an overlay change, including after a process restart. */
@@ -129,12 +122,12 @@ object AppPaletteManager {
 
     fun debugState(context: Context): PaletteDebugState {
         val store = prefs(context)
-        val overlayDetails = if (isSupported) Api34.overlayDescriptions(context) else emptyList()
+        val loaderDetails = if (isSupported) Api34.loaderDescriptions() else emptyList()
         return PaletteDebugState(
             mode = mode(context),
             supported = isSupported,
-            overlayRegistered = overlayDetails.isNotEmpty(),
-            overlayDetails = overlayDetails,
+            customPaletteApplied = loaderDetails.isNotEmpty(),
+            loaderDetails = loaderDetails,
             customSeed = customSeed(context),
             lastError = store.getString(KEY_LAST_ERROR, null),
         )
@@ -214,160 +207,86 @@ object AppPaletteManager {
 
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private object Api34 {
-        private data class LoadedOverlay(
-            val fingerprint: String,
-            val loader: ResourcesLoader,
-            val provider: ResourcesProvider,
-        )
+        private data class LoadedPalette(val fingerprint: String, val loader: ResourcesLoader)
+        private var active: LoadedPalette? = null
+        private val attachedResources = WeakHashMap<Resources, Boolean>()
 
-        private val loadedOverlays = WeakHashMap<Resources, LoadedOverlay>()
-
-        fun reconcile(
-            context: Context,
-            mode: AppPaletteMode,
-            customSeed: Int,
-        ): PaletteApplyResult {
-            val manager = context.getSystemService(OverlayManager::class.java)
-                ?: return failure(context, "Android's overlay manager is unavailable.")
-            val registeredNames = registeredOverlayNames(manager, context.packageName)
-            if (mode == AppPaletteMode.SYSTEM) {
-                if (registeredNames.isEmpty()) {
-                    clearAppliedState(context)
-                    return PaletteApplyResult(success = true, changed = false)
-                }
-                return runCatching {
-                    val transaction = OverlayManagerTransaction.newInstance()
-                    registeredNames.forEach { name ->
-                        transaction.unregisterFabricatedOverlay(overlayIdentifier(context, name))
-                    }
-                    markOverlayChangePending(context, null)
-                    manager.commit(transaction)
-                    PaletteApplyResult(success = true, changed = true)
-                }.getOrElse { failure(context, it.message ?: it.javaClass.simpleName) }
-            }
-
-            val palette = if (mode == AppPaletteMode.TWIDGET_BLUE) {
-                twidgetBluePalette()
-            } else {
-                paletteFromSeed(customSeed)
-            }
-            val fingerprint = listOf(
-                mode.storedValue,
-                palette.seed,
-                palette.primaryLight,
-                palette.primaryDark,
-                palette.controlLight,
-                palette.controlDark,
-                context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode,
-            ).joinToString(":")
-            val applied = prefs(context).getString(KEY_APPLIED_FINGERPRINT, null)
-            if (registeredNames.isNotEmpty() && applied == fingerprint) {
-                return PaletteApplyResult(success = true, changed = false)
-            }
-
-            return runCatching {
-                val overlay = buildOverlay(context, palette)
-                val transaction = OverlayManagerTransaction.newInstance()
-                registeredNames.filter { it != OVERLAY_NAME }.forEach { name ->
-                    transaction.unregisterFabricatedOverlay(overlayIdentifier(context, name))
-                }
-                transaction.registerFabricatedOverlay(overlay)
-                markOverlayChangePending(context, fingerprint)
-                manager.commit(transaction)
-                PaletteApplyResult(success = true, changed = true)
-            }.getOrElse { failure(context, it.message ?: it.javaClass.simpleName) }
-        }
-
-        fun overlayDescriptions(context: Context): List<String> {
-            val manager = context.getSystemService(OverlayManager::class.java) ?: return emptyList()
-            return runCatching {
-                manager.getOverlayInfosForTarget(context.packageName)
-                    .filter { isOwnedOverlayName(it.overlayName) }
-                    .map { it.toString() }
-            }.getOrDefault(emptyList())
-        }
-
-        fun attachResources(context: Context, mode: AppPaletteMode): PaletteApplyResult {
-            val resources = context.resources
-            val appliedFingerprint = prefs(context).getString(KEY_APPLIED_FINGERPRINT, null)
-            synchronized(loadedOverlays) {
-                val current = loadedOverlays[resources]
-                if (mode != AppPaletteMode.SYSTEM &&
-                    appliedFingerprint != null &&
-                    current?.fingerprint == appliedFingerprint
-                ) {
-                    return PaletteApplyResult(success = true, changed = false)
-                }
-
-                current?.let { loaded ->
-                    resources.removeLoaders(loaded.loader)
-                    runCatching { loaded.provider.close() }
-                    loadedOverlays.remove(resources)
-                }
-                if (mode == AppPaletteMode.SYSTEM) {
-                    clearError(context)
-                    return PaletteApplyResult(success = true, changed = current != null)
-                }
-
-                val manager = context.getSystemService(OverlayManager::class.java)
-                    ?: return loaderFailure(context, "Android's overlay manager is unavailable.")
-                val info = manager.getOverlayInfosForTarget(context.packageName)
-                    .firstOrNull { isOwnedOverlayName(it.overlayName) }
-                    ?: return loaderFailure(context, "The custom palette overlay is not registered.")
-                return runCatching {
-                    val provider = ResourcesProvider.loadOverlay(info)
-                    val loader = ResourcesLoader().apply { addProvider(provider) }
-                    resources.addLoaders(loader)
-                    loadedOverlays[resources] = LoadedOverlay(
-                        fingerprint = appliedFingerprint.orEmpty(),
-                        loader = loader,
-                        provider = provider,
-                    )
-                    clearError(context)
-                    PaletteApplyResult(success = true, changed = true)
-                }.getOrElse { error ->
-                    loaderFailure(context, error.message ?: error.javaClass.simpleName)
-                }
-            }
-        }
-
-        private fun registeredOverlayNames(manager: OverlayManager, packageName: String): List<String> =
-            manager.getOverlayInfosForTarget(packageName)
+        fun removeLegacyOverlays(context: Context) {
+            val manager = context.getSystemService(OverlayManager::class.java) ?: return
+            val names = manager.getOverlayInfosForTarget(context.packageName)
                 .mapNotNull { it.overlayName }
-                .filter(::isOwnedOverlayName)
-
-        private fun isOwnedOverlayName(name: String?): Boolean =
-            name == OVERLAY_NAME || name?.startsWith("${OVERLAY_NAME}_") == true
-
-        private fun buildOverlay(
-            context: Context,
-            palette: AppAccentPalette,
-        ): FabricatedOverlay =
-            FabricatedOverlay(OVERLAY_NAME, context.packageName).apply {
-                setTargetOverlayable(OVERLAYABLE_NAME)
-                addColor("sesl_blue_color_light", palette.primaryLight)
-                addColor("sesl_blue_color_dark", palette.primaryDark)
-                addColor("sesl_blue_dark_color_light", palette.controlLight)
-                addColor("sesl_blue_dark_color_dark", palette.controlDark)
-                addColor("sesl_primary_color_light", palette.primaryLight)
-                addColor("sesl_primary_color_dark", palette.primaryDark)
-                addColor("sesl_primary_dark_color_light", palette.controlLight)
-                addColor("sesl_primary_dark_color_dark", palette.controlDark)
-                addColor("sesl_control_activated_color", palette.controlLight)
-                addColor("oui_des_floating_action_bar_selected_text_color", palette.primaryLight)
+                .filter { it == OVERLAY_NAME || it.startsWith("${OVERLAY_NAME}_") }
+            if (names.isEmpty()) return
+            val transaction = OverlayManagerTransaction.newInstance()
+            names.forEach { name ->
+                transaction.unregisterFabricatedOverlay(FabricatedOverlay(name, context.packageName).identifier)
             }
-
-        private fun FabricatedOverlay.addColor(name: String, color: Int) {
-            setResourceValue(
-                "color/$name",
-                TypedValue.TYPE_INT_COLOR_ARGB8,
-                color,
-                null,
-            )
+            manager.commit(transaction)
         }
 
-        private fun overlayIdentifier(context: Context, overlayName: String) =
-            FabricatedOverlay(overlayName, context.packageName).identifier
+        @Synchronized
+        fun loaderDescriptions(): List<String> = active?.let {
+            listOf("App-local colour table: ${it.fingerprint}")
+        } ?: emptyList()
+
+        @Synchronized
+        fun attachResources(context: Context, mode: AppPaletteMode): PaletteApplyResult {
+            val palette = when (mode) {
+                AppPaletteMode.SYSTEM -> null
+                AppPaletteMode.TWIDGET_BLUE -> twidgetBluePalette()
+                AppPaletteMode.CUSTOM -> paletteFromSeed(customSeed(context))
+            }
+            val fingerprint = palette?.let { "local-v1:${mode.storedValue}:${it.seed}" }
+            val changed = prefs(context).getString(KEY_APPLIED_FINGERPRINT, null) != fingerprint
+            if (active?.fingerprint != fingerprint) {
+                // Create the replacement before removing the currently working table.
+                val replacement = palette?.let {
+                    LoadedPalette(requireNotNull(fingerprint),
+                        checkNotNull(TwidgetPaletteLoader.create(context, colorOverrides(context, it))) {
+                            "Unable to create the custom palette resource table."
+                        })
+                }
+                active?.loader?.let { loader ->
+                    attachedResources.keys.toList().forEach { resources ->
+                        resources.removeLoaders(loader)
+                    }
+                    // Also clears overrides in any configuration context that inherited this loader.
+                    val providers = loader.providers.toList()
+                    loader.clearProviders()
+                    providers.forEach { it.close() }
+                }
+                attachedResources.clear()
+                active = replacement
+            }
+            active?.loader?.let { loader ->
+                listOf(context.applicationContext.resources, context.resources).distinct().forEach { resources ->
+                    // addLoaders ignores loaders already attached (including inherited ones).
+                    resources.addLoaders(loader)
+                    attachedResources[resources] = true
+                }
+            }
+            if (changed) markOverlayChangePending(context, fingerprint) else clearError(context)
+            return PaletteApplyResult(success = true, changed = changed)
+        }
+
+        @Suppress("DiscouragedApi")
+        private fun colorOverrides(context: Context, palette: AppAccentPalette): Map<Int, Int> =
+            mapOf(
+                "sesl_blue_color_light" to palette.primaryLight,
+                "sesl_blue_color_dark" to palette.primaryDark,
+                "sesl_blue_dark_color_light" to palette.controlLight,
+                "sesl_blue_dark_color_dark" to palette.controlDark,
+                "sesl_primary_color_light" to palette.primaryLight,
+                "sesl_primary_color_dark" to palette.primaryDark,
+                "sesl_primary_dark_color_light" to palette.controlLight,
+                "sesl_primary_dark_color_dark" to palette.controlDark,
+                "sesl_control_activated_color" to palette.controlLight,
+                "oui_des_floating_action_bar_selected_text_color" to palette.primaryLight,
+            ).map { (name, color) ->
+                val id = context.resources.getIdentifier(name, "color", context.packageName)
+                check(id != 0) { "Missing palette colour resource: $name" }
+                id to color
+            }.toMap()
     }
 
     private fun failure(context: Context, message: String): PaletteApplyResult {
@@ -379,11 +298,6 @@ object AppPaletteManager {
         return PaletteApplyResult(success = false, changed = false, error = message)
     }
 
-    private fun loaderFailure(context: Context, message: String): PaletteApplyResult {
-        prefs(context).edit().putString(KEY_LAST_ERROR, message).apply()
-        return PaletteApplyResult(success = false, changed = false, error = message)
-    }
-
     private fun markOverlayChangePending(context: Context, fingerprint: String?) {
         val editor = prefs(context).edit()
         if (fingerprint == null) editor.remove(KEY_APPLIED_FINGERPRINT)
@@ -392,11 +306,6 @@ object AppPaletteManager {
             .putBoolean(KEY_PENDING_WIDGET_REFRESH, true)
             .remove(KEY_LAST_ERROR)
             .commit()
-    }
-
-    private fun clearAppliedState(context: Context) {
-        prefs(context).edit().remove(KEY_APPLIED_FINGERPRINT).apply()
-        clearError(context)
     }
 
     private fun clearError(context: Context) {

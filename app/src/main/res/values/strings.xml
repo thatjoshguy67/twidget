@@ -418,7 +418,7 @@
     <string name="debug_palette_generated">Generated roles</string>
     <string name="debug_palette_resolved">Resolved resources</string>
     <string name="debug_palette_requires_android_14">Custom palettes require Android 14 or newer</string>
-    <string name="debug_palette_overlay_registered">Overlay registered</string>
+    <string name="debug_palette_overlay_registered">Custom palette active</string>
     <string name="debug_palette_overlay_not_registered">System-managed</string>
     <string name="debug_palette_overlay_unsupported">Overlay unsupported</string>
     <string name="debug_palette_apply_failed">Couldn’t apply palette: %1$s</string>

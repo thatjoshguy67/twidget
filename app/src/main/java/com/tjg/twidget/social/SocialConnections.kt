@@ -92,7 +92,7 @@ object SocialConnections {
     }
 
     fun redeem(context: Context, uri: Uri): Pair<SocialPlatform, JSONObject> {
-        require(uri.scheme == "twidget" && uri.host == "oauth" && uri.fragment == null)
+        require(validCallbackAddress(uri))
         val pending = JSONObject(SecureCredentialStore.read(context, PENDING))
         val platform = SocialPlatform.fromStorageId(pending.getString("provider"))
         require(uri.path == "/${platform.storageId}" && uri.getQueryParameters("state").size == 1 &&
@@ -110,5 +110,12 @@ object SocialConnections {
         require(tokens.getString("accessToken").isNotBlank())
         tokens.put("flowAdd", pending.optBoolean("flowAdd")).put("flowUpgrade", pending.optBoolean("flowUpgrade"))
         return platform to tokens
+    }
+
+    internal fun validCallbackAddress(uri: Uri): Boolean {
+        // Browsers can inherit Instagram's #_ suffix through the bridge's HTTP redirect.
+        // It carries no credentials; state, expiry and the device proof are still checked above.
+        return uri.scheme == "twidget" && uri.authority == "oauth" &&
+            (uri.fragment == null || (uri.path == "/instagram" && uri.encodedFragment == "_"))
     }
 }

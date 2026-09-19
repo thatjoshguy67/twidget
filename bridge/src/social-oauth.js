@@ -88,30 +88,48 @@ function githubTokens(data) {
     refreshToken: data.refresh_token, refreshExpiresAt: Date.now() + data.refresh_token_expires_in * 1000 };
 }
 
+class TokenExchangeError extends Error {
+  constructor(stage, reason, status = null, data = null) {
+    super("exchange");
+    // Only fixed labels and numeric codes are safe to log. Never retain provider text or tokens.
+    this.diagnostic = { stage, reason, status,
+      code: Number.isSafeInteger(data?.error?.code) ? data.error.code : null,
+      subcode: Number.isSafeInteger(data?.error?.error_subcode) ? data.error.error_subcode : null };
+  }
+}
+
+async function tokenResponse(request, url, options, stage) {
+  let response;
+  try { response = await request(url, options); }
+  catch { throw new TokenExchangeError(stage, "network"); }
+  let data;
+  try { data = await response.json(); }
+  catch { throw new TokenExchangeError(stage, "invalid_json", response.status); }
+  if (!response.ok || data?.error) throw new TokenExchangeError(stage, "provider_rejected", response.status, data);
+  if (typeof data?.access_token !== "string" || !data.access_token) throw new TokenExchangeError(stage, "missing_token", response.status);
+  return data;
+}
+
 async function providerToken(provider, code, config, request) {
   const params = new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret,
     redirect_uri: config.redirect, code });
   if (provider === "instagram") params.set("grant_type", "authorization_code");
-  const response = await request(provider === "github" ? "https://github.com/login/oauth/access_token" : "https://api.instagram.com/oauth/access_token", {
+  const data = await tokenResponse(request, provider === "github" ? "https://github.com/login/oauth/access_token" : "https://api.instagram.com/oauth/access_token", {
     method: "POST", redirect: "error", signal: AbortSignal.timeout(15000),
     headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" }, body: params.toString(),
-  });
-  if (!response.ok) throw new Error("exchange");
-  const data = await response.json();
-  if (typeof data.access_token !== "string" || !data.access_token || data.error) throw new Error("exchange");
+  }, "authorization_code");
   if (provider === "github") return githubTokens(data);
   // Instagram's short token lasts one hour; exchange it before returning to the device.
   const longUrl = new URL("https://graph.instagram.com/access_token");
   longUrl.search = new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: config.clientSecret, access_token: data.access_token }).toString();
-  const longResponse = await request(longUrl, { redirect: "error", signal: AbortSignal.timeout(15000) });
-  if (!longResponse.ok) throw new Error("exchange");
-  const longToken = await longResponse.json();
-  if (typeof longToken.access_token !== "string" || !Number.isSafeInteger(longToken.expires_in) || longToken.expires_in <= 0) throw new Error("exchange");
+  const longToken = await tokenResponse(request, longUrl, { redirect: "error", signal: AbortSignal.timeout(15000) }, "long_lived_token");
+  if (!Number.isSafeInteger(longToken.expires_in) || longToken.expires_in <= 0) throw new TokenExchangeError("long_lived_token", "invalid_expiry");
   return { accessToken: longToken.access_token, expiresAt: Date.now() + longToken.expires_in * 1000 };
 }
 
-/** No provider tokens or errors enter redirect URLs, application logs, or profile caches. */
-export function createSocialOAuthRouter({ env = process.env, redis = null, request = fetch, store = null } = {}) {
+/** No provider tokens or error text enter redirect URLs, application logs, or profile caches. */
+export function createSocialOAuthRouter({ env = process.env, redis = null, request = fetch, store = null,
+  diagnostic = entry => console.info(JSON.stringify({ event: "social_oauth_callback", ...entry })) } = {}) {
   const router = express.Router();
   const exchange = store || new OAuthExchangeStore({ redis, key: Buffer.from(env.SOCIAL_OAUTH_TICKET_KEY || "", "base64") });
   router.use((req, res, next) => /^(\/github|\/instagram)\//.test(req.path) ? next() : next("router"));
@@ -146,7 +164,11 @@ export function createSocialOAuthRouter({ env = process.env, redis = null, reque
           const tokens = await providerToken(provider, req.query.code, config, request);
           const ticket = await exchange.put(`ticket:${provider}`, tokens, TICKET_TTL, pending.challenge);
           returnUrl.searchParams.set("ticket", ticket);
-        } catch { returnUrl.searchParams.set("error", "connection_failed"); }
+          diagnostic({ provider, result: "ticket_issued" });
+        } catch (error) {
+          diagnostic({ provider, result: "failed", ...(error instanceof TokenExchangeError ? error.diagnostic : { stage: "ticket", reason: "unavailable" }) });
+          returnUrl.searchParams.set("error", "connection_failed");
+        }
       }
       return res.redirect(302, returnUrl.toString());
     } catch { return res.status(503).send("Unable to connect. Return to Twidget and try again."); }

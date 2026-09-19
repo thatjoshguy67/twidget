@@ -392,6 +392,7 @@
     <string name="debug_palette_apply_failed">Farbpalette konnte nicht angewandt werden: %1$s</string>
     <string name="debug_palette_unknown_error">Unbekannter Overlay-Fehler</string>
     <string name="rerun_onboarding">Einrichtung wiederholen</string>
+    <string name="rerun_update_onboarding">Update-Einführung wiederholen</string>
     <string name="rerun_onboarding_summary">Ersteinrichtung zu Testzwecken neu starten</string>
     <string name="dummy_profile">Dummy-Profil</string>
     <string name="add_dummy_profile">Dummy-Profil hinzufügen</string>

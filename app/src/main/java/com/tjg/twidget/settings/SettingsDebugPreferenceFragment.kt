@@ -18,6 +18,7 @@ import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.OnboardingActivity
+import com.tjg.twidget.social.SocialOnboardingActivity
 import com.tjg.twidget.ui.AppPaletteManager
 import com.tjg.twidget.ui.AppPaletteMode
 import com.tjg.twidget.ui.InsetPreferenceFragment
@@ -64,6 +65,15 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         })
         screen.addPreference(category(0))
 
+        screen.addPreference(Preference(context).apply {
+            key = "debug_rerun_update_onboarding"
+            title = getString(R.string.rerun_update_onboarding)
+            setOnPreferenceClickListener {
+                startActivity(Intent(context, SocialOnboardingActivity::class.java)
+                    .putExtra(SocialOnboardingActivity.EXTRA_UPGRADE, true))
+                true
+            }
+        })
         screen.addPreference(Preference(context).apply {
             key = "debug_rerun_onboarding"
             title = getString(R.string.rerun_onboarding)

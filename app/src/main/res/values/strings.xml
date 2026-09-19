@@ -424,6 +424,7 @@
     <string name="debug_palette_apply_failed">Couldn’t apply palette: %1$s</string>
     <string name="debug_palette_unknown_error">Unknown overlay error</string>
     <string name="rerun_onboarding">Re-run onboarding</string>
+    <string name="rerun_update_onboarding">Re-run update onboarding</string>
     <string name="rerun_onboarding_summary">Start the first launch flow again</string>
     <string name="dummy_profile">Dummy profile</string>
     <string name="add_dummy_profile">Add dummy profile</string>

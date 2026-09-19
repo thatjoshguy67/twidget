@@ -8,7 +8,7 @@ const key = crypto.randomBytes(32);
 const verifier = crypto.randomBytes(32).toString("base64url");
 const config = { SOCIAL_OAUTH_TICKET_KEY: key.toString("base64"), GITHUB_OAUTH_CLIENT_ID: "test-id", GITHUB_OAUTH_CLIENT_SECRET: "test-secret" };
 async function server(t, options = {}) {
-  const app = express(); app.use("/oauth", createSocialOAuthRouter(options));
+  const app = express(); app.use("/oauth", createSocialOAuthRouter({ diagnostic: () => {}, ...options }));
   const s = app.listen(0, "127.0.0.1"); await new Promise(r => s.once("listening", r));
   t.after(() => new Promise(r => s.close(r)));
   return `http://127.0.0.1:${s.address().port}/oauth`;
@@ -82,7 +82,9 @@ test("provider errors never expose credentials or upstream messages", async t =>
 });
 test("Instagram exchanges the short token before issuing a ticket", async t => {
   const calls = [];
+  const diagnostics = [];
   const base = await server(t, { env: { ...config, INSTAGRAM_OAUTH_CLIENT_ID: "ig", INSTAGRAM_OAUTH_CLIENT_SECRET: "ig-secret" },
+    diagnostic: entry => diagnostics.push(entry),
     request: async (url) => { calls.push(String(url)); return Response.json(calls.length === 1 ? { access_token: "short" } : { access_token: "long", expires_in: 5184000 }); } });
   const start = await (await post(`${base}/instagram/start`, { challenge: challengeFor(verifier) })).json();
   assert.equal(new URL(start.authorizationUrl).searchParams.get("scope"), "instagram_business_basic");
@@ -91,6 +93,23 @@ test("Instagram exchanges the short token before issuing a ticket", async t => {
   const redeemed = await (await post(`${base}/instagram/redeem`, { ticket, verifier })).json();
   assert.equal(redeemed.accessToken, "long"); assert.ok(redeemed.expiresAt > Date.now());
   assert.equal(calls.length, 2);
+  assert.deepEqual(diagnostics, [{ provider: "instagram", result: "ticket_issued" }]);
+});
+test("Instagram failure diagnostics identify the stage without exposing upstream secrets", async t => {
+  for (const failingStage of [1, 2]) {
+    let calls = 0; const diagnostics = [];
+    const base = await server(t, { env: { ...config, INSTAGRAM_OAUTH_CLIENT_ID: "ig", INSTAGRAM_OAUTH_CLIENT_SECRET: "ig-secret" },
+      diagnostic: entry => diagnostics.push(entry),
+      request: async () => ++calls === failingStage
+        ? Response.json({ error: { code: 190, error_subcode: 123, message: "secret-code-and-token", fbtrace_id: "private" } }, { status: 400 })
+        : Response.json({ access_token: "secret-short-token" }) });
+    const { state } = await (await post(`${base}/instagram/start`, { challenge: challengeFor(verifier) })).json();
+    const response = await fetch(`${base}/instagram/callback?code=secret-code&state=${state}`, { redirect: "manual" });
+    assert.equal(new URL(response.headers.get("location")).searchParams.get("error"), "connection_failed");
+    assert.deepEqual(diagnostics, [{ provider: "instagram", result: "failed", stage: failingStage === 1 ? "authorization_code" : "long_lived_token",
+      reason: "provider_rejected", status: 400, code: 190, subcode: 123 }]);
+    assert.ok(!JSON.stringify(diagnostics).includes("secret"));
+  }
 });
 test("social router leaves legacy X OAuth routes alone", async t => {
   const base = await server(t, { env: config }); assert.equal((await fetch(`${base}/x/start`)).status, 404);

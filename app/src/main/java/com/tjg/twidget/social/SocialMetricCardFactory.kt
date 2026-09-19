@@ -16,22 +16,18 @@ import java.util.Locale
 /** Bind provider data into the same metric card used by the original dashboard. */
 object SocialMetricCardFactory {
     fun audience(context: Context, catalog: SocialCatalog, profile: SocialProfile, observations: List<MetricObservation>): View {
-        val root = LayoutInflater.from(context).inflate(R.layout.metric_card_followers, null, false) as android.widget.LinearLayout
+        val root = LayoutInflater.from(context).inflate(R.layout.metric_card_audience, null, false)
         val total = AudienceAggregation.total(profile, catalog.accountsById, observations, System.currentTimeMillis(), DAY)
         root.tag = "combined_audience"
         root.findViewById<TextView>(R.id.followers_value).text = total.value?.let {
             (if (total.approximate) "≈ " else "") + NumberFormat.getIntegerInstance().format(it)
         } ?: context.getString(R.string.social_partial)
-        root.findViewById<TextView>(R.id.metric_label).setText(R.string.social_all_audience)
-        root.findViewById<View>(R.id.followers_delta).visibility = View.GONE
-        root.findViewById<View>(R.id.followers_chart).visibility = View.GONE
-        root.addView(TextView(context).apply {
-            setText(R.string.social_audience_note)
-            textSize = 12f
-            setTextColor(context.getColor(R.color.oneui_text_secondary))
-            val density = resources.displayMetrics.density
-            setPadding((20 * density).toInt(), (10 * density).toInt(), (20 * density).toInt(), (12 * density).toInt())
-        })
+        if (total.value == null) root.findViewById<TextView>(R.id.followers_value).textSize = 16f
+        root.findViewById<View>(R.id.audience_info).setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(context).setTitle(R.string.social_all_audience)
+                .setMessage(context.getString(R.string.social_audience_note) + "\n\n" + context.getString(R.string.social_audience_precision))
+                .setPositiveButton(android.R.string.ok, null).show()
+        }
         return root
     }
 
@@ -49,8 +45,12 @@ object SocialMetricCardFactory {
             .sortedBy { it.observedAt }
         val latest = samples.lastOrNull()
         root.tag = "metric:${account.id}:${metric.storageId}"
-        root.findViewById<ImageView>(R.id.metric_platform_icon).setImageDrawable(account.platform.icon(context))
-        root.findViewById<TextView>(R.id.metric_label).text = "${context.getString(metric.labelRes)} · ${account.platform.label}"
+        root.findViewById<ImageView>(R.id.metric_type_icon).setImageResource(metric.iconRes)
+        root.findViewById<ImageView>(R.id.metric_platform_icon).apply {
+            visibility = View.VISIBLE; setImageDrawable(account.platform.icon(context))
+            contentDescription = account.platform.label
+        }
+        root.findViewById<TextView>(R.id.metric_label).text = context.getString(metric.labelRes)
         root.findViewById<TextView>(R.id.followers_value).text = latest?.displayValue(context) ?: context.getString(R.string.social_unavailable)
         root.contentDescription = "${account.platform.label} · @${account.handle} · ${context.getString(metric.labelRes)}"
         val baseline = samples.lastOrNull { it.observedAt <= now - DAY && it.observedAt >= now - 2 * DAY }
@@ -59,12 +59,34 @@ object SocialMetricCardFactory {
         root.findViewById<TextView>(R.id.followers_delta).apply {
             visibility = if (delta == null) View.GONE else View.VISIBLE
             text = delta?.let { (if (it > 0) "+" else "") + NumberFormat.getIntegerInstance().format(it) }.orEmpty()
+            contentDescription = delta?.let { context.getString(R.string.social_daily_change, text) }
             setTextColor(context.getColor(if ((delta ?: 0) < 0) R.color.metric_red else R.color.metric_green))
         }
         val recent = samples.filter { it.value != null && it.observedAt >= now - 7 * DAY }
             .groupBy { it.observedAt / DAY }.values.map { it.last() }
-        root.findViewById<MetricChartView>(R.id.followers_chart).setSeries(recent.map {
+        val status = when {
+            latest == null || latest.value == null -> context.getString(R.string.social_unavailable)
+            now - latest.observedAt > DAY -> context.getString(R.string.social_updated_at,
+                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(latest.observedAt)))
+            recent.size < 2 -> context.getString(R.string.social_history_pending)
+            delta != null -> context.getString(R.string.social_daily_change,
+                (if (delta > 0) "+" else "") + NumberFormat.getIntegerInstance().format(delta))
+            else -> null
+        }
+        root.findViewById<MetricChartView>(R.id.followers_chart).apply {
+            visibility = if (recent.size < 2) View.GONE else View.VISIBLE
+        }.setSeries(recent.map {
             ImportedChartPoint(java.text.SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(it.observedAt)), requireNotNull(it.value))
+        })
+        if (status != null) (root as android.widget.LinearLayout).addView(TextView(context).apply {
+            text = status; textSize = 12f
+            setTextColor(context.getColor(R.color.oneui_text_secondary))
+            val inset = (16 * resources.displayMetrics.density).toInt()
+            setPadding(inset, inset / 2, inset, inset)
+            if (recent.size < 2) {
+                gravity = android.view.Gravity.CENTER
+                layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+            }
         })
         return root
     }

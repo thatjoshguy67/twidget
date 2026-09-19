@@ -13,6 +13,14 @@ import androidx.preference.SeslSwitchPreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tjg.twidget.social.label
+import com.tjg.twidget.social.icon
+import com.tjg.twidget.social.iconRes
+import com.tjg.twidget.social.labelRes
+import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.SocialRepository
+import com.tjg.twidget.social.SocialMetricCardFactory
+import com.tjg.twidget.social.ProfileBriefEngine
+import androidx.preference.Preference
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefContentCategory
 import com.tjg.twidget.brief.BriefSettingsStore
@@ -42,77 +50,110 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
-        screen.addPreference(PreferenceCategory(context).apply { title = "Twitter/X" })
-
-        screen.addPreference(categorySwitch(BriefContentCategory.TOP_TWEET, R.string.brief_content_top_tweet))
-        screen.addPreference(categorySwitch(BriefContentCategory.WORST_TWEET, R.string.brief_content_worst_tweet))
-        screen.addPreference(explainedCategorySwitch(
-            BriefContentCategory.POST_FOLLOW_THROUGH,
-            R.string.brief_content_post_follow_through,
-            R.string.brief_post_follow_through_explainer,
-        ))
-        screen.addPreference(explainedCategorySwitch(
-            BriefContentCategory.POSTING_GUIDANCE,
-            R.string.brief_content_posting_guidance,
-            R.string.brief_posting_guidance_explainer,
-        ))
-
-        screen.addPreference(spacerCategory())
-        screen.addPreference(categorySwitch(BriefContentCategory.FOLLOWERS, R.string.brief_content_followers))
-        screen.addPreference(categorySwitch(BriefContentCategory.TOP_FOLLOWERS, R.string.brief_content_top_followers))
-
-        screen.addPreference(spacerCategory())
-        screen.addPreference(navigableCategorySwitch(
-            category = BriefContentCategory.TWEET_ACTIVITY,
-            titleRes = R.string.brief_content_tweet_activity,
-        ) {
-            AlertDialog.Builder(requireContext())
-                .setTitle(R.string.brief_content_tweet_activity)
-                .setMessage(R.string.brief_tweet_activity_explainer)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
+        val dependencies = mutableListOf<Pair<Preference, String>>()
+        val platforms = SocialRepository(context).use { it.catalog() }.accounts.map { it.platform }.toSet().toMutableSet()
+        if (TwidgetStore.settings(context).username.isNotBlank()) platforms += SocialPlatform.X
+        screen.addPreference(Preference(context).apply {
+            setSummary(R.string.social_content_scope); isSelectable = false; isPersistent = false
         })
-        screen.addPreference(categorySwitch(
-            BriefContentCategory.SCHEDULED_TWEETS,
-            R.string.brief_content_scheduled_tweets,
-        ))
-        screen.addPreference(explainedCategorySwitch(
-            BriefContentCategory.SCHEDULE_HEALTH,
-            R.string.brief_content_schedule_health,
-            R.string.brief_schedule_health_explainer,
-        ))
+        if (SocialPlatform.X in platforms) {
+            screen.addPreference(PreferenceCategory(context).apply { title = SocialPlatform.X.label })
+            screen.addPreference(platformSwitch(SocialPlatform.X))
 
-        screen.addPreference(spacerCategory())
-        screen.addPreference(navigableCategorySwitch(
-            category = BriefContentCategory.ACCOUNT_GOALS,
-            titleRes = R.string.brief_content_account_goals,
-        ) {
-            val account = TwidgetStore.settings(requireContext()).username
-            if (account.isNotBlank()) {
-                requireActivity().startRightSidePopOverActivity(
-                    MilestoneGoalActivity.intent(requireContext(), account),
-                )
-            }
-        })
+            screen.addPreference(categorySwitch(BriefContentCategory.TOP_TWEET, R.string.brief_content_top_tweet))
+            screen.addPreference(categorySwitch(BriefContentCategory.WORST_TWEET, R.string.brief_content_worst_tweet))
+            screen.addPreference(explainedCategorySwitch(
+                BriefContentCategory.POST_FOLLOW_THROUGH,
+                R.string.brief_content_post_follow_through,
+                R.string.brief_post_follow_through_explainer,
+            ))
+            screen.addPreference(explainedCategorySwitch(
+                BriefContentCategory.POSTING_GUIDANCE,
+                R.string.brief_content_posting_guidance,
+                R.string.brief_posting_guidance_explainer,
+            ))
 
-        screen.addPreference(PreferenceCategory(requireContext()).apply { title = getString(R.string.social_accounts) })
-        val socialChoices = com.tjg.twidget.social.SocialPlatform.entries.map { it.storageId to it.label }
-        socialChoices.forEach { (id, name) ->
-            screen.addPreference(SwitchPreferenceCompat(requireContext()).apply {
-                key = "social_brief_$id"; title = name; isPersistent = false
-                isChecked = com.tjg.twidget.social.ProfileBriefEngine.enabled(context, id)
-                setOnPreferenceChangeListener { _, value -> com.tjg.twidget.social.ProfileBriefEngine.setEnabled(context, id, value == true); true }
+            screen.addPreference(categorySwitch(BriefContentCategory.FOLLOWERS, R.string.brief_content_followers))
+            screen.addPreference(categorySwitch(BriefContentCategory.TOP_FOLLOWERS, R.string.brief_content_top_followers))
+
+            screen.addPreference(navigableCategorySwitch(
+                category = BriefContentCategory.TWEET_ACTIVITY,
+                titleRes = R.string.brief_content_tweet_activity,
+            ) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.brief_content_tweet_activity)
+                    .setMessage(R.string.brief_tweet_activity_explainer)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
             })
+            screen.addPreference(categorySwitch(
+                BriefContentCategory.SCHEDULED_TWEETS,
+                R.string.brief_content_scheduled_tweets,
+            ))
+            screen.addPreference(explainedCategorySwitch(
+                BriefContentCategory.SCHEDULE_HEALTH,
+                R.string.brief_content_schedule_health,
+                R.string.brief_schedule_health_explainer,
+            ))
+
+            screen.addPreference(navigableCategorySwitch(
+                category = BriefContentCategory.ACCOUNT_GOALS,
+                titleRes = R.string.brief_content_account_goals,
+            ) {
+                val account = TwidgetStore.settings(requireContext()).username
+                if (account.isNotBlank()) {
+                    requireActivity().startRightSidePopOverActivity(
+                        MilestoneGoalActivity.intent(requireContext(), account),
+                    )
+                }
+            })
+
         }
-        listOf("combined_audience" to R.string.social_all_audience, "github_repositories" to R.string.social_repositories).forEach { (id, label) ->
-            screen.addPreference(SwitchPreferenceCompat(requireContext()).apply {
-                key = id; setTitle(label); isPersistent = false
-                isChecked = com.tjg.twidget.social.ProfileBriefEngine.enabled(context, id)
-                setOnPreferenceChangeListener { _, value -> com.tjg.twidget.social.ProfileBriefEngine.setEnabled(context, id, value == true); true }
+        SocialPlatform.entries.filter { it != SocialPlatform.X && it in platforms }.forEach { platform ->
+            screen.addPreference(PreferenceCategory(context).apply { title = platform.label })
+            screen.addPreference(platformSwitch(platform))
+            SocialMetricCardFactory.metrics(platform).forEach { metric ->
+                screen.addPreference(SwitchPreferenceCompat(context).apply {
+                    layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
+                    key = "social_brief_${platform.storageId}_${metric.storageId}"
+                    setTitle(metric.labelRes); isPersistent = false
+                    icon = AppCompatResources.getDrawable(context, metric.iconRes)?.mutate()?.also {
+                        DrawableCompat.setTint(it, context.getColor(R.color.oneui_text_primary))
+                    }
+                    isChecked = ProfileBriefEngine.metricEnabled(context, platform, metric)
+                    setOnPreferenceChangeListener { _, value ->
+                        ProfileBriefEngine.setMetricEnabled(context, platform, metric, value == true); true
+                    }
+                    dependencies += this to "social_brief_${platform.storageId}"
+                })
+            }
+        }
+        if (platforms.size > 1) {
+            screen.addPreference(PreferenceCategory(context).apply { setTitle(R.string.social_all_platforms) })
+            screen.addPreference(SwitchPreferenceCompat(context).apply {
+                layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
+                key = "combined_audience"; setTitle(R.string.social_all_audience); isPersistent = false
+                icon = AppCompatResources.getDrawable(context, R.drawable.ic_settings_community)
+                isChecked = ProfileBriefEngine.enabled(context, key)
+                setOnPreferenceChangeListener { _, value -> ProfileBriefEngine.setEnabled(context, key, value == true); true }
             })
         }
         screen.addBottomInset()
         preferenceScreen = screen
+        // SESL resolves dependencies immediately. Publish the complete hierarchy first.
+        for (index in 0 until screen.preferenceCount) {
+            val preference = screen.getPreference(index)
+            if (preference.key?.startsWith("brief_content_") == true) dependencies += preference to "social_brief_x"
+        }
+        dependencies.forEach { (preference, master) -> preference.dependency = master }
+    }
+
+    private fun platformSwitch(platform: SocialPlatform) = SwitchPreferenceCompat(requireContext()).apply {
+        layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
+        key = "social_brief_${platform.storageId}"; title = getString(R.string.social_include_platform, platform.label)
+        icon = platform.icon(context); isPersistent = false
+        isChecked = ProfileBriefEngine.enabled(context, platform.storageId)
+        setOnPreferenceChangeListener { _, value -> ProfileBriefEngine.setEnabled(context, platform.storageId, value == true); true }
     }
 
     private fun categorySwitch(
@@ -186,10 +227,6 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         BriefContentCategory.SCHEDULE_HEALTH -> R.color.metric_green
         BriefContentCategory.FOLLOWERS,
         BriefContentCategory.SCHEDULED_TWEETS -> R.color.oneui_text_primary
-    }
-
-    private fun spacerCategory() = PreferenceCategory(requireContext()).apply {
-        isIconSpaceReserved = false
     }
 
     private fun categoryIcon(category: BriefContentCategory): Int = when (category) {

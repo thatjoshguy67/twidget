@@ -483,8 +483,10 @@ internal class MainDashboardBinder(
         }
         return LayoutInflater.from(activity).inflate(layoutRes, null, false).also { root ->
             if (activity.usesSocialDashboard) {
-                root.findViewById<ImageView>(R.id.metric_platform_icon).setImageDrawable(SocialPlatform.X.icon(activity))
-                root.findViewById<TextView>(R.id.metric_label).text = "${activity.getString(card.labelRes)} · ${SocialPlatform.X.label}"
+                root.findViewById<ImageView>(R.id.metric_platform_icon).apply {
+                    visibility = View.VISIBLE; setImageDrawable(SocialPlatform.X.icon(activity))
+                }
+                root.findViewById<TextView>(R.id.metric_label).setText(card.labelRes)
             }
             bindMetric(
                 root,
@@ -499,6 +501,9 @@ internal class MainDashboardBinder(
                 allowSparseAverage = card == DashboardCardType.FOLLOWERS &&
                     fullHistory.any { it.imported && it.followersKnown },
             )
+            root.findViewById<TextView>(deltaId).apply {
+                if (text.isNotBlank()) text = activity.getString(R.string.social_delta_today, text)
+            }
             if (METRIC_HISTORY_DRILL_DOWN_ENABLED) {
                 val openHistory = {
                     if (!editModeController.editMode) {

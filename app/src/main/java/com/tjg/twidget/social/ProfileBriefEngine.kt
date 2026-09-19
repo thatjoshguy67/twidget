@@ -16,6 +16,14 @@ object ProfileBriefEngine {
     private const val PREFS = "social_brief_content"
     fun enabled(context: Context, key: String) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, true)
     fun setEnabled(context: Context, key: String, enabled: Boolean) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, enabled).apply()
+    fun metricEnabled(context: Context, platform: SocialPlatform, metric: SocialMetric): Boolean {
+        val legacy = metric !in setOf(SocialMetric.STARS, SocialMetric.FORKS) || enabled(context, "github_repositories")
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("${platform.storageId}:${metric.storageId}", legacy)
+    }
+    fun setMetricEnabled(context: Context, platform: SocialPlatform, metric: SocialMetric, enabled: Boolean) =
+        setEnabled(context, "${platform.storageId}:${metric.storageId}", enabled)
+
     fun rebuild(context: Context, profileId: String, xSnapshot: BriefSnapshot? = null): ProfileBrief = SocialRepository(context).use { repository ->
         val catalog = repository.catalog()
         val profile = catalog.profiles.first { it.id == profileId }
@@ -39,7 +47,7 @@ object ProfileBriefEngine {
                 }
             } else {
                 observations.filter { it.accountId == account.id && !it.estimated }.groupBy { it.metric }.forEach { (metric, samples) ->
-                    if (metric in setOf(SocialMetric.STARS, SocialMetric.FORKS) && !enabled(context, "github_repositories")) return@forEach
+                    if (!metricEnabled(context, account.platform, metric)) return@forEach
                     val latest = samples.filter { it.observedAt <= now }.maxByOrNull { it.observedAt } ?: return@forEach
                     val baseline = samples.filter { it.observedAt <= now - 24 * 60 * 60 * 1000L && now - it.observedAt <= 48 * 60 * 60 * 1000L && it.value != null }.maxByOrNull { it.observedAt }
                     val fresh = now - latest.observedAt <= 24 * 60 * 60 * 1000L

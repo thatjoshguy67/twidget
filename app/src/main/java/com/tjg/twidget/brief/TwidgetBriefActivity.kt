@@ -31,6 +31,8 @@ import com.tjg.twidget.R
 import com.tjg.twidget.social.ProfileBriefEngine
 import com.tjg.twidget.social.SocialRepository
 import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.icon
+import com.tjg.twidget.social.label
 import com.tjg.twidget.social.SocialCatalog
 import com.tjg.twidget.social.MetricObservation
 import com.tjg.twidget.social.SocialMetricCardFactory
@@ -507,6 +509,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     ellipsize = TextUtils.TruncateAt.END
                 })
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ImageView(context).apply {
+                setImageDrawable(SocialPlatform.X.icon(context))
+                contentDescription = SocialPlatform.X.label
+            }, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(8) })
         })
 
         addView(primaryText(post.text.ifBlank { post.url }, 14f).apply {

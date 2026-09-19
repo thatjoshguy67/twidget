@@ -201,10 +201,6 @@ class MetricChartView @JvmOverloads constructor(
             averageBounds.second,
         )
 
-        // Draw only as many x-labels as actually fit, keeping the newest one.
-        val maxLabelWidth = labels.maxOf { dateLabelPaint.measureText(it) } + 2f * density
-        val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
-
         // Keep the plot as one softly rounded surface while axes and dates
         // remain outside the clipped region, matching the compact Figma card.
         plotRect.set(left, top, width - right, chartBottom)
@@ -277,13 +273,18 @@ class MetricChartView @JvmOverloads constructor(
             val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
             canvas.drawText(label, labelInset, y + 4f * density, axisLabelPaint)
         }
-        labels.forEachIndexed { index, label ->
-            if ((labels.lastIndex - index) % labelStep == 0) {
-                val x = left + index * barSlot + (barSlot - barWidth) / 2f
-                val labelWidth = dateLabelPaint.measureText(label)
-                val labelX = (x + barWidth / 2f - labelWidth / 2f)
-                    .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
+        // Check the final clamped bounds: the newest label shifts left at the edge.
+        // Slot widths alone can allow it to overlap the preceding date.
+        var nextLabelLeft = width.toFloat()
+        for (index in labels.indices.reversed()) {
+            val label = labels[index]
+            val labelWidth = dateLabelPaint.measureText(label)
+            val x = left + index * barSlot + (barSlot - barWidth) / 2f
+            val labelX = (x + barWidth / 2f - labelWidth / 2f)
+                .coerceIn(left - labelWidth / 2f, (width - right - labelWidth).coerceAtLeast(left - labelWidth / 2f))
+            if (index == labels.lastIndex || labelX + labelWidth + 6f * density <= nextLabelLeft) {
                 canvas.drawText(label, labelX, height - 8f * density, dateLabelPaint)
+                nextLabelLeft = labelX
             }
         }
 

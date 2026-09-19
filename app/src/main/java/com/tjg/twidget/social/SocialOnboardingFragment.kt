@@ -179,7 +179,7 @@ class SocialOnboardingFragment : Fragment() {
                 flex()
             }
             SocialOnboardingActivity.Step.DISPLAY -> with(body) {
-                heading(getString(R.string.social_display_title), getString(R.string.social_display_summary))
+                heading(getString(if (host.editMode) R.string.social_edit_display else R.string.social_display_title), getString(R.string.social_display_summary))
                 val profile = host.catalog.profiles.firstOrNull { it.id == host.editingProfile }
                 val members = profile?.accountIds?.map { host.catalog.accountsById.getValue(it) }.orEmpty()
                 flex()
@@ -207,20 +207,6 @@ class SocialOnboardingFragment : Fragment() {
                 }
                 put(choices, top = 10)
                 put(text(getString(R.string.social_name_source), 14, true).apply { alpha = .65f }, top = 16)
-                val custom = text(host.customName.ifBlank { getString(R.string.social_custom_name) }, 14).apply {
-                    setPadding(8.dp(), 8.dp(), 8.dp(), 8.dp())
-                    setOnClickListener {
-                        val input = AppCompatEditText(ctx).apply {
-                            setSingleLine(); setText(host.customName)
-                            filters = arrayOf(android.text.InputFilter.LengthFilter(100))
-                        }
-                        androidx.appcompat.app.AlertDialog.Builder(ctx).setTitle(R.string.social_custom_name).setView(input)
-                            .setPositiveButton(android.R.string.ok) { _, _ ->
-                                host.customName = input.text.toString().trim()
-                                text = host.customName.ifBlank { getString(R.string.social_custom_name) }
-                            }.setNegativeButton(android.R.string.cancel, null).show()
-                    }
-                }
                 val radios = mutableMapOf<String, AppCompatRadioButton>()
                 members.forEach { account ->
                     val radio = AppCompatRadioButton(ctx).apply {
@@ -233,12 +219,11 @@ class SocialOnboardingFragment : Fragment() {
                         addView(logo(account.platform, 24)); rowText(account.displayName.ifBlank { account.handle })
                         addView(radio, LinearLayout.LayoutParams(32.dp(), 32.dp()))
                         setOnClickListener {
-                            host.nameSource = account.id; host.customName = ""; custom.text = getString(R.string.social_custom_name)
+                            host.nameSource = account.id
                             radios.forEach { (id, button) -> button.isChecked = id == account.id }
                         }
                     }, top = 10)
                 }
-                put(custom, top = 8)
             }
             SocialOnboardingActivity.Step.READY -> with(body) {
                 val profile = host.catalog.profiles.firstOrNull { it.id == host.editingProfile }

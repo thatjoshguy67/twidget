@@ -15,7 +15,7 @@
         android:paddingEnd="16dp">
 
         <ImageView
-            android:id="@+id/metric_platform_icon"
+            android:id="@+id/metric_type_icon"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:contentDescription="@null"
@@ -63,6 +63,14 @@
                 android:textColor="@color/oneui_text_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
+        <ImageView
+            android:id="@+id/metric_platform_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@null"
+            android:visibility="gone"
+            app:tint="@color/oneui_text_primary" />
     </LinearLayout>
 
     <View

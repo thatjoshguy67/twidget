@@ -24,16 +24,16 @@
     <string name="social_custom_name">Eigener Anzeigename</string>
     <string name="social_custom_name_summary">Leer lassen, um den Namen des ausgewählten Kontos zu verwenden.</string>
     <string name="social_ready">Dein Profil ist bereit</string>
-    <string name="social_ready_summary">Deine Konten sind verbunden. Verknüpfte Profile, Anzeigenamen und Bilder kannst du unter Plattformen &amp; Konten verwalten.</string>
-    <string name="social_accounts">Plattformen &amp; Konten</string>
+    <string name="social_ready_summary">Deine Konten sind verbunden. Verknüpfte Profile, Anzeigenamen und Bilder kannst du unter Profile &amp; Konten verwalten.</string>
+    <string name="social_accounts">Profile &amp; Konten</string>
     <string name="social_default">Hauptprofil</string>
     <string name="social_other_profiles">Weitere Profile</string>
     <string name="social_make_default">Als Hauptprofil verwenden</string>
-    <string name="social_unlink">Dieses Konto trennen</string>
+    <string name="social_unlink">In separates Profil verschieben</string>
     <string name="social_remove">Konto entfernen</string>
     <string name="social_remove_message">Dieses Konto und seinen lokal gespeicherten Verlauf entfernen? Seine Widgets müssen anschließend neu eingerichtet werden.</string>
     <string name="social_link_error">Wähle mindestens zwei Profile verschiedener Plattformen.</string>
-    <string name="social_edit_display">Profildarstellung bearbeiten</string>
+    <string name="social_edit_display">Profil bearbeiten</string>
     <string name="social_link_action">Profile verknüpfen</string>
     <string name="social_all_audience">Follower und Abonnenten insgesamt</string>
     <string name="social_audience_note">Dieselben Personen können auf mehreren Plattformen gezählt werden. Diese Zahl entspricht nicht der Anzahl einzelner Personen.</string>
@@ -78,4 +78,15 @@
     <string name="social_youtube_privacy">Deine Kanaldaten kommen direkt von YouTube. Dein Google-Passwort wird nie an Twidget weitergegeben.</string>
     <string name="social_instagram_privacy">Deine Profildaten kommen direkt von Instagram. Dein Instagram-Passwort wird nie an Twidget weitergegeben.</string>
     <string name="social_github_privacy">Dein öffentliches Profil und deine Repository-Statistiken kommen direkt von GitHub. Zugangstoken werden auf deinem Gerät verschlüsselt.</string>
+    <string name="social_linked_profile">Verknüpftes Profil</string>
+    <string name="social_add_profiles">Profile hinzufügen</string>
+    <string name="social_add_linked">Konto verknüpfen</string>
+    <string name="social_include_platform">%1$s einbeziehen</string>
+    <string name="social_all_platforms">Alle verknüpften Plattformen</string>
+    <string name="social_content_scope">Diese Auswahl gilt für alle deine Profile. Hier werden nur verbundene Plattformen angezeigt.</string>
+    <string name="social_history_pending">Für einen Trend werden weitere Verlaufsdaten benötigt.</string>
+    <string name="social_updated_at">Aktualisiert: %1$s</string>
+    <string name="social_delta_today">%1$s heute</string>
+    <string name="social_audience_info">Über die Gesamtzahl</string>
+    <string name="social_audience_precision">Einige Plattformen liefern gerundete Zahlen. Ein ungefährer Gesamtwert wird mit ≈ gekennzeichnet. Ein Gesamtwert wird nur angezeigt, wenn für jedes verknüpfte Konto eine aktuelle Zahl vorliegt.</string>
 </resources>

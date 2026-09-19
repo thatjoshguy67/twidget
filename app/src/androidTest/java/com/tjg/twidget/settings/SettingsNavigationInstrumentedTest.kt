@@ -95,13 +95,22 @@ class SettingsNavigationInstrumentedTest {
         }
         activities.add(activity)
         instrumentation.waitForIdleSync()
+        val deadline = System.currentTimeMillis() + 5000
+        while (System.currentTimeMillis() < deadline) {
+            var bound = false
+            onMain { bound = fragment(activity).listView.adapter != null }
+            if (bound) break
+            Thread.sleep(50)
+        }
         // Exercise recycled standard platform rows as well as the custom switch-screen rows.
         onMain { fragment(activity).listView.scrollToPosition(fragment(activity).listView.adapter!!.itemCount - 1) }
         instrumentation.waitForIdleSync()
         onMain {
             val content = fragment(activity)
-            assertNotNull(content.findPreference<Preference>("social_brief_instagram"))
-            assertNotNull(content.findPreference<Preference>("social_brief_github"))
+            val platforms = com.tjg.twidget.social.SocialRepository(context).use { it.catalog() }.accounts.map { it.platform }.toSet()
+            platforms.forEach { platform ->
+                assertNotNull(content.findPreference<Preference>("social_brief_${platform.storageId}"))
+            }
             content.listView.scrollToPosition(0)
         }
         instrumentation.waitForIdleSync()

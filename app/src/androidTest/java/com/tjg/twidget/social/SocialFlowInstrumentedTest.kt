@@ -173,8 +173,11 @@ class SocialFlowInstrumentedTest {
                     if (node is android.view.ViewGroup) (0 until node.childCount).forEach { collect(node.getChildAt(it)) }
                 }
                 collect(view)
-                assertTrue(labels.any { it.contains("Bluesky") })
-                assertTrue(labels.any { it.contains("YouTube") })
+                assertEquals("Bluesky", bsky.findViewById<android.widget.ImageView>(R.id.metric_platform_icon).contentDescription)
+                assertEquals("YouTube", youtube.findViewById<android.widget.ImageView>(R.id.metric_platform_icon).contentDescription)
+                assertNotNull(bsky.findViewById<android.widget.ImageView>(R.id.metric_type_icon).drawable)
+                assertEquals(android.view.View.GONE, bsky.findViewById<android.view.View>(R.id.followers_chart).visibility)
+                assertTrue(labels.contains(activity.getString(R.string.social_history_pending)))
                 assertTrue(labels.any { it.contains(activity.getString(R.string.social_unavailable)) })
                 assertFalse(labels.any { it == "Subscribers  0" })
             }

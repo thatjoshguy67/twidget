@@ -38,3 +38,15 @@ val SocialMetric.labelRes: Int get() = when (this) {
 fun MetricObservation.displayValue(context: Context): String = value?.let {
     (if (precision == MetricPrecision.ROUNDED) "≈ " else "") + NumberFormat.getIntegerInstance().format(it)
 } ?: context.getString(R.string.social_unavailable)
+
+/** The leading icon describes the metric; the trailing icon identifies its platform. */
+val SocialMetric.iconRes: Int get() = when (this) {
+    SocialMetric.FOLLOWERS, SocialMetric.SUBSCRIBERS -> R.drawable.ic_settings_community
+    SocialMetric.FOLLOWING -> R.drawable.ic_oneui_profile
+    SocialMetric.POSTS, SocialMetric.VIDEOS -> R.drawable.ic_settings_send
+    SocialMetric.LIKES_GIVEN -> dev.oneuiproject.oneui.R.drawable.ic_oui_heart
+    SocialMetric.VIEWS -> R.drawable.ic_import_analytics
+    SocialMetric.REPOSITORIES -> R.drawable.ic_code_24
+    SocialMetric.STARS -> R.drawable.ic_settings_star
+    SocialMetric.FORKS -> R.drawable.ic_settings_repeat
+}

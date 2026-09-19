@@ -42,21 +42,27 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             screen.addPreference(InsetPreferenceCategory(context))
         }
         val stats = TwidgetStore.currentStats(context, settings.username)
+        val catalog = com.tjg.twidget.social.SocialRepository(context).use { it.catalog() }
+        val mainProfile = catalog.profiles.firstOrNull { it.id == catalog.defaultProfileId }
         val profile = CardItemView(context).apply {
             minimumHeight = resources.getDimensionPixelSize(R.dimen.settings_account_min_height)
             gravity = android.view.Gravity.CENTER_VERTICAL
-            title = stats.fullName.ifBlank { settings.username }
-            summary = getString(R.string.account_handle, settings.username.trimStart('@'))
+            title = mainProfile?.displayName(catalog.accountsById) ?: stats.fullName.ifBlank { settings.username }
+            summary = when {
+                mainProfile?.linked == true -> getString(R.string.social_linked_profile)
+                mainProfile != null -> "@${catalog.accountsById.getValue(mainProfile.nameAccountId).handle}"
+                else -> getString(R.string.account_handle, settings.username.trimStart('@'))
+            }
             iconSize = (34 * resources.displayMetrics.density).toInt()
             icon = context.getDrawable(R.drawable.avatar_twidget)
-            ProfileImageLoader.loadInto(context, getIconImageView(), stats.profileImage)
+            ProfileImageLoader.loadInto(context, getIconImageView(), mainProfile?.avatarUrl(catalog.accountsById) ?: stats.profileImage)
             setOnClickListener { openCategory(SettingsPage.ACCOUNTS) }
         }
         screen.addPreference(LayoutPreference(context, profile).apply {
             key = "main_account"
             setAllowDividerBelow(true)
         })
-        screen.addPreference(destination("accounts", R.string.accounts, R.drawable.settings_icon_accounts) {
+        screen.addPreference(destination("accounts", R.string.social_accounts, R.drawable.settings_icon_accounts) {
             openCategory(SettingsPage.ACCOUNTS)
         })
         screen.addPreference(InsetPreferenceCategory(context))

@@ -27,7 +27,6 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
     internal var platform = SocialPlatform.X
     internal var catalog = SocialCatalog()
     internal var handle = ""
-    internal var customName = ""
     internal var nameSource = ""
     internal var avatarSource = ""
     internal var editingProfile = ""
@@ -37,6 +36,9 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
     private var pendingLink = false
     private var generation = 0
     private var addMode = false
+    internal var editMode = false
+        private set
+    private var initializeEditor = false
     internal var upgrade = false
         private set
     private var callback: Uri? = null
@@ -50,14 +52,21 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
         super.onCreate(savedInstanceState)
         addMode = savedInstanceState?.getBoolean("flowAdd") ?: intent.getBooleanExtra(OnboardingActivity.EXTRA_ADD_ACCOUNT, false)
         upgrade = savedInstanceState?.getBoolean("flowUpgrade") ?: intent.getBooleanExtra(EXTRA_UPGRADE, false)
+        editMode = intent.hasExtra(EXTRA_EDIT_PROFILE)
+        initializeEditor = editMode && (savedInstanceState?.getBoolean("initializeEditor") ?: true)
         step = savedInstanceState?.getString("step")?.let { Step.valueOf(it) } ?: if (addMode) Step.PLATFORMS else Step.WELCOME
-        platform = savedInstanceState?.getString("platform")?.let(SocialPlatform::fromStorageId) ?: SocialPlatform.X
+        platform = (savedInstanceState?.getString("platform") ?: intent.getStringExtra(EXTRA_CONNECT_PLATFORM))
+            ?.let(SocialPlatform::fromStorageId) ?: SocialPlatform.X
+        if (savedInstanceState == null && intent.hasExtra(EXTRA_CONNECT_PLATFORM)) step = Step.CONNECT
         pendingLink = savedInstanceState?.getBoolean("pendingLink") ?: false
         handle = savedInstanceState?.getString("handle").orEmpty()
-        customName = savedInstanceState?.getString("customName").orEmpty()
         nameSource = savedInstanceState?.getString("nameSource").orEmpty()
         avatarSource = savedInstanceState?.getString("avatarSource").orEmpty()
         editingProfile = savedInstanceState?.getString("editingProfile").orEmpty()
+        if (editMode) {
+            editingProfile = intent.getStringExtra(EXTRA_EDIT_PROFILE).orEmpty()
+            step = Step.DISPLAY
+        }
         widgetAccountId = savedInstanceState?.getString("widgetAccountId").orEmpty()
         selected.addAll(savedInstanceState?.getStringArrayList("selected").orEmpty())
         callback = intent.data
@@ -76,10 +85,11 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); this.intent.data = intent.data; callback = intent.data; reload() }
     override fun onDestroy() { generation++; super.onDestroy() }
     override fun onSaveInstanceState(out: Bundle) {
+        out.putBoolean("initializeEditor", initializeEditor)
         out.putBoolean("pendingLink", pendingLink)
         out.putBoolean("flowAdd", addMode); out.putBoolean("flowUpgrade", upgrade)
         out.putString("step", step.name); out.putString("platform", platform.storageId); out.putString("handle", handle)
-        out.putString("customName", customName); out.putString("nameSource", nameSource); out.putString("avatarSource", avatarSource)
+        out.putString("nameSource", nameSource); out.putString("avatarSource", avatarSource)
         out.putString("widgetAccountId", widgetAccountId)
         out.putString("editingProfile", editingProfile); out.putStringArrayList("selected", ArrayList(selected))
         super.onSaveInstanceState(out)
@@ -88,6 +98,15 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
         SocialRepository(applicationContext).use { it.synchronizeLegacyFrom(applicationContext) }
     }) {
         catalog = it
+        if (editMode) {
+            val profile = catalog.profiles.firstOrNull { profile -> profile.id == editingProfile }
+            if (profile == null) { finish(); return@work }
+            if (initializeEditor) {
+                nameSource = profile.nameAccountId; avatarSource = profile.avatarAccountId
+                initializeEditor = false
+            }
+            render(); return@work
+        }
         val uri = callback; callback = null; intent.data = null
         if (uri != null) work({ SocialConnections.redeem(applicationContext, uri) }) { (provider, tokens) ->
             addMode = tokens.optBoolean("flowAdd"); upgrade = tokens.optBoolean("flowUpgrade")
@@ -176,7 +195,8 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.social_settle).visibility = if (step == Step.DONE) View.VISIBLE else View.GONE
         supportFragmentManager.beginTransaction().replace(R.id.social_fragment, SocialOnboardingFragment()).commit()
         findViewById<AppCompatButton>(R.id.social_next).apply {
-            text = getString(if (busy) R.string.social_working else when (step) {
+            text = getString(if (busy && !editMode) R.string.social_working else when (step) {
+                Step.DISPLAY -> if (editMode) R.string.save else R.string.social_continue
                 Step.WELCOME -> R.string.get_started
                 Step.LINK -> R.string.social_yes
                 Step.DONE -> R.string.social_continue
@@ -218,8 +238,14 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
             Step.LINK -> link()
             Step.DISPLAY -> work({ SocialRepository(applicationContext).use { repository -> repository.edit {
                 val linked = if (pendingLink) SocialProfilePolicy.link(it, editingProfile, selected - editingProfile) else it
-                SocialProfilePolicy.display(linked, editingProfile, nameSource, avatarSource, customName)
-            } } }) { catalog = it; pendingLink = false; step = Step.READY; render() }
+                SocialProfilePolicy.display(linked, editingProfile, nameSource, avatarSource)
+            } } }) {
+                catalog = it; pendingLink = false
+                if (editMode) {
+                    com.tjg.twidget.widget.TwidgetWidget.updateAll(applicationContext)
+                    setResult(RESULT_OK); finish()
+                } else { step = Step.READY; render() }
+            }
             Step.READY -> { step = if (addMode || upgrade) Step.DONE else Step.WIDGET; render() }
             Step.WIDGET -> {
                 val manager = android.appwidget.AppWidgetManager.getInstance(this)
@@ -256,12 +282,13 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
         catalog = SocialProfilePolicy.link(catalog, target, source)
         editingProfile = target; pendingLink = true
         val profile = catalog.profiles.first { it.id == target }
-        nameSource = profile.nameAccountId; avatarSource = profile.avatarAccountId; customName = profile.customDisplayName.orEmpty()
+        nameSource = profile.nameAccountId; avatarSource = profile.avatarAccountId
         step = Step.DISPLAY; render()
     }
 
     private fun back() {
         if (busy) return
+        if (editMode) { finish(); return }
         step = when (step) {
             Step.WELCOME -> { finish(); return }
             Step.PLATFORMS -> if (addMode) { finish(); return } else Step.WELCOME
@@ -290,5 +317,9 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
     }
     private fun Int.dp() = (this * resources.displayMetrics.density).toInt()
     internal enum class Step { WELCOME, PLATFORMS, CONNECT, LINK, DISPLAY, READY, WIDGET, DONE }
-    companion object { const val EXTRA_UPGRADE = "multiplatform_upgrade" }
+    companion object {
+        const val EXTRA_UPGRADE = "multiplatform_upgrade"
+        const val EXTRA_CONNECT_PLATFORM = "connect_social_platform"
+        const val EXTRA_EDIT_PROFILE = "edit_social_profile"
+    }
 }

@@ -294,6 +294,7 @@
     <string name="about_twidget">About Twidget</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="add_widget_title">Add widget</string>
     <string name="add_widget">Add widget</string>
     <string name="add_widget_requested">Choose a spot on your home screen to place it.</string>
     <string name="add_widget_not_supported">This launcher does not support adding widgets from the app.</string>

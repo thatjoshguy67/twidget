@@ -361,7 +361,7 @@
                         android:fontFamily="sec"
                         android:gravity="center"
                         android:includeFontPadding="false"
-                        android:text="@string/add_widget"
+                        android:text="@string/add_widget_title"
                         android:textColor="?android:textColorPrimary"
                         android:textSize="30sp"
                         android:textStyle="bold" />

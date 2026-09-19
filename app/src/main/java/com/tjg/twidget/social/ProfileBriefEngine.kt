@@ -6,6 +6,7 @@ import com.tjg.twidget.brief.BriefCard
 import com.tjg.twidget.brief.BriefCardType
 import com.tjg.twidget.brief.BriefEngine
 import com.tjg.twidget.brief.BriefSettingsStore
+import com.tjg.twidget.brief.BriefSnapshot
 import java.text.NumberFormat
 
 /** A profile-scoped Brief combines provider evidence without comparing unlike metrics. */
@@ -15,7 +16,7 @@ object ProfileBriefEngine {
     private const val PREFS = "social_brief_content"
     fun enabled(context: Context, key: String) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, true)
     fun setEnabled(context: Context, key: String, enabled: Boolean) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, enabled).apply()
-    fun rebuild(context: Context, profileId: String): ProfileBrief = SocialRepository(context).use { repository ->
+    fun rebuild(context: Context, profileId: String, xSnapshot: BriefSnapshot? = null): ProfileBrief = SocialRepository(context).use { repository ->
         val catalog = repository.catalog()
         val profile = catalog.profiles.first { it.id == profileId }
         val observations = profile.accountIds.flatMap(repository::observations)
@@ -33,8 +34,8 @@ object ProfileBriefEngine {
             if (!enabled(context, account.platform.storageId)) return@forEach
             if (account.platform == SocialPlatform.X) {
                 // Preserve the mature X ranking, goals and scheduled-post analysis with its own account scope.
-                cards += BriefEngine.rebuild(context, account.handle).cards.map { card ->
-                    card.copy(id = "${account.id}:${card.id}", sourceAttribution = "Twitter/X · @${account.handle}")
+                cards += (xSnapshot ?: BriefEngine.rebuild(context, account.handle)).cards.map { card ->
+                    card.copy(sourceAttribution = "Twitter/X · @${account.handle}")
                 }
             } else {
                 observations.filter { it.accountId == account.id && !it.estimated }.groupBy { it.metric }.forEach { (metric, samples) ->
@@ -54,5 +55,21 @@ object ProfileBriefEngine {
         ProfileBrief(profile.id, profile.membershipVersion, profile.displayName(catalog.accountsById), cards.sortedByDescending { it.score }).also {
             ProfileBriefCache.write(context, it, SocialWidgetCache.signature(profile, observations))
         }
+    }
+
+    /** Feed all platform cards into the established Brief renderer, retaining rich X evidence. */
+    fun snapshot(context: Context, profileId: String, xSnapshot: BriefSnapshot? = null): BriefSnapshot {
+        val catalog = SocialRepository(context).use { it.catalog() }
+        val profile = catalog.profiles.first { it.id == profileId }
+        val x = profile.accountIds.map(catalog.accountsById::getValue).firstOrNull { it.platform == SocialPlatform.X && enabled(context, "x") }
+        val base = xSnapshot ?: x?.let { BriefEngine.rebuild(context, it.handle) }
+        val brief = rebuild(context, profileId, base)
+        return base?.copy(cards = brief.cards) ?: BriefSnapshot(
+            username = "", generatedAt = System.currentTimeMillis(), sourceSyncedAt = 0,
+            analyticsCachedAt = 0, followerScanCompletedAt = 0, followers = 0, following = 0,
+            posts = 0, followersToday = 0, followersWeek = 0, cards = brief.cards,
+            headline = brief.name, subheading = brief.cards.firstOrNull()?.body.orEmpty(),
+            topFollowerRanks = emptyMap(),
+        )
     }
 }

@@ -109,6 +109,46 @@ class SocialFlowInstrumentedTest {
             }
         }
     }
+    @Test fun readyOptionsOnlyUseTheProfileBeingConfigured() {
+        ActivityScenario.launch<SocialOnboardingActivity>(Intent(context, SocialOnboardingActivity::class.java)
+            .putExtra(OnboardingActivity.EXTRA_ADD_ACCOUNT, true)).use { scenario ->
+            awaitReady(scenario)
+            val accounts = listOf(
+                PlatformAccount.create(SocialPlatform.X, "other-x", "unrelated", "Unrelated"),
+                PlatformAccount.create(SocialPlatform.INSTAGRAM, "test-ig", "instagram", "Instagram"),
+                PlatformAccount.create(SocialPlatform.GITHUB, "test-gh", "github", "GitHub"),
+                PlatformAccount.create(SocialPlatform.BLUESKY, "test-bsky", "bsky.test", "Bluesky"),
+                PlatformAccount.create(SocialPlatform.X, "test-x", "configured", "Configured"))
+            var fixture = accounts.fold(SocialCatalog()) { catalog, account -> SocialProfilePolicy.add(catalog, account) }
+            val instagram = fixture.profileFor(accounts[1].id)!!.id
+            fixture = SocialProfilePolicy.link(fixture, instagram, setOf(fixture.profileFor(accounts[2].id)!!.id))
+            fun check(profileId: String, buffer: Boolean, xImport: Boolean) {
+                scenario.onActivity { activity ->
+                    activity.catalog = fixture; activity.editingProfile = profileId
+                    activity.step = SocialOnboardingActivity.Step.READY; activity.render()
+                }
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                scenario.onActivity { activity ->
+                    val labels = mutableListOf<String>()
+                    fun collect(view: android.view.View) {
+                        if (view is TextView) labels += view.text.toString()
+                        if (view is android.view.ViewGroup) (0 until view.childCount).forEach { collect(view.getChildAt(it)) }
+                    }
+                    collect(activity.supportFragmentManager.findFragmentById(R.id.social_fragment)!!.requireView())
+                    assertEquals(buffer, activity.getString(R.string.social_link_buffer) in labels)
+                    assertEquals(xImport, activity.getString(R.string.import_x_analytics) in labels)
+                    assertEquals(buffer || xImport, activity.getString(R.string.social_optional) in labels)
+                    assertFalse("Unrelated saved X account leaked into this profile", "@unrelated" in labels)
+                    if (xImport) assertTrue("@configured" in labels)
+                }
+            }
+            check(instagram, buffer = false, xImport = false)
+            check(fixture.profileFor(accounts[3].id)!!.id, buffer = true, xImport = false)
+            check(fixture.profileFor(accounts[4].id)!!.id, buffer = true, xImport = true)
+            fixture = SocialProfilePolicy.link(fixture, instagram, setOf(fixture.profileFor(accounts[4].id)!!.id))
+            check(instagram, buffer = true, xImport = true)
+        }
+    }
     @Test fun linkedDashboardSeparatesPlatformsAndDoesNotDisplayMissingCountsAsZero() {
         ActivityScenario.launch<SocialOnboardingActivity>(Intent(context, SocialOnboardingActivity::class.java)
             .putExtra(OnboardingActivity.EXTRA_ADD_ACCOUNT, true)).use { scenario ->
@@ -116,12 +156,17 @@ class SocialFlowInstrumentedTest {
             scenario.onActivity { activity ->
                 val one = PlatformAccount.create(SocialPlatform.BLUESKY, "did:plc:test", "one.test", "One")
                 val two = PlatformAccount.create(SocialPlatform.YOUTUBE, "UCtest", "@two", "Two")
-                var catalog = SocialProfilePolicy.add(SocialProfilePolicy.add(SocialCatalog(), one), two)
-                catalog = SocialProfilePolicy.link(catalog, catalog.profiles.first().id, setOf(catalog.profiles.last().id))
-                val view = SocialDashboardView(activity)
+                val view = android.widget.LinearLayout(activity)
                 val now = System.currentTimeMillis()
-                view.bind(catalog, catalog.profiles.first(), listOf(MetricObservation(one.id, SocialMetric.FOLLOWERS, 42, now, "test"),
-                    MetricObservation(two.id, SocialMetric.SUBSCRIBERS, null, now, "test", MetricPrecision.ROUNDED)))
+                val observations = listOf(MetricObservation(one.id, SocialMetric.FOLLOWERS, 42, now, "test"),
+                    MetricObservation(two.id, SocialMetric.SUBSCRIBERS, null, now, "test", MetricPrecision.ROUNDED))
+                val bsky = SocialMetricCardFactory.create(activity, one, SocialMetric.FOLLOWERS, observations)
+                val youtube = SocialMetricCardFactory.create(activity, two, SocialMetric.SUBSCRIBERS, observations)
+                view.addView(bsky); view.addView(youtube)
+                assertNotNull(bsky.findViewById<com.tjg.twidget.ui.MetricChartView>(R.id.followers_chart))
+                assertNotNull(youtube.findViewById<android.widget.ImageView>(R.id.metric_platform_icon).drawable)
+                assertEquals("42", bsky.findViewById<TextView>(R.id.followers_value).text.toString())
+                assertEquals(activity.getString(R.string.social_unavailable), youtube.findViewById<TextView>(R.id.followers_value).text.toString())
                 val labels = mutableListOf<String>()
                 fun collect(node: android.view.View) {
                     if (node is TextView) labels += node.text.toString()
@@ -131,7 +176,6 @@ class SocialFlowInstrumentedTest {
                 assertTrue(labels.any { it.contains("Bluesky") })
                 assertTrue(labels.any { it.contains("YouTube") })
                 assertTrue(labels.any { it.contains(activity.getString(R.string.social_unavailable)) })
-                assertTrue(labels.any { it == activity.getString(R.string.social_partial) })
                 assertFalse(labels.any { it == "Subscribers  0" })
             }
         }

@@ -22,6 +22,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
+import com.tjg.twidget.social.*
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ActivityClient
 import com.tjg.twidget.analytics.AnalyticsBlendPolicy
@@ -126,16 +127,48 @@ internal class MainDashboardBinder(
     private val editModeController get() = activity.editModeController
 
     fun bindContent() {
-        if (activity.bindSocialDashboard()) return
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
         val skeleton = host.findViewById<View>(R.id.main_launch_skeleton)
         val page = host.findViewById<View>(R.id.main_account_page)
             ?: LayoutInflater.from(activity).inflate(R.layout.main_account_page, host, false)
                 .also { host.addView(it, 0) }
-        bindPage(page, activity.selectedAccount)
+        if (activity.usesSocialDashboard) bindProfilePage(page) else bindPage(page, activity.selectedAccount)
         // Keep the static skeleton above the dashboard until every cached card
         // has bound, then reveal the completed page in one frame.
         skeleton?.let(host::removeView)
+    }
+
+    private fun bindProfilePage(page: View) {
+        val profile = activity.selectedProfile ?: return
+        val members = profile.accountIds.map(activity.socialCatalog.accountsById::getValue)
+        val x = members.firstOrNull { it.platform == SocialPlatform.X }
+        val container = page.findViewById<GridLayout>(R.id.dashboard_content)
+        if (x != null) {
+            // Keep the established X cards, rankings, goals and user-selected layout.
+            bindPage(page, x.handle)
+        } else {
+            container.removeAllViews()
+            container.columnCount = DASHBOARD_GRID_COLUMNS
+            page.findViewById<View>(R.id.private_account_notice).visibility = View.GONE
+            page.findViewById<View>(R.id.history_notice).visibility = View.GONE
+            container.addView(createBriefCard(TwidgetStore.currentStats(activity), ""),
+                dashboardCardLayoutParams(DashboardCardType.MILESTONE))
+        }
+        if (profile.linked) {
+            val index = if (container.childCount > 0) 1 else 0
+            container.addView(SocialMetricCardFactory.audience(activity, activity.socialCatalog, profile, activity.socialObservations),
+                index, dashboardCardLayoutParams(DashboardCardType.ACCOUNT_HEALTH).apply {
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 2, 1f)
+                    height = ViewGroup.LayoutParams.WRAP_CONTENT
+                })
+        }
+        members.filter { it.platform != SocialPlatform.X }.forEach { account ->
+            val samples = activity.socialObservations.filter { it.accountId == account.id }
+            SocialMetricCardFactory.metrics(account.platform).forEach { metric ->
+                container.addView(SocialMetricCardFactory.create(activity, account, metric, samples),
+                    dashboardCardLayoutParams(DashboardCardType.FOLLOWERS))
+            }
+        }
     }
 
     private fun bindPage(page: View, account: String) {
@@ -181,7 +214,7 @@ internal class MainDashboardBinder(
         TwidgetStore.dashboardCards(activity)
             .mapNotNull(DashboardCardType::fromId)
             .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
-            .filter { it != DashboardCardType.MILESTONE || isDefaultAccount(account) }
+            .filter { it != DashboardCardType.MILESTONE || activity.usesSocialDashboard || isDefaultAccount(account) }
             .forEach { card ->
                 val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
                     createTopFollowersCard(account)
@@ -346,7 +379,8 @@ internal class MainDashboardBinder(
 
     private fun createBriefCard(stats: ProfileStats, account: String): View {
         val root = LayoutInflater.from(activity).inflate(R.layout.brief_dashboard_card, null, false)
-        val snapshot = BriefEngine.rebuild(activity, account)
+        val snapshot = if (activity.usesSocialDashboard) ProfileBriefEngine.snapshot(activity, activity.selectedProfileId)
+            else BriefEngine.rebuild(activity, account)
         val summary = BriefEditorialSummary.from(snapshot, BriefStrings.from(activity))
         val hero = snapshot.cards.firstOrNull() ?: com.tjg.twidget.brief.BriefCard(
             id = "empty",
@@ -383,9 +417,10 @@ internal class MainDashboardBinder(
         root.contentDescription =
             "${activity.getString(R.string.brief_title)}. ${summary.title}. ${summary.shortDescription}"
         root.setOnClickListener {
-            if (!editModeController.editMode && isDefaultAccount(account)) {
+            if (!editModeController.editMode && (activity.usesSocialDashboard || isDefaultAccount(account))) {
                 BriefSettingsStore.setEnabled(activity, true)
-                activity.startActivity(TwidgetBriefActivity.intent(activity, account))
+                activity.startActivity(if (activity.usesSocialDashboard) TwidgetBriefActivity.profileIntent(activity, activity.selectedProfileId)
+                    else TwidgetBriefActivity.intent(activity, account))
             }
         }
         return root
@@ -447,6 +482,10 @@ internal class MainDashboardBinder(
             else -> error("Compact cards do not have chart layouts.")
         }
         return LayoutInflater.from(activity).inflate(layoutRes, null, false).also { root ->
+            if (activity.usesSocialDashboard) {
+                root.findViewById<ImageView>(R.id.metric_platform_icon).setImageDrawable(SocialPlatform.X.icon(activity))
+                root.findViewById<TextView>(R.id.metric_label).text = "${activity.getString(card.labelRes)} · ${SocialPlatform.X.label}"
+            }
             bindMetric(
                 root,
                 valueId,

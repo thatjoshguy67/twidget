@@ -395,22 +395,6 @@ class MainActivity : ScheduleQueueHostActivity() {
         invalidateOptionsMenu()
     }
 
-    internal fun bindSocialDashboard(): Boolean {
-        val host = findViewById<android.widget.FrameLayout>(R.id.main_content_host)
-        val existing = host.findViewWithTag<SocialDashboardView>("social_dashboard")
-        if (!usesSocialDashboard) {
-            existing?.visibility = View.GONE
-            host.findViewById<View>(R.id.main_account_page)?.visibility = View.VISIBLE
-            return false
-        }
-        host.findViewById<View>(R.id.main_launch_skeleton)?.visibility = View.GONE
-        host.findViewById<View>(R.id.main_account_page)?.visibility = View.GONE
-        val view = existing ?: SocialDashboardView(this).apply { tag = "social_dashboard"; host.addView(this) }
-        view.visibility = View.VISIBLE
-        selectedProfile?.let { view.bind(socialCatalog, it, socialObservations) }
-        return true
-    }
-
     private fun setupScheduleAction() {
         findViewById<View>(R.id.schedule_fab).setOnClickListener {
             val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')

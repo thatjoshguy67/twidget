@@ -15,6 +15,7 @@
         android:paddingEnd="16dp">
 
         <ImageView
+            android:id="@+id/metric_platform_icon"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:contentDescription="@null"
@@ -54,6 +55,7 @@
             </LinearLayout>
 
             <TextView
+                android:id="@+id/metric_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"

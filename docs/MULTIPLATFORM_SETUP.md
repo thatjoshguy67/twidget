@@ -5,7 +5,7 @@ in the task. Keep client secrets in a password manager until the backend exchang
 is ready; they will be configured on the server, never in the APK or Git history.
 
 The maintainer chose the existing Twidget bridge hostname on 19 September 2026.
-These exact callback paths are reserved for implementation, **not live yet**:
+These callback paths are live as of 19 September 2026:
 
 | Provider | HTTPS callback to register |
 | --- | --- |
@@ -189,8 +189,8 @@ usable. No new X developer registration is required for this feature.
   has accepted its test access.
 - Any dashboard error or unavailable permission, without secrets or access tokens.
 
-No backend deployment or developer-app review has been performed by this code
-change. Live OAuth verification follows registration and exchange implementation.
+The bridge OAuth routes were deployed on 19 September 2026. Developer-app review
+for public release and complete provider login acceptance remain separate checks.
 
 
 ## Feature-branch implementation configuration
@@ -200,15 +200,21 @@ Setup handoff verified on 19 September 2026: Railway `twidget-bridge` /
 secrets, a Base64 `SOCIAL_OAUTH_TICKET_KEY` decoding to 32 bytes, and `REDIS_URL`.
 The maintainer set these variables with `--skip-deploys`. Verification exposed
 only boolean results; no secrets were printed or written into the repository.
-Developer-app setup work is complete for development testing. The implementation
-agent still needs to deploy the reviewed bridge changes and perform live OAuth
-and API acceptance tests. Google/Meta public-release verification or review is
+Developer-app setup work is complete for development testing. The deployment
+and live route checks are recorded below; full OAuth and API acceptance still
+requires the maintainer to complete each provider login. Google/Meta public-release verification or review is
 separate from this development setup; neither was completed here.
 
-The OAuth routes are implemented on `feat-multiplat`, **not deployed by this
-implementation task**. Registration/variables alone do not make login live.
-Keep the existing bridge deployment on its current code until this branch's
-bridge changes are reviewed and a deployment is authorized.
+The OAuth routes from `feat-multiplat` commit `f34a0486` were deployed to the
+existing production bridge on 19 September 2026 after the maintainer reported
+live login failures. Railway deployment `b19948b8-020b-4ecb-93f6-3688216b411e`
+reached `SUCCESS`; all 38 bridge regression tests passed beforehand.
+Both provider readiness endpoints report `available: true`, both start routes
+return HTTP 200 with the registered client IDs and callback URIs, and `/health`
+returns HTTP 200. This verifies configuration and login initiation; provider
+consent, token exchange, and Android callback completion still need a real-user
+acceptance test. The maintainer confirmed YouTube works after adding the Google
+account to the testing audience.
 
 Required bridge environment (private service variables; never Android resources):
 

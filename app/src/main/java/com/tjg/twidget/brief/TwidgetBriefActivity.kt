@@ -28,6 +28,12 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.lifecycle.lifecycleScope
 import com.airbnb.lottie.LottieAnimationView
 import com.tjg.twidget.R
+import com.tjg.twidget.social.ProfileBriefEngine
+import com.tjg.twidget.social.SocialRepository
+import com.tjg.twidget.social.SocialPlatform
+import com.tjg.twidget.social.SocialCatalog
+import com.tjg.twidget.social.MetricObservation
+import com.tjg.twidget.social.SocialMetricCardFactory
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.analytics.PostAnalytics
@@ -70,6 +76,10 @@ import kotlinx.coroutines.withContext
 
 class TwidgetBriefActivity : FoldablePopOverActivity() {
     private lateinit var username: String
+    private var profileId: String? = null
+    private var profileName = ""
+    private var profileCatalog = SocialCatalog()
+    private var profileObservations = emptyList<MetricObservation>()
     private var renderedSnapshot: BriefSnapshot? = null
     private var localStatus = BriefLocalStatus.UNAVAILABLE
     private var debugScenario: BriefDebugScenario = BriefDebugScenario.REAL
@@ -84,15 +94,23 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (com.tjg.twidget.social.SocialWidgetCache.defaultUsesSocial(this)) {
-            startActivity(Intent(this, com.tjg.twidget.social.ProfileBriefActivity::class.java))
-            finish(); return
-        }
         setContentView(R.layout.activity_twidget_brief)
+        val catalog = SocialRepository(this).use { it.catalog() }
+        profileCatalog = catalog
+        profileId = intent.getStringExtra(EXTRA_PROFILE) ?: catalog.defaultProfileId?.takeIf { id ->
+            val profile = catalog.profiles.firstOrNull { it.id == id }
+            profile != null && (profile.linked || catalog.accountsById[profile.accountIds.first()]?.platform != SocialPlatform.X) &&
+                (!intent.hasExtra(EXTRA_USERNAME) || profile.accountIds.any { catalog.accountsById[it]?.handle.equals(intent.getStringExtra(EXTRA_USERNAME), true) })
+        }
+        val profile = catalog.profiles.firstOrNull { it.id == profileId }
+        if (profileId != null && profile == null) { finish(); return }
+        profileName = profile?.displayName(catalog.accountsById).orEmpty()
         username = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
             .ifBlank { TwidgetStore.settings(this).username }
+        if (profile != null) username = profile.accountIds.map(catalog.accountsById::getValue)
+            .firstOrNull { it.platform == SocialPlatform.X }?.handle.orEmpty()
         val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')
-        if (username.isBlank() || !username.equals(defaultAccount, ignoreCase = true)) {
+        if (profile == null && (username.isBlank() || !username.equals(defaultAccount, ignoreCase = true))) {
             finish()
             return
         }
@@ -113,6 +131,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun loadInitialBrief() {
+        if (profileId != null) { loadBrief(); return }
         if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false) ||
             intent.getBooleanExtra(EXTRA_WAIT_FOR_LAUNCH_GENERATION, false)
         ) {
@@ -244,6 +263,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         animateOnComplete: Boolean = showSpinner,
         clearContentPendingOnSuccess: Boolean = false,
     ) {
+        if (profileId != null) {
+            loadProfileBrief(forceEngine, forceAi, showSpinner, animateOnComplete, clearContentPendingOnSuccess)
+            return
+        }
         if (showSpinner) setLoading(true)
         lifecycleScope.launch {
             var entrancePrepared = false
@@ -293,6 +316,47 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
+    private fun loadProfileBrief(forceEngine: Boolean, forceAi: Boolean, showSpinner: Boolean,
+        animateOnComplete: Boolean, clearContentPendingOnSuccess: Boolean) {
+        val id = profileId ?: return
+        if (showSpinner) setLoading(true)
+        lifecycleScope.launch {
+            try {
+                val xSource = withContext(Dispatchers.IO) {
+                    username.takeIf { it.isNotBlank() && ProfileBriefEngine.enabled(this@TwidgetBriefActivity, "x") }
+                        ?.let { debugScenario.snapshot(BriefEngine.rebuild(this@TwidgetBriefActivity, it, force = forceEngine)) }
+                }
+                val enriched = xSource?.let {
+                    if (debugScenario == BriefDebugScenario.REAL) BriefAiCoordinator.enrich(this@TwidgetBriefActivity, it, force = forceAi)
+                    else BriefAiResult(it, BriefLocalStatus.UNAVAILABLE)
+                }
+                if (enriched != null) {
+                    localStatus = enriched.localStatus
+                    if (showProviderSetupIfRequired(enriched)) return@launch
+                }
+                val (snapshot, catalog, observations) = withContext(Dispatchers.IO) {
+                    val snapshot = ProfileBriefEngine.snapshot(this@TwidgetBriefActivity, id, enriched?.snapshot)
+                    SocialRepository(this@TwidgetBriefActivity).use { repository ->
+                        val catalog = repository.catalog()
+                        val profile = catalog.profiles.first { it.id == id }
+                        Triple(snapshot, catalog, profile.accountIds.flatMap(repository::observations))
+                    }
+                }
+                profileCatalog = catalog
+                profileObservations = observations
+                render(snapshot)
+                if (clearContentPendingOnSuccess) BriefSettingsStore.clearContentRegenerationPending(this@TwidgetBriefActivity)
+                if (animateOnComplete) prepareBriefEntrance()
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                android.widget.Toast.makeText(this@TwidgetBriefActivity, R.string.social_load_failed, android.widget.Toast.LENGTH_LONG).show()
+            } finally {
+                if (showSpinner) setLoading(false)
+                if (animateOnComplete && renderedSnapshot != null) startPreparedBriefEntrance()
+            }
+        }
+    }
+
     override fun onDestroy() {
         apiKeyDialog?.dismiss()
         apiKeyDialog = null
@@ -325,7 +389,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             imageTintList = tint
             setOnClickListener { finish() }
         }
-        findViewById<TextView>(R.id.brief_footer_account).text = "@$username"
+        findViewById<TextView>(R.id.brief_footer_account).text = if (profileId != null) profileName else "@$username"
         findViewById<View>(R.id.brief_provider_required_action).setOnClickListener {
             showRequiredApiKeyDialog()
         }
@@ -874,7 +938,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         } else {
             addView(sectionLabel(sectionHeading(card)))
         }
-        val content = when (card.type) {
+        val content = socialEvidenceCard(card) ?: when (card.type) {
             BriefCardType.MILESTONE -> milestoneCard(card)
             BriefCardType.STREAK -> StreakCardFactory.create(
                 this@TwidgetBriefActivity,
@@ -897,6 +961,26 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             else -> genericCard(card)
         }
         addView(content, matchWrap(top = 10))
+        if (profileId != null && card.sourceAttribution.isNotBlank()) {
+            addView(supportingText(card.sourceAttribution, 12f), matchWrap(top = 6))
+        }
+    }
+
+    private fun socialEvidenceCard(card: BriefCard): View? {
+        val profile = profileCatalog.profiles.firstOrNull { it.id == profileId } ?: return null
+        if (card.id == "profile:${profile.id}:${profile.membershipVersion}:audience") {
+            return SocialMetricCardFactory.audience(this, profileCatalog, profile, profileObservations).apply {
+                setBackgroundResource(R.drawable.brief_card_background)
+            }
+        }
+        val account = profile.accountIds.map(profileCatalog.accountsById::getValue)
+            .firstOrNull { it.platform != SocialPlatform.X && card.id.startsWith("${it.id}:") } ?: return null
+        val metric = SocialMetricCardFactory.metrics(account.platform).firstOrNull { card.id == "${account.id}:${it.storageId}" } ?: return null
+        return FrameLayout(this).apply {
+            addView(SocialMetricCardFactory.create(this@TwidgetBriefActivity, account, metric, profileObservations).apply {
+                setBackgroundResource(R.drawable.brief_card_background)
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(260)))
+        }
     }
 
     private fun readyDraftForCard(card: BriefCard): ScheduledPost? {
@@ -1310,6 +1394,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         private const val EXTRA_WAIT_FOR_LAUNCH_GENERATION = "brief_wait_for_launch_generation"
         private const val EXTRA_FROM_ONBOARDING = "brief_from_onboarding"
         private const val EXTRA_API_KEY_PROMPT_SHOWN = "brief_api_key_prompt_shown"
+        private const val EXTRA_PROFILE = "brief_social_profile"
+
+        fun profileIntent(context: Context, profileId: String): Intent =
+            Intent(context, TwidgetBriefActivity::class.java).putExtra(EXTRA_PROFILE, profileId)
 
         fun intent(context: Context, username: String): Intent =
             if (BriefSettingsStore.onboardingComplete(context)) {

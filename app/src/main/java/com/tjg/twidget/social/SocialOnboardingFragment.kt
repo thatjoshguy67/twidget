@@ -247,7 +247,7 @@ class SocialOnboardingFragment : Fragment() {
                 addView(avatar(host.catalog.accountsById[profile?.avatarAccountId], 70), LinearLayout.LayoutParams(70.dp(), 70.dp()).apply { gravity = Gravity.CENTER_HORIZONTAL })
                 put(text(getString(R.string.social_hello, profile?.displayName(host.catalog.accountsById).orEmpty()), 32, true, true), top = 20)
                 put(text(getString(R.string.social_ready), 16, centered = true).apply { alpha = .7f }, top = 14)
-                put(text(getString(R.string.social_optional), 14, true).apply { alpha = .65f }, top = 64)
+                val members = profile?.accountIds?.mapNotNull { host.catalog.accountsById[it] }.orEmpty()
                 val group = column().apply { setBackgroundResource(R.drawable.onboarding_glass_button_bg) }
                 fun option(icon: Int, title: String, subtitle: String, action: () -> Unit) {
                     group.put(row().apply {
@@ -257,16 +257,21 @@ class SocialOnboardingFragment : Fragment() {
                         setOnClickListener { action() }
                     })
                 }
-                option(R.drawable.ic_buffer, getString(R.string.social_link_buffer), getString(R.string.social_buffer_summary)) {
-                    startActivity(Intent(ctx, com.tjg.twidget.settings.SettingsScheduleActivity::class.java))
+                if (members.any { it.platform == SocialPlatform.X || it.platform == SocialPlatform.BLUESKY }) {
+                    option(R.drawable.ic_buffer, getString(R.string.social_link_buffer), getString(R.string.social_buffer_summary)) {
+                        startActivity(Intent(ctx, com.tjg.twidget.settings.SettingsScheduleActivity::class.java))
+                    }
                 }
-                host.catalog.accounts.filter { it.platform == SocialPlatform.X }.forEach { account ->
+                members.filter { it.platform == SocialPlatform.X }.forEach { account ->
                     group.put(View(ctx).apply { setBackgroundColor(ctx.getColor(R.color.oneui_text_secondary)); alpha = .12f }, 1)
                     option(R.drawable.ic_import_analytics, getString(R.string.import_x_analytics), "@${account.handle}") {
                         startActivity(Intent(ctx, com.tjg.twidget.analytics.AnalyticsImportActivity::class.java).putExtra(com.tjg.twidget.analytics.AnalyticsImportActivity.EXTRA_USERNAME, account.handle))
                     }
                 }
-                put(group, top = 10)
+                if (group.childCount > 0) {
+                    put(text(getString(R.string.social_optional), 14, true).apply { alpha = .65f }, top = 64)
+                    put(group, top = 10)
+                }
                 flex()
             }
             SocialOnboardingActivity.Step.WIDGET -> with(body) {

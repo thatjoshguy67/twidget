@@ -917,4 +917,5 @@
     <string name="milestone_noun_engagement_rate">Engagement-Rate</string>
     <string name="milestone_noun_impression">Impressionen</string>
     <string name="top_followers_enable_shared_history">Geteilten Verlauf aktivieren</string>
+    <string name="notices_loading">Versionshinweise werden geladen…</string>
 </resources>

@@ -166,7 +166,7 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
         step = Step.PLATFORMS
         work({ SocialRepository(applicationContext).use { it.catalog() } }) { updated ->
             catalog = updated
-            catalog.profileFor(account.id)?.let { selected += it.id }
+            catalog.profileFor(account.id)?.let { selected += it.id; editingProfile = it.id }
             render()
         }
     }
@@ -233,14 +233,12 @@ class SocialOnboardingActivity : EdgeToEdgeActivity() {
             Step.DONE -> work({
                 SocialRepository(applicationContext).use { it.completeUpgradeIntroduction() }
                 TwidgetStore.completeSocialOnboarding(applicationContext)
-                if (upgrade) com.tjg.twidget.notices.ReleaseNoticesStore.visible(applicationContext).firstOrNull()?.tag else null
-            }) { noticeTag ->
+            }) {
                 if (addMode) finish() else {
                     val dashboard = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     if (upgrade) {
-                        val notice = if (noticeTag != null) Intent(this, com.tjg.twidget.notices.NoticeDetailActivity::class.java)
-                            .putExtra(com.tjg.twidget.notices.NoticeDetailActivity.EXTRA_NOTICE_TAG, noticeTag)
-                            else Intent(this, com.tjg.twidget.notices.NoticesActivity::class.java)
+                        val notice = Intent(this, com.tjg.twidget.notices.NoticeDetailActivity::class.java)
+                            .putExtra(com.tjg.twidget.notices.NoticeDetailActivity.EXTRA_LATEST, true)
                         startActivities(arrayOf(dashboard, notice))
                     } else startActivity(dashboard)
                     finish()

@@ -1,10 +1,8 @@
 package com.tjg.twidget.settings
 
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
-import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.preference.Preference
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
@@ -91,7 +89,7 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         })
         screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(destination("about_twidget", R.string.about_twidget, R.drawable.settings_icon_about,
-            badge = TwidgetStore.updateAvailable(context), aboutIcon = true) {
+            badge = TwidgetStore.updateAvailable(context)) {
             open(AboutActivity::class.java)
         })
         if (TwidgetStore.debugMenuUnlocked(context)) {
@@ -104,14 +102,12 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun destination(keyName: String, titleRes: Int, iconRes: Int, badge: Boolean = false,
-        aboutIcon: Boolean = false, action: () -> Unit): Preference {
+        action: () -> Unit): Preference {
         val context = requireContext()
         val row = CardItemView(context).apply {
             title = getString(titleRes)
             iconSize = (24 * resources.displayMetrics.density).toInt()
-            icon = if (aboutIcon) RoundedBitmapDrawableFactory.create(resources,
-                BitmapFactory.decodeResource(resources, R.drawable.settings_about_twidget)).apply { isCircular = true }
-                else context.getDrawable(iconRes)
+            icon = SettingsIcons.load(context, iconRes)
             showBadge = badge
             setOnClickListener { action() }
         }

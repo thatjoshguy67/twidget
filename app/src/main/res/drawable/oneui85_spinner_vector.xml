@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:height="96.0dp" android:width="96.0dp" android:viewportWidth="96.0" android:viewportHeight="96.0">
+    <group android:name="s1c2" android:scaleX="0.4" android:scaleY="0.4" android:translateX="48.0" android:translateY="48.0">
+        <group android:name="c2" android:pivotX="120.0" android:pivotY="120.0" android:translateX="-120.0" android:translateY="-120.0">
+            <group android:name="c2s4" android:pivotX="28.25" android:pivotY="28.25" android:scaleX="0.95" android:scaleY="0.95" android:translateX="7.75" android:translateY="91.75">
+                <group android:name="c2s4pg1" android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="c2s4pg1p10" android:pathData="M 0 -28 C 15.464 -28 28 -15.464 28 0 C 28 15.464 15.464 28 0 28 C -15.464 28 -28 15.464 -28 0 C -28 -15.464 -15.464 -28 0 -28 Z" android:fillAlpha="1.0">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear" android:startX="22.960938" android:startY="80.87109" android:endX="-9.15625" android:endY="-97.58203">
+                                <item android:color="#e63dcc87" android:offset="0.0" />
+                                <item android:color="#e63ba3c3" android:offset="0.25" />
+                                <item android:color="#e6387aff" android:offset="0.5" />
+                                <item android:color="#b7398ae8" android:offset="0.806" />
+                                <item android:color="#993ba3c3" android:offset="1.0" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+            <group android:name="c2s3" android:pivotX="28.25" android:pivotY="28.25" android:scaleX="0.95" android:scaleY="0.95" android:translateX="91.75" android:translateY="7.75">
+                <group android:name="c2s3pg1" android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="c2s3pg1p10" android:pathData="M 0 -28 C 15.464 -28 28 -15.464 28 0 C 28 15.464 15.464 28 0 28 C -15.464 28 -28 15.464 -28 0 C -28 -15.464 -15.464 -28 0 -28 Z" android:fillAlpha="1.0">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear" android:startX="-15.839844" android:startY="-8.046875" android:endX="39.41427" android:endY="9.76213">
+                                <item android:color="#993ba3c3" android:offset="0.0" />
+                                <item android:color="#993cb3ac" android:offset="0.612" />
+                                <item android:color="#993dcc87" android:offset="1.0" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+            <group android:name="c2s2" android:pivotX="28.25" android:pivotY="28.25" android:scaleX="0.95" android:scaleY="0.95" android:translateX="175.75" android:translateY="91.75">
+                <group android:name="c2s2pg1" android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="c2s2pg1p10" android:pathData="M 0 -28 C 15.464 -28 28 -15.464 28 0 C 28 15.464 15.464 28 0 28 C -15.464 28 -28 15.464 -28 0 C -28 -15.464 -15.464 -28 0 -28 Z" android:fillAlpha="1.0">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear" android:startX="9.467928" android:startY="-29.209497" android:endX="-5.4835525" android:endY="32.39227">
+                                <item android:color="#99387aff" android:offset="0.0" />
+                                <item android:color="#c83a92db" android:offset="0.612" />
+                                <item android:color="#e63cb9a2" android:offset="1.0" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+            <group android:name="c2s1" android:pivotX="28.25" android:pivotY="28.25" android:scaleX="0.95" android:scaleY="0.95" android:translateX="91.75" android:translateY="175.75">
+                <group android:name="c2s1pg1" android:translateX="28.25" android:translateY="28.25">
+                    <path android:name="c2s1pg1p10" android:pathData="M 0 -28 C 15.464 -28 28 -15.464 28 0 C 28 15.464 15.464 28 0 28 C -15.464 28 -28 15.464 -28 0 C -28 -15.464 -15.464 -28 0 -28 Z" android:fillAlpha="1.0">
+                        <aapt:attr name="android:fillColor">
+                            <gradient android:type="linear" android:startX="-16.316406" android:startY="9.574219" android:endX="69.625" android:endY="-33.015625">
+                                <item android:color="#e63dcc87" android:offset="0.0" />
+                                <item android:color="#e63dc591" android:offset="0.612" />
+                                <item android:color="#e63cb9a2" android:offset="1.0" />
+                            </gradient>
+                        </aapt:attr>
+                    </path>
+                </group>
+            </group>
+        </group>
+    </group>
+    <group android:name="s1" android:scaleX="0.4" android:scaleY="0.4" android:translateX="48.0" android:translateY="48.0">
+        <group android:name="s1pg1" />
+    </group>
+</vector>

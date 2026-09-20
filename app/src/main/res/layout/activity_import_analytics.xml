@@ -285,6 +285,7 @@
                     android:layout_width="118dp"
                     android:layout_height="118dp"
                     android:layout_marginTop="108dp"
+                    android:indeterminateDrawable="@drawable/oneui85_spinner"
                     android:indeterminate="true" />
             </LinearLayout>
 

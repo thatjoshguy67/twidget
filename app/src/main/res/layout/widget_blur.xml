@@ -18,7 +18,6 @@
         android:layout_height="30dp"
         android:layout_gravity="center"
         android:indeterminate="true"
-        android:indeterminateDrawable="@drawable/sesl_progress"
-        android:theme="@style/ThemeOverlay.Twidget.WidgetSpinner"
+        android:indeterminateDrawable="@drawable/oneui85_spinner"
         android:visibility="gone" />
 </FrameLayout>

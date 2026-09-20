@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -26,6 +27,18 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LoadingSpinnerInstrumentedTest {
+    @Test fun gradientDotOpacityNeverOvershoots() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        // Despite the exported resource name, the APK uses controlY1=1.0.
+        // Reconstructing it as 1.399 made the two dots overshoot full opacity.
+        val easing = AnimationUtils.loadInterpolator(context,
+            R.anim.oneui85_easing_custom_0_497_1_399_0_605_1_000)
+        for (step in 0..1000) {
+            val alpha = 0.7f + 0.3f * easing.getInterpolation(step / 1000f)
+            assertTrue("Dot alpha must stay within its visible range at step $step: $alpha", alpha in 0.7f..1f)
+        }
+    }
+
     @Test fun screenSpinnersRepeatAndStopWhenTheirParentIsHidden() {
         ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
             lateinit var panel: LinearLayout

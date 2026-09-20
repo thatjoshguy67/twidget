@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- RemoteViews are inflated by the launcher, which does not inherit our app theme. -->
-    <style name="ThemeOverlay.Twidget.WidgetSpinner" parent="">
-        <item name="progressCircleDotColor1">@color/sesl_loading_progress_color1</item>
-        <item name="progressCircleDotColor2">@color/sesl_loading_progress_color2</item>
-    </style>
-</resources>

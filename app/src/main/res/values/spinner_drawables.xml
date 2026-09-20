@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep SESL's gesture and lifecycle handling; replace only its running artwork. -->
+    <item name="sesl_swipe_refresh_animated" type="drawable">@drawable/oneui85_spinner</item>
+</resources>

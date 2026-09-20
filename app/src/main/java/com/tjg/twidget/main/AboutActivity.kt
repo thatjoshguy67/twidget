@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.drawable.Animatable
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -36,7 +35,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.update.AppRelease
 import com.tjg.twidget.update.AppUpdateManager
@@ -484,11 +482,7 @@ class AboutActivity : FoldablePopOverActivity() {
     private fun showUpdateChecking() {
         findViewById<View>(R.id.about_update_action).visibility = View.VISIBLE
         findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
-        findViewById<ImageView>(R.id.about_update_spinner).apply {
-            visibility = View.VISIBLE
-            setImageResource(R.drawable.oneui_spinner)
-            OneUiSpinner.loop(this)
-        }
+        findViewById<View>(R.id.about_update_spinner).visibility = View.VISIBLE
     }
 
     private fun showUpdateAvailable(release: AppRelease) {
@@ -510,11 +504,7 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun hideUpdateSpinner() {
-        findViewById<ImageView>(R.id.about_update_spinner).apply {
-            (drawable as? Animatable)?.stop()
-            setImageDrawable(null)
-            visibility = View.GONE
-        }
+        findViewById<View>(R.id.about_update_spinner).visibility = View.GONE
     }
 
     private fun downloadUpdate(release: AppRelease) {

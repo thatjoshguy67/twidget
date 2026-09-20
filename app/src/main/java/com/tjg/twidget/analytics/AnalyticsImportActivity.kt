@@ -1,7 +1,6 @@
 package com.tjg.twidget.analytics
 
 import android.content.Intent
-import android.graphics.drawable.AnimatedVectorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableString
@@ -11,7 +10,6 @@ import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.View
 import android.view.animation.DecelerateInterpolator
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -25,7 +23,6 @@ import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.EdgeToEdgeActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
@@ -75,7 +72,6 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
 
     override fun onDestroy() {
         asyncGeneration++
-        (findViewById<ImageView>(R.id.import_spinner)?.drawable as? AnimatedVectorDrawable)?.stop()
         super.onDestroy()
     }
 
@@ -244,12 +240,6 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
             }
         )
         configureButtons()
-        if (step == STEP_LOADING) {
-            findViewById<ImageView>(R.id.import_spinner).apply {
-                setImageResource(R.drawable.oneui_spinner)
-                OneUiSpinner.loop(this)
-            }
-        }
         if (animate) steps[step]?.let { id ->
             findViewById<View>(id).apply {
                 alpha = 0f

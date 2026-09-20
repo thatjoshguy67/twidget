@@ -30,7 +30,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
 import dev.oneuiproject.oneui.layout.ToolbarLayout
@@ -73,7 +72,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         emptyView = findViewById(R.id.top_followers_browse_empty)
         listView = findViewById(R.id.top_followers_browse_list)
         refreshView = findViewById<SwipeRefreshLayout>(R.id.top_followers_browse_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             isEnabled = canRefresh()
             setOnChildScrollUpCallback { _, _ ->
                 listView.visibility == View.VISIBLE && listView.canScrollVertically(-1)

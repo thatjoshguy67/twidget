@@ -8,7 +8,6 @@ import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.providers.RettiwtClient
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import java.util.Locale
@@ -30,7 +29,6 @@ internal class MainSyncController(
 
     fun setupRefresh() {
         activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { handlePullRefresh() }
         }
     }

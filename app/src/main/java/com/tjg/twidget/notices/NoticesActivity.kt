@@ -13,7 +13,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import com.tjg.twidget.update.AppUpdateManager
@@ -36,7 +35,6 @@ class NoticesActivity : FoldablePopOverActivity() {
         setContentView(R.layout.activity_notices)
         content = findViewById(R.id.notices_content)
         refresh = findViewById<SwipeRefreshLayout>(R.id.notices_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { refreshNotices() }
         }
         findViewById<ToolbarLayout>(R.id.notices_root)

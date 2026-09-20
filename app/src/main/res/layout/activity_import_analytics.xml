@@ -280,12 +280,12 @@
                     android:textSize="34sp"
                     android:textStyle="bold" />
 
-                <ImageView
+                <com.tjg.twidget.ui.LoadingSpinner
                     android:id="@+id/import_spinner"
                     android:layout_width="118dp"
                     android:layout_height="118dp"
                     android:layout_marginTop="108dp"
-                    android:src="@drawable/oneui_spinner" />
+                    android:indeterminate="true" />
             </LinearLayout>
 
             <LinearLayout

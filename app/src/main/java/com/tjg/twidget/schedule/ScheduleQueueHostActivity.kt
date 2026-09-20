@@ -44,7 +44,6 @@ import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
@@ -165,7 +164,6 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         queueTabs = findViewById(R.id.schedule_tabs)
         scroll = findViewById(R.id.schedule_scroll)
         refresh = findViewById<SwipeRefreshLayout>(R.id.schedule_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { syncBufferQueue(userInitiated = true) }
         }
         selectionBottomNav = findViewById(R.id.schedule_selection_bottom_nav)

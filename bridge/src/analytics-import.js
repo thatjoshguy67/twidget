@@ -30,7 +30,7 @@ export function prepareAnalyticsImport({ movements, currentFollowers, existing, 
     }
     followers -= movement.newFollows - movement.unfollows;
     const elapsedDays = index + 1;
-    const tolerance = trendTolerance(elapsedDays, currentFollowers);
+    const tolerance = importTolerance(elapsedDays, currentFollowers);
     if (followers < -tolerance) {
       impossibleDetail = {
         date: isoDay(movement.ts - DAY_MS),
@@ -55,7 +55,7 @@ export function prepareAnalyticsImport({ movements, currentFollowers, existing, 
   for (const anchor of trusted) {
     const reconstructed = byDay.get(Number(anchor.ts));
     const days = Math.max(0, Math.round((today - Number(anchor.ts)) / DAY_MS));
-    const tolerance = trendTolerance(days, currentFollowers);
+    const tolerance = importTolerance(days, currentFollowers);
     const difference = Math.abs(Number(anchor.followers) - reconstructed.followers);
     if (difference > tolerance) {
       return failure("analytics_trend_mismatch", {
@@ -71,7 +71,7 @@ export function prepareAnalyticsImport({ movements, currentFollowers, existing, 
   return {
     ok: true,
     checkedAnchors: trusted.length,
-    tolerance: trendTolerance(Math.round((today - historical[0].ts) / DAY_MS), currentFollowers),
+    tolerance: importTolerance(Math.round((today - historical[0].ts) / DAY_MS), currentFollowers),
     // Today's independently fetched live value is already in the repository;
     // the CSV fills only older gaps and never replaces trusted observations.
     samples: samples.filter((sample) => sample.ts < today),
@@ -80,6 +80,13 @@ export function prepareAnalyticsImport({ movements, currentFollowers, existing, 
 
 export function trendTolerance(days, currentFollowers = 0) {
   return Math.max(3, Math.ceil(currentFollowers * 0.001), Math.ceil(Math.max(0, days) / 30) * 2);
+}
+
+// Keep in sync with XAnalyticsImportPolicy on Android. Exports and profile
+// snapshots can be captured at different times. This allowance is bounded to
+// 0.3% (rounded up), not accumulated per row; trusted observations still win.
+export function importTolerance(days, currentFollowers) {
+  return Math.max(trendTolerance(days, currentFollowers), Math.ceil(currentFollowers * 0.003));
 }
 
 function normalizeMovements(input) {

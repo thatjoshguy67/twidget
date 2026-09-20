@@ -79,7 +79,7 @@ object WidgetArtworkRenderer {
                     this.textSize = textSize
                 }
                 canvas.drawText(word, x, y, paint)
-                x += paint.measureText(word) + 6f * density
+                x += paint.measureText(word) + wordSpacing(context)
             }
         }
 
@@ -116,17 +116,25 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         maxHeight: Float,
     ): Float {
-        var size = 42f * context.resources.displayMetrics.scaledDensity
-        val isGerman = AppLocales.resolve(settings.language).language == "de"
-        val minFactor = if (isGerman) 11f else 15f
-        val min = minFactor * context.resources.displayMetrics.scaledDensity
-        while (size > min) {
+        val step = context.resources.displayMetrics.scaledDensity
+        var size = 42f * step
+        while (true) {
             val lines = wrapWords(context, settings, words, maxWidth, size)
-            if (lines.size * size * 1.12f <= maxHeight) return size
-            size -= 1f * context.resources.displayMetrics.scaledDensity
+            val wordsFit = words.all { measureWord(context, settings, it, size) <= maxWidth }
+            if (wordsFit && lines.size * size * 1.12f <= maxHeight) return size
+            // Long German compounds and large accessibility fonts can need less
+            // than the old 11/15sp minimum. Keep shrinking instead of clipping.
+            if (size <= 1f) return size
+            size = max(1f, size - step)
         }
-        return min
     }
+
+    private fun wordSpacing(context: Context): Float = 6f * context.resources.displayMetrics.density
+
+    private fun measureWord(context: Context, settings: TwidgetWidgetSettings, word: String, textSize: Float): Float =
+        wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
+            .measureText(word)
+
     private fun wrapWords(
         context: Context,
         settings: TwidgetWidgetSettings,
@@ -137,16 +145,13 @@ object WidgetArtworkRenderer {
         // Measure each word with the paint it will actually be drawn with —
         // per-word weight/width means a single measuring paint would misjudge
         // the heavier emphasis words and overflow the card.
-        fun measure(word: String) =
-            wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
-                .measureText(word)
-        val space = measure(" ")
+        val space = wordSpacing(context)
         val lines = mutableListOf<MutableList<String>>()
         var current = mutableListOf<String>()
         var currentWidth = 0f
 
         words.forEach { word ->
-            val width = measure(word)
+            val width = measureWord(context, settings, word, textSize)
             if (current.isNotEmpty() && currentWidth + space + width > maxWidth) {
                 lines += current
                 current = mutableListOf()

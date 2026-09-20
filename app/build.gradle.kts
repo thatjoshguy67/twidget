@@ -115,6 +115,14 @@ android {
         resValues = true
     }
 
+    // Widgets choose their language independently of the app/device locale.
+    // Every Play install therefore needs every supported translation offline.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     flavorDimensions += "distribution"
     productFlavors {
         create("github") {

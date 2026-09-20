@@ -4,6 +4,23 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+## [1.3.0-beta.2] - 2026-09-20
+
+A small follow-up to beta.1, fixing the toolbar and dashboard issues reported
+since that build.
+
+### Fixes since beta.1
+
+- Fixed missing backgrounds behind the floating back and drawer buttons in
+  beta/release builds, including the issue reported on Pixel devices.
+- Replaced the large chart-estimate notice with a native tips card and shorter
+  wording. Tap **Got it** to dismiss it; it stays dismissed across refreshes,
+  app restarts, and accounts.
+- Fixed clipped dashboard notice text, including the private-account notice.
+- Added English and German wording for the dismissible chart tip.
+
+[1.3.0-beta.2]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.1...twidget-v1.3.0-beta.2
+
 ## [1.3.0] - Unreleased
 
 A new One UI 9 foundation, a reorganised Settings experience, and more ways to

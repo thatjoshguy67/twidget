@@ -130,6 +130,7 @@ object HistoryPool {
                     expectedFollowers = detail?.optLong("expected")?.takeIf { detail.has("expected") },
                     detectedFollowers = detail?.optLong("reconstructed")?.takeIf { detail.has("reconstructed") },
                     message = "Pool HTTP ${response.code}: ${response.body.take(200)}",
+                    comparisonDay = detail?.optString("date")?.takeIf { it.isNotBlank() },
                 )
             }
             return response.body
@@ -152,4 +153,5 @@ class BridgeImportException(
     val expectedFollowers: Long?,
     val detectedFollowers: Long?,
     message: String,
+    val comparisonDay: String? = null,
 ) : IllegalStateException(message)

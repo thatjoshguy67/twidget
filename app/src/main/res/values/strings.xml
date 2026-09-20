@@ -223,7 +223,7 @@
     <string name="import_premium_title">X Premium/Premium+ subscribers only</string>
     <string name="import_premium_summary">Pulling your stats from X Analytics requires a paid subscription to X.</string>
     <string name="import_accuracy_title">Check for accuracy</string>
-    <string name="import_accuracy_summary">We’ll check your stats for accuracy before importing. The process will fail if the stats are inaccurate.</string>
+    <string name="import_accuracy_summary">We’ll compare the export with saved follower history, allowing small differences between update times.</string>
     <string name="import_for_account">Import data for @%1$s?</string>
     <string name="import_range">Range</string>
     <string name="import_detected_followers">Detected follower count</string>
@@ -254,9 +254,23 @@
     <string name="notices_empty_summary">Pull down to refresh. Published GitHub releases will appear here automatically.</string>
     <string name="notices_retry">Try again</string>
     <string name="not_imported">Not imported</string>
-    <string name="import_failure_default">The analytics file could not be verified</string>
-    <string name="import_failure_range">Follower count was not within range</string>
-    <string name="import_stored_followers">Cached follower count</string>
+    <string name="import_failure_default">We couldn’t verify this export.</string>
+    <string name="import_failure_range">The export and saved follower counts differ too much.</string>
+    <string name="import_stored_followers">Saved follower count</string>
+    <string name="import_csv_followers">Follower count in export</string>
+    <string name="import_calculated_followers">Count calculated from export</string>
+    <string name="import_failure_difference">Difference: %1$s followers</string>
+    <string name="import_failure_comparison_day">Counts compared for %1$s</string>
+    <string name="import_failure_impossible">The follower changes in this export would produce a negative count.</string>
+    <string name="import_failure_refresh_help">X Analytics and saved counts may update at different times. Refresh this account, then download a new export including today. If it still fails, wait and try again.</string>
+    <string name="import_failure_old_export">This export does not include today.</string>
+    <string name="import_failure_invalid_rows">The export has missing or invalid daily data.</string>
+    <string name="import_failure_connection">We couldn’t check the follower count with the server.</string>
+    <string name="import_failure_connection_help">Check your connection and try again shortly.</string>
+    <string name="import_failure_history_help">Keep syncing this account to build up daily history, then try again with a fresh export covering those days.</string>
+    <string name="import_failure_private_help">Use local history without a bridge to import analytics for a private account.</string>
+    <string name="import_failure_file_help">Choose an Account overview CSV for this account from X Analytics. Include today in the date range.</string>
+    <string name="import_try_another_file">Choose CSV</string>
     <string name="analytics_url" translatable="false">https://analytics.x.com/</string>
     <string name="import_no_browser">No web browser is available.</string>
     <string name="import_action">Import</string>
@@ -268,7 +282,7 @@
     <string name="analytics_import_confirm_local">Import %2$d days of local follower history into @%1$s?\n\nRange: %3$s to %4$s\nCurrent local count: %5$s followers\n\nTwidget will reconstruct the CSV from daily follows and unfollows, then compare every overlapping day with trusted local snapshots. The import is refused if the latest count or trend differs beyond a tiny margin. Nothing is uploaded.</string>
     <string name="analytics_import_checking_bridge">Checking the CSV against bridge history…</string>
     <string name="analytics_import_busy">Twidget is busy. Try the import again shortly.</string>
-    <string name="analytics_import_trend_mismatch">The CSV trend does not match trusted follower history.</string>
+    <string name="analytics_import_trend_mismatch">The follower changes don’t match the saved history.</string>
     <string name="analytics_import_not_enough_history">There is not enough trusted history to verify this CSV safely.</string>
     <string name="analytics_import_private">Private accounts cannot contribute to shared history.</string>
     <string name="analytics_import_complete_bridge">Added %1$d verified gap days after checking %2$d trusted snapshots.</string>

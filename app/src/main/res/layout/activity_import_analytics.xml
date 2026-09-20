@@ -307,83 +307,127 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <LinearLayout
+            <ScrollView
                 android:id="@+id/import_step_failure"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:paddingHorizontal="28dp"
-                android:paddingTop="244dp"
+                android:fillViewport="true"
                 android:visibility="gone">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sec"
-                    android:text="@string/not_imported"
-                    android:textColor="@color/oneui_text_primary"
-                    android:textSize="42sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/import_failure_reason"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="88dp"
-                    android:fontFamily="sec"
-                    android:gravity="center"
-                    android:text="@string/import_failure_default"
-                    android:textColor="@color/oneui_text_primary"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
                 <LinearLayout
-                    android:id="@+id/import_failure_counts"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:paddingHorizontal="28dp"
+                    android:paddingTop="72dp"
+                    android:paddingBottom="24dp">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:gravity="center"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="22dp"
                         android:fontFamily="sec"
-                        android:text="@string/import_stored_followers"
+                        android:text="@string/not_imported"
                         android:textColor="@color/oneui_text_primary"
-                        android:textSize="18sp" />
-
-                    <TextView
-                        android:id="@+id/import_stored_value"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:fontFamily="sec"
-                        android:textColor="@color/oneui_text_primary"
-                        android:textSize="20sp"
+                        android:textSize="@dimen/sesl_appbar_extended_title_text_size"
+                        android:accessibilityHeading="true"
                         android:textStyle="bold" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:gravity="center"
+                        android:id="@+id/import_failure_reason"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="22dp"
+                        android:layout_marginTop="28dp"
                         android:fontFamily="sec"
-                        android:text="@string/import_detected_followers"
+                        android:lineSpacingExtra="4dp"
+                        android:text="@string/import_failure_default"
                         android:textColor="@color/oneui_text_primary"
-                        android:textSize="18sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/import_failure_detected_value"
-                        android:layout_width="wrap_content"
+                        android:gravity="center"
+                        android:id="@+id/import_failure_help"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
                         android:fontFamily="sec"
-                        android:textColor="@color/oneui_text_primary"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="@color/oneui_text_secondary"
+                        android:textSize="16sp" />
+
+                    <LinearLayout
+                        android:id="@+id/import_failure_counts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="28dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:gravity="center"
+                            android:id="@+id/import_failure_date"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="16dp"
+                            android:fontFamily="sec"
+                            android:textColor="@color/oneui_text_secondary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:gravity="center"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sec"
+                            android:text="@string/import_stored_followers"
+                            android:textColor="@color/oneui_text_secondary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:gravity="center"
+                            android:id="@+id/import_stored_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:fontFamily="sec"
+                            android:textColor="@color/oneui_text_primary"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:gravity="center"
+                            android:id="@+id/import_failure_detected_label"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:fontFamily="sec"
+                            android:text="@string/import_csv_followers"
+                            android:textColor="@color/oneui_text_secondary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:gravity="center"
+                            android:id="@+id/import_failure_detected_value"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:fontFamily="sec"
+                            android:textColor="@color/oneui_text_primary"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:gravity="center"
+                            android:id="@+id/import_failure_difference"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="16dp"
+                            android:fontFamily="sec"
+                            android:textColor="@color/oneui_text_secondary"
+                            android:textSize="16sp" />
+                    </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
+            </ScrollView>
         </FrameLayout>
 
         <LinearLayout
@@ -400,7 +444,9 @@
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/import_secondary_button"
                 android:layout_width="0dp"
-                android:layout_height="58dp"
+                android:layout_height="wrap_content"
+                android:minHeight="58dp"
+                android:paddingVertical="12dp"
                 android:layout_marginEnd="6dp"
                 android:layout_weight="1"
                 android:background="@drawable/onboarding_glass_button_bg"
@@ -414,7 +460,9 @@
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/import_primary_button"
                 android:layout_width="0dp"
-                android:layout_height="58dp"
+                android:layout_height="wrap_content"
+                android:minHeight="58dp"
+                android:paddingVertical="12dp"
                 android:layout_marginStart="6dp"
                 android:layout_weight="1"
                 android:background="@drawable/import_primary_button_bg"

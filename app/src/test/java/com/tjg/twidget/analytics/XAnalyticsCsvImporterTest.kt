@@ -104,9 +104,8 @@ class XAnalyticsCsvImporterTest {
 
         assertEquals(10L, error.cachedFollowers)
         assertEquals(null, error.detectedFollowers)
-        assertTrue(error.message.orEmpty().contains("+20"))
-        assertTrue(error.message.orEmpty().contains("-10"))
-        assertTrue(error.message.orEmpty().contains("discrepancy of 3"))
+        assertEquals("analytics_impossible_followers", error.code)
+        assertTrue(error.message.orEmpty().contains("negative count"))
     }
 
     @Test
@@ -203,7 +202,91 @@ class XAnalyticsCsvImporterTest {
         }.exceptionOrNull()
 
         assertTrue(error is IllegalArgumentException)
-        assertTrue(error?.message.orEmpty().contains("newest row must be today", ignoreCase = true))
+        assertTrue(error?.message.orEmpty().contains("does not include today", ignoreCase = true))
+    }
+
+    @Test
+    fun `small snapshot differences do not reject an otherwise matching trend`() {
+        for (difference in listOf(-11L, 11L)) {
+            val imported = listOf(history(1, 7_750 + difference, true), history(2, 7_767, true))
+            assertEquals(2, XAnalyticsImportPolicy.validate(
+                imported, listOf(history(1, 7_750), history(2, 7_767)), 7_767,
+            ))
+        }
+        assertEquals(13L, XAnalyticsImportPolicy.importTolerance(1, 4_192))
+        assertEquals(24L, XAnalyticsImportPolicy.importTolerance(1, 7_767))
+        assertEquals(26L, XAnalyticsImportPolicy.importTolerance(365, 4_192))
+    }
+
+    @Test
+    fun `snapshot allowance remains bounded for every historical anchor`() {
+        val trusted = listOf(history(1, 7_750), history(2, 7_767))
+        for (difference in listOf(-25L, 25L)) {
+            val error = runCatching {
+                XAnalyticsImportPolicy.validate(
+                    listOf(history(1, 7_750 + difference, true), history(2, 7_767, true)), trusted, 7_767,
+                )
+            }.exceptionOrNull() as AnalyticsValidationException
+            assertEquals("analytics_trend_mismatch", error.code)
+            assertEquals("Jul 1", error.comparisonDay)
+        }
+    }
+
+    @Test
+    fun `explicit count uses newest dated row and allows snapshot lag in either direction`() {
+        for (total in listOf(7_756L, 7_778L)) {
+            val csv = """
+                Date,New follows,Unfollows,Followers
+                "Fri, Jul 10, 2026",0,0,7000
+                "Sat, Jul 11, 2026",0,0,$total
+            """.trimIndent()
+            val result = XAnalyticsCsvImporter.parse(
+                StringReader(csv), anchorFollowers = 7_767, today = LocalDate.of(2026, 7, 11),
+            )
+            assertEquals(total, result.detectedFollowers)
+            assertEquals(7_767L, result.samples.last().followers)
+        }
+    }
+
+    @Test
+    fun `snapshot lag near account creation omits negative days without inventing zeroes`() {
+        val csv = """
+            Date,New follows,Unfollows
+            "Sat, Jul 11, 2026",4203,0
+            "Fri, Jul 10, 2026",0,0
+        """.trimIndent()
+        val result = XAnalyticsCsvImporter.parse(
+            StringReader(csv), anchorFollowers = 4_192, today = LocalDate.of(2026, 7, 11),
+        )
+        assertEquals(listOf(4_192L), result.samples.map { it.followers })
+        assertEquals(2, result.movements.size)
+    }
+
+    @Test
+    fun `missing optional latest total does not fall back to an older total`() {
+        val csv = """
+            Date,New follows,Unfollows,Followers
+            "Fri, Jul 10, 2026",0,0,7000
+            "Sat, Jul 11, 2026",0,0,
+        """.trimIndent()
+        val result = XAnalyticsCsvImporter.parse(
+            StringReader(csv), anchorFollowers = 7_767, today = LocalDate.of(2026, 7, 11),
+        )
+        assertEquals(null, result.detectedFollowers)
+    }
+
+    @Test
+    fun `negative reconstruction beyond snapshot allowance still fails`() {
+        val csv = """
+            Date,New follows,Unfollows
+            "Sat, Jul 11, 2026",4206,0
+        """.trimIndent()
+        val error = runCatching {
+            XAnalyticsCsvImporter.parse(
+                StringReader(csv), anchorFollowers = 4_192, today = LocalDate.of(2026, 7, 11),
+            )
+        }.exceptionOrNull() as AnalyticsCsvException
+        assertEquals("analytics_impossible_followers", error.code)
     }
 
     @Test

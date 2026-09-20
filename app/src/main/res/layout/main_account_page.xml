@@ -18,13 +18,14 @@
             android:orientation="vertical"
             android:paddingBottom="96dp">
 
+                <!-- Keep notice text inside the drawer content edge mask and aligned with card content. -->
                 <TextView
                     android:id="@+id/private_account_notice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingStart="6dp"
+                    android:paddingStart="26dp"
                     android:paddingTop="8dp"
-                    android:paddingEnd="6dp"
+                    android:paddingEnd="26dp"
                     android:paddingBottom="10dp"
                     android:text="@string/private_account_notice"
                     android:textColor="@color/oneui_text_secondary"
@@ -35,9 +36,9 @@
                     android:id="@+id/history_notice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingStart="6dp"
+                    android:paddingStart="26dp"
                     android:paddingTop="8dp"
-                    android:paddingEnd="6dp"
+                    android:paddingEnd="26dp"
                     android:paddingBottom="10dp"
                     android:text="@string/history_notice"
                     android:textColor="@color/oneui_text_secondary"

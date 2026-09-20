@@ -143,6 +143,7 @@ object TwidgetStore {
     private const val KEY_FAKE_UPDATE = "debug_fake_update"
     private const val KEY_UPDATE_AVAILABLE = "update_available"
     private const val KEY_UPDATE_VERSION = "update_version"
+    private const val KEY_ESTIMATE_TIP_DISMISSED = "estimate_tip_dismissed"
     private const val KEY_UPDATE_SUGGESTION_DISMISSED = "update_suggestion_dismissed"
     const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
@@ -308,6 +309,14 @@ object TwidgetStore {
 
     fun dismissUpdateSuggestion(context: Context) {
         prefs(context).edit().putBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, true).apply()
+    }
+
+    // This chart legend is shared by every account, so acknowledgement is app-wide.
+    fun isEstimateTipDismissed(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ESTIMATE_TIP_DISMISSED, false)
+
+    fun dismissEstimateTip(context: Context) {
+        prefs(context).edit().putBoolean(KEY_ESTIMATE_TIP_DISMISSED, true).apply()
     }
 
     fun cachedXApiBearer(context: Context): String {

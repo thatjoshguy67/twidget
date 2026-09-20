@@ -43,6 +43,7 @@ import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.followers.TopFollowersCardBinder
 import com.tjg.twidget.ui.MetricChartView
+import dev.oneuiproject.oneui.widget.TipsCard
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
 import java.util.Locale
@@ -221,15 +222,24 @@ internal class MainDashboardBinder(
     }
 
     private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
-        val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
-        // The daily-capture explanation lives in onboarding now; only the
-        // estimate footnote still surfaces on the dashboard.
-        if (chartHistory.any { it.estimated }) {
-            notice.setText(R.string.estimated_notice)
-            notice.visibility = View.VISIBLE
-        } else {
+        val notice = page.findViewById<TipsCard>(R.id.history_notice) ?: return
+        if (TwidgetStore.isEstimateTipDismissed(activity) || chartHistory.none { it.estimated }) {
             notice.visibility = View.GONE
+            return
         }
+        notice.setTitle(activity.getString(R.string.estimated_notice_title))
+        notice.setSummary(activity.getString(R.string.estimated_notice))
+        // The account page is reused on refresh; add the action only once.
+        if (notice.findViewById<View>(R.id.history_notice_dismiss) == null) {
+            notice.addButton(activity.getString(R.string.estimated_notice_dismiss)) {
+                TwidgetStore.dismissEstimateTip(activity)
+                notice.visibility = View.GONE
+            }.apply {
+                id = R.id.history_notice_dismiss
+                minimumHeight = activity.dp(48)
+            }
+        }
+        notice.visibility = View.VISIBLE
     }
 
     private fun bindPrivateAccountNotice(page: View, stats: ProfileStats) {

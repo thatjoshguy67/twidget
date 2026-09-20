@@ -32,17 +32,15 @@
                     android:textSize="13sp"
                     android:visibility="gone" />
 
-                <TextView
+                <dev.oneuiproject.oneui.widget.TipsCard
                     android:id="@+id/history_notice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingStart="26dp"
-                    android:paddingTop="8dp"
-                    android:paddingEnd="26dp"
-                    android:paddingBottom="10dp"
-                    android:text="@string/history_notice"
-                    android:textColor="@color/oneui_text_secondary"
-                    android:textSize="13sp"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="@drawable/metric_card_bg"
                     android:visibility="gone" />
 
                 <GridLayout

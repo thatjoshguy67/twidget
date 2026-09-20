@@ -118,6 +118,45 @@ class SeslCompatibilityInstrumentedTest {
         }
     }
 
+    @Test fun estimateTipAppearsOnlyForEstimatesAndStaysDismissedAfterRecreation() {
+        context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
+            .putString("username", account)
+            .putString("bridge_url", "http://127.0.0.1:1")
+            .putBoolean("onboarded", true)
+            .putBoolean("refresh_on_launch", false)
+            .remove("history_$account")
+            .remove("estimate_tip_dismissed")
+            .commit()
+        val now = System.currentTimeMillis()
+        val stats = ProfileStats("SESL Test", account, 500, 100, 200, 300, syncedAt = now)
+        TwidgetStore.saveStats(context, stats)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            settle()
+            scenario.onActivity { activity ->
+                assertEquals(View.GONE, activity.findViewById<View>(R.id.history_notice).visibility)
+                TwidgetStore.saveStats(context, stats.copy(history = listOf(
+                    HistorySample("Earlier", 400, 100, 200, 300, now - 4 * 86_400_000L),
+                )))
+                repeat(2) { activity.dashboardBinder.bindContent() }
+                val tip = activity.findViewById<dev.oneuiproject.oneui.widget.TipsCard>(R.id.history_notice)
+                assertEquals(View.VISIBLE, tip.visibility)
+                val actions = tip.findViewById<LinearLayout>(dev.oneuiproject.oneui.design.R.id.tips_bottom_bar)
+                assertEquals("Refreshing must not duplicate the dismissal action", 1, actions.childCount)
+                assertTrue(tip.findViewById<View>(R.id.history_notice_dismiss).performClick())
+                assertEquals(View.GONE, tip.visibility)
+                assertTrue(TwidgetStore.isEstimateTipDismissed(activity))
+                activity.dashboardBinder.bindContent()
+                assertEquals(View.GONE, tip.visibility)
+            }
+            scenario.recreate()
+            settle()
+            scenario.onActivity { activity ->
+                assertEquals(View.GONE, activity.findViewById<View>(R.id.history_notice).visibility)
+                assertTrue(TwidgetStore.isEstimateTipDismissed(activity))
+            }
+        }
+    }
+
     @Test fun dashboardActionsAndFabRemainOnScreenThroughoutScroll() {
         context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
             .putString("username", account).putBoolean("refresh_on_launch", false).commit()

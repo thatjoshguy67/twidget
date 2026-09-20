@@ -135,7 +135,9 @@
     <string name="no_recent_gain">Kein Anstieg in letzter Zeit</string>
     <string name="history_notice">Der Verlauf wird einmal täglich erfasst. Wöchentliche Daten benötigen mindestens 7 Tage; längere Zeiträume füllen sich nach und nach, während Twidget weiter synchronisiert.</string>
     <string name="private_account_notice">Privater Account: X stellt nur begrenzte öffentliche Daten bereit. Einige Statistiken, Post-Analysen und Verläufe sind möglicherweise unvollständig oder nicht verfügbar.</string>
-    <string name="estimated_notice">Ausgegraute Balken sind Schätzungen aus einem begrenzten Verlauf. Ausgefüllte Balken enthalten echte Daten, die Twidget nach und nach vervollständigt.</string>
+    <string name="estimated_notice_title">Schätzungen im Diagramm</string>
+    <string name="estimated_notice">Ausgegraute Balken sind Schätzungen. Ausgefüllte Balken zeigen erfasste Daten.</string>
+    <string name="estimated_notice_dismiss">Verstanden</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Einstellungen öffnen</string>
     <string name="refresh_stats">Daten aktualisieren</string>

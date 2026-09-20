@@ -11,6 +11,7 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
@@ -237,15 +238,34 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun setupVersion() {
         val text = getString(R.string.about_version, appVersionName())
+        val feedback = TypedValue()
+        theme.resolveAttribute(android.R.attr.selectableItemBackground, feedback, true)
+        val versionFeedback = feedback.resourceId
+        theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, feedback, true)
+        val iconFeedback = feedback.resourceId
         findViewById<TextView>(R.id.about_header_version).apply {
             this.text = text
+            setBackgroundResource(versionFeedback)
+            isFocusable = true
             setOnClickListener { onVersionTapped() }
         }
         findViewById<CardItemView>(R.id.about_compact_header).apply {
             summary = text
-            getSummaryView().setOnClickListener { onVersionTapped() }
+            getSummaryView().apply {
+                setBackgroundResource(versionFeedback)
+                isFocusable = true
+                setOnClickListener { onVersionTapped() }
+            }
             getEndImageView().apply {
                 contentDescription = getString(R.string.about_repo_link)
+                val touchSize = (48 * resources.displayMetrics.density).toInt()
+                layoutParams = layoutParams.apply {
+                    width = touchSize
+                    height = touchSize
+                }
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setBackgroundResource(iconFeedback)
+                isFocusable = true
                 setOnClickListener { openUrl(getString(R.string.link_app_repo)) }
             }
         }

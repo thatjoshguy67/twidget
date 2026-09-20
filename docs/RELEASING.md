@@ -71,7 +71,7 @@ CI provides these downloads in each run's **Artifacts** section:
 
 | Workflow | GitHub distribution | Play distribution |
 | --- | --- | --- |
-| Debug Build + Play Build (pushes to main/staging) | Existing production-signed debug APK/AAB and rolling GitHub release | Signed release APK/AAB in `twidget-play-release` |
+| Debug Build + Play Build (pushes to main/staging) | Existing production-signed debug APK/AAB and rolling GitHub release | Unsigned validation AAB in `twidget-play-validation-unsigned`; do not upload |
 | Pre-release | Signed beta APK/AAB on the GitHub pre-release | Signed beta APK/AAB in `twidget-play-<version>-beta.<number>` |
 | Release | Signed release APK/AAB on the GitHub release | Signed release APK/AAB in `twidget-play-<version>` |
 
@@ -81,11 +81,24 @@ stable/beta workflows also verify that Play matches the GitHub distribution.
 Play artifacts stay separate from GitHub release assets because older GitHub
 updaters may select any attached APK.
 
-Play Build pull requests produce only an unsigned AAB in
-`twidget-play-unsigned`; production signing credentials are confined to the
-trusted branch/manual build steps. Push builds keep the base release version
-code, so uploading another build of that version to Play requires a version
-bump. Do not upload a GitHub-flavor AAB or a debuggable build to Google Play.
+Routine Play Build runs (pushes, pull requests, and manual runs without a beta
+number) produce only an unsigned validation AAB. Use the Pre-release or Release
+workflow's versioned Play artifact for Play Console uploads. Do not upload a
+GitHub-flavor AAB or a debuggable build to Google Play.
+
+For a signed rebuild of an existing beta, dispatch **Play Build** with
+`beta_number` and `highest_play_code`, using a reviewed ref containing the fixes.
+The beta tag must exist, and the built version code must exceed the supplied
+highest code before CI uploads the signed files. The artifact and both filenames
+include the beta version and code; its run summary identifies the upload AAB.
+This recovery path does not move the published beta tag or replace GitHub APKs.
+
+A permanent offset of 100 was added to the semantic-version code allocation
+after code `100300099` (the 1.3.0 stable slot) was uploaded during beta testing.
+The corrected beta.2 uses `100300181`, beta.3 will use `100300182`, and stable
+1.3.0 will use `100300199`. Retain the offset for future versions: 1.3.1 beta.1
+uses `100300280`, preserving upgrades. Both distributions keep the same code
+allocation. Never upload an unreleased stable build as a beta.
 
 ### Publishing
 

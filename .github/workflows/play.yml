@@ -5,6 +5,15 @@ on:
     branches: [main, staging]
   pull_request:
   workflow_dispatch:
+    inputs:
+      beta_number:
+        description: 'Existing beta number to rebuild for Play (blank = unsigned validation only)'
+        required: false
+        type: string
+      highest_play_code:
+        description: 'Highest code already uploaded to Play; required for a signed beta rebuild'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -28,18 +37,41 @@ jobs:
           # The legacy "tools" package was removed from Google's repository.
           packages: platform-tools
 
-      # Production signing credentials are only available to trusted branch
-      # and manual builds, never to pull-request build steps.
+      - name: Resolve build mode
+        id: mode
+        env:
+          BETA_NUMBER: ${{ inputs.beta_number }}
+          HIGHEST_PLAY_CODE: ${{ inputs.highest_play_code }}
+        run: |
+          if [ -z "$BETA_NUMBER" ]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! [[ "$BETA_NUMBER" =~ ^[1-9][0-9]*$ ]] || [ "$BETA_NUMBER" -gt 19 ]; then
+            echo "::error::beta_number must be between 1 and 19"
+            exit 1
+          fi
+          if ! [[ "$HIGHEST_PLAY_CODE" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::highest_play_code is required for signed beta rebuilds"
+            exit 1
+          fi
+          BASE=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
+          git rev-parse --verify "refs/tags/twidget-v${BASE}-beta.${BETA_NUMBER}"
+          echo "variant=beta" >> "$GITHUB_OUTPUT"
+          echo "version=${BASE}-beta.${BETA_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      # Only an explicit beta recovery run creates uploadable signed artifacts.
+      # Routine branch and PR builds are unsigned validation, never Play releases.
       - name: Decode release keystore
-        if: github.event_name != 'pull_request'
+        if: steps.mode.outputs.variant == 'beta'
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
           umask 077
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
 
-      - name: Test and build signed Play release
-        if: github.event_name != 'pull_request'
+      - name: Test and build signed Play beta
+        if: steps.mode.outputs.variant == 'beta'
         env:
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -50,10 +82,11 @@ jobs:
           BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
           CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
-        run: ./gradlew testPlayReleaseUnitTest compilePlayDebugAndroidTestKotlin assemblePlayRelease bundlePlayRelease lintPlayRelease --no-daemon --stacktrace
+          BETA_NUMBER: ${{ inputs.beta_number }}
+        run: ./gradlew testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta "-PbetaNumber=$BETA_NUMBER" --no-daemon --stacktrace
 
-      - name: Test and build unsigned Play pull request
-        if: github.event_name == 'pull_request'
+      - name: Test and build unsigned Play validation
+        if: steps.mode.outputs.variant == 'release'
         env:
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -62,35 +95,52 @@ jobs:
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
         run: ./gradlew testPlayReleaseUnitTest compilePlayDebugAndroidTestKotlin bundlePlayRelease lintPlayRelease --no-daemon --stacktrace
       - name: Verify Play bundle excludes the APK updater
-        run: python3 scripts/verify-play-bundle.py app/build/outputs/bundle/playRelease/app-play-release.aab
-
-      - name: Verify signed Play APK and AAB
-        if: github.event_name != 'pull_request'
-        run: bash scripts/verify-signed-distribution.sh app/build/outputs/apk/play/release/app-play-release.apk app/build/outputs/bundle/playRelease/app-play-release.aab
-
-      - name: Stage signed Play downloads
-        if: github.event_name != 'pull_request'
+        env:
+          VARIANT: ${{ steps.mode.outputs.variant }}
         run: |
-          mkdir -p play-artifacts
-          cp app/build/outputs/apk/play/release/app-play-release.apk play-artifacts/
-          cp app/build/outputs/bundle/playRelease/app-play-release.aab play-artifacts/
+          python3 scripts/verify-play-bundle.py "app/build/outputs/bundle/play${VARIANT^}/app-play-$VARIANT.aab"
 
-      - name: Upload signed Play APK and AAB
-        if: github.event_name != 'pull_request'
+      - name: Verify signed Play beta APK and AAB
+        if: steps.mode.outputs.variant == 'beta'
+        run: bash scripts/verify-signed-distribution.sh app/build/outputs/apk/play/beta/app-play-beta.apk app/build/outputs/bundle/playBeta/app-play-beta.aab
+
+      - name: Validate beta metadata and stage signed downloads
+        if: steps.mode.outputs.variant == 'beta'
+        id: downloads
+        env:
+          EXPECTED_VERSION: ${{ steps.mode.outputs.version }}
+          HIGHEST_PLAY_CODE: ${{ inputs.highest_play_code }}
+        run: |
+          METADATA=app/build/outputs/apk/play/beta/output-metadata.json
+          VERSION=$(jq -r '.elements[0].versionName' "$METADATA")
+          CODE=$(jq -r '.elements[0].versionCode' "$METADATA")
+          if [ "$VERSION" != "$EXPECTED_VERSION" ] || [ "$CODE" -le "$HIGHEST_PLAY_CODE" ]; then
+            echo "::error::Beta $VERSION ($CODE) must match $EXPECTED_VERSION and exceed used Play code $HIGHEST_PLAY_CODE"
+            exit 1
+          fi
+          mkdir -p play-artifacts
+          cp app/build/outputs/apk/play/beta/app-play-beta.apk "play-artifacts/twidget-play-v$VERSION-code$CODE.apk"
+          cp app/build/outputs/bundle/playBeta/app-play-beta.aab "play-artifacts/twidget-play-v$VERSION-code$CODE.aab"
+          cp "$METADATA" play-artifacts/output-metadata.json
+          echo "artifact=twidget-play-$VERSION-code$CODE" >> "$GITHUB_OUTPUT"
+          printf '### Play beta upload\n\nVersion: %s\n\nVersion code: %s (previous highest: %s)\n\nUpload the AAB from **twidget-play-%s-code%s**.\n' "$VERSION" "$CODE" "$HIGHEST_PLAY_CODE" "$VERSION" "$CODE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload signed Play beta APK and AAB
+        if: steps.mode.outputs.variant == 'beta'
         uses: actions/upload-artifact@v4
         with:
-          name: twidget-play-release
+          name: ${{ steps.downloads.outputs.artifact }}
           path: play-artifacts/
           if-no-files-found: error
 
-      - name: Upload unsigned Play pull-request bundle
-        if: github.event_name == 'pull_request'
+      - name: Upload unsigned Play validation bundle
+        if: steps.mode.outputs.variant == 'release'
         uses: actions/upload-artifact@v4
         with:
-          name: twidget-play-unsigned
+          name: twidget-play-validation-unsigned
           path: app/build/outputs/bundle/playRelease/app-play-release.aab
           if-no-files-found: error
 
       - name: Remove release keystore
-        if: always() && github.event_name != 'pull_request'
+        if: always() && steps.mode.outputs.variant == 'beta'
         run: rm -f "$RUNNER_TEMP/release.keystore"

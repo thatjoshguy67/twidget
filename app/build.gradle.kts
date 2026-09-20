@@ -98,9 +98,12 @@ require(betaNumber <= 19) {
 
 // Reserve 100 monotonically ordered Play Store version-code slots for each
 // semantic version: beta 80-98, trusted debug 98, and stable 99. The layout
-// stays below Play's 2,100,000,000 ceiling through version 20.999.999.
+// A 100-code migration offset moves betas above the 1.3.0 stable code
+// (100300099) already uploaded to Play. Keep this offset for future versions
+// so beta < debug < stable and upgrades to the next version remain ordered.
+// Validate the final value against Play's 2,100,000,000 ceiling.
 val versionCodeBase =
-    versionMajor * 100_000_000 + versionMinor * 100_000 + versionPatch * 100
+    versionMajor * 100_000_000 + versionMinor * 100_000 + versionPatch * 100 + 100
 val stableVersionCode = versionCodeBase + 99
 require(versionMajor in 0..20 && stableVersionCode <= 2_100_000_000) {
     "versionName $baseVersionName cannot be represented as a Play Store version code"

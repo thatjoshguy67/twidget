@@ -27,6 +27,13 @@
     void updateMenuView(boolean);
 }
 
+# SESL9 FloatingToolbarAware locates the navigation button through
+# SeslBaseReflector.getDeclaredField(Toolbar.class, "mNavButtonView"). Keep this
+# field name in minified builds so both back and drawer buttons get their surface.
+-keepclassmembers class androidx.appcompat.widget.Toolbar {
+    android.widget.ImageButton mNavButtonView;
+}
+
 # JSON models are parsed explicitly via org.json; no reflection keep rules needed.
 
 # oneui-design 0.9.13+oneui8's immersive-scroll API names a class removed in SESL9.

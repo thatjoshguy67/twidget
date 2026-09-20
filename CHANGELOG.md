@@ -9,91 +9,39 @@ All notable changes to Twidget are documented here.
 A new One UI 9 foundation, a reorganised Settings experience, and more ways to
 personalise Twidget. This release includes all changes since stable 1.2.1.
 
-### One UI 9
+### Updated One UI 9 interface
 
-- Updated the app to the SESL9 AndroidX and Material components, with native
-  floating toolbars and top/bottom scroll fades. Floating toolbar actions stay
-  visible while scrolling.
-- Scheduled tweets now uses a floating List/Calendar navigation bar with an
-  active-tab indicator, light/dark surfaces, and a separate native compose FAB.
-- Long-press selection uses floating count/select-all and Cancel controls, with
-  native bottom actions. Fixed overlapping titles, clipped labels, and spacing.
-- Widget settings uses native floating Cancel/Save buttons. The changelog reader
-  uses a native back toolbar.
-- Top Followers search now uses SESL9's native floating bottom search bar,
-  expanding from a compact pill when focused, with voice search, live filtering,
-  and keyboard-aware positioning.
-- Explanatory settings text now appears below its card using the native
-  description component, while selected values stay in their setting rows.
-- Updated settings card heights and adaptive padding across the main page,
-  subpages, About, and widget settings to follow SESL9's dimensions.
-- Fixed clipped FABs and composer controls, the Save action overflowing its
-  toolbar, and content/inset handling around system bars and the keyboard.
-- About opens expanded on a fresh visit, with a header that clears the toolbar
-  during scrolling. Widget settings now shows its title and preview correctly.
-- Drawers clear the status bar on phones and tablets, including the collapsed
-  tablet rail. Fixed dark-mode calendar colours and chart back navigation.
-- Milestone goal entry preserves exact values when using the number picker.
+- Updated the entire app to use SESL9, or One UI 9's app design style.
+- Toolbars now float when you scroll
+- A subtle gradient overflow is visible when you scroll, on the top and bottom of the display
+- Cards have shorter padding
+- Twidget feel basically 1:1 to a native One UI application now!
 
-### Settings, fonts, and widgets
+### Redesigned settings, and custom fonts
 
-- Reorganised Settings into Accounts, Appearance, Data and sources, Your Brief,
-  Notifications, Scheduled tweets, and Language, using One UI components and icons.
-  Source credentials now have dedicated pages, with updated About and Debug layouts.
-- Added an app theme picker with One UI 9 previews matched to phones, tablets,
-  and foldables, plus widget defaults that preserve individual widget choices.
+- Reorganised Settings into categories, instead of one giant list. 
+- Added a new Appearance page, with customisable fonts, widget presets and light/dark mode. 
 - Choose Default (One UI Sans), Google Sans Flex, or System default for the app
   interface independently of widget fonts. Font weights and styles are preserved
   across pages, dialogs, and charts. Widgets also gain a System default font option.
-- GitHub builds on One UI show a separate SamFonts tip for other custom system fonts.
 - Language opens Android's app-language settings on Android 13+, with a
   single-choice language dialog on older versions.
-- The Your Brief indicator remains until setup is complete and its Settings page
-  has been viewed. Added the Buffer logo to Accounts and onboarding.
-
-### Review fixes
-
-- Fixed text-only Buffer creation and prevented trashed Buffer drafts from
-  returning to the queue during sync.
-- Removing an account now clears its imported analytics and cached follower
-  rankings, including downloaded follower lists.
-- Brief widgets respect their selected language and replace stale-language
-  summaries with localised facts. Unsupported device languages use English,
-  and background widgets restore saved app languages on older Android versions.
-- Widget deltas now use each widget's language for number formatting.
-- Brief onboarding scrolls in short windows, with accessible Back and Continue
-  controls and improved German copy from Aaron the Techie.
-- Documented shared Hall of Fame post storage and retention, and corrected the
-  translation helper's Settings resource coverage.
+- Cleaned up other messy Settings items, changed some copy in certain places. 
 
 ### Scheduling and follower rankings
 
-- Paste images from the clipboard directly into the composer.
-- Top Followers now uses the shared-history bridge in both distributions.
-  Removed device-side scans and foreground-service permissions, preserving cached
-  rankings and cancelling old queued scans when upgrading.
+- You can now paste images from the clipboard directly into the tweet composer.
+- Fixed Top Follower scan reliabillity; now runs fully remote from the client. 
 
-### Distribution and localisation
+### Other fixes
 
-- Added a Google Play distribution without APK updates, updater notifications,
-  update badges, or install-package permission. GitHub builds retain the updater.
-  CI produces signed Play APK and AAB downloads alongside GitHub builds.
-- Updated privacy and Data safety disclosures for Your Brief, Gemini Cloud,
-  ML Kit diagnostics, and the shared Top Followers service.
+- Preparing work for the upcoming Google Play release (stay tuned)
 - Added German translations for the new Settings pages, shortened onboarding and
   streak labels, separated the add-widget button from its page title, and improved
-  Brief fallback and goal wording. Thanks to
-  [Aaron the Techie](https://x.com/aaronthetechie).
-
-### Development
-
+  Brief fallback and goal wording. Thanks to [Aaron the Techie](https://x.com/aaronthetechie).
+- Fixed clipped shadow in Your Brief onboarding.  
 - Updated to AGP 9.3.3, Gradle 9.5, compile SDK 37, and JDK 25 in CI for SESL9.
   Minimum Android version remains Android 8.0 (API 26), with target SDK 36.
-- Added layout and interaction regression checks for floating controls, system-bar
-  insets, light/dark cards, drawer states, and settings navigation.
-- Restored beta/release unit-test tasks after the AGP upgrade and removed the
-  unused legacy immersive-scroll path from minified builds, with an R8 guard
-  against retaining its incompatible SESL8 helper.
 
 [1.3.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.2.1...staging
 

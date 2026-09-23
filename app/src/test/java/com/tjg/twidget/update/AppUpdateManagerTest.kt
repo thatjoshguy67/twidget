@@ -1,6 +1,7 @@
 package com.tjg.twidget.update
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -174,5 +175,26 @@ class AppUpdateManagerTest {
                 contentRange = "bytes 0-0/*",
             ),
         )
+    }
+
+    @Test
+    fun knownDebugReleaseUsesRollingDebugArtifact() {
+        val release = AppUpdateManager.knownRelease("1.3.0-debug.43", UpdateChannel.DEBUG)!!
+
+        assertEquals("twidget-debug-latest.apk", release.assetName)
+        assertEquals(
+            "https://github.com/thatjoshguy67/twidget/releases/download/" +
+                "twidget-debug-latest/twidget-debug-latest.apk",
+            release.downloadUrl,
+        )
+    }
+
+    @Test
+    fun knownReleaseMustBelongToSelectedChannel() {
+        assertNull(AppUpdateManager.knownRelease("1.3.0-debug.43", UpdateChannel.STABLE))
+
+        val beta = AppUpdateManager.knownRelease("1.3.0-beta.2", UpdateChannel.BETA)!!
+        assertEquals("twidget-v1.3.0-beta.2.apk", beta.assetName)
+        assertTrue(beta.downloadUrl.endsWith("/twidget-v1.3.0-beta.2.apk"))
     }
 }

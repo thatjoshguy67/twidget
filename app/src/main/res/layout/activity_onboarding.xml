@@ -92,6 +92,7 @@
                         android:paddingBottom="12dp"
                         android:text="@string/onboarding_welcome_terms"
                         android:textColor="?android:textColorSecondary"
+                        android:textColorLink="@color/oneui_accent"
                         android:textSize="14sp" />
                 </LinearLayout>
 

@@ -192,6 +192,27 @@ object AppUpdateManager {
     internal fun isDebugBuild(installedVersion: String): Boolean =
         AppVersion.parse(installedVersion)?.prereleaseLabel.equals("debug", ignoreCase = true)
 
+    /**
+     * Rehydrates the release detected by the last successful check so the UI
+     * can remain actionable while GitHub metadata is refreshed.
+     */
+    fun knownRelease(versionText: String, channel: UpdateChannel): AppRelease? {
+        val version = AppVersion.parse(versionText) ?: return null
+        val isDebug = version.prereleaseLabel.equals("debug", ignoreCase = true)
+        val release = if (isDebug) {
+            AppRelease(version, DEBUG_ASSET_NAME, DEBUG_APK_URL, prerelease = true)
+        } else {
+            val assetName = "twidget-v$version.apk"
+            AppRelease(
+                version = version,
+                assetName = assetName,
+                downloadUrl = "https://github.com/thatjoshguy67/twidget/releases/download/twidget-v$version/$assetName",
+                prerelease = version.prereleaseLabel != null,
+            )
+        }
+        return release.takeIf { eligibleReleases(listOf(it), channel).isNotEmpty() }
+    }
+
     private fun isNewerThanInstalled(current: AppVersion, candidate: AppVersion): Boolean {
         val sameBaseVersion = candidate.major == current.major &&
             candidate.minor == current.minor &&

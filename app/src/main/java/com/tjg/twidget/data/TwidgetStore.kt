@@ -324,16 +324,21 @@ object TwidgetStore {
         }.apply()
     }
 
-    fun updateSuggestionVersion(context: Context): String? {
+    /** Last successfully detected update, independent of whether its Settings card was dismissed. */
+    fun detectedUpdateVersion(context: Context): String? {
         if (!BuildConfig.IN_APP_UPDATES) return null
         val preferences = prefs(context)
-        if (preferences.getBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, false)) return null
         if (fakeUpdateAvailable(context)) return fakeUpdateVersion(context)
         if (!preferences.getBoolean(KEY_UPDATE_AVAILABLE, false)) return null
         val available = preferences.getString(KEY_UPDATE_VERSION, null)?.takeIf(String::isNotBlank) ?: return null
         val availableVersion = AppVersion.parse(available) ?: return null
         val installedVersion = installedAppVersion(context) ?: return null
         return available.takeIf { availableVersion > installedVersion }
+    }
+
+    fun updateSuggestionVersion(context: Context): String? {
+        if (prefs(context).getBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, false)) return null
+        return detectedUpdateVersion(context)
     }
 
     private fun fakeUpdateVersion(context: Context): String {

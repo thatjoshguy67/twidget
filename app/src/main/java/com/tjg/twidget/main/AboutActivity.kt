@@ -328,7 +328,7 @@ class AboutActivity : FoldablePopOverActivity() {
             setOnChildScrollUpCallback { _, child ->
                 appBar.y < 0f || child?.canScrollVertically(-1) == true
             }
-            setOnRefreshListener { checkForUpdates(updateChannel) }
+            setOnRefreshListener { checkForUpdates(updateChannel, preserveExisting = true) }
         }
     }
 
@@ -417,13 +417,17 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<AppCompatButton>(R.id.about_update_button).setOnClickListener {
             availableRelease?.let(::downloadUpdate)
         }
-        checkForUpdates(updateChannel)
+        val knownRelease = TwidgetStore.detectedUpdateVersion(this)
+            ?.let { AppUpdateManager.knownRelease(it, updateChannel) }
+        availableRelease = knownRelease
+        knownRelease?.let(::showUpdateAvailable)
+        checkForUpdates(updateChannel, preserveExisting = knownRelease != null)
     }
 
-    private fun checkForUpdates(channel: UpdateChannel) {
+    private fun checkForUpdates(channel: UpdateChannel, preserveExisting: Boolean = false) {
         if (!BuildConfig.IN_APP_UPDATES) return
         val generation = ++updateCheckGeneration
-        availableRelease = null
+        if (!preserveExisting) availableRelease = null
         if (TwidgetStore.fakeUpdateAvailable(this)) {
             val release = fakeRelease()
             availableRelease = release
@@ -432,12 +436,12 @@ class AboutActivity : FoldablePopOverActivity() {
             finishPullRefresh()
             return
         }
-        showUpdateChecking()
+        if (availableRelease == null) showUpdateChecking()
         AppExecutors.execute(
             onRejected = {
                 runOnUiThread {
                     if (generation != updateCheckGeneration) return@runOnUiThread
-                    hideUpdateUi()
+                    availableRelease?.let(::showUpdateAvailable) ?: hideUpdateUi()
                     finishPullRefresh()
                 }
             },
@@ -447,18 +451,19 @@ class AboutActivity : FoldablePopOverActivity() {
             }
             runOnUiThread {
                 if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
-                // Only a completed check may flip the persisted badge state;
-                // a network failure keeps whatever the last check concluded.
                 result.onSuccess { release ->
                     TwidgetStore.setUpdateAvailable(this, release != null, release?.version?.toString())
-                }
-                val release = result.getOrNull()
-                availableRelease = release
-                if (release == null) {
-                    hideUpdateUi()
-                } else {
-                    showUpdateAvailable(release)
-                    maybeInstallRequestedUpdate(release)
+                    availableRelease = release
+                    if (release == null) {
+                        hideUpdateUi()
+                    } else {
+                        showUpdateAvailable(release)
+                        maybeInstallRequestedUpdate(release)
+                    }
+                }.onFailure {
+                    // Keep the last successful detection actionable through
+                    // transient GitHub, DNS, and connectivity failures.
+                    availableRelease?.let(::showUpdateAvailable) ?: hideUpdateUi()
                 }
                 finishPullRefresh()
             }

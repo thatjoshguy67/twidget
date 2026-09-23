@@ -322,17 +322,26 @@ object AppUpdateManager {
         val connection = request(url).apply { setRequestProperty("Range", "bytes=0-0") }
         return try {
             connection.responseCode
-            connection.contentLengthLong.takeIf { it > 0L }
-                ?: connection.getHeaderField("Content-Range")
-                    ?.substringAfterLast('/')
-                    ?.toLongOrNull()
-                ?: -1L
+            resolvedDownloadSize(
+                contentLength = connection.contentLengthLong,
+                contentRange = connection.getHeaderField("Content-Range"),
+            )
         } catch (_: Exception) {
             -1L
         } finally {
             connection.disconnect()
         }
     }
+
+    internal fun resolvedDownloadSize(contentLength: Long, contentRange: String?): Long =
+        contentRange
+            ?.substringAfterLast('/', missingDelimiterValue = "")
+            ?.trim()
+            ?.toLongOrNull()
+            ?.takeIf { it > 0L }
+            ?: contentLength.takeIf { it > 0L }
+            ?: -1L
+
     private fun request(url: String): HttpURLConnection =
         HttpTransport.openConnection(
             url,

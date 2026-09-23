@@ -512,19 +512,28 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun downloadUpdate(release: AppRelease) {
         if (!BuildConfig.IN_APP_UPDATES) return
+        if (!UpdateDownloadController.tryBegin()) {
+            Toast.makeText(this, R.string.update_download_in_progress, Toast.LENGTH_SHORT).show()
+            return
+        }
         val generation = ++updateCheckGeneration
         findViewById<AppCompatButton>(R.id.about_update_button).apply {
             isEnabled = false
             visibility = View.GONE
         }
         showUpdateChecking()
-        UpdateDownloadController.begin()
         UpdateDownloadNotificationHelper.show(this, com.tjg.twidget.update.UpdateDownloadProgress(0L, -1L))
-        Toast.makeText(this, R.string.update_download_started, Toast.LENGTH_LONG).show()
+        val startMessage = if (UpdateDownloadNotificationHelper.notificationsAvailable(this)) {
+            R.string.update_download_started
+        } else {
+            R.string.update_download_started_without_notification
+        }
+        Toast.makeText(this, startMessage, Toast.LENGTH_LONG).show()
         AppExecutors.execute(
             onRejected = { runOnUiThread {
-                UpdateDownloadNotificationHelper.cancel(this)
-                showDownloadFailure(release)
+                UpdateDownloadController.finish()
+                UpdateDownloadNotificationHelper.cancel(applicationContext)
+                if (!isFinishing && !isDestroyed) showDownloadFailure(release)
             } },
         ) {
             val result = runCatching {
@@ -537,8 +546,14 @@ class AboutActivity : FoldablePopOverActivity() {
             }
             val apk = result.getOrNull()
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                UpdateDownloadController.finish()
+                if (isFinishing || isDestroyed) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
+                    apk?.delete()
+                    return@runOnUiThread
+                }
                 if (generation != updateCheckGeneration) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
                     apk?.delete()
                     return@runOnUiThread
                 }

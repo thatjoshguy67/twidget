@@ -146,4 +146,33 @@ class AppUpdateManagerTest {
         assertEquals(UpdateChannel.BETA, AppUpdateManager.defaultUpdateChannel("1.1.0-beta.1"))
         assertEquals(UpdateChannel.STABLE, AppUpdateManager.defaultUpdateChannel("1.1.0"))
     }
+
+    @Test
+    fun rangeResponseUsesTotalSizeInsteadOfOneByteContentLength() {
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 1L,
+                contentRange = "bytes 0-0/42000000",
+            ),
+        )
+    }
+
+    @Test
+    fun downloadSizeFallsBackToContentLengthWithoutValidRangeTotal() {
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 42_000_000L,
+                contentRange = null,
+            ),
+        )
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 42_000_000L,
+                contentRange = "bytes 0-0/*",
+            ),
+        )
+    }
 }

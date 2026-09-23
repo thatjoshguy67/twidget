@@ -328,6 +328,8 @@
     <string name="update_channel_beta">Beta Releases</string>
     <string name="update_channel_debug">Debug Builds</string>
     <string name="update_download_started">Das Update wird heruntergeladen. Prüfe die Benachrichtigung für den Downloadstatus.</string>
+    <string name="update_download_started_without_notification">Das Update wird heruntergeladen. Lass diesen Bildschirm geöffnet, um es anschließend zu installieren.</string>
+    <string name="update_download_in_progress">Ein Update wird bereits heruntergeladen.</string>
     <string name="update_download_notification_title">Twidget-Update</string>
     <string name="update_downloading">Update wird heruntergeladen</string>
     <string name="update_download_progress">Update wird heruntergeladen: %1$d%%</string>

@@ -47,19 +47,24 @@ object UpdateDownloadNotificationHelper {
     }
 
     fun runDebugTest(context: Context) {
-        if (!canNotify(context)) return
+        if (!notificationsAvailable(context) || !UpdateDownloadController.tryBegin()) return
         val appContext = context.applicationContext
-        UpdateDownloadController.begin()
-        AppExecutors.execute { 
-            for (percent in 0..100 step 5) {
-                if (!UpdateDownloadController.awaitPermissionToContinue()) {
-                    cancel(appContext)
-                    return@execute
+        AppExecutors.execute(
+            onRejected = { UpdateDownloadController.finish() },
+        ) {
+            try {
+                for (percent in 0..100 step 5) {
+                    if (!UpdateDownloadController.awaitPermissionToContinue()) {
+                        cancel(appContext)
+                        return@execute
+                    }
+                    show(appContext, UpdateDownloadProgress(percent.toLong(), 100L))
+                    Thread.sleep(350L)
                 }
-                show(appContext, UpdateDownloadProgress(percent.toLong(), 100L))
-                Thread.sleep(350L)
+                cancel(appContext)
+            } finally {
+                UpdateDownloadController.finish()
             }
-            cancel(appContext)
         }
     }
 
@@ -69,8 +74,7 @@ object UpdateDownloadNotificationHelper {
         paused: Boolean,
         completed: Boolean = false,
     ) {
-        if (!canNotify(context)) return
-        ensureChannel(context)
+        if (!notificationsAvailable(context)) return
         val percent = progress?.percent
         val text = when {
             completed -> context.getString(R.string.update_download_complete)
@@ -90,7 +94,9 @@ object UpdateDownloadNotificationHelper {
             .setProgress(100, percent ?: 0, percent == null)
 
         // API 36 (Android 16): ask the system to surface this as a promoted ongoing/live update.
-        if (Build.VERSION.SDK_INT >= 36) builder.setRequestPromotedOngoing(true)
+        if (Build.VERSION.SDK_INT >= 36 && notificationManager(context).canPostPromotedNotifications()) {
+            builder.setRequestPromotedOngoing(true)
+        }
 
         if (completed) {
             builder.setTimeoutAfter(COMPLETED_NOTIFICATION_MILLIS)
@@ -125,9 +131,18 @@ object UpdateDownloadNotificationHelper {
         return Notification.Action.Builder(R.drawable.ic_twidget_notification, context.getString(title), pendingIntent).build()
     }
 
-    private fun canNotify(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    fun notificationsAvailable(context: Context): Boolean {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+        val manager = notificationManager(context)
+        if (!manager.areNotificationsEnabled()) return false
+        ensureChannel(context)
+        return manager.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+    }
 
     private fun ensureChannel(context: Context) {
         notificationManager(context).createNotificationChannel(NotificationChannel(

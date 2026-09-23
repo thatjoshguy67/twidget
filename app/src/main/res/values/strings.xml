@@ -350,6 +350,8 @@
     <string name="update_channel_debug">Debug builds</string>
     <string name="update_download_failed">Couldn\'t download the update.</string>
     <string name="update_download_started">Update is downloading. Check the notification for download status.</string>
+    <string name="update_download_started_without_notification">Update is downloading. Keep this screen open to install it when complete.</string>
+    <string name="update_download_in_progress">An update is already downloading.</string>
     <string name="update_download_notification_title">Twidget update</string>
     <string name="update_downloading">Downloading update</string>
     <string name="update_download_progress">Downloading update: %1$d%%</string>

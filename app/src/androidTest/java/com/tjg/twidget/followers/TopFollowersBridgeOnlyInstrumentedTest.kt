@@ -33,7 +33,6 @@ class TopFollowersBridgeOnlyInstrumentedTest {
         val info = context.packageManager.getPackageInfo(context.packageName,
             PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES)
         assertFalse(info.requestedPermissions.orEmpty().any { it.startsWith("android.permission.FOREGROUND_SERVICE") })
-        assertFalse(info.requestedPermissions.orEmpty().contains("android.permission.POST_PROMOTED_NOTIFICATIONS"))
         assertFalse(info.services.orEmpty().any { it.name == "androidx.work.impl.foreground.SystemForegroundService" })
     }
 

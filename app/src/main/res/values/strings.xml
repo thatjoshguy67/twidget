@@ -393,6 +393,8 @@
     <string name="sync_failed">Sync failed; showing cached stats.</string>
     <string name="onboarding_title" translatable="false">Twidget</string>
     <string name="onboarding_overview_title">Welcome to Twidget</string>
+    <string name="onboarding_welcome_terms">By using Twidget, you accept the Twidget Privacy Policy as well as each platform’s terms and conditions.</string>
+    <string name="onboarding_privacy_link">Twidget Privacy Policy</string>
     <string name="onboarding_done_title">You\'re all set!</string>
     <string name="onboarding_done_summary">Stats are captured daily, so give it a week to fully populate.</string>
     <string name="onboarding_handle_hint" translatable="false">\@</string>

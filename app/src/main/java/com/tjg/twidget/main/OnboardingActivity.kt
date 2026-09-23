@@ -27,6 +27,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -98,11 +99,33 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             setOf(findViewById<View>(R.id.onboarding_content)),
         )
         onBackPressedDispatcher.addCallback(this, stepBackCallback)
+        setupWelcomeScreen()
         setupInput()
         setupButtons()
         setupPermissionRows()
         setupShareHistoryCheckbox()
         renderStep(animate = false)
+    }
+
+    private fun setupWelcomeScreen() {
+        findViewById<TextView>(R.id.overview_privacy_footer).apply {
+            val value = getString(R.string.onboarding_welcome_terms)
+            val label = getString(R.string.onboarding_privacy_link)
+            val start = value.indexOf(label)
+            text = if (start >= 0) {
+                android.text.SpannableString(value).apply {
+                    setSpan(
+                        android.text.style.URLSpan(getString(R.string.link_privacy_policy)),
+                        start,
+                        start + label.length,
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+            } else {
+                value
+            }
+            movementMethod = android.text.method.LinkMovementMethod.getInstance()
+        }
     }
 
     override fun onDestroy() {
@@ -297,6 +320,13 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         steps.forEach { (which, viewId) ->
             findViewById<View>(viewId).visibility = if (which == step) View.VISIBLE else View.GONE
         }
+        findViewById<View>(R.id.onboarding_root).setBackgroundResource(
+            if (step == STEP_OVERVIEW) {
+                R.drawable.onboarding_welcome_gradient_bg
+            } else {
+                R.drawable.onboarding_gradient_bg
+            },
+        )
         updateButtons()
         val imm = getSystemService(InputMethodManager::class.java)
         val input = findViewById<EditText>(R.id.username_input)
@@ -391,6 +421,23 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             }
             isEnabled = !isStarting && (step != STEP_PROFILE || cleanUsername().isValidUsername())
             alpha = if (isEnabled) 1f else 0.5f
+            layoutParams = (layoutParams as LinearLayout.LayoutParams).apply {
+                if (step == STEP_OVERVIEW) {
+                    width = (268 * resources.displayMetrics.density).toInt()
+                    weight = 0f
+                    marginStart = 0
+                    marginEnd = 0
+                } else {
+                    width = 0
+                    weight = 1f
+                    marginStart = 0
+                    marginEnd = if (showSecondary) {
+                        (6 * resources.displayMetrics.density).toInt()
+                    } else {
+                        0
+                    }
+                }
+            }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
             text = getString(

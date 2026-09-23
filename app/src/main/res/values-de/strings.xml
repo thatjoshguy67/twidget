@@ -363,6 +363,8 @@
     <string name="update_install_now">Jetzt installieren</string>
     <string name="sync_failed">Aktualisierung fehlgeschlagen; gespeicherte Daten werden angezeigt.</string>
     <string name="onboarding_overview_title">Willkommen bei Twidget</string>
+    <string name="onboarding_welcome_terms">Mit der Nutzung von Twidget akzeptierst du die Twidget-Datenschutzerklärung sowie die Nutzungsbedingungen der jeweiligen Plattformen.</string>
+    <string name="onboarding_privacy_link">Twidget-Datenschutzerklärung</string>
     <string name="onboarding_done_title">Du bist startklar!</string>
     <string name="onboarding_done_summary">Statistiken werden täglich aktualisiert. Es kann bis zu einer Woche dauern, bis alle Daten angezeigt werden.</string>
     <string name="get_started">Jetzt starten</string>

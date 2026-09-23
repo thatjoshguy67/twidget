@@ -94,9 +94,10 @@ object UpdateDownloadNotificationHelper {
             .setProgress(100, percent ?: 0, percent == null)
 
         // API 36 (Android 16): ask the system to surface this as a promoted ongoing/live update.
-        if (Build.VERSION.SDK_INT >= 36 && notificationManager(context).canPostPromotedNotifications()) {
-            builder.setRequestPromotedOngoing(true)
-        }
+        if (Build.VERSION.SDK_INT >= 36) requestPromotedOngoingIfAvailable(
+            builder,
+            notificationManager(context),
+        )
 
         if (completed) {
             builder.setTimeoutAfter(COMPLETED_NOTIFICATION_MILLIS)
@@ -150,6 +151,27 @@ object UpdateDownloadNotificationHelper {
             context.getString(R.string.update_download_notification_channel_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply { description = context.getString(R.string.update_download_notification_channel_description) })
+    }
+
+    /**
+     * These methods were added in API 36.1, which cannot be represented by an
+     * SDK_INT guard. Reflection keeps the app safe on the original API 36.
+     */
+    private fun requestPromotedOngoingIfAvailable(
+        builder: Notification.Builder,
+        manager: NotificationManager,
+    ) {
+        val canPromote = runCatching {
+            manager.javaClass
+                .getMethod("canPostPromotedNotifications")
+                .invoke(manager) as? Boolean
+        }.getOrNull() == true
+        if (!canPromote) return
+        runCatching {
+            builder.javaClass
+                .getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType!!)
+                .invoke(builder, true)
+        }
     }
 
     private fun notificationManager(context: Context) =

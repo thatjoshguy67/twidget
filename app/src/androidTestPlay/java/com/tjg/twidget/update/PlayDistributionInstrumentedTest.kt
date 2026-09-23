@@ -32,7 +32,9 @@ class PlayDistributionInstrumentedTest {
 
     @Test fun playManifestHasNoSideloadComponents() {
         val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
-        assertFalse(info.requestedPermissions.orEmpty().contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        val requestedPermissions = info.requestedPermissions.orEmpty()
+        assertFalse(requestedPermissions.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        assertFalse(requestedPermissions.contains("android.permission.POST_PROMOTED_NOTIFICATIONS"))
         assertNull(context.packageManager.resolveContentProvider("${context.packageName}.update_files", 0))
         val receivers = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_RECEIVERS).receivers.orEmpty()
         assertFalse(receivers.any { it.name.endsWith("UpdateReminderReceiver") })

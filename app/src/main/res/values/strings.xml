@@ -349,6 +349,31 @@
     <string name="update_channel_beta">Beta releases</string>
     <string name="update_channel_debug">Debug builds</string>
     <string name="update_download_failed">Couldn\'t download the update.</string>
+    <string name="update_download_started">Update is downloading. Check the notification for download status.</string>
+    <string name="update_download_started_without_notification">Update is downloading. Keep this screen open to install it when complete.</string>
+    <string name="update_download_in_progress">An update is already downloading.</string>
+    <string name="update_download_notification_title">Twidget update</string>
+    <string name="update_downloading">Downloading update</string>
+    <string name="update_download_progress">Downloading update: %1$d%%</string>
+    <string name="update_download_complete">Download complete · 100%</string>
+    <string name="update_download_paused">Download paused</string>
+    <string name="update_download_paused_progress">Download paused · %1$d%%</string>
+    <string name="update_pause">Pause</string>
+    <string name="update_resume">Resume</string>
+    <string name="update_stop">Stop</string>
+    <string name="update_download_notification_channel_name">Update download progress</string>
+    <string name="update_download_notification_channel_description">Live status and controls while a Twidget update downloads</string>
+    <string name="twidget_update_debug">Twidget update debug</string>
+    <string name="debug_version_spoofing">Version spoofing</string>
+    <string name="debug_update_tools">Update tools</string>
+    <string name="debug_spoof_app_version_enabled">Use spoofed app version</string>
+    <string name="debug_spoof_app_version_enabled_summary">When enabled, GitHub update checks use the version below instead of the installed version</string>
+    <string name="debug_spoof_app_version">Spoof installed app version</string>
+    <string name="debug_spoof_app_version_summary">Uses this version only when checking GitHub updates; leave empty to use the real version</string>
+    <string name="debug_spoof_app_version_invalid">Enter a version such as 1.2.3 or 1.2.3-beta.1.</string>
+    <string name="debug_spoof_app_version_checking">Checking GitHub updates now.</string>
+    <string name="debug_test_update_download_notification">Test update download notification</string>
+    <string name="debug_test_update_download_notification_summary">Runs a simulated download with progress, pause and stop controls</string>
     <string name="update_install_permission">Allow Twidget to install updates, then return to continue.</string>
     <string name="update_invalid_apk">The downloaded update isn\'t a valid Twidget package.</string>
     <string name="update_notification_title">Twidget update available</string>
@@ -494,6 +519,70 @@
     <string name="brief_debug_nano_refresh_summary">Query the on-device feature and model state again</string>
     <string name="brief_debug_nano_test">Run provider test</string>
     <string name="brief_debug_nano_test_summary">Rebuild the Brief and run the configured local/cloud selection now</string>
+    <string name="brief_debug_scenario_real">Real account data</string>
+    <string name="brief_debug_scenario_post">Getting attention</string>
+    <string name="brief_debug_scenario_worst_post">Quietest tweet</string>
+    <string name="brief_debug_scenario_growth">Growth surge</string>
+    <string name="brief_debug_scenario_slowdown">Growth slowdown</string>
+    <string name="brief_debug_scenario_milestone">Milestone reached</string>
+    <string name="brief_debug_scenario_top_follower">New top follower</string>
+    <string name="brief_debug_scenario_inactivity">Start a streak</string>
+    <string name="brief_debug_scenario_streak">Posting streak</string>
+    <string name="brief_debug_scenario_schedule_guide">Schedule health guide</string>
+    <string name="brief_debug_scenario_post_follow_through">Scheduled post follow-through</string>
+    <string name="brief_debug_scenario_posting_guide">Next post guidance</string>
+    <string name="brief_debug_scenario_steady">Everything steady</string>
+    <string name="brief_debug_card_post_title">Why this tweet worked</string>
+    <string name="brief_debug_card_post_body">It reached substantially more people than your typical tweet this week.</string>
+    <string name="brief_debug_card_worst_post_title">What may have limited it</string>
+    <string name="brief_debug_card_worst_post_body">It reached fewer people than your typical tweet this week.</string>
+    <string name="brief_debug_card_growth_title">Your audience is taking off</string>
+    <string name="brief_debug_card_growth_body">You gained 84 followers today and 679 over the last week.</string>
+    <string name="brief_debug_card_slowdown_title">Growth has slowed down</string>
+    <string name="brief_debug_card_slowdown_body">Your recent pace is behind the previous few days. A fresh post could help restart it.</string>
+    <string name="brief_debug_card_milestone_title">Milestone reached!</string>
+    <string name="brief_debug_card_milestone_body">You made it to %1$s followers. That deserves a victory lap.</string>
+    <string name="brief_debug_card_top_follower_title">A new top follower</string>
+    <string name="brief_debug_card_top_follower_body">\@JohnCena is now your #2 most popular follower.</string>
+    <string name="brief_debug_card_inactivity_title">Start a posting streak</string>
+    <string name="brief_debug_card_inactivity_body">Twidget hasn’t detected an original tweet for more than three days. Tweet today to begin.</string>
+    <string name="brief_debug_card_streak_title">14-day posting streak</string>
+    <string name="brief_debug_card_streak_body">Tweet today to keep your 14-day rhythm going.</string>
+    <string name="brief_debug_card_schedule_guide_title">Plan your next tweet</string>
+    <string name="brief_debug_card_schedule_guide_body">Nothing is scheduled for the next three days. Queue one idea while the week is still flexible.</string>
+    <string name="brief_debug_card_post_follow_through_title">Build on your scheduled tweet</string>
+    <string name="brief_debug_card_post_follow_through_body">It beat your recent baseline. Open it, note what people responded to, then plan a useful follow-up.</string>
+    <string name="brief_debug_card_source_buffer">Tweeted with Buffer</string>
+    <string name="brief_debug_card_posting_guide_title">Try your next tweet in the evening</string>
+    <string name="brief_debug_card_posting_guide_body">Your recent evening tweets performed better than your other time windows. Test that timing again.</string>
+    <string name="brief_debug_card_steady_title">Everything looks steady</string>
+    <string name="brief_debug_card_steady_body">Keep showing up and Twidget will watch for the next meaningful change.</string>
+    <string name="brief_debug_synthetic_provider_message">Synthetic debug state · no AI request was made</string>
+    <string name="brief_debug_report_title">Twidget Brief engine report</string>
+    <string name="brief_debug_report_account">Account: @%1$s</string>
+    <string name="brief_debug_report_generated">Generated: %1$s</string>
+    <string name="brief_debug_report_input_facts">INPUT FACTS</string>
+    <string name="brief_debug_report_ranked_candidates">RANKED CANDIDATES</string>
+    <string name="brief_debug_report_selected">SELECTED</string>
+    <string name="brief_debug_report_omitted">OMITTED</string>
+    <string name="brief_debug_report_none">none</string>
+    <string name="brief_debug_report_followers">followers=%1$s</string>
+    <string name="brief_debug_report_following">following=%1$s</string>
+    <string name="brief_debug_report_posts">posts=%1$s</string>
+    <string name="brief_debug_report_followers_today">followersToday=%1$s</string>
+    <string name="brief_debug_report_followers_week">followersWeek=%1$s</string>
+    <string name="brief_debug_report_history_samples">historySamples=%1$d</string>
+    <string name="brief_debug_report_analytics_cached_at">analyticsCachedAt=%1$s</string>
+    <string name="brief_debug_report_standout_post_views">standoutPostViews=%1$s</string>
+    <string name="brief_debug_report_quiet_post_views">quietPostViews=%1$s</string>
+    <string name="brief_debug_report_posting_streak">postingStreak=%1$d</string>
+    <string name="brief_debug_report_original_activity_complete">originalActivityComplete=%1$b</string>
+    <string name="brief_debug_report_upcoming_tweets">upcomingTweets=%1$d</string>
+    <string name="brief_debug_report_follower_scan_completed_at">followerScanCompletedAt=%1$s</string>
+    <string name="brief_debug_report_followers_scanned">followersScanned=%1$d</string>
+    <string name="brief_debug_report_candidate">%1$d. rank=%2$d base=%3$d type=%4$s %5$s id=%6$s</string>
+    <string name="brief_debug_report_candidate_title">   %1$s</string>
+    <string name="brief_debug_report_candidate_body">   %1$s</string>
     <string name="schedule_title">Scheduled tweets</string>
     <string name="schedule_new">New scheduled tweet</string>
     <string name="schedule_queue_for">Schedule · %1$s</string>
@@ -820,6 +909,7 @@
     <string name="brief_goal_heading">Your %1$s goal</string>
     <string name="brief_goal_close_heading">You’re close to your %1$s goal</string>
     <string name="brief_goal_reached_heading">Your %1$s goal is reached</string>
+    <string name="brief_goal_noun_verified_follower">verified follower</string>
     <string name="brief_streak_heading">Your posting streak</string>
     <string name="back">Back</string>
     <string name="info">Information</string>

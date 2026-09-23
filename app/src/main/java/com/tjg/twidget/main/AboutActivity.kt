@@ -41,6 +41,9 @@ import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.update.AppVersion
 import com.tjg.twidget.update.UpdateChannel
 import com.tjg.twidget.update.UpdateNotificationHelper
+import com.tjg.twidget.update.UpdateDownloadCancelledException
+import com.tjg.twidget.update.UpdateDownloadController
+import com.tjg.twidget.update.UpdateDownloadNotificationHelper
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 import dev.oneuiproject.oneui.widget.CardItemView
 import java.io.File
@@ -440,7 +443,7 @@ class AboutActivity : FoldablePopOverActivity() {
             },
         ) {
             val result = runCatching {
-                AppUpdateManager.findUpdate(appVersionName(), channel)
+                AppUpdateManager.findUpdate(TwidgetStore.updateCheckVersion(this, appVersionName()), channel)
             }
             runOnUiThread {
                 if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
@@ -509,33 +512,66 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun downloadUpdate(release: AppRelease) {
         if (!BuildConfig.IN_APP_UPDATES) return
+        if (!UpdateDownloadController.tryBegin()) {
+            Toast.makeText(this, R.string.update_download_in_progress, Toast.LENGTH_SHORT).show()
+            return
+        }
         val generation = ++updateCheckGeneration
         findViewById<AppCompatButton>(R.id.about_update_button).apply {
             isEnabled = false
             visibility = View.GONE
         }
         showUpdateChecking()
+        UpdateDownloadNotificationHelper.show(this, com.tjg.twidget.update.UpdateDownloadProgress(0L, -1L))
+        val startMessage = if (UpdateDownloadNotificationHelper.notificationsAvailable(this)) {
+            R.string.update_download_started
+        } else {
+            R.string.update_download_started_without_notification
+        }
+        Toast.makeText(this, startMessage, Toast.LENGTH_LONG).show()
         AppExecutors.execute(
-            onRejected = { runOnUiThread { showDownloadFailure(release) } },
+            onRejected = { runOnUiThread {
+                UpdateDownloadController.finish()
+                UpdateDownloadNotificationHelper.cancel(applicationContext)
+                if (!isFinishing && !isDestroyed) showDownloadFailure(release)
+            } },
         ) {
-            val apk = runCatching {
-                AppUpdateManager.download(release, File(cacheDir, "updates"))
-            }.getOrNull()
+            val result = runCatching {
+                AppUpdateManager.download(
+                    release,
+                    File(cacheDir, "updates"),
+                    onProgress = { UpdateDownloadNotificationHelper.show(applicationContext, it) },
+                    awaitPermissionToContinue = UpdateDownloadController::awaitPermissionToContinue,
+                )
+            }
+            val apk = result.getOrNull()
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                UpdateDownloadController.finish()
+                if (isFinishing || isDestroyed) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
+                    apk?.delete()
+                    return@runOnUiThread
+                }
                 if (generation != updateCheckGeneration) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
                     apk?.delete()
                     return@runOnUiThread
                 }
                 if (apk == null) {
-                    showDownloadFailure(release)
+                    UpdateDownloadNotificationHelper.cancel(this)
+                    if (result.exceptionOrNull() is UpdateDownloadCancelledException) showUpdateAvailable(release)
+                    else showDownloadFailure(release)
                 } else if (!isValidUpdateApk(apk, release)) {
+                    UpdateDownloadNotificationHelper.cancel(this)
                     apk.delete()
                     showUpdateAvailable(release)
                     Toast.makeText(this, R.string.update_invalid_apk, Toast.LENGTH_LONG).show()
                 } else {
+                    UpdateDownloadNotificationHelper.showCompleted(this)
                     pendingInstallApk = apk
-                    beginInstall(apk)
+                    window.decorView.postDelayed({
+                        if (!isFinishing && !isDestroyed) beginInstall(apk)
+                    }, 350L)
                 }
             }
         }

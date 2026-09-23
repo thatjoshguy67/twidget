@@ -96,19 +96,19 @@ class BriefDebugFragment : InsetPreferenceFragment() {
         screen.addPreference(ListPreference(context).apply {
             key = KEY_SCENARIO
             title = getString(R.string.brief_debug_scenario)
-            entries = BriefDebugScenario.entries.map(BriefDebugScenario::label).toTypedArray()
+            entries = BriefDebugScenario.entries.map { it.label(context) }.toTypedArray()
             entryValues = BriefDebugScenario.entries.map(BriefDebugScenario::storageId).toTypedArray()
             value = scenario.storageId
-            summary = scenario.label
+            summary = scenario.label(context)
             setOnPreferenceChangeListener { _, newValue ->
-                summary = BriefDebugScenario.fromStorageId(newValue as String).label
+                summary = BriefDebugScenario.fromStorageId(newValue as String).label(context)
                 true
             }
         })
         screen.addDescribedPreference(Preference(context).apply {
             key = "brief_debug_open_preview"
             title = getString(R.string.brief_debug_open_preview)
-            summary = getString(R.string.brief_debug_open_preview_summary, scenario.label)
+            summary = getString(R.string.brief_debug_open_preview_summary, scenario.label(context))
             setOnPreferenceClickListener {
                 startActivity(TwidgetBriefActivity.debugIntent(context, username, selectedScenario()))
                 true
@@ -260,7 +260,7 @@ class BriefDebugFragment : InsetPreferenceFragment() {
             title = getString(R.string.brief_debug_full_report)
             summary = getString(R.string.brief_debug_full_report_summary)
             setOnPreferenceClickListener {
-                showText(getString(R.string.brief_debug_full_report), report.asText(), copyable = true)
+                showText(getString(R.string.brief_debug_full_report), report.asText(context), copyable = true)
                 true
             }
         })

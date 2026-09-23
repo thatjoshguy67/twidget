@@ -327,6 +327,31 @@
     <string name="update_channel_stable">Stable Releases</string>
     <string name="update_channel_beta">Beta Releases</string>
     <string name="update_channel_debug">Debug Builds</string>
+    <string name="update_download_started">Das Update wird heruntergeladen. Prüfe die Benachrichtigung für den Downloadstatus.</string>
+    <string name="update_download_started_without_notification">Das Update wird heruntergeladen. Lass diesen Bildschirm geöffnet, um es anschließend zu installieren.</string>
+    <string name="update_download_in_progress">Ein Update wird bereits heruntergeladen.</string>
+    <string name="update_download_notification_title">Twidget-Update</string>
+    <string name="update_downloading">Update wird heruntergeladen</string>
+    <string name="update_download_progress">Update wird heruntergeladen: %1$d%%</string>
+    <string name="update_download_complete">Download abgeschlossen · 100%</string>
+    <string name="update_download_paused">Download pausiert</string>
+    <string name="update_download_paused_progress">Download pausiert · %1$d%%</string>
+    <string name="update_pause">Pausieren</string>
+    <string name="update_resume">Fortsetzen</string>
+    <string name="update_stop">Stoppen</string>
+    <string name="update_download_notification_channel_name">Update-Downloadfortschritt</string>
+    <string name="update_download_notification_channel_description">Live-Status und Steuerung während ein Twidget-Update heruntergeladen wird</string>
+    <string name="twidget_update_debug">Twidget-Update Debug</string>
+    <string name="debug_version_spoofing">Versions-Spoofing</string>
+    <string name="debug_update_tools">Update-Werkzeuge</string>
+    <string name="debug_spoof_app_version_enabled">Vorgetäuschte App-Version verwenden</string>
+    <string name="debug_spoof_app_version_enabled_summary">Bei Aktivierung verwenden GitHub-Updateprüfungen die unten stehende statt der installierten Version</string>
+    <string name="debug_spoof_app_version">Installierte App-Version vortäuschen</string>
+    <string name="debug_spoof_app_version_summary">Wird nur bei der Prüfung von GitHub-Updates verwendet; leer lassen, um die echte Version zu nutzen</string>
+    <string name="debug_spoof_app_version_invalid">Gib eine Version wie 1.2.3 oder 1.2.3-beta.1 ein.</string>
+    <string name="debug_spoof_app_version_checking">GitHub-Updates werden jetzt geprüft.</string>
+    <string name="debug_test_update_download_notification">Update-Downloadbenachrichtigung testen</string>
+    <string name="debug_test_update_download_notification_summary">Simuliert einen Download mit Fortschritt sowie Pause- und Stopp-Steuerung</string>
     <string name="update_download_failed">Update konnte nicht heruntergeladen werden.</string>
     <string name="update_install_permission">Erlaube Twidget, Updates zu installieren, und kehre dann zurück, um fortzufahren.</string>
     <string name="update_invalid_apk">Das heruntergeladene Update ist kein gültiges Twidget-App-Paket.</string>
@@ -442,7 +467,7 @@
     <string name="brief_debug_force_rebuild">Neuaufbau des Briefings erzwingen</string>
     <string name="brief_debug_force_rebuild_summary">Das gespeicherte tägliche Briefing ignorieren und jeden Kandidaten neu bewerten</string>
     <string name="brief_debug_rebuilt">Briefing neu erstellt</string>
-    <string name="brief_debug_full_report">Gesamter Engine-Bericht</string>
+    <string name="brief_debug_full_report">Gesamter Engine-Log</string>
     <string name="brief_debug_full_report_summary">Eingaben, Bewertungen, Reihenfolge und Auswahlergebnis prüfen oder kopieren</string>
     <string name="brief_debug_log_category">Letzter Engine-Log</string>
     <string name="brief_debug_log_title">Engine-Log</string>
@@ -463,6 +488,70 @@
     <string name="brief_debug_nano_refresh_summary">Gerätefeature und Modellstatus erneut abfragen</string>
     <string name="brief_debug_nano_test">Provider-Test ausführen</string>
     <string name="brief_debug_nano_test_summary">Briefing neu erstellen und die konfigurierte lokale/Cloud-Auswahl jetzt ausführen</string>
+    <string name="brief_debug_scenario_real">Echte Accountdaten</string>
+    <string name="brief_debug_scenario_post">Du erhältst Aufmerksamkeit</string>
+    <string name="brief_debug_scenario_worst_post">Ruhigster Tweet</string>
+    <string name="brief_debug_scenario_growth">Schnelles Wachstum</string>
+    <string name="brief_debug_scenario_slowdown">Wachstum verlangsamt sich</string>
+    <string name="brief_debug_scenario_milestone">Meilenstein erreicht</string>
+    <string name="brief_debug_scenario_top_follower">Neuer Top-Follower</string>
+    <string name="brief_debug_scenario_inactivity">Streak starten</string>
+    <string name="brief_debug_scenario_streak">Posting-Streak</string>
+    <string name="brief_debug_scenario_schedule_guide">Leitfaden für den Zeitplan</string>
+    <string name="brief_debug_scenario_post_follow_through">Geplanten Post weiterverfolgen</string>
+    <string name="brief_debug_scenario_posting_guide">Hinweis für den nächsten Post</string>
+    <string name="brief_debug_scenario_steady">Alles stabil</string>
+    <string name="brief_debug_card_post_title">Warum dieser Tweet funktioniert hat</string>
+    <string name="brief_debug_card_post_body">Er hat deutlich mehr Menschen erreicht als dein typischer Tweet diese Woche.</string>
+    <string name="brief_debug_card_worst_post_title">Was ihn gebremst haben könnte</string>
+    <string name="brief_debug_card_worst_post_body">Er hat weniger Menschen erreicht als dein typischer Tweet diese Woche.</string>
+    <string name="brief_debug_card_growth_title">Dein Publikum hebt ab</string>
+    <string name="brief_debug_card_growth_body">Du hast heute 84 Follower und in der letzten Woche 679 gewonnen.</string>
+    <string name="brief_debug_card_slowdown_title">Das Wachstum hat sich verlangsamt</string>
+    <string name="brief_debug_card_slowdown_body">Dein aktuelles Tempo liegt hinter den vorherigen Tagen. Ein neuer Post könnte es wieder ankurbeln.</string>
+    <string name="brief_debug_card_milestone_title">Meilenstein erreicht!</string>
+    <string name="brief_debug_card_milestone_body">Du hast %1$s Follower erreicht. Das verdient eine Ehrenrunde.</string>
+    <string name="brief_debug_card_top_follower_title">Ein neuer Top-Follower</string>
+    <string name="brief_debug_card_top_follower_body">\@JohnCena ist jetzt dein zweitbeliebtester Follower.</string>
+    <string name="brief_debug_card_inactivity_title">Starte einen Streak</string>
+    <string name="brief_debug_card_inactivity_body">Twidget hat seit mehr als drei Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen.</string>
+    <string name="brief_debug_card_streak_title">14 Streak-Tage</string>
+    <string name="brief_debug_card_streak_body">Tweete heute, um deinen 14-Tage-Rhythmus beizubehalten.</string>
+    <string name="brief_debug_card_schedule_guide_title">Plane deinen nächsten Tweet</string>
+    <string name="brief_debug_card_schedule_guide_body">Für die nächsten drei Tage ist nichts geplant. Reihe eine Idee ein, solange die Woche noch flexibel ist.</string>
+    <string name="brief_debug_card_post_follow_through_title">Bau auf deinem geplanten Tweet auf</string>
+    <string name="brief_debug_card_post_follow_through_body">Er hat deinen aktuellen Durchschnitt übertroffen. Öffne ihn, achte darauf, worauf die Leute reagiert haben, und plane eine sinnvolle Fortsetzung.</string>
+    <string name="brief_debug_card_source_buffer">Mit Buffer getweetet</string>
+    <string name="brief_debug_card_posting_guide_title">Probiere deinen nächsten Tweet am Abend</string>
+    <string name="brief_debug_card_posting_guide_body">Deine letzten Tweets am Abend liefen besser als in deinen anderen Zeitfenstern. Teste diesen Zeitpunkt noch einmal.</string>
+    <string name="brief_debug_card_steady_title">Alles sieht stabil aus</string>
+    <string name="brief_debug_card_steady_body">Bleib dran, und Twidget achtet auf die nächste bedeutende Veränderung.</string>
+    <string name="brief_debug_synthetic_provider_message">Synthetischer Debug-Zustand · keine KI-Anfrage wurde gestellt</string>
+    <string name="brief_debug_report_title">Twidget-Briefing: Engine-Log</string>
+    <string name="brief_debug_report_account">Konto: @%1$s</string>
+    <string name="brief_debug_report_generated">Erstellt: %1$s</string>
+    <string name="brief_debug_report_input_facts">EINGABEDATEN</string>
+    <string name="brief_debug_report_ranked_candidates">SORTIERTE KANDIDATEN</string>
+    <string name="brief_debug_report_selected">AUSGEWÄHLT</string>
+    <string name="brief_debug_report_omitted">AUSGELASSEN</string>
+    <string name="brief_debug_report_none">keine</string>
+    <string name="brief_debug_report_followers">Follower=%1$s</string>
+    <string name="brief_debug_report_following">Gefolgt=%1$s</string>
+    <string name="brief_debug_report_posts">Posts=%1$s</string>
+    <string name="brief_debug_report_followers_today">FollowerHeute=%1$s</string>
+    <string name="brief_debug_report_followers_week">FollowerWoche=%1$s</string>
+    <string name="brief_debug_report_history_samples">Verlaufsproben=%1$d</string>
+    <string name="brief_debug_report_analytics_cached_at">AnalyticsZwischengespeichertAm=%1$s</string>
+    <string name="brief_debug_report_standout_post_views">AufrufeHervorgehobenerPost=%1$s</string>
+    <string name="brief_debug_report_quiet_post_views">AufrufeRuhigsterPost=%1$s</string>
+    <string name="brief_debug_report_posting_streak">PostingStreak=%1$d</string>
+    <string name="brief_debug_report_original_activity_complete">EigeneAktivitaetVollstaendig=%1$b</string>
+    <string name="brief_debug_report_upcoming_tweets">AnstehendeTweets=%1$d</string>
+    <string name="brief_debug_report_follower_scan_completed_at">FollowerScanAbgeschlossenAm=%1$s</string>
+    <string name="brief_debug_report_followers_scanned">GescannteFollower=%1$d</string>
+    <string name="brief_debug_report_candidate">%1$d. Rang=%2$d Basis=%3$d Typ=%4$s %5$s ID=%6$s</string>
+    <string name="brief_debug_report_candidate_title">   %1$s</string>
+    <string name="brief_debug_report_candidate_body">   %1$s</string>
     <string name="schedule_title">Geplante Tweets</string>
     <string name="schedule_new">Neuer geplanter Tweet</string>
     <string name="schedule_queue_for">Planen · %1$s</string>
@@ -734,7 +823,7 @@
     <string name="brief_provider_auto_short">Automatisch</string>
     <string name="brief_settings_debug">Debug</string>
     <string name="brief_ai_disclaimer">Informationen zu KI</string>
-    <string name="brief_ai_disclaimer_body">KI-generierte Texte können unvollständig oder ungenau sein. Twidget beschränkt sie auf berechnete Account-Daten, du solltest wichtige Informationen jedoch trotzdem überprüfen.\n\n%1$s</string>
+    <string name="brief_ai_disclaimer_body">KI-generierte Texte können unvollständig oder ungenau sein. Twidget beschränkt sie auf berechnete Accountdaten, du solltest wichtige Informationen jedoch trotzdem überprüfen.\n\n%1$s</string>
     <string name="brief_enabled">Tägliches Briefing aktivieren</string>
     <string name="brief_enabled_summary">Erstelle einen privaten täglichen Leitfaden, einschließlich Follower-Rankings von der Bridge bei aktiviertem geteiltem Verlauf</string>
     <string name="brief_provider">AI-Provider</string>
@@ -782,6 +871,7 @@
     <string name="brief_goal_heading">Dein %1$s-Ziel</string>
     <string name="brief_goal_close_heading">Du bist kurz vor deinem %1$s-Ziel</string>
     <string name="brief_goal_reached_heading">Du hast dein %1$s-Ziel erreicht</string>
+    <string name="brief_goal_noun_verified_follower">verif.-Follower</string>
     <string name="brief_streak_heading">Dein Posting-Streak</string>
     <string name="back">Zurück</string>
     <string name="info">Informationen</string>
@@ -860,7 +950,7 @@
     <string name="brief_card_streak_start_ready">Ein Tweet ist jetzt bereit. Veröffentliche ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_idle">Twidget hat seit mehr als drei Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen.</string>
-    <string name="brief_card_streak_title">%1$d-Tage-Posting-Streak</string>
+    <string name="brief_card_streak_title">%1$d Streak-Tage</string>
     <string name="brief_card_streak_kept_today">Du hast den Streak heute schon am Leben gehalten. Gute Arbeit.</string>
     <string name="brief_card_streak_buffer">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tage-Rhythmus am Laufen.</string>
     <string name="brief_card_streak_ready">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</string>

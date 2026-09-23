@@ -116,6 +116,14 @@ object UpdateNotificationHelper {
         }
     }
 
+    /** Lets a debug version override show the result even if this release was notified before. */
+    fun resetNotificationHistory(context: Context) {
+        prefs(context).edit()
+            .remove(KEY_LAST_NOTIFIED_VERSION)
+            .remove(KEY_REMINDER_VERSION)
+            .remove(KEY_REMIND_AFTER)
+            .apply()
+    }
     fun remindLater(context: Context, version: String, now: Long = System.currentTimeMillis()) {
         prefs(context).edit()
             .putString(KEY_REMINDER_VERSION, version)

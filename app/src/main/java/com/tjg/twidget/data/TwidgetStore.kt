@@ -141,6 +141,8 @@ object TwidgetStore {
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
     private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
     private const val KEY_FAKE_UPDATE = "debug_fake_update"
+    private const val KEY_SPOOFED_APP_VERSION = "debug_spoofed_app_version"
+    private const val KEY_SPOOFED_APP_VERSION_ENABLED = "debug_spoofed_app_version_enabled"
     private const val KEY_UPDATE_AVAILABLE = "update_available"
     private const val KEY_UPDATE_VERSION = "update_version"
     private const val KEY_ESTIMATE_TIP_DISMISSED = "estimate_tip_dismissed"
@@ -248,13 +250,48 @@ object TwidgetStore {
             putBoolean(KEY_DEBUG_MENU, unlocked)
             // A faked update must not leave a phantom badge behind once the
             // debug menu (its only off switch) is hidden.
-            if (!unlocked) remove(KEY_FAKE_UPDATE)
+            if (!unlocked) {
+                remove(KEY_FAKE_UPDATE)
+                remove(KEY_SPOOFED_APP_VERSION)
+                remove(KEY_SPOOFED_APP_VERSION_ENABLED)
+            }
         }.apply()
     }
 
     fun fakeUpdateAvailable(context: Context): Boolean =
         BuildConfig.IN_APP_UPDATES && prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
 
+    /** Debug-only installed-version override used for GitHub release eligibility checks. */
+    fun spoofedAppVersion(context: Context): String? =
+        prefs(context).getString(KEY_SPOOFED_APP_VERSION, null)?.trim()?.takeIf(String::isNotBlank)
+
+    fun spoofedAppVersionEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SPOOFED_APP_VERSION_ENABLED, false)
+
+    fun setSpoofedAppVersionEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().apply {
+            putBoolean(KEY_SPOOFED_APP_VERSION_ENABLED, enabled)
+            if (enabled) remove(KEY_FAKE_UPDATE)
+        }.apply()
+    }
+
+    fun setSpoofedAppVersion(context: Context, version: String?) {
+        prefs(context).edit().apply {
+            if (version.isNullOrBlank()) remove(KEY_SPOOFED_APP_VERSION)
+            else {
+                putString(KEY_SPOOFED_APP_VERSION, version.trim())
+                remove(KEY_FAKE_UPDATE)
+            }
+        }.apply()
+    }
+
+    fun updateCheckVersion(context: Context, installedVersion: String): String =
+        if (BuildConfig.IN_APP_UPDATES && debugMenuUnlocked(context) &&
+            spoofedAppVersionEnabled(context)) {
+            spoofedAppVersion(context) ?: installedVersion
+        } else {
+            installedVersion
+        }
     fun setFakeUpdateAvailable(context: Context, enabled: Boolean) {
         val preferences = prefs(context)
         val wasEnabled = preferences.getBoolean(KEY_FAKE_UPDATE, false)

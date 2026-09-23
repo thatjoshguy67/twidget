@@ -200,11 +200,19 @@ jobs:
           printf '%s\n' "$VERSION" > "$VERSION_FILE"
           NOTES="Production-signed APK and AAB from successful Debug Build run $GITHUB_RUN_ID ($GITHUB_SHA)."
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK" "$AAB" "$VERSION_FILE" --clobber --repo "$GITHUB_REPOSITORY"
-            gh release edit "$TAG" --prerelease --title "$VERSION" --notes "$NOTES" \
-              --repo "$GITHUB_REPOSITORY"
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
-              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            if gh release upload "$TAG" "$APK" "$AAB" "$VERSION_FILE" --clobber \
+              --repo "$GITHUB_REPOSITORY"; then
+              gh release edit "$TAG" --prerelease --title "$VERSION" --notes "$NOTES" \
+                --repo "$GITHUB_REPOSITORY"
+              gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+                -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            else
+              echo "::warning::Asset replacement failed; recreating the rolling debug release."
+              gh release delete "$TAG" --cleanup-tag --yes --repo "$GITHUB_REPOSITORY"
+              gh release create "$TAG" "$APK" "$AAB" "$VERSION_FILE" --prerelease \
+                --target "$GITHUB_SHA" --title "$VERSION" --notes "$NOTES" \
+                --repo "$GITHUB_REPOSITORY"
+            fi
           else
             gh release create "$TAG" "$APK" "$AAB" "$VERSION_FILE" --prerelease --target "$GITHUB_SHA" \
               --title "$VERSION" --notes "$NOTES" --repo "$GITHUB_REPOSITORY"

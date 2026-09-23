@@ -148,28 +148,31 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
 
     fun label(context: Context): String = context.getString(labelRes)
 
-    fun snapshot(context: Context, base: BriefSnapshot): BriefSnapshot = when (this) {
+    fun snapshot(context: Context, base: BriefSnapshot): BriefSnapshot =
+        snapshot(BriefStrings.from(context), base)
+
+    internal fun snapshot(strings: BriefStrings, base: BriefSnapshot): BriefSnapshot = when (this) {
         REAL -> base
-        POST -> fixture(context, base, BriefCard("debug-post", BriefCardType.POST, context.getString(R.string.brief_debug_card_post_title), context.getString(R.string.brief_debug_card_post_body), 98))
-        WORST_POST -> fixture(context, base, BriefCard("debug-worst-post", BriefCardType.WORST_POST, context.getString(R.string.brief_debug_card_worst_post_title), context.getString(R.string.brief_debug_card_worst_post_body), 86))
-        GROWTH -> fixture(context, base, BriefCard("debug-growth", BriefCardType.GROWTH, context.getString(R.string.brief_debug_card_growth_title), context.getString(R.string.brief_debug_card_growth_body), 95), today = 84, week = 679)
-        SLOWDOWN -> fixture(context, base, BriefCard("debug-slowdown", BriefCardType.SLOWDOWN, context.getString(R.string.brief_debug_card_slowdown_title), context.getString(R.string.brief_debug_card_slowdown_body), 82), today = -8, week = 3)
-        MILESTONE -> fixture(context, base, BriefCard("debug-milestone", BriefCardType.MILESTONE, context.getString(R.string.brief_debug_card_milestone_title), context.getString(R.string.brief_debug_card_milestone_body, number(base.followers)), 100))
-        TOP_FOLLOWER -> fixture(context, base, BriefCard("debug-top-follower", BriefCardType.TOP_FOLLOWER, context.getString(R.string.brief_debug_card_top_follower_title), context.getString(R.string.brief_debug_card_top_follower_body), 92))
-        INACTIVITY -> fixture(context, base, BriefCard("debug-inactivity", BriefCardType.STREAK, context.getString(R.string.brief_debug_card_inactivity_title), context.getString(R.string.brief_debug_card_inactivity_body), 84))
-        STREAK -> fixture(context, base, BriefCard("debug-streak", BriefCardType.STREAK, context.getString(R.string.brief_debug_card_streak_title), context.getString(R.string.brief_debug_card_streak_body), 84))
-        SCHEDULE_GUIDE -> fixture(context, base, BriefCard("debug-schedule-guide", BriefCardType.SCHEDULE_GUIDE, context.getString(R.string.brief_debug_card_schedule_guide_title), context.getString(R.string.brief_debug_card_schedule_guide_body), 82, BriefCardAction.COMPOSE_TWEET))
-        POST_FOLLOW_THROUGH -> fixture(context, base, BriefCard(
+        POST -> fixture(strings, base, BriefCard("debug-post", BriefCardType.POST, strings.text(R.string.brief_debug_card_post_title), strings.text(R.string.brief_debug_card_post_body), 98))
+        WORST_POST -> fixture(strings, base, BriefCard("debug-worst-post", BriefCardType.WORST_POST, strings.text(R.string.brief_debug_card_worst_post_title), strings.text(R.string.brief_debug_card_worst_post_body), 86))
+        GROWTH -> fixture(strings, base, BriefCard("debug-growth", BriefCardType.GROWTH, strings.text(R.string.brief_debug_card_growth_title), strings.text(R.string.brief_debug_card_growth_body), 95), today = 84, week = 679)
+        SLOWDOWN -> fixture(strings, base, BriefCard("debug-slowdown", BriefCardType.SLOWDOWN, strings.text(R.string.brief_debug_card_slowdown_title), strings.text(R.string.brief_debug_card_slowdown_body), 82), today = -8, week = 3)
+        MILESTONE -> fixture(strings, base, BriefCard("debug-milestone", BriefCardType.MILESTONE, strings.text(R.string.brief_debug_card_milestone_title), strings.text(R.string.brief_debug_card_milestone_body, strings.number(base.followers)), 100))
+        TOP_FOLLOWER -> fixture(strings, base, BriefCard("debug-top-follower", BriefCardType.TOP_FOLLOWER, strings.text(R.string.brief_debug_card_top_follower_title), strings.text(R.string.brief_debug_card_top_follower_body), 92))
+        INACTIVITY -> fixture(strings, base, BriefCard("debug-inactivity", BriefCardType.STREAK, strings.text(R.string.brief_debug_card_inactivity_title), strings.text(R.string.brief_debug_card_inactivity_body), 84))
+        STREAK -> fixture(strings, base, BriefCard("debug-streak", BriefCardType.STREAK, strings.text(R.string.brief_debug_card_streak_title), strings.text(R.string.brief_debug_card_streak_body), 84))
+        SCHEDULE_GUIDE -> fixture(strings, base, BriefCard("debug-schedule-guide", BriefCardType.SCHEDULE_GUIDE, strings.text(R.string.brief_debug_card_schedule_guide_title), strings.text(R.string.brief_debug_card_schedule_guide_body), 82, BriefCardAction.COMPOSE_TWEET))
+        POST_FOLLOW_THROUGH -> fixture(strings, base, BriefCard(
             "debug-post-follow-through",
             BriefCardType.POST_FOLLOW_THROUGH,
-            context.getString(R.string.brief_debug_card_post_follow_through_title),
-            context.getString(R.string.brief_debug_card_post_follow_through_body),
+            strings.text(R.string.brief_debug_card_post_follow_through_title),
+            strings.text(R.string.brief_debug_card_post_follow_through_body),
             94,
             BriefCardAction.OPEN_POST,
-            sourceAttribution = context.getString(R.string.brief_debug_card_source_buffer),
+            sourceAttribution = strings.text(R.string.brief_debug_card_source_buffer),
         ))
-        POSTING_GUIDE -> fixture(context, base, BriefCard("debug-posting-guide", BriefCardType.POSTING_GUIDE, context.getString(R.string.brief_debug_card_posting_guide_title), context.getString(R.string.brief_debug_card_posting_guide_body), 86, BriefCardAction.COMPOSE_TWEET))
-        STEADY -> fixture(context, base, BriefCard("debug-steady", BriefCardType.SUMMARY, context.getString(R.string.brief_debug_card_steady_title), context.getString(R.string.brief_debug_card_steady_body), 50), today = 0, week = 0)
+        POSTING_GUIDE -> fixture(strings, base, BriefCard("debug-posting-guide", BriefCardType.POSTING_GUIDE, strings.text(R.string.brief_debug_card_posting_guide_title), strings.text(R.string.brief_debug_card_posting_guide_body), 86, BriefCardAction.COMPOSE_TWEET))
+        STEADY -> fixture(strings, base, BriefCard("debug-steady", BriefCardType.SUMMARY, strings.text(R.string.brief_debug_card_steady_title), strings.text(R.string.brief_debug_card_steady_body), 50), today = 0, week = 0)
     }
 
     companion object {
@@ -177,7 +180,7 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
             entries.firstOrNull { it.storageId == value } ?: REAL
 
         private fun fixture(
-            context: Context,
+            strings: BriefStrings,
             base: BriefSnapshot,
             card: BriefCard,
             today: Long = base.followersToday,
@@ -188,9 +191,7 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
             followersWeek = week,
             cards = listOf(card),
             providerUsed = BriefProviderUsed.TEMPLATE,
-            providerMessage = context.getString(R.string.brief_debug_synthetic_provider_message),
+            providerMessage = strings.text(R.string.brief_debug_synthetic_provider_message),
         )
-
-        private fun number(value: Long): String = NumberFormat.getIntegerInstance().format(value)
     }
 }

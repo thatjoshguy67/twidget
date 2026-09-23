@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BriefDiagnosticsTest {
+    private val strings = TestBriefStrings()
     private val base = BriefSnapshot(
         username = "example",
         generatedAt = 1L,
@@ -23,13 +24,13 @@ class BriefDiagnosticsTest {
 
     @Test
     fun `real scenario leaves engine output untouched`() {
-        assertEquals(base, BriefDebugScenario.REAL.snapshot(base))
+        assertEquals(base, BriefDebugScenario.REAL.snapshot(strings, base))
     }
 
     @Test
     fun `synthetic scenarios create one template card without an AI request`() {
         BriefDebugScenario.entries.filterNot { it == BriefDebugScenario.REAL }.forEach { scenario ->
-            val snapshot = scenario.snapshot(base)
+            val snapshot = scenario.snapshot(strings, base)
             assertEquals(1, snapshot.cards.size)
             assertEquals(BriefProviderUsed.TEMPLATE, snapshot.providerUsed)
             assertTrue(snapshot.providerMessage.contains("Synthetic debug state"))

@@ -256,6 +256,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                         BriefStore.resetAi(this@TwidgetBriefActivity, username)
                     }
                     debugScenario.snapshot(
+                        this@TwidgetBriefActivity,
                         BriefEngine.rebuild(
                             this@TwidgetBriefActivity,
                             username,

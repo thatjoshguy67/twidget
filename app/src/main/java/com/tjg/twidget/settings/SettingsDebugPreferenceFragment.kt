@@ -18,6 +18,7 @@ import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.OnboardingActivity
+
 import com.tjg.twidget.ui.AppPaletteManager
 import com.tjg.twidget.ui.AppPaletteMode
 import com.tjg.twidget.ui.InsetPreferenceFragment
@@ -72,13 +73,12 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
                 true
             }
         })
-        screen.addPreference(SwitchPreferenceCompat(context).apply {
+        screen.addPreference(Preference(context).apply {
             isVisible = BuildConfig.IN_APP_UPDATES
-            key = "debug_fake_update_pref"
-            title = getString(R.string.trigger_fake_update)
-            isChecked = TwidgetStore.fakeUpdateAvailable(context)
-            setOnPreferenceChangeListener { _, value ->
-                TwidgetStore.setFakeUpdateAvailable(context, value as Boolean)
+            key = "debug_twidget_update"
+            title = getString(R.string.twidget_update_debug)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, UpdateDebugActivity::class.java))
                 true
             }
         })

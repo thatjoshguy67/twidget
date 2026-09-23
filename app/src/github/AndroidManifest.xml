@@ -16,5 +16,9 @@
             android:name=".update.UpdateReminderReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".update.UpdateDownloadActionReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

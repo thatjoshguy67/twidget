@@ -242,6 +242,12 @@
             android:exported="false" />
 
         <activity
+            android:name=".settings.UpdateDebugActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
+            android:exported="false" />
+
+        <activity
             android:name=".settings.BriefDebugActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />

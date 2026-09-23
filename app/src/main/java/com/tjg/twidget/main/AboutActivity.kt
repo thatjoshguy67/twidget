@@ -41,6 +41,9 @@ import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.update.AppVersion
 import com.tjg.twidget.update.UpdateChannel
 import com.tjg.twidget.update.UpdateNotificationHelper
+import com.tjg.twidget.update.UpdateDownloadCancelledException
+import com.tjg.twidget.update.UpdateDownloadController
+import com.tjg.twidget.update.UpdateDownloadNotificationHelper
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 import dev.oneuiproject.oneui.widget.CardItemView
 import java.io.File
@@ -440,7 +443,7 @@ class AboutActivity : FoldablePopOverActivity() {
             },
         ) {
             val result = runCatching {
-                AppUpdateManager.findUpdate(appVersionName(), channel)
+                AppUpdateManager.findUpdate(TwidgetStore.updateCheckVersion(this, appVersionName()), channel)
             }
             runOnUiThread {
                 if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
@@ -515,12 +518,24 @@ class AboutActivity : FoldablePopOverActivity() {
             visibility = View.GONE
         }
         showUpdateChecking()
+        UpdateDownloadController.begin()
+        UpdateDownloadNotificationHelper.show(this, com.tjg.twidget.update.UpdateDownloadProgress(0L, -1L))
+        Toast.makeText(this, R.string.update_download_started, Toast.LENGTH_LONG).show()
         AppExecutors.execute(
-            onRejected = { runOnUiThread { showDownloadFailure(release) } },
+            onRejected = { runOnUiThread {
+                UpdateDownloadNotificationHelper.cancel(this)
+                showDownloadFailure(release)
+            } },
         ) {
-            val apk = runCatching {
-                AppUpdateManager.download(release, File(cacheDir, "updates"))
-            }.getOrNull()
+            val result = runCatching {
+                AppUpdateManager.download(
+                    release,
+                    File(cacheDir, "updates"),
+                    onProgress = { UpdateDownloadNotificationHelper.show(applicationContext, it) },
+                    awaitPermissionToContinue = UpdateDownloadController::awaitPermissionToContinue,
+                )
+            }
+            val apk = result.getOrNull()
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 if (generation != updateCheckGeneration) {
@@ -528,14 +543,20 @@ class AboutActivity : FoldablePopOverActivity() {
                     return@runOnUiThread
                 }
                 if (apk == null) {
-                    showDownloadFailure(release)
+                    UpdateDownloadNotificationHelper.cancel(this)
+                    if (result.exceptionOrNull() is UpdateDownloadCancelledException) showUpdateAvailable(release)
+                    else showDownloadFailure(release)
                 } else if (!isValidUpdateApk(apk, release)) {
+                    UpdateDownloadNotificationHelper.cancel(this)
                     apk.delete()
                     showUpdateAvailable(release)
                     Toast.makeText(this, R.string.update_invalid_apk, Toast.LENGTH_LONG).show()
                 } else {
+                    UpdateDownloadNotificationHelper.showCompleted(this)
                     pendingInstallApk = apk
-                    beginInstall(apk)
+                    window.decorView.postDelayed({
+                        if (!isFinishing && !isDestroyed) beginInstall(apk)
+                    }, 350L)
                 }
             }
         }

@@ -375,7 +375,7 @@ object BriefEngine {
                 state,
                 progress,
                 target,
-                settings.metric.goalNoun(localized),
+                briefGoalNoun(settings.metric, localized),
             )
             val preciseBody = if (progress in 75..99) {
                 BriefGoalCopy.remainingBody(settings.metric, value, settings.target, strings)
@@ -581,6 +581,11 @@ object BriefEngine {
         } else {
             strings.number(target.toLong())
         }
+
+    private fun briefGoalNoun(metric: MilestoneMetric, context: Context): String = when (metric) {
+        MilestoneMetric.VERIFIED_FOLLOWERS -> context.getString(R.string.brief_goal_noun_verified_follower)
+        else -> metric.goalNoun(context)
+    }
 }
 
 internal object BriefGoalCopy {
@@ -608,7 +613,12 @@ internal object BriefGoalCopy {
         } else {
             strings.number(target.toLong())
         }
-        return strings.text(R.string.brief_goal_remaining_body, amount, targetLabel, strings.text(metric.goalNounRes))
+        val goalNoun = if (metric == MilestoneMetric.VERIFIED_FOLLOWERS) {
+            strings.text(R.string.brief_goal_noun_verified_follower)
+        } else {
+            strings.text(metric.goalNounRes)
+        }
+        return strings.text(R.string.brief_goal_remaining_body, amount, targetLabel, goalNoun)
     }
 
     private fun count(value: Double, pluralRes: Int, strings: BriefStrings): String {

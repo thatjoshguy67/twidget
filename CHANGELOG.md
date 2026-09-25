@@ -2,31 +2,61 @@
 
 All notable changes to Twidget are documented here.
 
-## Unreleased
+## [1.3.0-beta.3] - Unreleased
 
-- Reduced follower widget resize rendering time by reusing variable-font paints
-  throughout text fitting, preserving identical artwork. Older renders are discarded
-  when the launcher has moved to a new size.
+New home screen widget styles, faster resizing, and refinements to typography,
+Your Brief, updates, and onboarding. These changes are since beta.2.
 
-- Stopped generic widget layouts competing with exact launcher sizes during resizing.
+### Home screen widgets
 
-- Lightened Material widget surfaces in dark mode and included both theme
-  variants so launchers can switch colours without a tap or app refresh.
-- Allowed long Your Brief strip headlines to wrap beside the icon.
+- Added One UI and Material 3 Expressive styles for follower and Your Brief
+  widgets. One UI is the default on One UI devices; other Android skins default
+  to Material. Switch styles per widget or set defaults in Settings → Appearance.
+- One UI keeps its opacity, blur, and One UI Sans styling. Material uses fully
+  opaque wallpaper colours and Google Sans Flex, with font, logo, and
+  light/dark/system choices still available.
+- Lightened Material widget backgrounds in dark mode and made widgets follow
+  device theme changes without needing a tap or app refresh.
+- Refined Google Sans Flex weight, width, roundness, and emphasis. Follower hero
+  text makes better use of the available space, platform logos are smaller and
+  aligned with the handle, and larger widgets use rounded, condensed deltas.
+- Made resizing faster and more accurate by following the launcher's allocated
+  size, reusing text-fitting work, and discarding outdated renders.
+- Corrected Your Brief spacing and dial artwork, and allowed long strip
+  headlines to wrap beside the icon.
+- Rebuilt widget picker previews to match the device's native widget style and
+  current theme, including the correct fonts, logo colours, and Brief layout.
+  Removed the oversized 4×4 and 4×6 picker entries.
+- Fixed widget settings previews, appearance row separators, and the opacity
+  slider's initial position when switching from Material to One UI.
 
-- Preserved system-scaled text sizes when switching app fonts and centred the
-  About-page spinner while checking for or downloading updates.
+### App appearance and Your Brief
 
-- Added One UI and Material 3 Expressive home widget styles, with defaults based
-  on the device and overrides in widget settings and Settings → Appearance.
-- Material widgets use opaque wallpaper colours and Google Sans Flex, including
-  the Figma typography's width, roundness, weight and emphasis.
-- Matched the app’s Google Sans Flex typography to the new Figma reference,
-  with rounded headings, condensed section labels and medium setting names.
-- Refined Your Brief spacing and icons, fixed widget configuration preview sizes,
-  and added generated launcher previews on Android 15 and newer.
-- Enlarged follower hero text to fit the available space, corrected the dial
-  artwork, and fixed the opacity slider when switching widget styles.
+- Refined Google Sans Flex throughout the app, including headings, setting
+  labels, and toggles, while preserving the device's text scaling.
+- Redesigned the Gemini API-key dialog with shorter copy, an inline privacy
+  link, a clearer input field, and separate Cancel and Save actions. Longer
+  content scrolls while the actions remain accessible.
+- Added German translations for the redesigned dialog and more Brief diagnostic
+  text, and corrected German verified-follower goal wording. Thanks to
+  [Aaron the Techie](https://x.com/aaronthetechie) for the Brief translations.
+- Refreshed the first-launch welcome screen and matched its privacy link to the
+  app accent colour.
+
+### Imports, updates, and distribution
+
+- Improved X Analytics imports to allow small differences between export and
+  saved-history update times. Import failures now show clearer count comparisons
+  and guidance for choosing a file or retrying.
+- Added update download notifications with progress and pause, resume, and stop
+  controls, including live updates on supported Android 16 devices.
+- Prevented duplicate update downloads, kept detected updates immediately
+  actionable, and centred the About-page loading spinner.
+- Corrected Google Play beta version codes so newer betas can upgrade existing
+  installs, separated upload builds from validation builds, and kept APK-updater
+  permissions out of the Play distribution.
+
+[1.3.0-beta.3]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.2...staging
 
 ## [1.3.0-beta.2] - 2026-09-20
 

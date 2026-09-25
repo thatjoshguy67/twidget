@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Reduced follower widget resize rendering time by reusing variable-font paints
+  throughout text fitting, preserving identical artwork. Older renders are discarded
+  when the launcher has moved to a new size.
+
 - Stopped generic widget layouts competing with exact launcher sizes during resizing.
 
 - Lightened Material widget surfaces in dark mode and included both theme

@@ -156,6 +156,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                     drawArtworkBackground = !TwidgetFonts.hasSystemOneUiSans,
                 )
             }
+            if (!widgetSizeOptionsMatch(options, appWidgetManager.getAppWidgetOptions(appWidgetId))) return
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 

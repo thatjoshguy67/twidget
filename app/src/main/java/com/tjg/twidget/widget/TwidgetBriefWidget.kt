@@ -65,6 +65,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             } else {
                 createViews(context, id, width, height, account, snapshot)
             }
+            if (!widgetSizeOptionsMatch(options, manager.getAppWidgetOptions(id))) return
             manager.updateAppWidget(id, views)
             warmAvatars(context, manager, id, account)
         }

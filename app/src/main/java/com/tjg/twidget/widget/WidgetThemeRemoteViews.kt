@@ -35,3 +35,15 @@ internal fun RemoteViews.setWidgetBackgroundTint(context: Context, settings: Twi
         setColorStateList(android.R.id.background, "setBackgroundTintList", tint(widgetUsesDarkTheme(settings.colorMode)))
     }
 }
+
+/** A slower in-flight render must not overwrite a newer launcher allocation. */
+@Suppress("DEPRECATION")
+internal fun widgetSizeOptionsMatch(first: android.os.Bundle, second: android.os.Bundle): Boolean {
+    val keys = listOf(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,
+        android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,
+        android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
+        android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
+    return keys.all { first.getInt(it) == second.getInt(it) } &&
+        first.getParcelableArrayList<android.util.SizeF>(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES) ==
+        second.getParcelableArrayList<android.util.SizeF>(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES)
+}

@@ -64,20 +64,25 @@ object WidgetArtworkRenderer {
         val words = TwidgetWidget.followersInWords(stats.followersCount, locale)
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() } + localizedContext.getString(R.string.followers)
-        val textSize = findTextSize(context, settings, words, textMaxWidth, textMaxHeight)
-        val lines = wrapWords(context, settings, words, textMaxWidth, textSize)
-        val lineHeight = textSize + wordSpacing(context, textMaxWidth)
+        // Axis setup constructs a native variable typeface. Keep one paint per
+        // distinct word throughout fitting and drawing instead of rebuilding it
+        // hundreds of times for every resize. Paints remain local to this render.
+        val wordPaints = words.distinct().associateWith { wordPaint(context, settings, it, primary, secondary) }
+        val gap = wordSpacing(context, textMaxWidth)
+        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap)
+        val lines = wrapWords(words, wordPaints, textMaxWidth, textSize, gap)
+        val lineHeight = textSize + gap
         val top = pad + textSize * 0.8f
 
         lines.forEachIndexed { lineIndex, line ->
             var x = pad
             val y = top + lineIndex * lineHeight
             line.forEach { word ->
-                val paint = wordPaint(context, settings, word, primary, secondary).apply {
+                val paint = wordPaints.getValue(word).apply {
                     this.textSize = textSize
                 }
                 canvas.drawText(word, x, y, paint)
-                x += paint.measureText(word) + wordSpacing(context, textMaxWidth)
+                x += paint.measureText(word) + gap
             }
         }
 
@@ -108,21 +113,20 @@ object WidgetArtworkRenderer {
     }
 
     private fun findTextSize(
-        context: Context,
-        settings: TwidgetWidgetSettings,
         words: List<String>,
+        paints: Map<String, Paint>,
         maxWidth: Float,
         maxHeight: Float,
+        gap: Float,
     ): Float {
         // Find the largest size that fits the host's actual rectangle. Fixed
         // 20/32sp caps left a large unused band on wider/resized widgets.
         var low = 1f
         var high = maxHeight.coerceAtLeast(low)
-        val gap = wordSpacing(context, maxWidth)
         repeat(14) {
             val size = (low + high) / 2f
-            val lines = wrapWords(context, settings, words, maxWidth, size)
-            val fits = words.all { measureWord(context, settings, it, size) <= maxWidth } &&
+            val lines = wrapWords(words, paints, maxWidth, size, gap)
+            val fits = words.all { measureWord(paints.getValue(it), it, size) <= maxWidth } &&
                 lines.size * size + (lines.size - 1) * gap <= maxHeight
             if (fits) low = size else high = size
         }
@@ -132,27 +136,25 @@ object WidgetArtworkRenderer {
     private fun wordSpacing(context: Context, maxWidth: Float): Float =
         (if (maxWidth / context.resources.displayMetrics.density < 230f) 4f else 6f) * context.resources.displayMetrics.density
 
-    private fun measureWord(context: Context, settings: TwidgetWidgetSettings, word: String, textSize: Float): Float =
-        wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
-            .measureText(word)
+    private fun measureWord(paint: Paint, word: String, textSize: Float): Float =
+        paint.apply { this.textSize = textSize }.measureText(word)
 
     private fun wrapWords(
-        context: Context,
-        settings: TwidgetWidgetSettings,
         words: List<String>,
+        paints: Map<String, Paint>,
         maxWidth: Float,
         textSize: Float,
+        space: Float,
     ): List<List<String>> {
         // Measure each word with the paint it will actually be drawn with —
         // per-word weight/width means a single measuring paint would misjudge
         // the heavier emphasis words and overflow the card.
-        val space = wordSpacing(context, maxWidth)
         val lines = mutableListOf<MutableList<String>>()
         var current = mutableListOf<String>()
         var currentWidth = 0f
 
         words.forEach { word ->
-            val width = measureWord(context, settings, word, textSize)
+            val width = measureWord(paints.getValue(word), word, textSize)
             if (current.isNotEmpty() && currentWidth + space + width > maxWidth) {
                 lines += current
                 current = mutableListOf()

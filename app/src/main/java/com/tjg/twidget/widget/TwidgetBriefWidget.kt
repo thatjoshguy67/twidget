@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
-import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
@@ -82,8 +81,9 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         ): RemoteViews {
             val views = linkedMapOf<SizeF, RemoteViews>()
             var bytes = 0L
+            val variants = widgetArtworkVariants(TwidgetStore.widgetSettings(context, id))
             fun add(key: SizeF, width: Int, height: Int) {
-                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L
+                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants
                 if (bytes + cost > BITMAP_BUDGET || views.containsKey(key)) return
                 views[key] = createViews(context, id, width, height, account, snapshot)
                 bytes += cost
@@ -98,7 +98,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             return RemoteViews(views)
         }
 
-        private fun createViews(
+        internal fun createViews(
             context: Context,
             id: Int,
             width: Int,
@@ -123,16 +123,11 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    setColorStateList(
-                        android.R.id.background,
-                        "setBackgroundTintList",
-                        ColorStateList.valueOf(backgroundColor),
-                    )
+                    setWidgetBackgroundTint(context, settings)
                 } else {
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
-                setImageViewBitmap(
-                    R.id.brief_widget_artwork,
+                setWidgetArtwork(R.id.brief_widget_artwork, settings) { artworkDark ->
                     BriefWidgetArtworkRenderer.render(
                         context = localizedContext,
                         strings = strings,
@@ -140,12 +135,12 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         heightPx = dp(context, height),
                         account = account,
                         snapshot = snapshot,
-                        dark = dark,
+                        dark = artworkDark,
                         fontFamily = settings.fontFamily,
                         style = settings.style,
                         background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
-                    ),
-                )
+                    )
+                }
                 setContentDescription(
                     android.R.id.background,
                     listOfNotNull(summary?.title, summary?.body).joinToString(". ")

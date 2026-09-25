@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Lightened Material widget surfaces in dark mode and included both theme
+  variants so launchers can switch colours without a tap or app refresh.
+- Allowed long Your Brief strip headlines to wrap beside the icon.
+
 - Preserved system-scaled text sizes when switching app fonts and centred the
   About-page spinner while checking for or downloading updates.
 

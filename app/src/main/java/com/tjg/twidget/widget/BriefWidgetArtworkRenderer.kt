@@ -155,7 +155,7 @@ internal object BriefWidgetArtworkRenderer {
                     width = width - textLeft - pad,
                     height = height,
                     sizeSp = 24f,
-                    maxLines = 1,
+                    maxLines = 2,
                     color = primary,
                     fontFamily = fontFamily,
                 )
@@ -195,7 +195,17 @@ internal object BriefWidgetArtworkRenderer {
         fontFamily: String,
     ) {
         val paint = textPaint(context, fontFamily, 700, sizeSp, color)
-        val lines = wrap(title, paint, width, maxLines)
+        var lines = wrap(title, paint, width, maxLines)
+        // Keep a wrapped headline inside short widgets at larger system font scales.
+        val availableHeight = height - dp(context, 12)
+        repeat(8) {
+            val metrics = paint.fontMetrics
+            val blockHeight = metrics.bottom - metrics.top + (lines.size - 1) * paint.textSize * 1.13f
+            if (blockHeight > availableHeight) {
+                paint.textSize *= availableHeight / blockHeight
+                lines = wrap(title, paint, width, maxLines)
+            }
+        }
         val lineHeight = paint.textSize * 1.13f
         val metrics = paint.fontMetrics
         val firstBaseline = centeredFirstBaseline(

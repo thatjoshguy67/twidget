@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
@@ -94,7 +93,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                 var totalBitmapBytes = 0L
 
                 fun addResponsiveView(key: SizeF, width: Int, height: Int, responsiveMode: Int) {
-                    val bitmapBytes = dp(context, width).toLong() * dp(context, height).toLong() * 4L
+                    val bitmapBytes = dp(context, width).toLong() * dp(context, height).toLong() * 4L * widgetArtworkVariants(widgetSettings)
                     val replacedBytes = responsiveBitmapBytes[key] ?: 0L
                     if (totalBitmapBytes - replacedBytes + bitmapBytes > REMOTE_VIEWS_BITMAP_BUDGET_BYTES) return
                     responsiveViews[key] = createRemoteViews(
@@ -166,7 +165,7 @@ open class TwidgetWidget : AppWidgetProvider() {
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
-        private fun createRemoteViews(
+        internal fun createRemoteViews(
             context: Context,
             appWidgetId: Int,
             width: Int,
@@ -192,11 +191,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                     // with a rectangular ColorDrawable. One UI uses this
                     // drawable as the glass/blur surface; replacing it made the
                     // milestone widget translucent but left the wallpaper sharp.
-                    setColorStateList(
-                        android.R.id.background,
-                        "setBackgroundTintList",
-                        ColorStateList.valueOf(backgroundColor),
-                    )
+                    setWidgetBackgroundTint(context, widgetSettings)
                 } else {
                     setInt(
                         android.R.id.background,
@@ -208,8 +203,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                 // keeps the VISIBLE state a tap-refresh partial update set, so
                 // relying on the layout's gone default leaves it stuck spinning.
                 setViewVisibility(R.id.widget_loading, View.GONE)
-                setImageViewBitmap(
-                    R.id.widget_artwork,
+                setWidgetArtwork(R.id.widget_artwork, widgetSettings) { artworkDark ->
                     WidgetArtworkRenderer.render(
                         context = context,
                         widthPx = dp(context, width),
@@ -217,11 +211,11 @@ open class TwidgetWidget : AppWidgetProvider() {
                         stats = stats,
                         settings = widgetSettings,
                         mode = mode,
-                        dark = dark,
+                        dark = artworkDark,
                         delta = delta,
                         drawBackground = drawArtworkBackground,
-                    ),
-                )
+                    )
+                }
                 setOnClickPendingIntent(android.R.id.background, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
             }
         }

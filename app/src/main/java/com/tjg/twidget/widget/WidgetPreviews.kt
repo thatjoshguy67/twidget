@@ -33,18 +33,17 @@ internal object WidgetPreviews {
             // Android rate-limits preview publication. Keep the XML fallback until a later launch can retry.
             val accepted = runCatching {
                 manager.setWidgetPreview(provider, AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN,
-                    views(context, settings, dark, brief))
+                    views(context, settings, brief))
             }.getOrDefault(false)
             if (accepted) prefs.edit().putString(key, fingerprint).apply()
         }
     }
 
     @RequiresApi(35)
-    internal fun views(context: Context, defaults: TwidgetWidgetSettings, dark: Boolean, brief: Boolean): RemoteViews {
+    internal fun views(context: Context, defaults: TwidgetWidgetSettings, brief: Boolean): RemoteViews {
         val density = context.resources.displayMetrics.density
         val settings = defaults.copy(accountUsername = "twidget", showDelta = false)
         val style = settings.style
-        val colors = WidgetColors.resolve(context, settings, dark)
         val title = context.getString(R.string.brief_preview_title)
         val body = context.getString(R.string.brief_preview_body)
         val snapshot = BriefSnapshot("twidget", 0, 0, 0, 0, 7671, 0, 0, 0, 0,
@@ -52,14 +51,17 @@ internal object WidgetPreviews {
             headline = title, subheading = body, shortDescription = body, topFollowerRanks = emptyMap(),
             language = BriefStrings.from(context).languageTag)
         return RemoteViews(listOf(162 to 76, 352 to 76, 162 to 176, 352 to 176).associate { (w, h) ->
-            val bitmap = if (brief) BriefWidgetArtworkRenderer.render(context,
-                (w * density).toInt(), (h * density).toInt(), "", snapshot, dark, settings.fontFamily,
-                style = style, background = colors.background)
-            else WidgetArtworkRenderer.render(context, (w * density).toInt(), (h * density).toInt(),
-                ProfileStats("Twidget", "twidget", 7671, 0, 0, 0), settings,
-                TwidgetWidget.layoutModeForAosp(w, h), dark, drawBackground = true)
+            fun render(artworkDark: Boolean): android.graphics.Bitmap {
+                val colors = WidgetColors.resolve(context, settings, artworkDark)
+                return if (brief) BriefWidgetArtworkRenderer.render(context,
+                    (w * density).toInt(), (h * density).toInt(), "", snapshot, artworkDark, settings.fontFamily,
+                    style = style, background = colors.background)
+                else WidgetArtworkRenderer.render(context, (w * density).toInt(), (h * density).toInt(),
+                    ProfileStats("Twidget", "twidget", 7671, 0, 0, 0), settings,
+                    TwidgetWidget.layoutModeForAosp(w, h), artworkDark, drawBackground = true)
+            }
             SizeF(w.toFloat(), h.toFloat()) to RemoteViews(context.packageName, R.layout.widget_generated_preview).apply {
-                setImageViewBitmap(R.id.widget_preview_artwork, bitmap)
+                setWidgetArtwork(R.id.widget_preview_artwork, settings, ::render)
             }
         })
     }

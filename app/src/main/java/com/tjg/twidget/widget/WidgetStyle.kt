@@ -38,7 +38,7 @@ internal data class WidgetColors(val background: Int, val primary: Int, val seco
             // Framework tones always follow the wallpaper, even when the app uses a custom accent.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 return WidgetColors(
-                    context.getColor(if (dark) android.R.color.system_accent2_900 else android.R.color.system_accent2_50),
+                    context.getColor(if (dark) android.R.color.system_accent2_800 else android.R.color.system_accent2_50),
                     context.getColor(if (dark) android.R.color.system_accent1_200 else android.R.color.system_accent1_800),
                     context.getColor(if (dark) android.R.color.system_accent2_300 else android.R.color.system_accent2_800),
                 )

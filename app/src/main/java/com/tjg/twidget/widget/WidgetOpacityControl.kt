@@ -19,11 +19,16 @@ internal object WidgetOpacityControl {
         fun updateVisuals() {
             val level = slider.progress.coerceIn(presets.indices)
             ticks.forEachIndexed { index, tick -> tick.alpha = if (index == level) 0f else 1f }
-            thumb.post {
-                val tick = ticks[slider.progress.coerceIn(presets.indices)]
+            val tick = ticks[level]
+            if (tick.width > 0 && thumb.width > 0) {
                 thumb.translationX = tick.x + tick.width / 2f - thumb.width / 2f
             }
         }
+        // A GONE control has no measured tick positions. Reposition after the
+        // first visible layout, subsequent resizes, and preference reattachment.
+        val onLayout = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateVisuals() }
+        ticks.forEach { it.addOnLayoutChangeListener(onLayout) }
+        thumb.addOnLayoutChangeListener(onLayout)
         slider.alpha = 0f
         slider.progressDrawable?.alpha = 0
         slider.progress = closestLevel(alpha)

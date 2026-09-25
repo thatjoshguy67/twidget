@@ -77,6 +77,21 @@
                 android:background="?android:colorBackground"
                 android:orientation="vertical">
 
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/widget_style_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="false"
+                    app:title="@string/widget_style" />
+
+                <View
+                    android:id="@+id/opacity_separator"
+                    android:layout_width="match_parent"
+                    android:layout_height="1px"
+                    android:layout_marginStart="@dimen/widget_settings_content_inset"
+                    android:layout_marginEnd="@dimen/widget_settings_content_inset"
+                    android:background="@color/oneui_divider" />
+
                 <include layout="@layout/widget_opacity_control" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
@@ -137,6 +152,7 @@
                         android:paddingEnd="@dimen/widget_settings_content_inset">
 
                         <TextView
+                            android:id="@+id/delta_label"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"

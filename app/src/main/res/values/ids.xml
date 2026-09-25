@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <item name="app_font_role" type="id" />
+    <item name="app_font_baseline" type="id" />
     <item name="app_font_observer" type="id" />
     <item name="profile_image_request" type="id" />
     <item name="drawer_avatar_render_guard" type="id" />

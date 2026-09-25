@@ -2,20 +2,20 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_brief_pill_surface"
+    android:background="@drawable/widget_preview_brief_surface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="8dp">
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="10dp">
 
     <FrameLayout
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:background="@drawable/avatar_twidget">
 
         <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:src="@drawable/ic_twidget_notification" />
@@ -24,15 +24,15 @@
     <TextView
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:layout_weight="1"
         android:ellipsize="end"
         android:fontFamily="@font/one_ui_sans"
-        android:gravity="center_vertical|start"
+        android:gravity="center"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:text="@string/brief_preview_title"
         android:textColor="#FF000000"
         android:textFontWeight="700"
-        android:textSize="17sp" />
+        android:textSize="24sp" />
 </LinearLayout>

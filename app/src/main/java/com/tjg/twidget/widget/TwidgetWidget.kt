@@ -182,8 +182,11 @@ open class TwidgetWidget : AppWidgetProvider() {
             // own `sec` family—so every size renders its text as artwork.
             return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
-                val base = if (dark) 16 else 255
-                val backgroundColor = Color.argb(widgetSettings.tintAlpha, base, base, base)
+                val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
+                // RemoteViews may reuse the old view when the style changes.
+                setInt(android.R.id.background, "setBackgroundResource",
+                    if (widgetSettings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    else R.drawable.widget_preview_glass_bg)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
                     // with a rectangular ColorDrawable. One UI uses this
@@ -338,13 +341,7 @@ open class TwidgetWidget : AppWidgetProvider() {
         }
 
         private fun isDark(context: Context, settings: TwidgetWidgetSettings): Boolean =
-            when (settings.colorMode) {
-                TwidgetStore.COLOR_MODE_DARK -> true
-                TwidgetStore.COLOR_MODE_SYSTEM ->
-                    context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-                TwidgetStore.COLOR_MODE_LIGHT -> false
-                else -> Color.red(settings.tintColor) < 128
-            }
+            widgetUsesDarkTheme(settings.colorMode)
 
         private fun fullNumber(value: Long, locale: Locale = Locale.US): String =
             java.text.NumberFormat.getIntegerInstance(locale).format(value)

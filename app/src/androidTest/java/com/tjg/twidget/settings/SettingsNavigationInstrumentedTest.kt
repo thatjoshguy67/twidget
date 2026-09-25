@@ -19,6 +19,7 @@ import com.tjg.twidget.brief.BriefSettingsStore
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
+import com.tjg.twidget.widget.WidgetStyle
 import com.tjg.twidget.widget.RefreshWorker
 import dev.oneuiproject.oneui.preference.LayoutPreference
 import dev.oneuiproject.oneui.widget.RadioItemViewGroup
@@ -216,6 +217,7 @@ class SettingsNavigationInstrumentedTest {
     @Test fun appearanceDefaultsPersistWithoutOverwritingWidgetOverrides() {
         val widgetId = 987654
         val original = TwidgetStore.widgetSettings(context)
+        TwidgetStore.saveWidgetSettings(context, 0, original.copy(style = WidgetStyle.ONE_UI, fontFamily = TwidgetStore.FONT_ONE_UI_SANS))
         val specific = original.copy(fontFamily = TwidgetStore.FONT_ONE_UI_SANS, colorMode = TwidgetStore.COLOR_MODE_LIGHT, tintAlpha = 180)
         TwidgetStore.saveWidgetSettings(context, widgetId, specific)
         val activity = launch(SettingsCategoryActivity.intent(context, SettingsPage.APPEARANCE))
@@ -230,14 +232,28 @@ class SettingsNavigationInstrumentedTest {
             assertEquals("settings_app_font", ordered[3].key)
             val defaultsIndex = ordered.indexOfFirst { it.title == context.getString(R.string.settings_widget_defaults) }
             assertTrue(defaultsIndex > 3)
-            assertEquals("settings_widget_opacity", ordered[defaultsIndex + 1].key)
+            assertEquals("settings_widget_style", ordered[defaultsIndex + 1].key)
+            assertEquals("settings_widget_opacity", ordered[defaultsIndex + 2].key)
             val showsFontTip = BuildConfig.FLAVOR == "github" && TwidgetFonts.hasSystemOneUiSans
             assertEquals(showsFontTip, ordered[3].widgetLayoutResource == R.layout.preference_font_tip)
             assertNull(screen.findPreference<Preference>("settings_app_font_tip"))
             assertNull(screen.findPreference<Preference>("settings_app_font_inset"))
+            val style = screen.findPreference<ListPreference>("settings_widget_style")!!
+            val opacity = screen.findPreference<LayoutPreference>("settings_widget_opacity")!!
+            val font = screen.findPreference<ListPreference>("settings_widget_font")!!
+            assertTrue(opacity.isVisible)
+            style.callChangeListener(WidgetStyle.MATERIAL.storedValue)
+            assertFalse(opacity.isVisible)
+            assertEquals(TwidgetStore.FONT_GOOGLE_SANS_FLEX, font.value)
+            assertEquals(WidgetStyle.MATERIAL, TwidgetStore.widgetSettings(context, widgetId + 1).style)
+            assertEquals(specific, TwidgetStore.widgetSettings(context, widgetId))
+            font.callChangeListener(TwidgetStore.FONT_SYSTEM)
+            style.callChangeListener(WidgetStyle.ONE_UI.storedValue)
+            assertEquals(TwidgetStore.FONT_SYSTEM, TwidgetStore.widgetSettings(context).fontFamily)
+            assertTrue(opacity.isVisible)
             screen.findPreference<Preference>("settings_widget_font")!!.callChangeListener(TwidgetStore.FONT_GOOGLE_SANS_FLEX)
             screen.findPreference<Preference>("settings_widget_colours")!!.callChangeListener(TwidgetStore.COLOR_MODE_DARK)
-            activity.findViewById<androidx.appcompat.widget.SeslSeekBar>(R.id.opacity_slider).progress = 1
+            opacity.findViewById<androidx.appcompat.widget.SeslSeekBar>(R.id.opacity_slider).progress = 1
             assertEquals(TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.widgetSettings(context).fontFamily)
             assertEquals(TwidgetStore.COLOR_MODE_DARK, TwidgetStore.widgetSettings(context).colorMode)
             assertEquals(102, TwidgetStore.widgetSettings(context).tintAlpha)
@@ -245,6 +261,73 @@ class SettingsNavigationInstrumentedTest {
             assertEquals(TwidgetStore.LOGO_TWITTER, TwidgetStore.widgetSettings(context).logo)
             assertEquals(specific, TwidgetStore.widgetSettings(context, widgetId))
             assertEquals(TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.widgetSettings(context, widgetId + 1).fontFamily)
+        }
+    }
+
+    @Test fun googleTypographyMatchesReferenceAndRestoresOtherFonts() {
+        AppAppearance.setFont(context, AppAppearance.Font.GOOGLE_SANS_FLEX)
+        TwidgetStore.saveWidgetSettings(context, 0, TwidgetStore.widgetSettings(context).copy(style = WidgetStyle.ONE_UI))
+        val activity = launch(SettingsCategoryActivity.intent(context, SettingsPage.APPEARANCE))
+        onMain {
+            fun labels(view: android.view.View): List<android.widget.TextView> = when (view) {
+                is android.widget.TextView -> listOf(view)
+                is android.view.ViewGroup -> (0 until view.childCount).flatMap { labels(view.getChildAt(it)) }
+                else -> emptyList()
+            }
+            TwidgetFonts.applyTo(activity.window.decorView)
+            val visible = labels(activity.window.decorView)
+            val title = visible.first { it.text == context.getString(R.string.settings_app_font) }
+            val section = visible.first { it.text == context.getString(R.string.settings_widget_defaults) }
+            assertEquals(500, title.typeface.weight)
+            assertEquals(18f * title.resources.displayMetrics.scaledDensity, title.textSize, .1f)
+            assertEquals(700, section.typeface.weight)
+            val normalWidth = android.graphics.Paint(section.paint).apply { typeface = TwidgetFonts.forApp(context, 700) }
+            assertTrue(section.paint.measureText(section.text.toString()) < normalWidth.measureText(section.text.toString()))
+            val first = title.typeface
+            repeat(3) { TwidgetFonts.applyTo(activity.window.decorView) }
+            assertSame(first, title.typeface)
+            val label = android.widget.TextView(activity).apply {
+                id = android.R.id.title
+                textSize = 17f
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, 400, false)
+            }
+            val originalSize = label.textSize
+            TwidgetFonts.applyTo(label)
+            assertEquals(500, label.typeface.weight)
+            AppAppearance.setFont(context, AppAppearance.Font.SYSTEM)
+            TwidgetFonts.applyTo(label)
+            assertEquals(400, label.typeface.weight)
+            assertEquals(originalSize, label.textSize, .1f)
+            AppAppearance.setFont(context, AppAppearance.Font.GOOGLE_SANS_FLEX)
+        }
+        instrumentation.waitForIdleSync()
+        instrumentation.uiAutomation.takeScreenshot().let { bitmap ->
+            java.io.File(context.cacheDir, "appearance-google.png").outputStream().use {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            bitmap.recycle()
+        }
+    }
+
+    @Test fun googleAppWeightsMatchVariableOutlinesWithoutSyntheticBold() {
+        AppAppearance.setFont(context, AppAppearance.Font.GOOGLE_SANS_FLEX)
+        onMain {
+            for (weight in listOf(400, 500, 700)) {
+                val reference = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    typeface = TwidgetFonts.googleSansFlex(context)
+                    textSize = 48f
+                    fontVariationSettings = "'wght' $weight, 'wdth' 100, 'ROND' ${if (weight == 700) 100 else 0}, 'GRAD' 0, 'slnt' 0, 'opsz' 18"
+                }
+                val actual = android.graphics.Paint(reference).apply { typeface = TwidgetFonts.forApp(context, weight) }
+                fun render(paint: android.graphics.Paint) = android.graphics.Bitmap.createBitmap(600, 90, android.graphics.Bitmap.Config.ARGB_8888).apply {
+                    android.graphics.Canvas(this).drawText("Appearance 123", 10f, 65f, paint)
+                }
+                val expected = render(reference)
+                val result = render(actual)
+                assertTrue("Weight $weight outlines must match the original variable axes", expected.sameAs(result))
+                expected.recycle()
+                result.recycle()
+            }
         }
     }
 

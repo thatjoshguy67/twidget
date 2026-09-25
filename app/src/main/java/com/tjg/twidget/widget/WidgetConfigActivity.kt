@@ -39,6 +39,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var tapAction = TwidgetStore.TAP_REFRESH
     private var accountUsername = ""
     private var colorMode = TwidgetStore.COLOR_MODE_SYSTEM
+    private var widgetStyle = WidgetStyle.ONE_UI
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
     private var language = "DEFAULT"
@@ -74,7 +75,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         if (isLockWidget) {
             // Lock screen artwork is monotone white — opacity, tint, font, and
             // tap action don't apply there; account and logo do.
-            listOf(R.id.opacity_block, R.id.tint_row, R.id.font_row, R.id.tap_separator, R.id.tap_action_card)
+            listOf(R.id.widget_style_row, R.id.opacity_block, R.id.tint_row, R.id.font_row, R.id.tap_separator, R.id.tap_action_card)
                 .forEach { findViewById<View>(it).visibility = View.GONE }
             findViewById<CardItemView>(R.id.logo_row).showTopDivider = false
         } else if (isBriefWidget) {
@@ -99,6 +100,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         tapAction = settings.tapAction
         accountUsername = settings.accountUsername
         colorMode = settings.colorMode
+        widgetStyle = settings.style
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
         language = settings.language
@@ -119,6 +121,15 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             tintAlpha = alpha
             currentLevel = closestOpacityLevel(alpha)
             render()
+        }
+        findViewById<CardItemView>(R.id.widget_style_row).setOnClickListener { anchor ->
+            val styles = WidgetStyle.entries
+            showDropDown(anchor, styles.map { styleLabel(it) }, styles.indexOf(widgetStyle)) { index ->
+                val previous = widgetStyle
+                widgetStyle = styles[index]
+                if (fontFamily == previous.defaultFont) fontFamily = widgetStyle.defaultFont
+                render()
+            }
         }
         findViewById<CardItemView>(R.id.tint_row).setOnClickListener { pickColorMode(it) }
         findViewById<CardItemView>(R.id.logo_row).setOnClickListener { pickLogo(it) }
@@ -212,6 +223,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
                     maxLines = 1
+                    com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.LABEL)
                 })
                 addView(TextView(context).apply {
                     text = context.getString(R.string.account_handle, username.trimStart('@'))
@@ -220,6 +232,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                     typeface = Typeface.create("sec", Typeface.NORMAL)
                     includeFontPadding = false
                     maxLines = 1
+                    com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.SUMMARY)
                 })
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginStart = dp(10)
@@ -243,7 +256,15 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             }
         }
 
+    private fun styleLabel(style: WidgetStyle) = getString(
+        if (style == WidgetStyle.MATERIAL) R.string.widget_style_material else R.string.widget_style_one_ui,
+    )
+
     private fun render() {
+        findViewById<CardItemView>(R.id.widget_style_row).summary = styleLabel(widgetStyle)
+        findViewById<View>(R.id.opacity_block).visibility =
+            if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.opacity_separator).visibility = findViewById<View>(R.id.opacity_block).visibility
         findViewById<CardItemView>(R.id.tint_row).summary = colorModeLabel(colorMode)
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
         findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
@@ -268,7 +289,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language, widgetStyle)
 
         if (isLockWidget) {
             preview.background = null
@@ -285,29 +306,30 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         }
 
         if (isBriefWidget) {
-            val widthDp = 300
-            val heightDp = 149
+            val spec = homePreviewSpec()
+            val widthDp = spec.widthDp
+            val heightDp = spec.heightDp
             val darkPreview = isDarkPreview()
-            val previewBase = if (darkPreview) 16 else 255
             preview.background = GradientDrawable().apply {
-                cornerRadius = resources.displayMetrics.density * 26f
-                setColor(Color.argb(tintAlpha, previewBase, previewBase, previewBase))
+                cornerRadius = resources.displayMetrics.density * spec.cornerRadiusDp * previewScale(widthDp)
+                setColor(WidgetColors.resolve(this@WidgetConfigActivity, previewSettings, darkPreview).background)
             }
             preview.layoutParams = preview.layoutParams.apply {
-                width = dp(widthDp)
-                height = dp(heightDp)
+                width = (dp(widthDp) * previewScale(widthDp)).toInt()
+                height = (dp(heightDp) * previewScale(widthDp)).toInt()
             }
             preview.addView(ImageView(this).apply {
                 scaleType = ImageView.ScaleType.FIT_XY
                 setImageBitmap(
                     BriefWidgetArtworkRenderer.render(
-                        context = this@WidgetConfigActivity,
+                        context = com.tjg.twidget.core.AppLocales.wrap(this@WidgetConfigActivity, language),
                         widthPx = dp(widthDp),
                         heightPx = dp(heightDp),
                         account = selectedAccount,
                         snapshot = BriefStore.read(this@WidgetConfigActivity, selectedAccount),
                         dark = darkPreview,
                         fontFamily = fontFamily,
+                        style = widgetStyle,
                     ),
                 )
             }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
@@ -320,14 +342,13 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         // shortcut treated System/Dark as a light card whenever the stored
         // tint happened to be white, leaving white artwork with no contrast.
         val darkPreview = isDarkPreview()
-        val previewBase = if (darkPreview) 16 else 255
         preview.background = GradientDrawable().apply {
-            cornerRadius = resources.displayMetrics.density * previewSpec.cornerRadiusDp
-            setColor(Color.argb(tintAlpha, previewBase, previewBase, previewBase))
+            cornerRadius = resources.displayMetrics.density * previewSpec.cornerRadiusDp * previewScale(previewSpec.widthDp)
+            setColor(WidgetColors.resolve(this@WidgetConfigActivity, previewSettings, darkPreview).background)
         }
         preview.layoutParams = preview.layoutParams.apply {
-            width = dp(previewSpec.widthDp)
-            height = dp(previewSpec.heightDp)
+            width = (dp(previewSpec.widthDp) * previewScale(previewSpec.widthDp)).toInt()
+            height = (dp(previewSpec.heightDp) * previewScale(previewSpec.widthDp)).toInt()
         }
         preview.addView(ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_XY
@@ -418,7 +439,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun saveAndFinish() {
         tintAlpha = OPACITY_PRESETS[currentLevel]
-        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language))
+        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, widgetStyle))
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             val manager = AppWidgetManager.getInstance(this)
             if (isLockWidget) {
@@ -449,40 +470,23 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         return typed.resourceId
     }
 
-    private fun isDarkPreview(): Boolean =
-        colorMode == TwidgetStore.COLOR_MODE_DARK ||
-            (colorMode == TwidgetStore.COLOR_MODE_SYSTEM &&
-                (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
+    private fun isDarkPreview(): Boolean = widgetUsesDarkTheme(colorMode)
     private fun homePreviewSpec(): HomePreviewSpec {
-        val fallback = HomePreviewSpec(TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE, 176, 176, 24f)
-        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return fallback
         val options = AppWidgetManager.getInstance(this).getAppWidgetOptions(appWidgetId)
-        val minWidth = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, fallback.widthDp) ?: fallback.widthDp
-        val minHeight = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, fallback.heightDp) ?: fallback.heightDp
-        val mode = if (options == null) fallback.mode else TwidgetWidget.layoutMode(options)
-        val rows = options?.getInt("semAppWidgetRowSpan", 0) ?: 0
-        val (widthDp, heightDp) = when (mode) {
-            TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 -> 226 to 98
-            TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP -> 300 to 62
-            TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE -> 176 to 176
-            else -> {
-                val width = 300
-                val height = if (rows >= 3) 176 else (width * minHeight / minWidth.coerceAtLeast(1)).coerceIn(124, 142)
-                width to height
-            }
-        }
-        val cornerRadius = if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 || mode == TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP) {
-            heightDp / 2f
-        } else {
-            24f
-        }
-        return HomePreviewSpec(
-            mode = mode,
-            widthDp = widthDp,
-            heightDp = heightDp,
-            cornerRadiusDp = cornerRadius,
-        )
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val oneUi = com.tjg.twidget.ui.TwidgetFonts.hasSystemOneUiSans
+        val width = options.getInt(if (!oneUi && landscape) AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH
+            else AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, if (isBriefWidget) 352 else 162).coerceAtLeast(100)
+        val height = options.getInt(if (!oneUi && !landscape) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT
+            else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 176).coerceAtLeast(56)
+        val mode = if (oneUi && !options.isEmpty) TwidgetWidget.layoutMode(options)
+            else TwidgetWidget.layoutModeForAosp(width, height)
+        return HomePreviewSpec(mode, width, height,
+            if (widgetStyle == WidgetStyle.MATERIAL || height > 110) 26f else height / 2f)
     }
+
+    private fun previewScale(widthDp: Int): Float = minOf(1f,
+        (resources.displayMetrics.widthPixels / resources.displayMetrics.density - 64f) / widthDp)
 
     private fun colorModeLabel(mode: String): String = when (mode) {
         TwidgetStore.COLOR_MODE_DARK -> getString(R.string.widget_tint_dark)

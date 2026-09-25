@@ -92,6 +92,7 @@ data class TwidgetWidgetSettings(
     val fontFamily: String,
     val showDelta: Boolean = true,
     val language: String = "DEFAULT",
+    val style: com.tjg.twidget.widget.WidgetStyle = com.tjg.twidget.widget.WidgetStyle.ONE_UI,
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -413,6 +414,7 @@ object TwidgetStore {
     fun widgetSettings(context: Context, appWidgetId: Int = 0): TwidgetWidgetSettings {
         val prefs = prefs(context)
         val suffix = if (appWidgetId > 0) "_$appWidgetId" else ""
+        val style = com.tjg.twidget.widget.WidgetStyle.resolve(prefs.getString("widget_style$suffix", prefs.getString("widget_style", null)))
         return TwidgetWidgetSettings(
             tintAlpha = prefs.getInt("widget_tint_alpha$suffix", prefs.getInt("widget_tint_alpha", 205)).coerceIn(30, 245),
             tintColor = prefs.getInt("widget_tint_color$suffix", prefs.getInt("widget_tint_color", 0x00FFFFFF)),
@@ -421,10 +423,11 @@ object TwidgetStore {
             accountUsername = prefs.getString("widget_account$suffix", "") ?: "",
             colorMode = prefs.getString("widget_color_mode$suffix", prefs.getString("widget_color_mode", COLOR_MODE_SYSTEM)) ?: COLOR_MODE_SYSTEM,
             fontFamily = normalizeWidgetFont(
-                prefs.getString("widget_font_family$suffix", prefs.getString("widget_font_family", FONT_ONE_UI_SANS)),
+                prefs.getString("widget_font_family$suffix", prefs.getString("widget_font_family", style.defaultFont)),
             ),
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
             language = prefs.getString("widget_language$suffix", prefs.getString("widget_language", "DEFAULT")) ?: "DEFAULT",
+            style = style,
         )
     }
 
@@ -440,6 +443,7 @@ object TwidgetStore {
             .putString("widget_font_family$suffix", normalizeWidgetFont(settings.fontFamily))
             .putBoolean("widget_show_delta$suffix", settings.showDelta)
             .putString("widget_language$suffix", settings.language)
+            .putString("widget_style$suffix", settings.style.storedValue)
             .apply()
     }
 

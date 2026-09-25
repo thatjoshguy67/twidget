@@ -40,6 +40,8 @@ import com.tjg.twidget.ui.startSettingsSubActivity
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetBriefWidget
 import com.tjg.twidget.widget.TwidgetWidget
+import com.tjg.twidget.widget.WidgetStyle
+import com.tjg.twidget.widget.WidgetPreviews
 import com.tjg.twidget.widget.WidgetOpacityControl
 import dev.oneuiproject.oneui.preference.LayoutPreference
 
@@ -497,19 +499,10 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         fun update(next: TwidgetWidgetSettings) {
             defaults = next
             TwidgetStore.saveWidgetSettings(context, 0, next)
+            WidgetPreviews.publish(context)
             TwidgetWidget.updateAll(context)
             TwidgetBriefWidget.updateAll(context)
         }
-        val opacity = layoutInflater.inflate(R.layout.widget_opacity_control, null)
-        WidgetOpacityControl.bind(opacity, defaults.tintAlpha) { alpha ->
-            update(defaults.copy(tintAlpha = alpha))
-        }
-        screen.addPreference(LayoutPreference(context, opacity).apply {
-            key = "settings_widget_opacity"
-            isSelectable = false
-            setAllowDividerAbove(true)
-            setAllowDividerBelow(true)
-        })
         fun choice(keyName: String, titleRes: Int, values: Array<String>, labels: Array<String>, selected: String, changed: (String) -> Unit) {
             screen.addPreference(ListPreference(context).apply {
                 key = keyName
@@ -528,6 +521,30 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
                 }
             })
         }
+        choice("settings_widget_style", R.string.widget_style,
+            WidgetStyle.entries.map { it.storedValue }.toTypedArray(),
+            arrayOf(getString(R.string.widget_style_one_ui), getString(R.string.widget_style_material)),
+            defaults.style.storedValue) { value ->
+            val style = WidgetStyle.resolve(value)
+            val font = if (defaults.fontFamily == defaults.style.defaultFont) style.defaultFont else defaults.fontFamily
+            update(defaults.copy(style = style, fontFamily = font))
+            findPreference<Preference>("settings_widget_opacity")?.isVisible = style == WidgetStyle.ONE_UI
+            findPreference<ListPreference>("settings_widget_font")?.let { preference ->
+                preference.value = font
+                preference.summary = preference.entry
+            }
+        }
+        val opacity = layoutInflater.inflate(R.layout.widget_opacity_control, null)
+        WidgetOpacityControl.bind(opacity, defaults.tintAlpha) { alpha ->
+            update(defaults.copy(tintAlpha = alpha))
+        }
+        screen.addPreference(LayoutPreference(context, opacity).apply {
+            key = "settings_widget_opacity"
+            isSelectable = false
+            isVisible = defaults.style == WidgetStyle.ONE_UI
+            setAllowDividerAbove(true)
+            setAllowDividerBelow(true)
+        })
         choice("settings_widget_colours", R.string.widget_tint,
             arrayOf(TwidgetStore.COLOR_MODE_SYSTEM, TwidgetStore.COLOR_MODE_LIGHT, TwidgetStore.COLOR_MODE_DARK),
             arrayOf(getString(R.string.widget_tint_system), getString(R.string.widget_tint_light), getString(R.string.widget_tint_dark)), defaults.colorMode) {

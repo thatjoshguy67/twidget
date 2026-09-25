@@ -14,8 +14,6 @@ import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import com.tjg.twidget.ui.TwidgetFonts
-import kotlin.math.max
-import kotlin.math.min
 
 object WidgetArtworkRenderer {
     internal const val ONE_UI_EMPHASIS_WEIGHT = 700
@@ -40,10 +38,12 @@ object WidgetArtworkRenderer {
         val canvas = Canvas(bitmap)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val density = context.resources.displayMetrics.density
-        val primary = if (dark) Color.WHITE else Color.BLACK
-        val secondary = Color.argb(204, Color.red(primary), Color.green(primary), Color.blue(primary))
+        val colors = WidgetColors.resolve(context, settings, dark)
+        val primary = colors.primary
+        val secondary = colors.secondary
         val footerPaint = textPaint(context, settings, primary, bold = true).apply {
-            textSize = 12f * density
+            textSize = 14f * density
+            applyWidgetTypeface(context, settings.fontFamily, 600, 51, 100)
         }
         val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, AppLocales.resolve(settings.language))
         val deltaPaint = textPaint(
@@ -56,7 +56,7 @@ object WidgetArtworkRenderer {
         }
 
         val pad = 10f * density
-        val footerHeight = if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE) 20f * density else 26f * density
+        val footerHeight = 20f * density
         val textMaxWidth = width - pad * 2
         val textMaxHeight = height - pad * 2 - footerHeight
         val locale = AppLocales.resolve(settings.language)
@@ -66,10 +66,8 @@ object WidgetArtworkRenderer {
             .filter { it.isNotBlank() } + localizedContext.getString(R.string.followers)
         val textSize = findTextSize(context, settings, words, textMaxWidth, textMaxHeight)
         val lines = wrapWords(context, settings, words, textMaxWidth, textSize)
-        val isGerman = locale.language == "de"
-        val lineHeightMultiplier = if (isGerman) 1.0f else 1.12f
-        val lineHeight = textSize * lineHeightMultiplier
-        val top = pad + max(0f, (textMaxHeight - lines.size * lineHeight) / 2f) + textSize * 0.88f
+        val lineHeight = textSize + wordSpacing(context, textMaxWidth)
+        val top = pad + textSize * 0.8f
 
         lines.forEachIndexed { lineIndex, line ->
             var x = pad
@@ -79,18 +77,18 @@ object WidgetArtworkRenderer {
                     this.textSize = textSize
                 }
                 canvas.drawText(word, x, y, paint)
-                x += paint.measureText(word) + wordSpacing(context)
+                x += paint.measureText(word) + wordSpacing(context, textMaxWidth)
             }
         }
 
         val handle = "@${stats.userName}"
         val footerY = height - pad - 4f * density
-        val logoSize = 13f * density
+        val logoSize = 20f * density
         val logo = ContextCompat.getDrawable(
             context,
             if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x,
         )?.mutate()?.apply { setTint(primary) }
-        val logoCenterY = footerY - 4.5f * density
+        val logoCenterY = height - pad - logoSize / 2f
         logo?.setBounds(
             pad.toInt(),
             (logoCenterY - logoSize / 2f).toInt(),
@@ -98,7 +96,7 @@ object WidgetArtworkRenderer {
             (logoCenterY + logoSize / 2f).toInt(),
         )
         logo?.draw(canvas)
-        val handleX = pad + logoSize + 8f * density
+        val handleX = pad + logoSize + 6f * density
         val deltaWidth = if (deltaText.isEmpty()) 0f else deltaPaint.measureText(deltaText)
         val handleMaxWidth = width - handleX - pad - deltaWidth - if (deltaText.isEmpty()) 0f else 10f * density
         shrinkToFit(footerPaint, handle, handleMaxWidth)
@@ -116,20 +114,23 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         maxHeight: Float,
     ): Float {
-        val step = context.resources.displayMetrics.scaledDensity
-        var size = 42f * step
-        while (true) {
+        // Find the largest size that fits the host's actual rectangle. Fixed
+        // 20/32sp caps left a large unused band on wider/resized widgets.
+        var low = 1f
+        var high = maxHeight.coerceAtLeast(low)
+        val gap = wordSpacing(context, maxWidth)
+        repeat(14) {
+            val size = (low + high) / 2f
             val lines = wrapWords(context, settings, words, maxWidth, size)
-            val wordsFit = words.all { measureWord(context, settings, it, size) <= maxWidth }
-            if (wordsFit && lines.size * size * 1.12f <= maxHeight) return size
-            // Long German compounds and large accessibility fonts can need less
-            // than the old 11/15sp minimum. Keep shrinking instead of clipping.
-            if (size <= 1f) return size
-            size = max(1f, size - step)
+            val fits = words.all { measureWord(context, settings, it, size) <= maxWidth } &&
+                lines.size * size + (lines.size - 1) * gap <= maxHeight
+            if (fits) low = size else high = size
         }
+        return low
     }
 
-    private fun wordSpacing(context: Context): Float = 6f * context.resources.displayMetrics.density
+    private fun wordSpacing(context: Context, maxWidth: Float): Float =
+        (if (maxWidth / context.resources.displayMetrics.density < 230f) 4f else 6f) * context.resources.displayMetrics.density
 
     private fun measureWord(context: Context, settings: TwidgetWidgetSettings, word: String, textSize: Float): Float =
         wordPaint(context, settings, word, Color.BLACK, Color.BLACK).apply { this.textSize = textSize }
@@ -145,7 +146,7 @@ object WidgetArtworkRenderer {
         // Measure each word with the paint it will actually be drawn with —
         // per-word weight/width means a single measuring paint would misjudge
         // the heavier emphasis words and overflow the card.
-        val space = wordSpacing(context)
+        val space = wordSpacing(context, maxWidth)
         val lines = mutableListOf<MutableList<String>>()
         var current = mutableListOf<String>()
         var currentWidth = 0f
@@ -183,100 +184,74 @@ object WidgetArtworkRenderer {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
-        val primary = if (dark) Color.WHITE else Color.BLACK
+        val colors = WidgetColors.resolve(context, settings, dark)
         val locale = AppLocales.resolve(settings.language)
         val value = AppLocales.integer(stats.followersCount, locale)
         val label = AppLocales.wrap(context, settings.language).getString(R.string.followers)
-
-        fun paintFor(weight: Int, color: Int, sizeSp: Float) =
+        val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, locale)
+        fun paint(weight: Int, color: Int, size: Float, axisWidth: Int, roundness: Int) =
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
                 this.color = color
-                textSize = sizeSp * density
-                applyWidgetTypeface(context, settings.fontFamily, weight)
+                textSize = size * density
+                applyWidgetTypeface(context, settings.fontFamily, weight, axisWidth, roundness)
             }
-
-        if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1) {
-            val widthDp = width / density
-            val heightDp = height / density
-            val isAospTwoByTwo = !TwidgetFonts.hasSystemOneUiSans && widthDp <= 230f && heightDp > 70f
-            val valuePaint = paintFor(700, primary, if (isAospTwoByTwo) 40f else 24f)
-            val labelPaint = paintFor(700, primary, if (isAospTwoByTwo) 22f else 16f)
-            val deltaText = if (isAospTwoByTwo || !settings.showDelta || delta == 0L) {
-                ""
-            } else {
-                TwidgetStore.signedNumber(delta, locale)
+        val valuePaint = paint(700, colors.primary, 26f, 110, 100)
+        val labelPaint = paint(400, colors.secondary, 26f, 80, 0)
+        val deltaPaint = paint(400, if (delta < 0) Color.rgb(255, 59, 48) else
+            if (settings.style == WidgetStyle.MATERIAL) Color.rgb(12, 162, 86) else Color.rgb(46, 125, 50), 26f, 57, 100)
+        val compact = mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1
+        val gap = (if (compact) 6f else 10f) * density
+        val logoSize = (if (compact) 26f else 18f) * density
+        fun lineWidth() = valuePaint.measureText(value) +
+            (if (compact) logoSize + gap else gap + labelPaint.measureText(label)) +
+            (if (deltaText.isEmpty()) 0f else gap + deltaPaint.measureText(deltaText))
+        // Preserve the 26sp count by condensing its width first, as in the 999,999,999 design.
+        if (settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX && lineWidth() > width - 18f * density) {
+            for (axisWidth in 109 downTo 25) {
+                valuePaint.applyWidgetTypeface(context, settings.fontFamily, 700, axisWidth, 100)
+                if (lineWidth() <= width - 18f * density) break
             }
-            val deltaPaint = paintFor(700, if (delta < 0) Color.rgb(229, 57, 53) else Color.rgb(46, 125, 50), 13f)
-            val lineGap = 7f * density
-            var valueLineWidth = valuePaint.measureText(value) +
-                if (deltaText.isEmpty()) 0f else lineGap + deltaPaint.measureText(deltaText)
-            if (valueLineWidth > width - 8f * density) {
-                val scale = (width - 8f * density) / valueLineWidth
-                valuePaint.textSize *= scale
-                deltaPaint.textSize *= scale
-                valueLineWidth = valuePaint.measureText(value) +
-                    if (deltaText.isEmpty()) 0f else lineGap + deltaPaint.measureText(deltaText)
-            }
-            shrinkToFit(labelPaint, label, width - 8f * density)
-            val gap = 4f * density
-            val valueHeight = max(valuePaint.textSize, deltaPaint.textSize)
-            val labelHeight = labelPaint.textSize
-            val blockTop = (height - valueHeight - gap - labelHeight) / 2f
-            var x = (width - valueLineWidth) / 2f
-            val valueBaseline = blockTop + valueHeight * 0.9f
-            canvas.drawText(value, x, valueBaseline, valuePaint)
-            if (deltaText.isNotEmpty()) {
-                x += valuePaint.measureText(value) + lineGap
-                canvas.drawText(deltaText, x, valueBaseline - (valuePaint.textSize - deltaPaint.textSize) * 0.2f, deltaPaint)
-            }
-            canvas.drawText(label, (width - labelPaint.measureText(label)) / 2f, blockTop + valueHeight + gap + labelHeight * 0.9f, labelPaint)
-        } else {
-            val valuePaint = paintFor(700, primary, 22f)
-            val labelPaint = paintFor(400, primary, 21f)
-            val deltaPaint = paintFor(400, if (delta < 0) Color.rgb(229, 57, 53) else Color.rgb(46, 125, 50), 18f)
-            val handlePaint = paintFor(700, primary, 12f)
-            val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, locale)
-            val wordGap = 8f * density
-
-            var lineWidth = valuePaint.measureText(value) + wordGap + labelPaint.measureText(label)
-            if (deltaText.isNotEmpty()) lineWidth += wordGap + deltaPaint.measureText(deltaText)
-            if (lineWidth > width - 12f * density) {
-                val scale = (width - 12f * density) / lineWidth
-                listOf(valuePaint, labelPaint, deltaPaint).forEach { it.textSize *= scale }
-                lineWidth = valuePaint.measureText(value) + wordGap + labelPaint.measureText(label) +
-                    if (deltaText.isEmpty()) 0f else wordGap + deltaPaint.measureText(deltaText)
-            }
-
-            val logoSize = 14f * density
-            val handleGap = 6f * density
-            val line2Height = 14f * density
-            val line1Height = valuePaint.textSize
-            val blockTop = (height - line1Height - 6f * density - line2Height) / 2f
-
-            var x = (width - lineWidth) / 2f
-            val line1Baseline = blockTop + line1Height * 0.9f
-            canvas.drawText(value, x, line1Baseline, valuePaint)
-            x += valuePaint.measureText(value) + wordGap
-            canvas.drawText(label, x, line1Baseline, labelPaint)
-            if (deltaText.isNotEmpty()) {
-                x += labelPaint.measureText(label) + wordGap
-                canvas.drawText(deltaText, x, line1Baseline, deltaPaint)
-            }
-
+        }
+        if (lineWidth() > width - 18f * density) {
+            val scale = ((width - 18f * density) / lineWidth()).coerceIn(0.1f, 1f)
+            listOf(valuePaint, labelPaint, deltaPaint).forEach { it.textSize *= scale }
+        }
+        val blockHeight = if (compact) 26f * density else 50f * density
+        val top = (height - blockHeight) / 2f
+        val baseline = top + 13f * density - (valuePaint.fontMetrics.ascent + valuePaint.fontMetrics.descent) / 2f
+        var x = (width - lineWidth()) / 2f
+        if (compact) {
+            drawLogo(context, canvas, settings, colors.secondary, x, (height - logoSize) / 2f, logoSize)
+            x += logoSize + gap
+        }
+        canvas.drawText(value, x, baseline, valuePaint)
+        x += valuePaint.measureText(value) + gap
+        if (!compact) {
+            canvas.drawText(label, x, baseline, labelPaint)
+            x += labelPaint.measureText(label) + gap
+        }
+        if (deltaText.isNotEmpty()) canvas.drawText(deltaText, x, baseline, deltaPaint)
+        if (!compact) {
             val handle = "@${stats.userName}"
-            val line2Width = logoSize + handleGap + handlePaint.measureText(handle)
-            val line2Top = blockTop + line1Height + 6f * density
-            var x2 = (width - line2Width) / 2f
-            val logo = ContextCompat.getDrawable(
-                context,
-                if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x,
-            )?.mutate()?.apply { setTint(primary) }
-            logo?.setBounds(x2.toInt(), line2Top.toInt(), (x2 + logoSize).toInt(), (line2Top + logoSize).toInt())
-            logo?.draw(canvas)
-            x2 += logoSize + handleGap
-            canvas.drawText(handle, x2, line2Top + logoSize * 0.82f, handlePaint)
+            val handlePaint = paint(600, colors.secondary, 14f, 51, 100)
+            shrinkToFit(handlePaint, handle, width - logoSize - 34f * density)
+            val handleGap = 6f * density
+            val handleLeft = (width - logoSize - handleGap - handlePaint.measureText(handle)) / 2f
+            val handleTop = top + 32f * density
+            drawLogo(context, canvas, settings, colors.secondary, handleLeft, handleTop, logoSize)
+            canvas.drawText(handle, handleLeft + logoSize + handleGap,
+                handleTop + logoSize / 2f - (handlePaint.fontMetrics.ascent + handlePaint.fontMetrics.descent) / 2f, handlePaint)
         }
         return bitmap
+    }
+
+    private fun drawLogo(context: Context, canvas: Canvas, settings: TwidgetWidgetSettings, color: Int, left: Float, top: Float, size: Float) {
+        ContextCompat.getDrawable(context, if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x)
+            ?.mutate()?.apply {
+                setTint(color)
+                setBounds(left.toInt(), top.toInt(), (left + size).toInt(), (top + size).toInt())
+                draw(canvas)
+            }
     }
 
     internal fun drawWidgetBackground(
@@ -287,14 +262,13 @@ object WidgetArtworkRenderer {
         settings: TwidgetWidgetSettings,
         dark: Boolean,
     ) {
-        val base = if (dark) 16 else 255
-        val radius = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val radius = if (settings.style == WidgetStyle.MATERIAL) dp(context, 26).toFloat() else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.resources.getDimension(android.R.dimen.system_app_widget_background_radius)
         } else {
             dp(context, 24).toFloat()
         }
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(settings.tintAlpha, base, base, base)
+            color = WidgetColors.resolve(context, settings, dark).background
         }
         canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, paint)
     }
@@ -366,16 +340,16 @@ object WidgetArtworkRenderer {
 
     private fun gsfWeightFor(role: WordRole): Int = when (role) {
         WordRole.TENS -> 900
-        WordRole.ONES, WordRole.STRONG -> 700
+        WordRole.ONES, WordRole.STRONG -> 900
         WordRole.HUNDRED, WordRole.SOFT -> 600
         WordRole.LABEL -> 400
     }
 
     private fun gsfWidthFor(role: WordRole): Int = when (role) {
-        WordRole.TENS -> 125
-        WordRole.ONES, WordRole.STRONG -> 110
+        WordRole.TENS -> 65
+        WordRole.ONES, WordRole.STRONG -> 118
         WordRole.HUNDRED, WordRole.SOFT -> 100
-        WordRole.LABEL -> 80
+        WordRole.LABEL -> 69
     }
 
     private fun wordPaint(
@@ -390,12 +364,15 @@ object WidgetArtworkRenderer {
         val weight = if (gsf) gsfWeightFor(role) else oneUiWeightFor(role)
         return Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
             // Label opacity (0.6) comes straight from the design.
-            color = if (role == WordRole.LABEL) withAlpha(primary, 0.6f) else primary
+            color = if (role == WordRole.LABEL) {
+                if (settings.style == WidgetStyle.MATERIAL) secondary else withAlpha(primary, 0.6f)
+            } else primary
             applyWidgetTypeface(
                 context = context,
                 fontFamily = settings.fontFamily,
                 weight = weight,
-                googleWidth = gsfWidthFor(role),
+                googleWidth = if (word.equals("and", true) || word.equals("und", true)) 78 else gsfWidthFor(role),
+                googleSlant = if (word.trim(',') in SCALE_WORDS) -10 else 0,
             )
         }
     }
@@ -422,13 +399,16 @@ object WidgetArtworkRenderer {
         fontFamily: String,
         weight: Int,
         googleWidth: Int? = null,
+        googleRoundness: Int = 0,
+        googleSlant: Int = 0,
     ) {
         when (fontFamily) {
             TwidgetStore.FONT_SYSTEM -> typeface = TwidgetFonts.system(weight)
             TwidgetStore.FONT_GOOGLE_SANS_FLEX -> {
+                fontFeatureSettings = "'dlig' 1, 'lnum' 1, 'pnum' 1"
                 typeface = gsfTypeface(context)
                 setFontVariationSettings(
-                    googleWidth?.let { "'wght' $weight, 'wdth' $it" } ?: "'wght' $weight",
+                    "'wght' $weight, 'wdth' ${googleWidth ?: 100}, 'ROND' $googleRoundness, 'slnt' $googleSlant, 'GRAD' 0, 'opsz' 18",
                 )
             }
             else -> {

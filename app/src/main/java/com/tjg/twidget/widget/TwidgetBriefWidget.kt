@@ -112,12 +112,14 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             val strings = BriefStrings.from(context, settings.language)
             val summary = snapshot?.let { BriefEditorialSummary.from(it, strings) }
             val dark = isDark(context, settings.colorMode)
-            val base = if (dark) 16 else 255
-            val backgroundColor = Color.argb(settings.tintAlpha, base, base, base)
+            val backgroundColor = WidgetColors.resolve(context, settings, dark).background
             return RemoteViews(
                 context.packageName,
                 if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card,
             ).apply {
+                setInt(android.R.id.background, "setBackgroundResource",
+                    if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -127,7 +129,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         ColorStateList.valueOf(backgroundColor),
                     )
                 } else {
-                    setInt(android.R.id.background, "setBackgroundColor", backgroundColor)
+                    setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
                 setImageViewBitmap(
                     R.id.brief_widget_artwork,
@@ -140,6 +142,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         snapshot = snapshot,
                         dark = dark,
                         fontFamily = settings.fontFamily,
+                        style = settings.style,
+                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
                     ),
                 )
                 setContentDescription(
@@ -163,6 +167,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
 
         private fun warmAvatars(context: Context, manager: AppWidgetManager, id: Int, account: String) {
             val urls = listOf(
+                TwidgetStore.currentStats(context, account).profileImage,
                 TopFollowersStore.read(context, account).top.firstOrNull()?.avatarUrl.orEmpty(),
             ).filter(String::isNotBlank).distinct()
             val missing = urls.filter { ProfileImageLoader.cachedBitmap(context, it) == null }
@@ -183,12 +188,6 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         private fun dp(context: Context, value: Int): Int =
             (value * context.resources.displayMetrics.density).toInt()
 
-        private fun isDark(context: Context, colorMode: String): Boolean =
-            when (colorMode) {
-                TwidgetStore.COLOR_MODE_DARK -> true
-                TwidgetStore.COLOR_MODE_LIGHT -> false
-                else -> context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
-                    Configuration.UI_MODE_NIGHT_YES
-            }
+        private fun isDark(context: Context, colorMode: String): Boolean = widgetUsesDarkTheme(colorMode)
     }
 }

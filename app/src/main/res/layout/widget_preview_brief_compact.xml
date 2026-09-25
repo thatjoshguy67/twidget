@@ -2,9 +2,9 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_brief_pill_surface"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="6dp">
+    android:background="@drawable/widget_preview_brief_surface"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="10dp">
 
     <TextView
         android:layout_width="match_parent"
@@ -16,5 +16,5 @@
         android:text="@string/brief_preview_title"
         android:textColor="#FF000000"
         android:textFontWeight="700"
-        android:textSize="12sp" />
+        android:textSize="16sp" />
 </FrameLayout>

@@ -64,17 +64,17 @@ class BriefWidgetArtworkRendererTest {
     }
 
     @Test
-    fun tallCardUsesNowBriefProportions() {
+    fun tallCardUsesUpdatedFigmaProportions() {
         val metrics = BriefWidgetArtworkRenderer.tallCardMetrics(352f, 175f)
 
         assertEquals(14f, metrics.iconInsetDp)
-        assertEquals(16f, metrics.textInsetDp)
-        assertEquals(16f, metrics.bottomInsetDp)
-        assertEquals(42.875f, metrics.iconSizeDp)
-        assertEquals(20f, metrics.titleSizeSp)
-        assertEquals(14f, metrics.bodySizeSp)
-        assertEquals(6f, metrics.textGapDp)
-        assertEquals(600, metrics.titleWeight)
+        assertEquals(14f, metrics.textInsetDp)
+        assertEquals(14f, metrics.bottomInsetDp)
+        assertEquals(48f, metrics.iconSizeDp)
+        assertEquals(26f, metrics.titleSizeSp)
+        assertEquals(16f, metrics.bodySizeSp)
+        assertEquals(5f, metrics.textGapDp)
+        assertEquals(700, metrics.titleWeight)
     }
 
     @Test
@@ -84,7 +84,7 @@ class BriefWidgetArtworkRendererTest {
 
         assertEquals(18f, square.titleSizeSp)
         assertEquals(12f, square.bodySizeSp)
-        assertEquals(20f, threeColumn.titleSizeSp)
+        assertEquals(22f, threeColumn.titleSizeSp)
         assertEquals(12f, threeColumn.bodySizeSp)
     }
 

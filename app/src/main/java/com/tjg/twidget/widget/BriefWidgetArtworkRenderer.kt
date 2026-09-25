@@ -8,6 +8,12 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.TextUtils
+import android.text.style.MetricAffectingSpan
 import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import com.tjg.twidget.R
@@ -49,14 +55,14 @@ internal object BriefWidgetArtworkRenderer {
     internal fun tallCardMetrics(widthDp: Float, heightDp: Float): TallCardMetrics {
         val compactWidth = widthDp < 300f
         return TallCardMetrics(
-            iconInsetDp = 14f,
-            textInsetDp = 16f,
-            bottomInsetDp = 16f,
-            iconSizeDp = minOf(heightDp * 0.245f, widthDp * 0.28f),
-            titleSizeSp = if (widthDp <= 230f) 18f else 20f,
-            bodySizeSp = if (compactWidth) 12f else 14f,
-            textGapDp = 6f,
-            titleWeight = 600,
+            iconInsetDp = if (widthDp <= 230f) 10f else 14f,
+            textInsetDp = if (widthDp <= 230f) 10f else 14f,
+            bottomInsetDp = if (widthDp <= 230f) 10f else 14f,
+            iconSizeDp = 48f,
+            titleSizeSp = if (widthDp <= 230f) 18f else if (compactWidth) 22f else 26f,
+            bodySizeSp = if (compactWidth) 12f else 16f,
+            textGapDp = 5f,
+            titleWeight = 700,
         )
     }
 
@@ -84,12 +90,19 @@ internal object BriefWidgetArtworkRenderer {
         dark: Boolean,
         fontFamily: String = TwidgetStore.FONT_ONE_UI_SANS,
         strings: BriefStrings = BriefStrings.from(context),
+        style: WidgetStyle = WidgetStyle.ONE_UI,
+        background: Int? = null,
     ): Bitmap {
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
         val density = context.resources.displayMetrics.density
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        background?.let { color ->
+            val radius = dp(context, if (style == WidgetStyle.MATERIAL || height / density > 110f) 26f else height / density / 2f)
+            canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+        }
         val card = snapshot?.cards?.firstOrNull() ?: BriefCard(
             id = "empty",
             type = BriefCardType.SUMMARY,
@@ -103,8 +116,9 @@ internal object BriefWidgetArtworkRenderer {
             body = summary?.shortDescription ?: card.body,
         )
         val widgetLayout = layout(width / density, height / density)
-        val primary = if (dark) Color.WHITE else Color.rgb(18, 18, 20)
-        val secondary = primary
+        val colors = WidgetColors.resolve(context, style, dark)
+        val primary = colors.primary
+        val secondary = if (style == WidgetStyle.MATERIAL) colors.secondary else primary
 
         when (widgetLayout) {
             Layout.COMPACT_STRIP -> drawCenteredTitle(
@@ -130,6 +144,7 @@ internal object BriefWidgetArtworkRenderer {
                     pad,
                     (height - iconSize) / 2f,
                     iconSize,
+                    primary,
                 )
                 val textLeft = pad + iconSize + dp(context, 14)
                 drawCenteredTitle(
@@ -154,7 +169,7 @@ internal object BriefWidgetArtworkRenderer {
                     titleSizeSp = metrics.titleSizeSp,
                     bodySizeSp = metrics.bodySizeSp,
                     titleLines = 2,
-                    bodyLines = 2,
+                    bodyLines = if (width / density <= 230f) 3 else 2,
                     iconStartDp = metrics.iconInsetDp,
                     iconTopDp = metrics.iconInsetDp,
                     bottomPaddingDp = metrics.bottomInsetDp,
@@ -240,40 +255,59 @@ internal object BriefWidgetArtworkRenderer {
         val iconTop = dp(context, iconTopDp)
         val bottomPad = dp(context, bottomPaddingDp)
         val iconSize = minOf(dp(context, iconSizeDp), heightPx - iconTop - bottomPad)
-        drawStateIcon(context, canvas, card.type, account, iconStart, iconTop, iconSize)
+        drawStateIcon(context, canvas, card.type, account, iconStart, iconTop, iconSize, primary)
 
-        val textWidth = widthPx - pad * 2f
-        val titlePaint = textPaint(context, fontFamily, titleWeight, titleSizeSp, primary)
-        val bodyPaint = textPaint(context, fontFamily, 400, bodySizeSp, secondary)
-        val wrappedTitle = wrap(card.title, titlePaint, textWidth, titleLines)
-        val body = if (bodyLines <= 2 && widthPx <= dp(context, 300)) compactBody(card.body) else card.body
-        val wrappedBody = wrap(body, bodyPaint, textWidth, bodyLines)
-        val titleLineHeight = titlePaint.textSize * 1.10f
-        val bodyLineHeight = bodyPaint.textSize * 1.16f
-        val titleHeight = titleLineHeight * wrappedTitle.size
-        val bodyHeight = bodyLineHeight * wrappedBody.size
+        val textWidth = (widthPx - pad * 2f).toInt().coerceAtLeast(1)
         val gap = dp(context, gapDp)
-        val blockTop = heightPx - bottomPad - titleHeight - gap - bodyHeight
-
-        var baseline = blockTop - titlePaint.fontMetrics.top
-        wrappedTitle.forEachIndexed { index, line ->
-            canvas.drawText(
-                ellipsize(line, titlePaint, textWidth),
-                pad,
-                baseline + index * titleLineHeight,
-                titlePaint,
-            )
-        }
-        baseline = blockTop + titleHeight + gap - bodyPaint.fontMetrics.top
-        wrappedBody.forEachIndexed { index, line ->
-            canvas.drawText(
-                ellipsize(line, bodyPaint, textWidth),
-                pad,
-                baseline + index * bodyLineHeight,
-                bodyPaint,
-            )
-        }
+        val availableHeight = (heightPx - bottomPad - iconTop - iconSize - gap).coerceAtLeast(1f)
+        var scale = 1f
+        var titleLayout: StaticLayout
+        var bodyLayout: StaticLayout
+        do {
+            val titlePaint = TextPaint(textPaint(context, fontFamily, titleWeight, titleSizeSp * scale, primary))
+            val bodyPaint = TextPaint(textPaint(context, fontFamily, 400, bodySizeSp * scale, secondary))
+            titleLayout = textLayout(card.title, titlePaint, textWidth, titleLines)
+            bodyLayout = textLayout(emphasizedBody(context, card.body, fontFamily), bodyPaint, textWidth, bodyLines)
+            if (titleLayout.height + gap + bodyLayout.height <= availableHeight || scale <= .6f) break
+            scale -= .05f
+        } while (true)
+        val blockTop = maxOf(iconTop + iconSize + gap,
+            heightPx - bottomPad - titleLayout.height - gap - bodyLayout.height)
+        canvas.save()
+        canvas.translate(pad, blockTop)
+        titleLayout.draw(canvas)
+        canvas.translate(0f, titleLayout.height + gap)
+        bodyLayout.draw(canvas)
+        canvas.restore()
     }
+
+    private fun textLayout(text: CharSequence, paint: TextPaint, width: Int, maxLines: Int): StaticLayout =
+        StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
+            .setAlignment(android.text.Layout.Alignment.ALIGN_NORMAL)
+            .setIncludePad(false)
+            .setMaxLines(maxLines)
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .build()
+
+    /** Figma emphasizes account handles and quantities, but leaves follower ranks in body weight. */
+    internal fun emphasisRanges(text: String): List<IntRange> =
+        Regex("@[\\p{L}\\p{N}_]+|(?<![#\\p{L}\\p{N}])\\p{N}+(?:[,.\\u00a0]\\p{N}+)*(?:[KMBkmb%])?")
+            .findAll(text).map { it.range }.toList()
+
+    private fun emphasizedBody(context: Context, text: String, fontFamily: String): CharSequence =
+        SpannableString(text).apply {
+            emphasisRanges(text).forEach { range ->
+                setSpan(object : MetricAffectingSpan() {
+                    override fun updateMeasureState(paint: TextPaint) = applyEmphasis(paint)
+                    override fun updateDrawState(paint: TextPaint) = applyEmphasis(paint)
+                    private fun applyEmphasis(paint: TextPaint) {
+                        val bold = textPaint(context, fontFamily, 700, 12f, paint.color)
+                        paint.typeface = bold.typeface
+                        paint.fontVariationSettings = bold.fontVariationSettings
+                    }
+                }, range.first, range.last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
 
     private fun drawStateIcon(
         context: Context,
@@ -283,11 +317,33 @@ internal object BriefWidgetArtworkRenderer {
         left: Float,
         top: Float,
         size: Float,
+        tint: Int,
     ) {
+        if (type == BriefCardType.SLOWDOWN) {
+            // Separate Figma arc layers preserve transparent space around the glyph.
+            val inset = size * (11.368421f / 48f)
+            drawDialLayer(context, canvas, R.drawable.widget_brief_dial_track, left, top, size,
+                1.38525390625f, 1.380859375f, 45.2392578125f, 40.72216796875f)
+            drawDialLayer(context, canvas, R.drawable.widget_brief_dial_progress, left, top, size,
+                1.385009765625f, 1.380859375f, 36.1416015625f, 40.72998046875f)
+            ContextCompat.getDrawable(context, R.drawable.widget_brief_goal)?.mutate()?.apply {
+                setTint(tint)
+                setBounds((left + inset).toInt(), (top + inset).toInt(), (left + size - inset).toInt(), (top + size - inset).toInt())
+                draw(canvas)
+            }
+            return
+        }
         if (type == BriefCardType.TOP_FOLLOWER) {
             val avatarUrl = TopFollowersStore.read(context, account).top.firstOrNull()?.avatarUrl.orEmpty()
             ProfileImageLoader.cachedCircularBitmap(context, avatarUrl, size.toInt())?.let { avatar ->
                 canvas.drawBitmap(avatar, left, top, Paint(Paint.ANTI_ALIAS_FLAG))
+                return
+            }
+        }
+        if (type == BriefCardType.POST || type == BriefCardType.WORST_POST) {
+            val avatar = TwidgetStore.currentStats(context, account).profileImage
+            ProfileImageLoader.cachedCircularBitmap(context, avatar, size.toInt())?.let {
+                canvas.drawBitmap(it, left, top, Paint(Paint.ANTI_ALIAS_FLAG))
                 return
             }
         }
@@ -305,6 +361,16 @@ internal object BriefWidgetArtworkRenderer {
                 (left + size - inset).toInt(),
                 (top + size - inset).toInt(),
             )
+            draw(canvas)
+        }
+    }
+
+    private fun drawDialLayer(context: Context, canvas: Canvas, @DrawableRes drawable: Int,
+        left: Float, top: Float, size: Float, x: Float, y: Float, width: Float, height: Float) {
+        val scale = size / 48f
+        ContextCompat.getDrawable(context, drawable)?.apply {
+            setBounds((left + x * scale).toInt(), (top + y * scale).toInt(),
+                (left + (x + width) * scale).toInt(), (top + (y + height) * scale).toInt())
             draw(canvas)
         }
     }
@@ -337,7 +403,7 @@ internal object BriefWidgetArtworkRenderer {
                 TwidgetStore.FONT_SYSTEM -> typeface = TwidgetFonts.system(weight)
                 TwidgetStore.FONT_GOOGLE_SANS_FLEX -> {
                     typeface = TwidgetFonts.googleSansFlex(context)
-                    setFontVariationSettings("'wght' $weight")
+                    setFontVariationSettings("'wght' $weight, 'wdth' 100, 'ROND' 100, 'GRAD' 0, 'slnt' 0, 'opsz' 18")
                 }
                 else -> {
                     typeface = TwidgetFonts.oneUiSansVariable(context)

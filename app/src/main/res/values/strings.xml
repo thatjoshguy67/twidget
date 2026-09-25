@@ -1064,4 +1064,7 @@
     <string name="milestone_noun_engagement_rate">engagement rate</string>
     <string name="milestone_noun_impression">impression</string>
     <string name="top_followers_enable_shared_history">Enable shared history</string>
+    <string name="widget_style">Widget style</string>
+    <string name="widget_style_one_ui">One UI</string>
+    <string name="widget_style_material">Material 3 Expressive</string>
 </resources>

@@ -4,6 +4,17 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Added One UI and Material 3 Expressive home widget styles, with defaults based
+  on the device and overrides in widget settings and Settings → Appearance.
+- Material widgets use opaque wallpaper colours and Google Sans Flex, including
+  the Figma typography's width, roundness, weight and emphasis.
+- Matched the app’s Google Sans Flex typography to the new Figma reference,
+  with rounded headings, condensed section labels and medium setting names.
+- Refined Your Brief spacing and icons, fixed widget configuration preview sizes,
+  and added generated launcher previews on Android 15 and newer.
+- Enlarged follower hero text to fit the available space, corrected the dial
+  artwork, and fixed the opacity slider when switching widget styles.
+
 ## [1.3.0-beta.2] - 2026-09-20
 
 A small follow-up to beta.1, fixing the toolbar and dashboard issues reported

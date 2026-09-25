@@ -176,12 +176,14 @@ class NoticesActivity : FoldablePopOverActivity() {
         text = value
         textSize = 16f
         typeface = TwidgetFonts.forApp(context, 700)
+        TwidgetFonts.setRole(this, TwidgetFonts.Role.LABEL)
         setTextColor(getColor(R.color.oneui_text_primary))
     }
 
     private fun metaText(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 13f
+        TwidgetFonts.setRole(this, TwidgetFonts.Role.SUMMARY)
         setTextColor(getColor(R.color.oneui_text_secondary))
         setPadding(0, dp(6), 0, 0)
     }

@@ -2,13 +2,13 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_brief_card_surface">
+    android:background="@drawable/widget_preview_brief_surface">
 
     <FrameLayout
-        android:layout_width="43dp"
-        android:layout_height="43dp"
-        android:layout_marginStart="14dp"
-        android:layout_marginTop="14dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
         android:background="@drawable/avatar_twidget">
 
         <ImageView
@@ -23,9 +23,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
         android:orientation="vertical">
 
         <TextView
@@ -37,13 +37,13 @@
             android:maxLines="2"
             android:text="@string/brief_preview_title"
             android:textColor="#FF000000"
-            android:textFontWeight="600"
-            android:textSize="20sp" />
+            android:textFontWeight="700"
+            android:textSize="18sp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="5dp"
             android:ellipsize="end"
             android:fontFamily="@font/one_ui_sans"
             android:includeFontPadding="false"
@@ -51,6 +51,6 @@
             android:text="@string/brief_preview_body"
             android:textColor="#FF000000"
             android:textFontWeight="400"
-            android:textSize="14sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 </FrameLayout>

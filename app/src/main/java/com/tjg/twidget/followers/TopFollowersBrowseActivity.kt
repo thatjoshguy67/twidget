@@ -341,6 +341,9 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 name.typeface = TwidgetFonts.forApp(itemView.context, 700)
                 handle.typeface = TwidgetFonts.forApp(itemView.context, 400)
                 count.typeface = TwidgetFonts.forApp(itemView.context, 400)
+                TwidgetFonts.setRole(name, TwidgetFonts.Role.LABEL)
+                TwidgetFonts.setRole(handle, TwidgetFonts.Role.SUMMARY)
+                TwidgetFonts.setRole(count, TwidgetFonts.Role.SUMMARY)
                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                     rank,
                     12,

@@ -26,7 +26,50 @@ object TwidgetFonts {
     private var baseTypeface: Typeface? = null
     private val weightedTypefaces = mutableMapOf<Pair<Int, Boolean>, Typeface>()
     private var googleTypeface: Typeface? = null
-    private val googleWeightedTypefaces = mutableMapOf<Pair<Int, Boolean>, Typeface>()
+    private data class GoogleAxes(val weight: Int, val italic: Boolean, val width: Int, val roundness: Int)
+    private val googleWeightedTypefaces = mutableMapOf<GoogleAxes, Typeface>()
+
+    /** App typography from Figma 279:10249. Widget renderers retain their own axes. */
+    @android.annotation.SuppressLint("ResourceType") // The font is a binary resource, readable as a raw stream on API 26–28.
+    private fun googleAppTypeface(context: Context, weight: Int, italic: Boolean, width: Int = 100,
+        roundness: Int = if (weight >= 700) 100 else 0): Typeface {
+        val axes = GoogleAxes(weight.coerceIn(1, 1000), italic, width, roundness)
+        return googleWeightedTypefaces.getOrPut(axes) {
+            val variations = "'wght' ${axes.weight}, 'wdth' $width, 'ROND' $roundness, 'GRAD' 0, 'slnt' ${if (italic) -10 else 0}, 'opsz' 18"
+            if (Build.VERSION.SDK_INT >= 29) {
+                // Set outlines AND font metadata together, so Android neither loses
+                // the weight on rebinding nor adds synthetic bold to variable bold.
+                val slant = if (italic) android.graphics.fonts.FontStyle.FONT_SLANT_ITALIC
+                    else android.graphics.fonts.FontStyle.FONT_SLANT_UPRIGHT
+                val face = android.graphics.fonts.Font.Builder(context.resources, R.font.google_sans_flex)
+                    .setFontVariationSettings(variations).setWeight(axes.weight).setSlant(slant).build()
+                Typeface.CustomFallbackBuilder(android.graphics.fonts.FontFamily.Builder(face).build())
+                    .setStyle(android.graphics.fonts.FontStyle(axes.weight, slant))
+                    .setSystemFallback("sans-serif").build()
+            } else {
+                // Android 8–9 lack the public resource Font builder. Use a cached
+                // copy of the bundled face with the same explicit axes and metadata.
+                val file = java.io.File(context.cacheDir, "google-sans-flex-${com.tjg.twidget.BuildConfig.VERSION_CODE}.ttf")
+                if (!file.exists()) context.resources.openRawResource(R.font.google_sans_flex).use { source ->
+                    file.outputStream().use { source.copyTo(it) }
+                }
+                Typeface.Builder(file).setFontVariationSettings(variations)
+                    .setWeight(axes.weight).setItalic(italic).build()
+            }
+        }
+    }
+
+    enum class Role { LABEL, SUMMARY }
+
+    fun setRole(view: TextView, role: Role) {
+        view.setTag(R.id.app_font_role, role)
+        applyTo(view)
+    }
+
+    private data class TextBaseline(
+        val weight: Int, val italic: Boolean, val size: Float,
+        var appliedFace: Typeface? = null, var appliedSize: Float = size,
+    )
 
     fun forApp(context: Context, weight: Int = 400, italic: Boolean = false): Typeface =
         forApp(context, AppAppearance.font(context), weight, italic)
@@ -35,25 +78,7 @@ object TwidgetFonts {
         when (font) {
             AppAppearance.Font.DEFAULT -> oneUiSans(context, weight, italic)
             AppAppearance.Font.SYSTEM -> system(weight, italic)
-            AppAppearance.Font.GOOGLE_SANS_FLEX -> {
-                val key = weight.coerceIn(1, 1_000) to italic
-                googleWeightedTypefaces.getOrPut(key) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        Typeface.create(googleSansFlex(context), key.first, italic)
-                    } else {
-                        // Static faces preserve real bold outlines on Android 8's font API.
-                        val base = ResourcesCompat.getFont(context, if (key.first >= 600)
-                            R.font.google_sans_flex_bold else R.font.google_sans_flex_regular)
-                        val style = when {
-                            key.first >= 600 && italic -> Typeface.BOLD_ITALIC
-                            key.first >= 600 -> Typeface.BOLD
-                            italic -> Typeface.ITALIC
-                            else -> Typeface.NORMAL
-                        }
-                        Typeface.create(base, style)
-                    }
-                }
-            }
+            AppAppearance.Font.GOOGLE_SANS_FLEX -> googleAppTypeface(context, weight, italic)
         }
 
     /** Uses the device's default UI family while retaining the requested text styling. */
@@ -142,20 +167,37 @@ object TwidgetFonts {
     private fun applyTo(view: View, font: AppAppearance.Font) {
         if (view is TextView) {
             val current = view.typeface ?: Typeface.DEFAULT
-            val isExpandedHeader = !hasSystemOneUiSans && runCatching {
-                view.resources.getResourceEntryName(view.id) == "collapsing_appbar_extended_title"
-            }.getOrDefault(false)
-            val weight = if (isExpandedHeader) {
-                700
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                current.weight
-            } else if (current.isBold) {
-                700
-            } else {
-                400
+            val name = runCatching { view.resources.getResourceEntryName(view.id) }.getOrDefault("")
+            val isExpandedHeader = name == "collapsing_appbar_extended_title"
+            val stored = view.getTag(R.id.app_font_baseline) as? TextBaseline
+            val baseline = if (stored != null && current === stored.appliedFace && view.textSize == stored.appliedSize) stored
+            else TextBaseline(
+                if (isExpandedHeader && !hasSystemOneUiSans) 700
+                else if (Build.VERSION.SDK_INT >= 28) current.weight else if (current.isBold) 700 else 400,
+                current.isItalic, view.textSize,
+            ).also { view.setTag(R.id.app_font_baseline, it) }
+            val section = view.tag == "preferencecategory" || view is dev.oneuiproject.oneui.widget.Separator
+            val heading = isExpandedHeader || view.parent is androidx.appcompat.widget.Toolbar || name == "alertTitle"
+            val label = view.getTag(R.id.app_font_role) == Role.LABEL || view.id == android.R.id.title || name in setOf("cardview_title", "titleView", "icon_title", "title", "opacity_label", "delta_label")
+            val summary = view.getTag(R.id.app_font_role) == Role.SUMMARY || view.id == android.R.id.summary || name in setOf("cardview_summary", "sub_title")
+            val google = font == AppAppearance.Font.GOOGLE_SANS_FLEX
+            val weight = if (!google) baseline.weight else when {
+                section || heading -> 700
+                label -> 500
+                summary -> 400
+                else -> baseline.weight
             }
-            val desired = forApp(view.context, font, weight, current.isItalic)
+            val desired = if (google && section) googleAppTypeface(view.context, 700, baseline.italic, 60, 100)
+                else forApp(view.context, font, weight, baseline.italic)
+            val size = if (!google) baseline.size else when {
+                section || summary -> 14f * view.resources.displayMetrics.scaledDensity
+                label -> 18f * view.resources.displayMetrics.scaledDensity
+                else -> baseline.size
+            }
             if (current !== desired) view.typeface = desired
+            if (view.textSize != size) view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, size)
+            baseline.appliedFace = view.typeface
+            baseline.appliedSize = view.textSize
         }
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) applyTo(view.getChildAt(index), font)

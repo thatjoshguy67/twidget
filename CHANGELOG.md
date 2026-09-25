@@ -4,6 +4,9 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Preserved system-scaled text sizes when switching app fonts and centred the
+  About-page spinner while checking for or downloading updates.
+
 - Added One UI and Material 3 Expressive home widget styles, with defaults based
   on the device and overrides in widget settings and Settings → Appearance.
 - Material widgets use opaque wallpaper colours and Google Sans Flex, including

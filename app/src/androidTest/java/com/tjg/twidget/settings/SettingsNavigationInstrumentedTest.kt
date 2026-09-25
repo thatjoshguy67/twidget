@@ -279,7 +279,6 @@ class SettingsNavigationInstrumentedTest {
             val title = visible.first { it.text == context.getString(R.string.settings_app_font) }
             val section = visible.first { it.text == context.getString(R.string.settings_widget_defaults) }
             assertEquals(500, title.typeface.weight)
-            assertEquals(18f * title.resources.displayMetrics.scaledDensity, title.textSize, .1f)
             assertEquals(700, section.typeface.weight)
             val normalWidth = android.graphics.Paint(section.paint).apply { typeface = TwidgetFonts.forApp(context, 700) }
             assertTrue(section.paint.measureText(section.text.toString()) < normalWidth.measureText(section.text.toString()))
@@ -294,6 +293,7 @@ class SettingsNavigationInstrumentedTest {
             val originalSize = label.textSize
             TwidgetFonts.applyTo(label)
             assertEquals(500, label.typeface.weight)
+            assertEquals(originalSize, label.textSize, .1f)
             AppAppearance.setFont(context, AppAppearance.Font.SYSTEM)
             TwidgetFonts.applyTo(label)
             assertEquals(400, label.typeface.weight)
@@ -306,6 +306,32 @@ class SettingsNavigationInstrumentedTest {
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
             bitmap.recycle()
+        }
+    }
+
+    @Test fun changingAppFontPreservesSystemScaledTextSizes() {
+        onMain {
+            for (scale in listOf(.85f, 1f, 1.5f, 2f)) {
+                val configuration = android.content.res.Configuration(context.resources.configuration).apply {
+                    fontScale = scale
+                }
+                val scaled = context.createConfigurationContext(configuration)
+                for (size in listOf(11f, 14f, 17f, 32f)) {
+                    for (id in listOf(android.R.id.title, android.R.id.summary, R.id.delta_label, android.view.View.NO_ID)) {
+                        val label = android.widget.TextView(scaled).apply {
+                            this.id = id
+                            textSize = size
+                        }
+                        val expectedSize = label.textSize
+                        for (font in listOf(AppAppearance.Font.DEFAULT, AppAppearance.Font.GOOGLE_SANS_FLEX,
+                            AppAppearance.Font.SYSTEM, AppAppearance.Font.GOOGLE_SANS_FLEX)) {
+                            AppAppearance.setFont(context, font)
+                            repeat(3) { TwidgetFonts.applyTo(label) }
+                            assertEquals("$font must preserve $size sp at system scale $scale", expectedSize, label.textSize, .01f)
+                        }
+                    }
+                }
+            }
         }
     }
 

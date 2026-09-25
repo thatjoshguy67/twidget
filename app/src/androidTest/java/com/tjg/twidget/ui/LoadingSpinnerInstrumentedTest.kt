@@ -27,6 +27,39 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LoadingSpinnerInstrumentedTest {
+    @Test fun aboutUpdateActionsStayCenteredWhenSwitchingVisibility() {
+        ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                val root = activity.layoutInflater.inflate(R.layout.activity_about, FrameLayout(activity), false)
+                val slot = root.findViewById<ViewGroup>(R.id.about_update_action)
+                (slot.parent as ViewGroup).removeView(slot)
+                val spinner = slot.findViewById<View>(R.id.about_update_spinner)
+                val button = slot.findViewById<View>(R.id.about_update_button)
+                for (direction in listOf(View.LAYOUT_DIRECTION_LTR, View.LAYOUT_DIRECTION_RTL)) {
+                    slot.layoutDirection = direction
+                    for (widthDp in listOf(280, 360, 720)) {
+                        val width = (widthDp * activity.resources.displayMetrics.density).toInt()
+                        val height = (72 * activity.resources.displayMetrics.density).toInt()
+                        // Initial check, available update, download, hidden, then recheck.
+                        for (visible in listOf(spinner, button, spinner, null, spinner)) {
+                            slot.visibility = if (visible == null) View.INVISIBLE else View.VISIBLE
+                            spinner.visibility = if (visible === spinner) View.VISIBLE else View.GONE
+                            button.visibility = if (visible === button) View.VISIBLE else View.GONE
+                            slot.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                            slot.layout(0, 0, width, height)
+                            if (visible != null) {
+                                assertEquals("Update action must stay horizontally centred", width / 2f,
+                                    visible.left + visible.width / 2f, 1f)
+                                assertTrue("Update action must stay below its top spacing", visible.top >= slot.paddingTop)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun gradientDotOpacityNeverOvershoots() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         // Despite the exported resource name, the APK uses controlY1=1.0.

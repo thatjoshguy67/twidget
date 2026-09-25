@@ -88,10 +88,12 @@
                     android:textColor="?android:textColorSecondary"
                     android:textSize="14sp" />
 
-                <FrameLayout
+                <LinearLayout
                     android:id="@+id/about_update_action"
                     android:layout_width="match_parent"
                     android:layout_height="72dp"
+                    android:gravity="center"
+                    android:orientation="horizontal"
                     android:clipChildren="false"
                     android:clipToPadding="false"
                     android:paddingTop="24dp"
@@ -121,7 +123,7 @@
                         android:textStyle="bold"
                         android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
                         android:visibility="gone" />
-                </FrameLayout>
+                </LinearLayout>
 
             </LinearLayout>
 

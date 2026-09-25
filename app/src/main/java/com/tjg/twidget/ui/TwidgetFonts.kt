@@ -189,13 +189,10 @@ object TwidgetFonts {
             }
             val desired = if (google && section) googleAppTypeface(view.context, 700, baseline.italic, 60, 100)
                 else forApp(view.context, font, weight, baseline.italic)
-            val size = if (!google) baseline.size else when {
-                section || summary -> 14f * view.resources.displayMetrics.scaledDensity
-                label -> 18f * view.resources.displayMetrics.scaledDensity
-                else -> baseline.size
-            }
+            // Retain the size already resolved by TextView/SESL. Recomputing it
+            // from scaledDensity overrides per-view sizes and Android's nonlinear
+            // accessibility font scaling when the font family changes.
             if (current !== desired) view.typeface = desired
-            if (view.textSize != size) view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, size)
             baseline.appliedFace = view.typeface
             baseline.appliedSize = view.textSize
         }

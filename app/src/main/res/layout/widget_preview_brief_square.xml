@@ -1,56 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Renderer-generated layers preserve typography and proportions when the picker scales them.
+     Framework tints resolve against the launcher's theme and wallpaper palette. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UseAppTint"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_preview_brief_surface">
-
-    <FrameLayout
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/avatar_twidget">
-
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="center"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_twidget_notification" />
-    </FrameLayout>
-
-    <LinearLayout
+    android:layout_height="match_parent">
+    <ImageView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="10dp"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:fontFamily="@font/one_ui_sans"
-            android:includeFontPadding="false"
-            android:maxLines="2"
-            android:text="@string/brief_preview_title"
-            android:textColor="#FF000000"
-            android:textFontWeight="700"
-            android:textSize="18sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:ellipsize="end"
-            android:fontFamily="@font/one_ui_sans"
-            android:includeFontPadding="false"
-            android:maxLines="2"
-            android:text="@string/brief_preview_body"
-            android:textColor="#FF000000"
-            android:textFontWeight="400"
-            android:textSize="12sp" />
-    </LinearLayout>
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_one_ui_brief_square_background"
+        android:tint="@color/picker_one_ui_background"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_one_ui_brief_square_primary"
+        android:tint="@color/picker_one_ui_primary"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_one_ui_brief_square_secondary"
+        android:tint="@color/picker_one_ui_secondary"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_one_ui_brief_square_decoration"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
 </FrameLayout>

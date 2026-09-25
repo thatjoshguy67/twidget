@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="picker_one_ui_background">#101010</color>
+    <color name="picker_one_ui_primary">#FFFFFF</color>
+    <color name="picker_one_ui_secondary">#FFFFFF</color>
+    <color name="picker_material_background">#1D352C</color>
+    <color name="picker_material_primary">#A0D0BD</color>
+    <color name="picker_material_secondary">#8FB5A4</color>
+</resources>

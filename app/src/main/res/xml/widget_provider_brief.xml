@@ -7,7 +7,7 @@
     android:minResizeHeight="40dp"
     android:minResizeWidth="110dp"
     android:minWidth="250dp"
-    android:previewLayout="@layout/widget_preview_brief"
+    android:previewLayout="@layout/widget_preview_material_brief_large"
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="2"
     android:targetCellWidth="4"
@@ -19,8 +19,6 @@
     app:previewLayoutWideSmall="@layout/widget_preview_brief_strip"
     app:previewLayoutMedium="@layout/widget_preview_brief_square"
     app:previewLayoutLarge="@layout/widget_preview_brief"
-    app:previewLayoutExtraLarge="@layout/widget_preview_brief"
-    app:previewLayoutExtraLargeLong="@layout/widget_preview_brief"
     app:widgetStyle="colorful"
-    app:widgetSize="small|wideSmall|medium|large|extraLarge|extraLargeLong"
-    app:featuredWidget="small|wideSmall|medium|large|extraLarge|extraLargeLong" />
+    app:widgetSize="small|wideSmall|medium|large"
+    app:featuredWidget="small|wideSmall|medium|large" />

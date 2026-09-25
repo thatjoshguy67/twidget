@@ -92,6 +92,7 @@ internal object BriefWidgetArtworkRenderer {
         strings: BriefStrings = BriefStrings.from(context),
         style: WidgetStyle = WidgetStyle.ONE_UI,
         background: Int? = null,
+        useProfileImages: Boolean = true,
     ): Bitmap {
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
@@ -145,6 +146,7 @@ internal object BriefWidgetArtworkRenderer {
                     (height - iconSize) / 2f,
                     iconSize,
                     primary,
+                    useProfileImages,
                 )
                 val textLeft = pad + iconSize + dp(context, 14)
                 drawCenteredTitle(
@@ -176,6 +178,7 @@ internal object BriefWidgetArtworkRenderer {
                     gapDp = metrics.textGapDp,
                     titleWeight = metrics.titleWeight,
                     fontFamily = fontFamily,
+                    useProfileImages = useProfileImages,
                 )
             }
         }
@@ -259,13 +262,14 @@ internal object BriefWidgetArtworkRenderer {
         gapDp: Float = 5f,
         titleWeight: Int = 700,
         fontFamily: String,
+        useProfileImages: Boolean,
     ) {
         val pad = dp(context, paddingDp)
         val iconStart = dp(context, iconStartDp)
         val iconTop = dp(context, iconTopDp)
         val bottomPad = dp(context, bottomPaddingDp)
         val iconSize = minOf(dp(context, iconSizeDp), heightPx - iconTop - bottomPad)
-        drawStateIcon(context, canvas, card.type, account, iconStart, iconTop, iconSize, primary)
+        drawStateIcon(context, canvas, card.type, account, iconStart, iconTop, iconSize, primary, useProfileImages)
 
         val textWidth = (widthPx - pad * 2f).toInt().coerceAtLeast(1)
         val gap = dp(context, gapDp)
@@ -328,6 +332,7 @@ internal object BriefWidgetArtworkRenderer {
         top: Float,
         size: Float,
         tint: Int,
+        useProfileImages: Boolean,
     ) {
         if (type == BriefCardType.SLOWDOWN) {
             // Separate Figma arc layers preserve transparent space around the glyph.
@@ -343,14 +348,14 @@ internal object BriefWidgetArtworkRenderer {
             }
             return
         }
-        if (type == BriefCardType.TOP_FOLLOWER) {
+        if (useProfileImages && type == BriefCardType.TOP_FOLLOWER) {
             val avatarUrl = TopFollowersStore.read(context, account).top.firstOrNull()?.avatarUrl.orEmpty()
             ProfileImageLoader.cachedCircularBitmap(context, avatarUrl, size.toInt())?.let { avatar ->
                 canvas.drawBitmap(avatar, left, top, Paint(Paint.ANTI_ALIAS_FLAG))
                 return
             }
         }
-        if (type == BriefCardType.POST || type == BriefCardType.WORST_POST) {
+        if (useProfileImages && (type == BriefCardType.POST || type == BriefCardType.WORST_POST)) {
             val avatar = TwidgetStore.currentStats(context, account).profileImage
             ProfileImageLoader.cachedCircularBitmap(context, avatar, size.toInt())?.let {
                 canvas.drawBitmap(it, left, top, Paint(Paint.ANTI_ALIAS_FLAG))

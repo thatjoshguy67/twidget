@@ -58,4 +58,13 @@
         <item name="android:textColor">@color/oneui_text_primary</item>
         <item name="android:textSize">14sp</item>
     </style>
+    <style name="ThemeOverlay.Twidget.ApiKeyDialog" parent="Theme.AppCompat.DayNight.Dialog.Alert">
+        <item name="viewInflaterClass">com.tjg.twidget.ui.TwidgetViewInflater</item>
+        <item name="android:textColorPrimary">@color/oneui_text_primary</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@drawable/dialog_api_key_background</item>
+        <item name="android:windowElevation">0dp</item>
+        <item name="colorPrimary">@color/oneui_accent</item>
+    </style>
 </resources>

@@ -810,7 +810,7 @@
     <string name="brief_post_follow_through_explainer">Performance geplanter Tweets verknüpft einen gesendeten geplanten Tweet mit seinen Live-Ergebnissen. Wenn er deutlich besser oder schlechter als deine gewohnten Tweets abschneidet, hebt Dein Briefing hervor, was du eventuell für den nächsten übernehmen könntest.</string>
     <string name="brief_posting_guidance_explainer">Der Guide für den nächsten Tweet wandelt Muster aus deinen kürzlichen Tweets in einen praktischen Vorschlag um, was oder wann du als Nächstes posten solltest. Er erscheint erst, wenn Twidget genügend Daten hat, um den Vorschlag nützlich zu machen.</string>
     <string name="brief_categories_empty_body">Wähle in den Briefing-Einstellungen aus, welche Updates du sehen möchtest.</string>
-    <string name="brief_ai_studio_key">AI-Studio-API-Key </string>
+    <string name="brief_ai_studio_key">AI-Studio-API-Key</string>
     <string name="brief_api_key_required_title">Einrichtung von KI erforderlich</string>
     <string name="brief_api_key_required_body">Gemini Nano ist auf diesem Gerät nicht verfügbar. Füge einen Gemini API-Key von Google AI Studio hinzu.</string>
     <string name="brief_api_key_settings_body">Erstelle oder verwalte einen Gemini-API-Key in Google AI Studio und füge ihn unten ein.</string>
@@ -1028,4 +1028,7 @@
     <string name="widget_style">Widget-Stil</string>
     <string name="widget_style_one_ui">One UI</string>
     <string name="widget_style_material">Material 3 Expressive</string>
+    <string name="brief_api_key_dialog_body">Erstelle und kopiere einen API-Key in Google AI Studio und füge ihn hier ein. Damit kann dein Briefing Zusammenfassungen verarbeiten. In der <annotation link="privacy">Datenschutzerklärung</annotation> erfährst du, wie diese Daten verwendet und geschützt werden.</string>
+    <string name="brief_api_key_studio_link">Hier tippen, um Google AI Studio zu öffnen</string>
+    <string name="brief_api_key_privacy_open_failed">Die Datenschutzerklärung konnte nicht geöffnet werden.</string>
 </resources>

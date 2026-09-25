@@ -2,7 +2,7 @@
 
 All notable changes to Twidget are documented here.
 
-## [1.3.0-beta.3] - Unreleased
+## [1.3.0-beta.3] - 2026-09-25
 
 New home screen widget styles, faster resizing, and refinements to typography,
 Your Brief, updates, and onboarding. These changes are since beta.2.
@@ -56,7 +56,7 @@ Your Brief, updates, and onboarding. These changes are since beta.2.
   installs, separated upload builds from validation builds, and kept APK-updater
   permissions out of the Play distribution.
 
-[1.3.0-beta.3]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.2...staging
+[1.3.0-beta.3]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.2...twidget-v1.3.0-beta.3
 
 ## [1.3.0-beta.2] - 2026-09-20
 

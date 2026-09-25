@@ -91,10 +91,14 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             widgetSizes(options)
                 .sortedBy { kotlin.math.abs(it.width - currentWidth) + kotlin.math.abs(it.height - currentHeight) }
                 .forEach { size -> add(size, size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1)) }
-            add(SizeF(110f, 40f), 162, 76)
-            add(SizeF(231f, 40f), 352, 76)
-            add(SizeF(110f, 111f), 162, 176)
-            add(SizeF(231f, 111f), 352, 175)
+            // Launchers that provide exact sizes must not select a mismatched
+            // breakpoint bitmap in between resize updates.
+            if (views.isEmpty()) {
+                add(SizeF(110f, 40f), 162, 76)
+                add(SizeF(231f, 40f), 352, 76)
+                add(SizeF(110f, 111f), 162, 176)
+                add(SizeF(231f, 111f), 352, 175)
+            }
             return RemoteViews(views)
         }
 

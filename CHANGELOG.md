@@ -4,6 +4,8 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Stopped generic widget layouts competing with exact launcher sizes during resizing.
+
 - Lightened Material widget surfaces in dark mode and included both theme
   variants so launchers can switch colours without a tap or app refresh.
 - Allowed long Your Brief strip headlines to wrap beside the icon.

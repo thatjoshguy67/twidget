@@ -64,6 +64,49 @@ class WidgetThemeRemoteViewsInstrumentedTest {
         } finally { TwidgetStore.saveWidgetSettings(context, id, original) }
     }
 
+    @Test fun launcherResizeSequenceUsesExactArtworkDimensions() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        val host = android.appwidget.AppWidgetHost(context, 97540)
+        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+        try {
+            for (brief in listOf(false, true)) {
+                val id = host.allocateAppWidgetId()
+                val provider = android.content.ComponentName(context,
+                    if (brief) TwidgetBriefWidget::class.java else com.tjg.twidget.TwidgetWidget::class.java)
+                assertTrue(manager.bindAppWidgetIdIfAllowed(id, provider))
+                TwidgetStore.saveWidgetSettings(context, id, TwidgetStore.widgetSettings(context, id).copy(
+                    style = WidgetStyle.MATERIAL, fontFamily = TwidgetStore.FONT_GOOGLE_SANS_FLEX))
+                for ((width, height) in listOf(180 to 176, 180 to 280, 352 to 280, 352 to 176, 180 to 76)) {
+                    val options = android.os.Bundle().apply {
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height)
+                        putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
+                        putParcelableArrayList(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES,
+                            arrayListOf(android.util.SizeF(width.toFloat(), height.toFloat())))
+                    }
+                    manager.updateAppWidgetOptions(id, options)
+                    if (brief) TwidgetBriefWidget.updateWidget(context, manager, id)
+                    else TwidgetWidget.updateWidget(context, manager, id)
+                    instrumentation.runOnMainSync {
+                        val view = host.createView(context, id, manager.getAppWidgetInfo(id))
+                        val artwork = view.findViewById<ImageView>(if (brief) R.id.brief_widget_artwork else R.id.widget_artwork)
+                        assertNotNull("Launcher must receive rendered artwork", artwork)
+                        val bitmap = (artwork.drawable as BitmapDrawable).bitmap
+                        val density = context.resources.displayMetrics.density
+                        assertEquals("Resized artwork width", (width * density).toInt(), bitmap.width)
+                        assertEquals("Resized artwork height", (height * density).toInt(), bitmap.height)
+                    }
+                }
+            }
+        } finally {
+            host.deleteHost()
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
+        }
+    }
+
     @Test fun briefStripWrapsLongHeadlineBesideIcon() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val headline = "Momentum is building"

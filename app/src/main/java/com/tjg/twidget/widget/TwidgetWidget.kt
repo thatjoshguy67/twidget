@@ -112,15 +112,9 @@ open class TwidgetWidget : AppWidgetProvider() {
                     responsiveBitmapBytes[key] = bitmapBytes
                 }
 
-                // Exact launcher allocations take priority over fallback buckets.
-                // This prevents fitCenter from introducing horizontal gutters
-                // when an OEM's cells have an unusual aspect ratio, while the
-                // fallback entries remain available for an immediate layout
-                // switch during resize before the options callback arrives.
-                // Add exact sizes first: large bitmaps can exhaust the
-                // RemoteViews bitmap budget, and dropping the current exact
-                // allocation leaves Pixel Launcher stretching a smaller
-                // fallback inside a large card.
+                // Exact-size and breakpoint layouts must not compete in one map:
+                // during resize a breakpoint can win with the wrong artwork aspect
+                // ratio, causing gutters and a second jump when the new render arrives.
                 widgetSizes(options)
                     .sortedBy { size ->
                         kotlin.math.abs(size.width - artworkWidth) +
@@ -136,7 +130,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                             responsiveMode = layoutModeForAosp(width, height),
                         )
                     }
-                responsiveSpecs().forEach { spec ->
+                if (responsiveViews.isEmpty()) responsiveSpecs().forEach { spec ->
                     val key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())
                     if (!responsiveViews.containsKey(key)) {
                         addResponsiveView(

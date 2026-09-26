@@ -74,7 +74,6 @@
                     android:id="@+id/widget_style_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="85dp"
                     app:showTopDivider="false"
                     app:title="@string/widget_style" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
@@ -92,7 +91,6 @@
                     android:id="@+id/font_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="85dp"
                     app:showTopDivider="true"
                     app:summary="@string/widget_font_one_ui"
                     app:title="@string/widget_font" />
@@ -101,7 +99,6 @@
                     android:id="@+id/language_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="85dp"
                     app:showTopDivider="true"
                     app:summary="@string/widget_language_default"
                     app:title="@string/widget_language" />
@@ -110,7 +107,6 @@
                     android:id="@+id/tint_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="85dp"
                     app:showTopDivider="true"
                     app:summary="@string/widget_tint_system"
                     app:title="@string/widget_tint" />
@@ -120,105 +116,26 @@
                     android:id="@+id/logo_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minHeight="85dp"
                     app:drawableEnd="@drawable/ic_logo_x"
                     app:showTopDivider="true"
                     app:summary="@string/widget_logo_x"
                     app:title="@string/widget_logo_style" />
 
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.SwitchItemView
                     android:id="@+id/delta_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical">
+                    app:separateSwitch="false"
+                    app:showTopDivider="true"
+                    app:title="@string/widget_show_delta" />
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginStart="@dimen/widget_settings_content_inset"
-                        android:layout_marginEnd="@dimen/widget_settings_content_inset"
-                        android:background="@color/oneui_divider" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="64dp"
-                        android:paddingTop="12dp"
-                        android:paddingBottom="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="@dimen/widget_settings_content_inset"
-                        android:paddingEnd="@dimen/widget_settings_content_inset">
-
-                        <TextView
-                            android:id="@+id/delta_label"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif"
-                            android:text="@string/widget_show_delta"
-                            android:textColor="?android:textColorPrimary"
-                            android:textFontWeight="400"
-                            android:textSize="18sp" />
-
-                        <androidx.appcompat.widget.SwitchCompat
-                            android:id="@+id/delta_switch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:clickable="false"
-                            android:focusable="false" />
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.SwitchItemView
                     android:id="@+id/contained_footer_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical">
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginStart="@dimen/widget_settings_content_inset"
-                        android:layout_marginEnd="@dimen/widget_settings_content_inset"
-                        android:background="@color/oneui_divider" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:minHeight="64dp"
-                        android:paddingTop="12dp"
-                        android:paddingBottom="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="@dimen/widget_settings_content_inset"
-                        android:paddingEnd="@dimen/widget_settings_content_inset">
-
-                        <TextView
-                            android:id="@+id/contained_footer_label"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif"
-                            android:text="@string/widget_contained_footer"
-                            android:textColor="?android:textColorPrimary"
-                            android:textFontWeight="400"
-                            android:textSize="18sp" />
-
-                        <androidx.appcompat.widget.SwitchCompat
-                            android:id="@+id/contained_footer_switch"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:clickable="false"
-                            android:focusable="false" />
-                    </LinearLayout>
-                </LinearLayout>
-
+                    app:separateSwitch="false"
+                    app:showTopDivider="true"
+                    app:title="@string/widget_contained_footer" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             <TextView

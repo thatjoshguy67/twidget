@@ -19,7 +19,7 @@ import android.widget.LinearLayout
 import android.widget.ListPopupWindow
 import android.widget.RadioButton
 import android.widget.TextView
-import androidx.appcompat.widget.SwitchCompat
+import dev.oneuiproject.oneui.widget.SwitchItemView
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefStore
 import com.tjg.twidget.data.TwidgetStore
@@ -142,15 +142,23 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<CardItemView>(R.id.logo_row).setOnClickListener { pickLogo(it) }
         findViewById<CardItemView>(R.id.font_row).setOnClickListener { pickFont(it) }
         findViewById<CardItemView>(R.id.language_row)?.setOnClickListener { pickLanguage(it) }
-        findViewById<View>(R.id.contained_footer_row).setOnClickListener {
-            containedFooter = !containedFooter
-            render()
+        findViewById<SwitchItemView>(R.id.contained_footer_row).apply {
+            isChecked = containedFooter
+            onCheckedChangedListener = { _, checked ->
+                if (containedFooter != checked) {
+                    containedFooter = checked
+                    render()
+                }
+            }
         }
-        findViewById<SwitchCompat>(R.id.delta_switch).isChecked = showDelta
-        findViewById<View>(R.id.delta_row).setOnClickListener {
-            showDelta = !showDelta
-            findViewById<SwitchCompat>(R.id.delta_switch).isChecked = showDelta
-            render()
+        findViewById<SwitchItemView>(R.id.delta_row).apply {
+            isChecked = showDelta
+            onCheckedChangedListener = { _, checked ->
+                if (showDelta != checked) {
+                    showDelta = checked
+                    render()
+                }
+            }
         }
         findViewById<View>(R.id.btn_cancel).setOnClickListener {
             setResult(RESULT_CANCELED)
@@ -204,8 +212,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(85)
-            setPadding(dp(20), dp(20), dp(20), dp(20))
+            minimumHeight = resources.getDimensionPixelSize(R.dimen.settings_account_min_height)
+            val horizontalPadding = resources.getDimensionPixelSize(R.dimen.widget_settings_content_inset)
+            val verticalPadding = resources.getDimensionPixelSize(OneUiR.dimen.oui_des_widget_item_vertical_padding)
+            setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
             isClickable = true
             isFocusable = true
             setBackgroundResource(resolveSelectableItemBackground())
@@ -278,7 +288,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             previewMode != TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 && previewMode != TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP
         ) View.VISIBLE else View.GONE
         findViewById<View>(R.id.contained_footer_summary).visibility = findViewById<View>(R.id.contained_footer_row).visibility
-        findViewById<SwitchCompat>(R.id.contained_footer_switch).isChecked = containedFooter
+        findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked = containedFooter
         findViewById<CardItemView>(R.id.widget_style_row).summary = styleLabel(widgetStyle)
         findViewById<View>(R.id.opacity_block).visibility =
             if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE

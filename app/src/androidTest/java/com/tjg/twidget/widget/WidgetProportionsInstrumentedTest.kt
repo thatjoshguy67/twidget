@@ -7,7 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.view.View
-import androidx.appcompat.widget.SwitchCompat
+import dev.oneuiproject.oneui.widget.SwitchItemView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -155,19 +155,19 @@ class WidgetProportionsInstrumentedTest {
             ActivityScenario.launch<WidgetConfigActivity>(intent()).use { scenario ->
                 scenario.onActivity { activity ->
                     assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.contained_footer_row).visibility)
-                    activity.findViewById<View>(R.id.contained_footer_row).performClick()
-                    assertTrue(activity.findViewById<SwitchCompat>(R.id.contained_footer_switch).isChecked)
+                    activity.findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked = true
+                    assertTrue(activity.findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked)
                 }
                 scenario.recreate()
                 scenario.onActivity { activity ->
-                    assertTrue(activity.findViewById<SwitchCompat>(R.id.contained_footer_switch).isChecked)
+                    assertTrue(activity.findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked)
                     activity.findViewById<View>(R.id.btn_cancel).performClick()
                 }
             }
             assertFalse(TwidgetStore.widgetSettings(base, id).containedFooter)
             ActivityScenario.launch<WidgetConfigActivity>(intent()).use { scenario ->
                 scenario.onActivity { activity ->
-                    activity.findViewById<View>(R.id.contained_footer_row).performClick()
+                    activity.findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked = true
                     activity.findViewById<View>(R.id.btn_save).performClick()
                 }
             }

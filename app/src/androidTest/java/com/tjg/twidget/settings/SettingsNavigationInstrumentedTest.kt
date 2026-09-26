@@ -317,7 +317,7 @@ class SettingsNavigationInstrumentedTest {
                 }
                 val scaled = context.createConfigurationContext(configuration)
                 for (size in listOf(11f, 14f, 17f, 32f)) {
-                    for (id in listOf(android.R.id.title, android.R.id.summary, R.id.delta_label, android.view.View.NO_ID)) {
+                    for (id in listOf(android.R.id.title, android.R.id.summary, dev.oneuiproject.oneui.design.R.id.switch_card_title, android.view.View.NO_ID)) {
                         val label = android.widget.TextView(scaled).apply {
                             this.id = id
                             textSize = size

@@ -178,7 +178,7 @@ object TwidgetFonts {
             ).also { view.setTag(R.id.app_font_baseline, it) }
             val section = view.tag == "preferencecategory" || view is dev.oneuiproject.oneui.widget.Separator
             val heading = isExpandedHeader || view.parent is androidx.appcompat.widget.Toolbar || name == "alertTitle"
-            val label = view.getTag(R.id.app_font_role) == Role.LABEL || view.id == android.R.id.title || name in setOf("cardview_title", "titleView", "icon_title", "title", "opacity_label", "delta_label")
+            val label = view.getTag(R.id.app_font_role) == Role.LABEL || view.id == android.R.id.title || name in setOf("cardview_title", "titleView", "icon_title", "title", "opacity_label", "switch_card_title")
             val summary = view.getTag(R.id.app_font_role) == Role.SUMMARY || view.id == android.R.id.summary || name in setOf("cardview_summary", "sub_title")
             val google = font == AppAppearance.Font.GOOGLE_SANS_FLEX
             val weight = if (!google) baseline.weight else when {

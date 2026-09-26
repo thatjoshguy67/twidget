@@ -66,6 +66,41 @@ class WidgetProportionsInstrumentedTest {
         }
     }
 
+    @Test fun followerCountGrowsWhenWidgetGetsTaller() {
+        val context = renderContext()
+        val directory = File(base.cacheDir, "widget-adaptive-count").apply { mkdirs() }
+        for (style in WidgetStyle.entries) {
+            for (font in listOf(TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.FONT_SYSTEM)) {
+                val settings = WidgetPreviews.settings(style).copy(fontFamily = font,
+                    language = "en", containedFooter = true, logo = TwidgetStore.LOGO_TWITTER)
+                val stats = ProfileStats("Test", "thatjoshguy69", 7795, 0, 0, 0)
+                val sheet = Bitmap.createBitmap(728, 304, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(sheet).apply { drawColor(Color.DKGRAY) }
+                val inkHeights = listOf(176, 280).mapIndexed { index, height ->
+                    val bitmap = WidgetArtworkRenderer.render(context, 352, height, stats, settings,
+                        TwidgetWidget.LAYOUT_MODE_LARGE, true, 7)
+                    val rows = (0 until height - 40).filter { y ->
+                        (0 until bitmap.width).any { x -> Color.alpha(bitmap.getPixel(x, y)) > 128 }
+                    }
+                    assertTrue("Count must be visible", rows.isNotEmpty())
+                    val inkHeight = rows.last() - rows.first() + 1
+                    bitmap.recycle()
+                    val artwork = WidgetArtworkRenderer.render(context, 352, height, stats, settings,
+                        TwidgetWidget.LAYOUT_MODE_LARGE, true, 7, drawBackground = true)
+                    canvas.drawBitmap(artwork, (8 + index * 360).toFloat(), 12f, null)
+                    artwork.recycle()
+                    inkHeight
+                }
+                File(directory, "$style-$font.png").outputStream().use {
+                    sheet.compress(Bitmap.CompressFormat.PNG, 100, it)
+                }
+                sheet.recycle()
+                assertTrue("Taller widget must grow its count: $style / $font / $inkHeights",
+                    inkHeights[1] > inkHeights[0] + 35)
+            }
+        }
+    }
+
     @Test fun footerLogoStaysTheSameSizeAcrossHandlesAndFonts() {
         val context = renderContext()
         for (font in listOf(TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.FONT_SYSTEM)) {

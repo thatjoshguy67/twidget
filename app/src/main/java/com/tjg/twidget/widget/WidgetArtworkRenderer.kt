@@ -69,11 +69,7 @@ object WidgetArtworkRenderer {
         // hundreds of times for every resize. Paints remain local to this render.
         val wordPaints = words.distinct().associateWith { wordPaint(context, settings, it, primary, secondary) }
         val gap = wordSpacing(context, textMaxWidth)
-        val narrow = width / density < 230f
-        val referenceWidth = if (narrow) 162f else 352f
-        val referenceSize = if (narrow) { if (settings.style == WidgetStyle.MATERIAL) 20f else 21f } else 32f
-        val sizeCap = referenceSize * density * minOf(width / density / referenceWidth, height / density / 176f)
-        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap, sizeCap)
+        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap)
         val lines = wrapWords(words, wordPaints, textMaxWidth, textSize, gap)
         val lineHeight = textSize + gap
         val top = pad + textSize * 0.8f
@@ -140,12 +136,11 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         maxHeight: Float,
         gap: Float,
-        sizeCap: Float,
     ): Float {
-        // Preserve the design's hierarchy at each host size, shrinking long counts
-        // below the proportional cap instead of filling every spare pixel.
+        // Grow as well as shrink to use the actual launcher bounds. The footer
+        // and its clearance have already been reserved from maxHeight.
         var low = 1f
-        var high = minOf(sizeCap, maxHeight).coerceAtLeast(low)
+        var high = maxHeight.coerceAtLeast(low)
         repeat(14) {
             val size = (low + high) / 2f
             val lines = wrapWords(words, paints, maxWidth, size, gap)

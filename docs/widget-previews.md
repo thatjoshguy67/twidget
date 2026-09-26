@@ -16,7 +16,7 @@ Run `WidgetPickerPreviewInstrumentedTest` to inflate every XML preview in real R
 
 ## Follower widget proportions
 
-The follower layouts follow the Figma home widgets at 162×76, 352×76, 162×176 and 352×176 dp. Large-card headings use proportional size caps and shrink for long counts; footer logos stay at 12 dp independently of handle text. One UI compact widgets have pill-shaped surfaces.
+The follower layouts follow the Figma home widgets at 162×76, 352×76, 162×176 and 352×176 dp. Large-card headings grow or shrink to fit the actual launcher width and height, reserving space for the footer and its clearance; footer logos stay at 12 dp independently of handle text. One UI compact widgets have pill-shaped surfaces.
 
 Material cards optionally contain the username and delta. The per-widget `containedFooter` setting defaults to false and is also available in widget defaults. Compact layouts and Brief retain their existing footer treatment. The delta badge uses the supplied Figma asset in `docs/design-assets/widget-delta-badge.svg`, rasterised at 4× into `drawable-xxxhdpi`; its text is centred by visible glyph bounds on both axes.
 

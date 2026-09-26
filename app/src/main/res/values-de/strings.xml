@@ -1031,4 +1031,6 @@
     <string name="brief_api_key_dialog_body">Erstelle und kopiere einen API-Key in Google AI Studio und füge ihn hier ein. Damit kann dein Briefing Zusammenfassungen verarbeiten. In der <annotation link="privacy">Datenschutzerklärung</annotation> erfährst du, wie diese Daten verwendet und geschützt werden.</string>
     <string name="brief_api_key_studio_link">Hier tippen, um Google AI Studio zu öffnen</string>
     <string name="brief_api_key_privacy_open_failed">Die Datenschutzerklärung konnte nicht geöffnet werden.</string>
+    <string name="widget_contained_footer">Nutzername und Änderung hervorheben</string>
+    <string name="widget_contained_footer_summary">Nutzername und Follower-Änderung auf größeren Material-Widgets mit einem Hintergrund anzeigen.</string>
 </resources>

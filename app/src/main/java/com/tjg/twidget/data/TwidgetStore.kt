@@ -93,6 +93,7 @@ data class TwidgetWidgetSettings(
     val showDelta: Boolean = true,
     val language: String = "DEFAULT",
     val style: com.tjg.twidget.widget.WidgetStyle = com.tjg.twidget.widget.WidgetStyle.ONE_UI,
+    val containedFooter: Boolean = false,
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -428,6 +429,7 @@ object TwidgetStore {
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
             language = prefs.getString("widget_language$suffix", prefs.getString("widget_language", "DEFAULT")) ?: "DEFAULT",
             style = style,
+            containedFooter = prefs.getBoolean("widget_contained_footer$suffix", prefs.getBoolean("widget_contained_footer", false)),
         )
     }
 
@@ -444,6 +446,7 @@ object TwidgetStore {
             .putBoolean("widget_show_delta$suffix", settings.showDelta)
             .putString("widget_language$suffix", settings.language)
             .putString("widget_style$suffix", settings.style.storedValue)
+            .putBoolean("widget_contained_footer$suffix", settings.containedFooter)
             .apply()
     }
 

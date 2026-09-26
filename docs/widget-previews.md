@@ -13,3 +13,11 @@ The bundled fallback examples are English at font scale 1, like other static pic
 After changing either renderer, build and install the GitHub debug app and its Android test APK on an API 31+ AVD. Run `WidgetPreviewAssetsInstrumentedTest#exportPickerArtwork`, then copy `cache/picker-assets/*.png` from the app sandbox into `app/src/main/res/drawable-nodpi/`. Copy the differing layers from `cache/picker-assets-night/` into `drawable-night-nodpi/` too (identical files can be omitted). Separate night masks preserve light-on-dark text antialiasing. The exporter fixes density at 3× and font scale at 1, separates tintable text from the original artwork, and does not change AVD display overrides.
 
 Run `WidgetPickerPreviewInstrumentedTest` to inflate every XML preview in real RemoteViews, compare it with the live renderer in light/dark contexts and verify the provider metadata. Inspect the generated `cache/picker-preview-sheet.png` as well.
+
+## Follower widget proportions
+
+The follower layouts follow the Figma home widgets at 162×76, 352×76, 162×176 and 352×176 dp. Large-card headings use proportional size caps and shrink for long counts; footer logos stay at 12 dp independently of handle text. One UI compact widgets have pill-shaped surfaces.
+
+Material cards optionally contain the username and delta. The per-widget `containedFooter` setting defaults to false and is also available in widget defaults. Compact layouts and Brief retain their existing footer treatment. The delta badge uses the supplied Figma asset in `docs/design-assets/widget-delta-badge.svg`, rasterised at 4× into `drawable-xxxhdpi`; its text is centred by visible glyph bounds on both axes.
+
+`WidgetProportionsInstrumentedTest` checks containment scope, save/cancel behaviour, fixed logo size, and badge text centring across fonts and densities. Settings use the system wallpaper surface through the window theme and a rounded transparent preview; no wallpaper bitmap access is required.

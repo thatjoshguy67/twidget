@@ -1070,4 +1070,6 @@
     <string name="brief_api_key_dialog_body">Create and copy an API key in Google AI Studio, then paste it here. This lets Your Brief process summaries. Read the <annotation link="privacy">Privacy Policy</annotation> for information on how this data is used and secured.</string>
     <string name="brief_api_key_studio_link">Tap here to go to Google AI Studio</string>
     <string name="brief_api_key_privacy_open_failed">Couldn’t open the privacy policy.</string>
+    <string name="widget_contained_footer">Contained username and delta</string>
+    <string name="widget_contained_footer_summary">Puts the username and follower delta in contained shapes, for better readability.</string>
 </resources>

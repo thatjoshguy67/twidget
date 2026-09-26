@@ -42,6 +42,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var widgetStyle = WidgetStyle.ONE_UI
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
+    private var containedFooter = false
     private var language = "DEFAULT"
     private var currentLevel = 2
     private var isLockWidget = false
@@ -103,11 +104,17 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         widgetStyle = settings.style
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
+        containedFooter = savedInstanceState?.getBoolean("contained_footer", settings.containedFooter) ?: settings.containedFooter
         language = settings.language
         if (isBriefWidget) accountUsername = ""
         bindControls()
         if (!isBriefWidget) buildAccountRows()
         render()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("contained_footer", containedFooter)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -135,6 +142,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<CardItemView>(R.id.logo_row).setOnClickListener { pickLogo(it) }
         findViewById<CardItemView>(R.id.font_row).setOnClickListener { pickFont(it) }
         findViewById<CardItemView>(R.id.language_row)?.setOnClickListener { pickLanguage(it) }
+        findViewById<View>(R.id.contained_footer_row).setOnClickListener {
+            containedFooter = !containedFooter
+            render()
+        }
         findViewById<SwitchCompat>(R.id.delta_switch).isChecked = showDelta
         findViewById<View>(R.id.delta_row).setOnClickListener {
             showDelta = !showDelta
@@ -193,8 +204,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(74)
-            setPadding(dp(20), dp(10), dp(20), dp(10))
+            minimumHeight = dp(85)
+            setPadding(dp(20), dp(20), dp(20), dp(20))
             isClickable = true
             isFocusable = true
             setBackgroundResource(resolveSelectableItemBackground())
@@ -261,10 +272,17 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     )
 
     private fun render() {
+        val previewMode = if (!isLockWidget && !isBriefWidget) homePreviewSpec().mode else -1
+        findViewById<View>(R.id.contained_footer_row).visibility = if (
+            widgetStyle == WidgetStyle.MATERIAL && !isLockWidget && !isBriefWidget &&
+            previewMode != TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 && previewMode != TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP
+        ) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.contained_footer_summary).visibility = findViewById<View>(R.id.contained_footer_row).visibility
+        findViewById<SwitchCompat>(R.id.contained_footer_switch).isChecked = containedFooter
         findViewById<CardItemView>(R.id.widget_style_row).summary = styleLabel(widgetStyle)
         findViewById<View>(R.id.opacity_block).visibility =
             if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.opacity_separator).visibility = findViewById<View>(R.id.opacity_block).visibility
+        findViewById<CardItemView>(R.id.font_row).showTopDivider = findViewById<View>(R.id.opacity_block).visibility == View.VISIBLE
         findViewById<CardItemView>(R.id.tint_row).summary = colorModeLabel(colorMode)
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
         findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
@@ -289,7 +307,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language, widgetStyle)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, fontFamily, showDelta, language, widgetStyle, containedFooter)
 
         if (isLockWidget) {
             preview.background = null
@@ -439,7 +457,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun saveAndFinish() {
         tintAlpha = OPACITY_PRESETS[currentLevel]
-        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, widgetStyle))
+        TwidgetStore.saveWidgetSettings(this, appWidgetId, TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, widgetStyle, containedFooter))
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             val manager = AppWidgetManager.getInstance(this)
             if (isLockWidget) {

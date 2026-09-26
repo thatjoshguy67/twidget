@@ -529,11 +529,24 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             val font = if (defaults.fontFamily == defaults.style.defaultFont) style.defaultFont else defaults.fontFamily
             update(defaults.copy(style = style, fontFamily = font))
             findPreference<Preference>("settings_widget_opacity")?.isVisible = style == WidgetStyle.ONE_UI
+            findPreference<Preference>("settings_widget_contained_footer")?.isVisible = style == WidgetStyle.MATERIAL
             findPreference<ListPreference>("settings_widget_font")?.let { preference ->
                 preference.value = font
                 preference.summary = preference.entry
             }
         }
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "settings_widget_contained_footer"
+            isPersistent = false
+            setTitle(R.string.widget_contained_footer)
+            setSummary(R.string.widget_contained_footer_summary)
+            isChecked = defaults.containedFooter
+            isVisible = defaults.style == WidgetStyle.MATERIAL
+            setOnPreferenceChangeListener { _, value ->
+                update(defaults.copy(containedFooter = value as Boolean))
+                true
+            }
+        })
         val opacity = layoutInflater.inflate(R.layout.widget_opacity_control, null)
         WidgetOpacityControl.bind(opacity, defaults.tintAlpha) { alpha ->
             update(defaults.copy(tintAlpha = alpha))

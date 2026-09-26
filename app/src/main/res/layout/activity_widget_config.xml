@@ -5,6 +5,7 @@
     android:id="@+id/widget_config_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/oneui_bg"
     app:expandable="false"
     app:expanded="false"
     app:handleInsets="false"
@@ -31,19 +32,11 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <dev.oneuiproject.oneui.widget.RoundedFrameLayout
+            <com.tjg.twidget.widget.WallpaperPreviewLayout
                 android:id="@+id/preview_container"
                 android:layout_width="match_parent"
                 android:layout_height="236dp"
-                android:layout_marginTop="6dp">
-
-                <ImageView
-                    android:id="@+id/preview_wallpaper"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@null"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/config_preview_wallpaper" />
+                android:layout_marginTop="20dp">
 
                 <FrameLayout
                     android:id="@+id/preview_widget"
@@ -51,7 +44,7 @@
                     android:layout_height="176dp"
                     android:layout_gravity="center"
                     android:padding="10dp" />
-            </dev.oneuiproject.oneui.widget.RoundedFrameLayout>
+            </com.tjg.twidget.widget.WallpaperPreviewLayout>
 
             <dev.oneuiproject.oneui.widget.Separator
                 android:id="@+id/account_separator"
@@ -81,47 +74,53 @@
                     android:id="@+id/widget_style_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:minHeight="85dp"
                     app:showTopDivider="false"
                     app:title="@string/widget_style" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
-                <View
-                    android:id="@+id/opacity_separator"
-                    android:layout_width="match_parent"
-                    android:layout_height="1px"
-                    android:layout_marginStart="@dimen/widget_settings_content_inset"
-                    android:layout_marginEnd="@dimen/widget_settings_content_inset"
-                    android:background="@color/oneui_divider" />
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="?android:colorBackground"
+                android:orientation="vertical">
 
                 <include layout="@layout/widget_opacity_control" />
-
-                <dev.oneuiproject.oneui.widget.CardItemView
-                    android:id="@+id/tint_row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:showTopDivider="true"
-                    app:summary="@string/widget_tint_system"
-                    app:title="@string/widget_tint" />
-
-                <dev.oneuiproject.oneui.widget.CardItemView
-                    android:id="@+id/language_row"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:showTopDivider="true"
-                    app:summary="@string/widget_language_default"
-                    app:title="@string/widget_language" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/font_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:minHeight="85dp"
                     app:showTopDivider="true"
                     app:summary="@string/widget_font_one_ui"
                     app:title="@string/widget_font" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/language_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="85dp"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_language_default"
+                    app:title="@string/widget_language" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/tint_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="85dp"
+                    app:showTopDivider="true"
+                    app:summary="@string/widget_tint_system"
+                    app:title="@string/widget_tint" />
+
+
+                <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/logo_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:minHeight="85dp"
                     app:drawableEnd="@drawable/ic_logo_x"
                     app:showTopDivider="true"
                     app:summary="@string/widget_logo_x"
@@ -145,7 +144,10 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="@dimen/settings_row_height"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
                         android:paddingStart="@dimen/widget_settings_content_inset"
@@ -160,7 +162,7 @@
                             android:text="@string/widget_show_delta"
                             android:textColor="?android:textColorPrimary"
                             android:textFontWeight="400"
-                            android:textSize="17sp" />
+                            android:textSize="18sp" />
 
                         <androidx.appcompat.widget.SwitchCompat
                             android:id="@+id/delta_switch"
@@ -170,7 +172,65 @@
                             android:focusable="false" />
                     </LinearLayout>
                 </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/contained_footer_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginStart="@dimen/widget_settings_content_inset"
+                        android:layout_marginEnd="@dimen/widget_settings_content_inset"
+                        android:background="@color/oneui_divider" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="64dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="@dimen/widget_settings_content_inset"
+                        android:paddingEnd="@dimen/widget_settings_content_inset">
+
+                        <TextView
+                            android:id="@+id/contained_footer_label"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif"
+                            android:text="@string/widget_contained_footer"
+                            android:textColor="?android:textColorPrimary"
+                            android:textFontWeight="400"
+                            android:textSize="18sp" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/contained_footer_switch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:focusable="false" />
+                    </LinearLayout>
+                </LinearLayout>
+
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <TextView
+                android:id="@+id/contained_footer_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/widget_settings_content_inset"
+                android:paddingEnd="@dimen/widget_settings_content_inset"
+                android:paddingTop="10dp"
+                android:text="@string/widget_contained_footer_summary"
+                android:textColor="?android:textColorSecondary"
+                android:textSize="14sp" />
 
             <dev.oneuiproject.oneui.widget.Separator
                 android:id="@+id/tap_separator"

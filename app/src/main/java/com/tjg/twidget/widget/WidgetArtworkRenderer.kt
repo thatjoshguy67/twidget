@@ -5,8 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
-import android.os.Build
 import androidx.core.content.ContextCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppLocales
@@ -41,27 +41,24 @@ object WidgetArtworkRenderer {
         val colors = WidgetColors.resolve(context, settings, dark)
         val primary = colors.primary
         val secondary = colors.secondary
-        val footerPaint = textPaint(context, settings, primary, bold = true).apply {
-            textSize = 14f * density
-            applyWidgetTypeface(context, settings.fontFamily, 600, 51, 100)
+        val contained = settings.style == WidgetStyle.MATERIAL && settings.containedFooter
+        val pad = (if (settings.style == WidgetStyle.MATERIAL && !dark) 10f else 12f) * density
+        val footerPaint = textPaint(context, settings, secondary, bold = true).apply {
+            textSize = 12f * density
+            applyWidgetTypeface(context, settings.fontFamily, 600, if (contained) 25 else 51, 100)
         }
         val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, AppLocales.resolve(settings.language))
-        val deltaPaint = textPaint(
-            context,
-            settings,
-            if (delta < 0) Color.rgb(229, 57, 53) else Color.rgb(46, 125, 50),
-            bold = true,
-        ).apply {
-            textSize = if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE) 12f * density else 14f * density
-            if (settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX) {
-                applyWidgetTypeface(context, settings.fontFamily, 400, 57, 100)
-            }
+        val deltaColor = if (delta < 0) Color.rgb(229, 83, 75) else Color.rgb(0, 170, 86)
+        val deltaPaint = textPaint(context, settings, deltaColor, bold = false).apply {
+            textSize = (if (contained) 10f else 14f) * density
+            applyWidgetTypeface(context, settings.fontFamily, 400, 57, 100)
         }
-
-        val pad = 10f * density
-        val footerHeight = 20f * density
+        // Normal badges are 20dp. Longer, dynamic deltas get enough room to stay legible.
+        val badgeSize = if (contained && deltaText.isNotEmpty())
+            maxOf(20f * density, deltaPaint.measureText(deltaText) + 6f * density) else 0f
+        val footerHeight = if (contained) maxOf(20f * density, badgeSize) else 14f * density
         val textMaxWidth = width - pad * 2
-        val textMaxHeight = height - pad * 2 - footerHeight
+        val textMaxHeight = height - pad * 2 - footerHeight - 8f * density
         val locale = AppLocales.resolve(settings.language)
         val localizedContext = AppLocales.wrap(context, settings.language)
         val words = TwidgetWidget.followersInWords(stats.followersCount, locale)
@@ -72,7 +69,11 @@ object WidgetArtworkRenderer {
         // hundreds of times for every resize. Paints remain local to this render.
         val wordPaints = words.distinct().associateWith { wordPaint(context, settings, it, primary, secondary) }
         val gap = wordSpacing(context, textMaxWidth)
-        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap)
+        val narrow = width / density < 230f
+        val referenceWidth = if (narrow) 162f else 352f
+        val referenceSize = if (narrow) { if (settings.style == WidgetStyle.MATERIAL) 20f else 21f } else 32f
+        val sizeCap = referenceSize * density * minOf(width / density / referenceWidth, height / density / 176f)
+        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap, sizeCap)
         val lines = wrapWords(words, wordPaints, textMaxWidth, textSize, gap)
         val lineHeight = textSize + gap
         val top = pad + textSize * 0.8f
@@ -90,18 +91,45 @@ object WidgetArtworkRenderer {
         }
 
         val handle = "@${stats.userName}"
-        val footerY = height - pad - 4f * density
-        val maxLogoSize = 18f * density
-        val deltaWidth = if (deltaText.isEmpty()) 0f else deltaPaint.measureText(deltaText)
-        val handleMaxWidth = width - pad * 2 - maxLogoSize - 6f * density - deltaWidth -
-            if (deltaText.isEmpty()) 0f else 10f * density
+        val footerCenterY = height - pad - footerHeight / 2f
+        val logoSize = 12f * density
+        val chipPadding = if (contained) 6f * density else 0f
+        val deltaWidth = if (deltaText.isEmpty()) 0f else if (contained) badgeSize else deltaPaint.measureText(deltaText)
+        val handleMaxWidth = (textMaxWidth - logoSize - 6f * density - chipPadding * 2 - deltaWidth -
+            if (deltaText.isEmpty()) 0f else 8f * density).coerceAtLeast(1f)
         shrinkToFit(footerPaint, handle, handleMaxWidth)
-        val logoBounds = footerLogoBounds(footerPaint, handle, pad, footerY, maxLogoSize)
-        drawLogo(context, canvas, settings, primary, logoBounds.left, logoBounds.top, logoBounds.width())
-        val handleX = logoBounds.right + 6f * density
-        canvas.drawText(handle, handleX, footerY, footerPaint.apply { color = secondary })
+        val handleX = pad + chipPadding + logoSize + 6f * density
+        if (contained) {
+            val chipWidth = chipPadding * 2 + logoSize + 6f * density + footerPaint.measureText(handle)
+            canvas.drawRoundRect(RectF(pad, footerCenterY - 10f * density,
+                pad + chipWidth, footerCenterY + 10f * density), 10f * density, 10f * density,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = primary })
+        }
+        val footerColor = if (contained) colors.background else secondary
+        drawLogo(context, canvas, settings, footerColor, pad + chipPadding, footerCenterY - logoSize / 2f, logoSize)
+        val footerBaseline = footerCenterY - (footerPaint.fontMetrics.ascent + footerPaint.fontMetrics.descent) / 2f
+        canvas.drawText(handle, handleX, footerBaseline, footerPaint.apply { color = footerColor })
         if (deltaText.isNotEmpty()) {
-            canvas.drawText(deltaText, width - pad - deltaPaint.measureText(deltaText), footerY, deltaPaint)
+            if (contained) {
+                val left = width - pad - badgeSize
+                val badgeBounds = Rect(left.toInt(), (footerCenterY - badgeSize / 2f).toInt(),
+                    (left + badgeSize).toInt(), (footerCenterY + badgeSize / 2f).toInt())
+                ContextCompat.getDrawable(context, R.drawable.widget_delta_badge)?.mutate()?.apply {
+                    setTint(deltaColor)
+                    bounds = badgeBounds
+                    draw(canvas)
+                }
+                deltaPaint.color = colors.background
+                // Centre the actual glyph ink, including side bearings, rather than the
+                // font line box (whose unused descender space shifts digits upwards).
+                val ink = Rect()
+                deltaPaint.getTextBounds(deltaText, 0, deltaText.length, ink)
+                canvas.drawText(deltaText, badgeBounds.exactCenterX() - ink.exactCenterX(),
+                    badgeBounds.exactCenterY() - ink.exactCenterY(), deltaPaint)
+            } else {
+                canvas.drawText(deltaText, width - pad - deltaWidth,
+                    footerCenterY - (deltaPaint.fontMetrics.ascent + deltaPaint.fontMetrics.descent) / 2f, deltaPaint)
+            }
         }
         return bitmap
     }
@@ -112,11 +140,12 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         maxHeight: Float,
         gap: Float,
+        sizeCap: Float,
     ): Float {
-        // Find the largest size that fits the host's actual rectangle. Fixed
-        // 20/32sp caps left a large unused band on wider/resized widgets.
+        // Preserve the design's hierarchy at each host size, shrinking long counts
+        // below the proportional cap instead of filling every spare pixel.
         var low = 1f
-        var high = maxHeight.coerceAtLeast(low)
+        var high = minOf(sizeCap, maxHeight).coerceAtLeast(low)
         repeat(14) {
             val size = (low + high) / 2f
             val lines = wrapWords(words, paints, maxWidth, size, gap)
@@ -193,11 +222,12 @@ object WidgetArtworkRenderer {
             }
         val valuePaint = paint(700, colors.primary, 26f, 110, 100)
         val labelPaint = paint(400, colors.secondary, 26f, 80, 0)
-        val deltaPaint = paint(400, if (delta < 0) Color.rgb(255, 59, 48) else
-            if (settings.style == WidgetStyle.MATERIAL) Color.rgb(12, 162, 86) else Color.rgb(46, 125, 50), 26f, 57, 100)
         val compact = mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1
+        val deltaPaint = paint(400, if (delta < 0) Color.rgb(255, 59, 48) else
+            if (settings.style == WidgetStyle.MATERIAL) Color.rgb(12, 162, 86) else Color.rgb(46, 125, 50),
+            if (compact && settings.style == WidgetStyle.ONE_UI) 20f else 26f, 57, 100)
         val gap = (if (compact) 6f else 10f) * density
-        val logoSize = 18f * density
+        val logoSize = 26f * density
         fun lineWidth() = valuePaint.measureText(value) +
             (if (compact) logoSize + gap else gap + labelPaint.measureText(label)) +
             (if (deltaText.isEmpty()) 0f else gap + deltaPaint.measureText(deltaText))
@@ -208,8 +238,12 @@ object WidgetArtworkRenderer {
                 if (lineWidth() <= width - 18f * density) break
             }
         }
-        if (lineWidth() > width - 18f * density) {
-            val scale = ((width - 18f * density) / lineWidth()).coerceIn(0.1f, 1f)
+        // The logo and gaps stay fixed while the text shrinks into the remaining width.
+        val availableWidth = width - 18f * density
+        if (lineWidth() > availableWidth) {
+            val fixedWidth = (if (compact) logoSize else 0f) +
+                gap + (if (deltaText.isEmpty()) 0f else gap)
+            val scale = ((availableWidth - fixedWidth) / (lineWidth() - fixedWidth)).coerceIn(0.01f, 1f)
             listOf(valuePaint, labelPaint, deltaPaint).forEach { it.textSize *= scale }
         }
         val blockHeight = if (compact) 26f * density else 50f * density
@@ -229,26 +263,17 @@ object WidgetArtworkRenderer {
         if (deltaText.isNotEmpty()) canvas.drawText(deltaText, x, baseline, deltaPaint)
         if (!compact) {
             val handle = "@${stats.userName}"
-            val handlePaint = paint(600, colors.secondary, 14f, 51, 100)
-            shrinkToFit(handlePaint, handle, width - logoSize - 34f * density)
+            val handlePaint = paint(600, colors.secondary, if (settings.style == WidgetStyle.MATERIAL) 14f else 12f, 51, 100)
+            val footerLogoSize = 12f * density
+            shrinkToFit(handlePaint, handle, width - footerLogoSize - 34f * density)
             val handleGap = 6f * density
-            val handleBaseline = top + 32f * density + logoSize / 2f -
-                (handlePaint.fontMetrics.ascent + handlePaint.fontMetrics.descent) / 2f
-            val logoBounds = footerLogoBounds(handlePaint, handle, 0f, handleBaseline, logoSize)
-            val handleLeft = (width - logoBounds.width() - handleGap - handlePaint.measureText(handle)) / 2f
-            drawLogo(context, canvas, settings, colors.secondary, handleLeft, logoBounds.top, logoBounds.width())
-            canvas.drawText(handle, handleLeft + logoBounds.width() + handleGap, handleBaseline, handlePaint)
+            val handleCenterY = top + 41f * density
+            val handleBaseline = handleCenterY - (handlePaint.fontMetrics.ascent + handlePaint.fontMetrics.descent) / 2f
+            val handleLeft = (width - footerLogoSize - handleGap - handlePaint.measureText(handle)) / 2f
+            drawLogo(context, canvas, settings, colors.secondary, handleLeft, handleCenterY - footerLogoSize / 2f, footerLogoSize)
+            canvas.drawText(handle, handleLeft + footerLogoSize + handleGap, handleBaseline, handlePaint)
         }
         return bitmap
-    }
-
-    private fun footerLogoBounds(paint: Paint, handle: String, left: Float, baseline: Float, maximumSize: Float): RectF {
-        // Match visible glyphs, not the font's larger em box or line-height padding.
-        val ink = android.graphics.Rect()
-        paint.getTextBounds(handle, 0, handle.length, ink)
-        val size = ink.height().toFloat().coerceIn(1f, maximumSize)
-        val centerY = baseline + (ink.top + ink.bottom) / 2f
-        return RectF(left, centerY - size / 2f, left + size, centerY + size / 2f)
     }
 
     private fun drawLogo(context: Context, canvas: Canvas, settings: TwidgetWidgetSettings, color: Int, left: Float, top: Float, size: Float) {
@@ -268,11 +293,8 @@ object WidgetArtworkRenderer {
         settings: TwidgetWidgetSettings,
         dark: Boolean,
     ) {
-        val radius = if (settings.style == WidgetStyle.MATERIAL) dp(context, 26).toFloat() else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            context.resources.getDimension(android.R.dimen.system_app_widget_background_radius)
-        } else {
-            dp(context, 24).toFloat()
-        }
+        val radius = if (settings.style == WidgetStyle.ONE_UI && height / context.resources.displayMetrics.density <= 110f)
+            height / 2f else dp(context, 26).toFloat()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = WidgetColors.resolve(context, settings, dark).background
         }

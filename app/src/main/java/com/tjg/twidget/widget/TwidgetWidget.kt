@@ -180,6 +180,8 @@ open class TwidgetWidget : AppWidgetProvider() {
                 // RemoteViews may reuse the old view when the style changes.
                 setInt(android.R.id.background, "setBackgroundResource",
                     if (widgetSettings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    else if (mode == LAYOUT_MODE_COMPACT_2X1 || mode == LAYOUT_MODE_COMPACT_STRIP)
+                        R.drawable.widget_one_ui_pill_surface
                     else R.drawable.widget_preview_glass_bg)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it

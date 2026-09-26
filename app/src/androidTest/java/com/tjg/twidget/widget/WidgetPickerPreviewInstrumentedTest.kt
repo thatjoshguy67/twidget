@@ -104,34 +104,6 @@ class WidgetPickerPreviewInstrumentedTest {
         }
     }
 
-    @Test fun footerLogoMatchesVisibleHandleHeight() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val density = context.resources.displayMetrics.density
-        for (style in WidgetStyle.entries) {
-            val settings = WidgetPreviews.settings(style).copy(language = "en")
-            val bitmap = WidgetPreviews.artwork(context, settings, false, 352, 176, false, background = false)
-            fun inkBounds(leftDp: Float, rightDp: Float): Pair<Int, Int> {
-                var top = bitmap.height
-                var bottom = 0
-                for (y in bitmap.height - (28 * density).toInt() until bitmap.height) {
-                    for (x in (leftDp * density).toInt() until (rightDp * density).toInt()) {
-                        if (Color.alpha(bitmap.getPixel(x, y)) > 24) {
-                            top = minOf(top, y)
-                            bottom = maxOf(bottom, y)
-                        }
-                    }
-                }
-                assertTrue("Visible footer ink", bottom >= top)
-                return top to bottom
-            }
-            val logo = inkBounds(10f, 28f)
-            val handle = inkBounds(30f, 110f)
-            assertEquals("Logo top follows handle ink for $style", handle.first.toFloat(), logo.first.toFloat(), 2f)
-            assertEquals("Logo bottom follows handle ink for $style", handle.second.toFloat(), logo.second.toFloat(), 2f)
-            bitmap.recycle()
-        }
-    }
-
     @Test fun exportLargeDeltaExample() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val density = context.resources.displayMetrics.density

@@ -17,6 +17,13 @@ internal object WidgetConfigChrome {
         val oldBar = root.findViewById<View>(R.id.config_button_bar)
         (oldBar.parent as ViewGroup).removeView(oldBar)
         val scroll = root.findViewById<NestedScrollView>(R.id.widget_settings_scroll)
+        // On One UI / API 36+, SESL's transparent edge fade wraps the top and
+        // bottom strips in saveUnclippedLayer. The wallpaper preview's CLEAR
+        // then clears that temporary layer, exposing the opaque page instead of
+        // the wallpaper and leaving a straight cutoff at the layer boundary.
+        // Keep this window-backed preview out of fade layers; other screens keep
+        // the standard SESL fading installed by SeslToolbarCompatibility.
+        scroll.seslSetFadingEdgeEnabled(false)
         val buttons = DividerButtonLayout(root.context).apply {
             inflateMenu(R.menu.widget_config_actions)
         }

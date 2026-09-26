@@ -22,6 +22,30 @@ import org.junit.runner.RunWith
 class WidgetSettingsRenderingInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
+    @Test fun wallpaperScrollStaysOutsideNativeFadeLayers() {
+        ActivityScenario.launch(WidgetConfigActivity::class.java).use { scenario ->
+            repeat(2) {
+                instrumentation.waitForIdleSync()
+                scenario.onActivity { activity ->
+                    val scroll = activity.findViewById<NestedScrollView>(R.id.widget_settings_scroll)
+                    // API 36 One UI defaults this to transparent, which adds
+                    // isolated layers. Emulate that platform default explicitly.
+                    scroll.seslSetFadingEdgeColor(Color.TRANSPARENT)
+                    scroll.scrollTo(0, 300)
+                    scroll.requestLayout()
+                }
+                instrumentation.waitForIdleSync()
+                scenario.onActivity { activity ->
+                    val scroll = activity.findViewById<NestedScrollView>(R.id.widget_settings_scroll)
+                    assertFalse("Transparent wallpaper openings cannot be nested in SESL fade layers",
+                        scroll.seslIsFadingEdgeEnabled())
+                    scroll.scrollTo(0, 0)
+                }
+                scenario.recreate()
+            }
+        }
+    }
+
     @Test fun settingsCardsUseNativeMeasurements() {
         ActivityScenario.launch(WidgetConfigActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->

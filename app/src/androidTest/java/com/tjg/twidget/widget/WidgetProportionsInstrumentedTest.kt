@@ -101,6 +101,38 @@ class WidgetProportionsInstrumentedTest {
         }
     }
 
+    @Test fun oneUiSansUsesAvailableInkHeightWithoutTouchingFooter() {
+        for (density in listOf(160, 480)) {
+            val scale = density / 160
+            val context = base.createConfigurationContext(Configuration(base.resources.configuration).apply {
+                densityDpi = density
+                fontScale = 1f
+                setLocale(Locale.ENGLISH)
+            })
+            for (height in listOf(176, 280)) for (style in WidgetStyle.entries) for (contained in listOf(false, true)) {
+                val settings = WidgetPreviews.settings(style).copy(fontFamily = TwidgetStore.FONT_ONE_UI_SANS,
+                    language = "en", containedFooter = contained, showDelta = true)
+                val bitmap = WidgetArtworkRenderer.render(context, 352 * scale, height * scale,
+                    ProfileStats("Test", "thatjoshguy69", 7795, 0, 0, 0), settings,
+                    TwidgetWidget.LAYOUT_MODE_LARGE, true, 7)
+                val footerTop = (height - 12 - if (style == WidgetStyle.MATERIAL && contained) 20 else 14) * scale
+                val ink = android.graphics.Rect()
+                for (y in 0 until footerTop) for (x in 0 until bitmap.width) {
+                    if (Color.alpha(bitmap.getPixel(x, y)) > 128) ink.union(x, y, x + 1, y + 1)
+                }
+                // The tall case has room for another line; short cards can be
+                // limited by a whole-word wrap even at the largest fitting size.
+                if (height == 280) assertTrue("One UI Sans still leaves unused height: $style / $contained / $ink",
+                    ink.height() >= (footerTop - 20 * scale) * 0.85f)
+                assertEquals("Visible letters start at the top padding", 12f * scale, ink.top.toFloat(), 1f)
+                assertTrue("Count must keep its footer clearance", ink.bottom <= footerTop - 8 * scale + 1)
+                assertTrue("Count stays inside horizontal padding", ink.left >= 12 * scale - 1 &&
+                    ink.right <= bitmap.width - 12 * scale + 1)
+                bitmap.recycle()
+            }
+        }
+    }
+
     @Test fun footerLogoStaysTheSameSizeAcrossHandlesAndFonts() {
         val context = renderContext()
         for (font in listOf(TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.FONT_SYSTEM)) {

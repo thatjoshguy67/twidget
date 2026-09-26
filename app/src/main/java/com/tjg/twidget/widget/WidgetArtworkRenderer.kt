@@ -69,21 +69,20 @@ object WidgetArtworkRenderer {
         // hundreds of times for every resize. Paints remain local to this render.
         val wordPaints = words.distinct().associateWith { wordPaint(context, settings, it, primary, secondary) }
         val gap = wordSpacing(context, textMaxWidth)
-        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap)
+        val lineGap = 4f * density
+        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap, lineGap)
         val lines = wrapWords(words, wordPaints, textMaxWidth, textSize, gap)
-        val lineHeight = textSize + gap
-        val top = pad + textSize * 0.8f
-
-        lines.forEachIndexed { lineIndex, line ->
-            var x = pad
-            val y = top + lineIndex * lineHeight
+        var top = pad
+        lines.forEach { line ->
+            val ink = measureLineInk(line, wordPaints, textSize, gap)
+            var x = pad - ink.left
+            val baseline = top - ink.top
             line.forEach { word ->
-                val paint = wordPaints.getValue(word).apply {
-                    this.textSize = textSize
-                }
-                canvas.drawText(word, x, y, paint)
+                val paint = wordPaints.getValue(word).apply { this.textSize = textSize }
+                canvas.drawText(word, x, baseline, paint)
                 x += paint.measureText(word) + gap
             }
+            top += ink.height() + lineGap
         }
 
         val handle = "@${stats.userName}"
@@ -136,19 +135,43 @@ object WidgetArtworkRenderer {
         maxWidth: Float,
         maxHeight: Float,
         gap: Float,
+        lineGap: Float,
     ): Float {
-        // Grow as well as shrink to use the actual launcher bounds. The footer
-        // and its clearance have already been reserved from maxHeight.
+        // Fit the visible glyphs, not a nominal em box. One UI Sans has enough
+        // unused em space to otherwise leave room for another line of text.
+        fun fits(size: Float): Boolean {
+            val lines = wrapWords(words, paints, maxWidth, size, gap)
+            val bounds = lines.map { measureLineInk(it, paints, size, gap) }
+            return bounds.all { it.width() <= maxWidth } &&
+                bounds.sumOf { it.height().toDouble() } + (lines.size - 1) * lineGap <= maxHeight
+        }
         var low = 1f
         var high = maxHeight.coerceAtLeast(low)
+        // A single line's glyphs can be shorter than its nominal text size.
+        while (fits(high)) high *= 2f
         repeat(14) {
             val size = (low + high) / 2f
-            val lines = wrapWords(words, paints, maxWidth, size, gap)
-            val fits = words.all { measureWord(paints.getValue(it), it, size) <= maxWidth } &&
-                lines.size * size + (lines.size - 1) * gap <= maxHeight
-            if (fits) low = size else high = size
+            if (fits(size)) low = size else high = size
         }
         return low
+    }
+
+    private fun measureLineInk(
+        words: List<String>,
+        paints: Map<String, Paint>,
+        textSize: Float,
+        gap: Float,
+    ): RectF {
+        val line = RectF()
+        val ink = Rect()
+        var x = 0f
+        words.forEach { word ->
+            val paint = paints.getValue(word).apply { this.textSize = textSize }
+            paint.getTextBounds(word, 0, word.length, ink)
+            line.union(x + ink.left, ink.top.toFloat(), x + ink.right, ink.bottom.toFloat())
+            x += paint.measureText(word) + gap
+        }
+        return line
     }
 
     private fun wordSpacing(context: Context, maxWidth: Float): Float =

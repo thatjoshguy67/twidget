@@ -530,23 +530,13 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             update(defaults.copy(style = style, fontFamily = font))
             findPreference<Preference>("settings_widget_opacity")?.isVisible = style == WidgetStyle.ONE_UI
             findPreference<Preference>("settings_widget_contained_footer")?.isVisible = style == WidgetStyle.MATERIAL
+            findPreference<Preference>("settings_widget_contained_footer_description")?.isVisible = style == WidgetStyle.MATERIAL
             findPreference<ListPreference>("settings_widget_font")?.let { preference ->
                 preference.value = font
                 preference.summary = preference.entry
             }
         }
-        screen.addPreference(SwitchPreferenceCompat(context).apply {
-            key = "settings_widget_contained_footer"
-            isPersistent = false
-            setTitle(R.string.widget_contained_footer)
-            setSummary(R.string.widget_contained_footer_summary)
-            isChecked = defaults.containedFooter
-            isVisible = defaults.style == WidgetStyle.MATERIAL
-            setOnPreferenceChangeListener { _, value ->
-                update(defaults.copy(containedFooter = value as Boolean))
-                true
-            }
-        })
+        screen.addPreference(InsetPreferenceCategory(context))
         val opacity = layoutInflater.inflate(R.layout.widget_opacity_control, null)
         WidgetOpacityControl.bind(opacity, defaults.tintAlpha) { alpha ->
             update(defaults.copy(tintAlpha = alpha))
@@ -558,11 +548,6 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             setAllowDividerAbove(true)
             setAllowDividerBelow(true)
         })
-        choice("settings_widget_colours", R.string.widget_tint,
-            arrayOf(TwidgetStore.COLOR_MODE_SYSTEM, TwidgetStore.COLOR_MODE_LIGHT, TwidgetStore.COLOR_MODE_DARK),
-            arrayOf(getString(R.string.widget_tint_system), getString(R.string.widget_tint_light), getString(R.string.widget_tint_dark)), defaults.colorMode) {
-            update(defaults.copy(colorMode = it, tintColor = if (it == TwidgetStore.COLOR_MODE_DARK) 0x00000000 else 0x00FFFFFF))
-        }
         choice("settings_widget_font", R.string.widget_font,
             arrayOf(TwidgetStore.FONT_SYSTEM, TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.FONT_GOOGLE_SANS_FLEX),
             arrayOf(
@@ -571,6 +556,11 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
                 getString(R.string.widget_font_google),
             ), defaults.fontFamily) {
             update(defaults.copy(fontFamily = it))
+        }
+        choice("settings_widget_colours", R.string.widget_tint,
+            arrayOf(TwidgetStore.COLOR_MODE_SYSTEM, TwidgetStore.COLOR_MODE_LIGHT, TwidgetStore.COLOR_MODE_DARK),
+            arrayOf(getString(R.string.widget_tint_system), getString(R.string.widget_tint_light), getString(R.string.widget_tint_dark)), defaults.colorMode) {
+            update(defaults.copy(colorMode = it, tintColor = if (it == TwidgetStore.COLOR_MODE_DARK) 0x00000000 else 0x00FFFFFF))
         }
         val logoValues = arrayOf(TwidgetStore.LOGO_X, TwidgetStore.LOGO_TWITTER)
         val logoLabels = arrayOf(getString(R.string.widget_logo_x), getString(R.string.widget_logo_twitter))
@@ -607,6 +597,20 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         logoRow.setOnClickListener { openLogoPicker() }
         logoPreference.setOnPreferenceClickListener { openLogoPicker(); true }
         screen.addPreference(logoPreference)
+        screen.addDescribedPreference(SwitchPreferenceCompat(context).apply {
+            key = "settings_widget_contained_footer"
+            isPersistent = false
+            setTitle(R.string.widget_contained_footer)
+            setSummary(R.string.widget_contained_footer_summary)
+            isChecked = defaults.containedFooter
+            isVisible = defaults.style == WidgetStyle.MATERIAL
+            setOnPreferenceChangeListener { _, value ->
+                update(defaults.copy(containedFooter = value as Boolean))
+                true
+            }
+        })
+        screen.findPreference<Preference>("settings_widget_contained_footer_description")?.isVisible =
+            defaults.style == WidgetStyle.MATERIAL
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

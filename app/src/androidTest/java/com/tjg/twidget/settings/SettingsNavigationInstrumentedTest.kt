@@ -233,7 +233,10 @@ class SettingsNavigationInstrumentedTest {
             val defaultsIndex = ordered.indexOfFirst { it.title == context.getString(R.string.settings_widget_defaults) }
             assertTrue(defaultsIndex > 3)
             assertEquals("settings_widget_style", ordered[defaultsIndex + 1].key)
-            assertEquals("settings_widget_opacity", ordered[defaultsIndex + 2].key)
+            assertTrue(ordered[defaultsIndex + 2] is dev.oneuiproject.oneui.preference.InsetPreferenceCategory)
+            assertEquals(listOf("settings_widget_opacity", "settings_widget_font", "settings_widget_colours",
+                "settings_widget_logo", "settings_widget_contained_footer", "settings_widget_contained_footer_description"),
+                ordered.drop(defaultsIndex + 3).take(6).map { it.key })
             val showsFontTip = BuildConfig.FLAVOR == "github" && TwidgetFonts.hasSystemOneUiSans
             assertEquals(showsFontTip, ordered[3].widgetLayoutResource == R.layout.preference_font_tip)
             assertNull(screen.findPreference<Preference>("settings_app_font_tip"))
@@ -241,9 +244,15 @@ class SettingsNavigationInstrumentedTest {
             val style = screen.findPreference<ListPreference>("settings_widget_style")!!
             val opacity = screen.findPreference<LayoutPreference>("settings_widget_opacity")!!
             val font = screen.findPreference<ListPreference>("settings_widget_font")!!
+            val footer = screen.findPreference<Preference>("settings_widget_contained_footer")!!
+            val footerDescription = screen.findPreference<Preference>("settings_widget_contained_footer_description")!!
             assertTrue(opacity.isVisible)
+            assertFalse(footer.isVisible)
+            assertFalse(footerDescription.isVisible)
             style.callChangeListener(WidgetStyle.MATERIAL.storedValue)
             assertFalse(opacity.isVisible)
+            assertTrue(footer.isVisible)
+            assertTrue(footerDescription.isVisible)
             assertEquals(TwidgetStore.FONT_GOOGLE_SANS_FLEX, font.value)
             assertEquals(WidgetStyle.MATERIAL, TwidgetStore.widgetSettings(context, widgetId + 1).style)
             assertEquals(specific, TwidgetStore.widgetSettings(context, widgetId))
@@ -251,6 +260,8 @@ class SettingsNavigationInstrumentedTest {
             style.callChangeListener(WidgetStyle.ONE_UI.storedValue)
             assertEquals(TwidgetStore.FONT_SYSTEM, TwidgetStore.widgetSettings(context).fontFamily)
             assertTrue(opacity.isVisible)
+            assertFalse(footer.isVisible)
+            assertFalse(footerDescription.isVisible)
             screen.findPreference<Preference>("settings_widget_font")!!.callChangeListener(TwidgetStore.FONT_GOOGLE_SANS_FLEX)
             screen.findPreference<Preference>("settings_widget_colours")!!.callChangeListener(TwidgetStore.COLOR_MODE_DARK)
             opacity.findViewById<androidx.appcompat.widget.SeslSeekBar>(R.id.opacity_slider).progress = 1

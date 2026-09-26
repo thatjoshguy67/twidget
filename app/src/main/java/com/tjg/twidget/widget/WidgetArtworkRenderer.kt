@@ -70,20 +70,7 @@ object WidgetArtworkRenderer {
         val wordPaints = words.distinct().associateWith { wordPaint(context, settings, it, primary, secondary) }
         val gap = wordSpacing(context, textMaxWidth)
         val lineGap = 4f * density
-        val textSize = findTextSize(words, wordPaints, textMaxWidth, textMaxHeight, gap, lineGap)
-        val lines = wrapWords(words, wordPaints, textMaxWidth, textSize, gap)
-        var top = pad
-        lines.forEach { line ->
-            val ink = measureLineInk(line, wordPaints, textSize, gap)
-            var x = pad - ink.left
-            val baseline = top - ink.top
-            line.forEach { word ->
-                val paint = wordPaints.getValue(word).apply { this.textSize = textSize }
-                canvas.drawText(word, x, baseline, paint)
-                x += paint.measureText(word) + gap
-            }
-            top += ink.height() + lineGap
-        }
+        drawFollowerCount(canvas, words, wordPaints, textMaxWidth, textMaxHeight, pad, gap, lineGap)
 
         val handle = "@${stats.userName}"
         val footerCenterY = height - pad - footerHeight / 2f
@@ -129,6 +116,37 @@ object WidgetArtworkRenderer {
         return bitmap
     }
 
+    internal fun drawFollowerCount(
+        canvas: Canvas,
+        words: List<String>,
+        paints: Map<String, Paint>,
+        maxWidth: Float,
+        maxHeight: Float,
+        padding: Float,
+        wordGap: Float,
+        lineGap: Float,
+    ) {
+        val textSize = findTextSize(words, paints, maxWidth, maxHeight, wordGap, lineGap)
+        val lines = wrapWords(words, paints, maxWidth, textSize, wordGap)
+        val bounds = lines.map { measureLineInk(it, paints, textSize, wordGap) }
+        val advance = baselineAdvance(bounds, lineGap)
+        val firstBaseline = padding - bounds.first().top
+        lines.forEachIndexed { index, line ->
+            var x = padding - bounds[index].left
+            val baseline = firstBaseline + index * advance
+            line.forEach { word ->
+                val paint = paints.getValue(word).apply { this.textSize = textSize }
+                canvas.drawText(word, x, baseline, paint)
+                x += paint.measureText(word) + wordGap
+            }
+        }
+    }
+
+    // All lines share the paragraph's ascent/descent envelope. Individual ink
+    // boxes differ (e.g. commas and 'y'), but must not change the baseline rhythm.
+    private fun baselineAdvance(bounds: List<RectF>, gap: Float): Float =
+        bounds.maxOf { it.bottom } - bounds.minOf { it.top } + gap
+
     private fun findTextSize(
         words: List<String>,
         paints: Map<String, Paint>,
@@ -143,7 +161,8 @@ object WidgetArtworkRenderer {
             val lines = wrapWords(words, paints, maxWidth, size, gap)
             val bounds = lines.map { measureLineInk(it, paints, size, gap) }
             return bounds.all { it.width() <= maxWidth } &&
-                bounds.sumOf { it.height().toDouble() } + (lines.size - 1) * lineGap <= maxHeight
+                bounds.last().bottom - bounds.first().top +
+                (lines.size - 1) * baselineAdvance(bounds, lineGap) <= maxHeight
         }
         var low = 1f
         var high = maxHeight.coerceAtLeast(low)

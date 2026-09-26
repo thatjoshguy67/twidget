@@ -6,6 +6,8 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.view.View
 import dev.oneuiproject.oneui.widget.SwitchItemView
 import androidx.test.core.app.ActivityScenario
@@ -98,6 +100,33 @@ class WidgetProportionsInstrumentedTest {
                 assertTrue("Taller widget must grow its count: $style / $font / $inkHeights",
                     inkHeights[1] > inkHeights[0] + 35)
             }
+        }
+    }
+
+    @Test fun followerLinesUseAnEvenBaselineGrid() {
+        val context = renderContext()
+        val words = "Seven Thousand, Seven Hundred and Ninety Five Followers".split(" ")
+        val fonts = listOf(com.tjg.twidget.ui.TwidgetFonts.oneUiSansVariable(context),
+            com.tjg.twidget.ui.TwidgetFonts.googleSansFlex(context), Typeface.DEFAULT)
+        for (font in fonts) for ((width, height) in listOf(162 to 176, 352 to 176, 352 to 280)) {
+            val paints = words.distinct().associateWith { word -> Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                typeface = Typeface.create(font, if (word == "Followers") 200 else 700, false)
+            } }
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val baselines = mutableListOf<Float>()
+            val canvas = object : Canvas(bitmap) {
+                override fun drawText(text: String, x: Float, y: Float, paint: Paint) {
+                    baselines += y
+                    super.drawText(text, x, y, paint)
+                }
+            }
+            WidgetArtworkRenderer.drawFollowerCount(canvas, words, paints,
+                width - 24f, height - 46f, 12f, 6f, 4f)
+            val advances = baselines.distinct().zipWithNext { a, b -> b - a }
+            assertTrue("Exercise multiple wrapped lines", advances.size >= 2)
+            assertTrue("Every baseline must be evenly spaced: $baselines",
+                advances.max() - advances.min() < 0.01f)
+            bitmap.recycle()
         }
     }
 

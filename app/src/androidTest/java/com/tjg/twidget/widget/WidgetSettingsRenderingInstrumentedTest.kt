@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
 import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import androidx.core.widget.NestedScrollView
@@ -43,6 +44,58 @@ class WidgetSettingsRenderingInstrumentedTest {
                 }
                 scenario.recreate()
             }
+        }
+    }
+
+    @Test fun wallpaperRemainsVisibleWhilePullingPastTop() {
+        ActivityScenario.launch(WidgetConfigActivity::class.java).use { scenario ->
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(700)
+            val bounds = Rect()
+            scenario.onActivity { activity ->
+                assertTrue(activity.findViewById<View>(R.id.preview_container).getGlobalVisibleRect(bounds))
+            }
+            // Sample the gutter, where the stationary wallpaper stays visible
+            // throughout the gesture even if the content stretches slightly.
+            val x = bounds.left + bounds.width() / 12
+            val y = bounds.centerY()
+            val before = instrumentation.uiAutomation.takeScreenshot()
+            val baseline = before.getPixel(x, y)
+            before.recycle()
+            val downTime = SystemClock.uptimeMillis()
+            var touchY = y.toFloat()
+            fun touch(action: Int) {
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x.toFloat(), touchY, 0)
+                try {
+                    scenario.onActivity { it.window.decorView.dispatchTouchEvent(event) }
+                } finally { event.recycle() }
+            }
+            fun checkWallpaper() {
+                val screenshot = instrumentation.uiAutomation.takeScreenshot()
+                try {
+                    val actual = screenshot.getPixel(x, y)
+                    assertTrue("Wallpaper disappeared during top overscroll: $baseline -> $actual", maxOf(
+                        kotlin.math.abs(Color.red(baseline) - Color.red(actual)),
+                        kotlin.math.abs(Color.green(baseline) - Color.green(actual)),
+                        kotlin.math.abs(Color.blue(baseline) - Color.blue(actual))) < 12)
+                } finally { screenshot.recycle() }
+            }
+            touch(MotionEvent.ACTION_DOWN)
+            try {
+                repeat(8) {
+                    touchY += bounds.height() / 20f
+                    SystemClock.sleep(30)
+                    touch(MotionEvent.ACTION_MOVE)
+                }
+                SystemClock.sleep(100)
+                checkWallpaper()
+            } finally {
+                touch(MotionEvent.ACTION_UP)
+            }
+            SystemClock.sleep(50)
+            checkWallpaper()
+            SystemClock.sleep(700)
+            checkWallpaper()
         }
     }
 

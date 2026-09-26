@@ -24,6 +24,9 @@ internal object WidgetConfigChrome {
         // Keep this window-backed preview out of fade layers; other screens keep
         // the standard SESL fading installed by SeslToolbarCompatibility.
         scroll.seslSetFadingEdgeEnabled(false)
+        // Stretch overscroll also isolates the content in a hardware layer,
+        // hiding the wallpaper opening until the edge bounce has settled.
+        scroll.overScrollMode = View.OVER_SCROLL_NEVER
         val buttons = DividerButtonLayout(root.context).apply {
             inflateMenu(R.menu.widget_config_actions)
         }

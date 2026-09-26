@@ -39,6 +39,7 @@ import java.util.Locale
 import java.util.UUID
 
 class ScheduleComposeActivity : FoldablePopOverActivity() {
+    private lateinit var feedback: com.tjg.twidget.ui.TwidgetSnackbar
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
 
@@ -152,6 +153,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        feedback = com.tjg.twidget.ui.TwidgetSnackbar(this)
         setContentView(R.layout.activity_schedule_compose)
         val root = findViewById<ToolbarLayout>(R.id.schedule_compose_root)
         ScheduleComposeChrome.install(root)
@@ -361,13 +363,18 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         val item = editorItems.getOrNull(itemIndex) ?: return
         val media = mediaIndex?.let { item.media.getOrNull(it)?.let(::listOf) } ?: item.media
         if (media.isEmpty()) return
+        downloadMedia(ScheduleThreadItem(item.id, item.text, media.toList()))
+    }
+
+    private fun downloadMedia(item: ScheduleThreadItem) {
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
         ) {
             val outcome = ScheduleMediaExporter.downloadItem(
                 this,
-                ScheduleThreadItem(item.id, item.text, media),
+                item,
             )
             runOnUiThread {
                 setBusy(false)
@@ -381,7 +388,10 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
                     ScheduleMediaExportResult.NOTHING_TO_SAVE -> getString(R.string.schedule_media_nothing_to_save)
                     ScheduleMediaExportResult.FAILED -> outcome.detail ?: getString(R.string.schedule_media_save_failed)
                 }
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                val retry = outcome.result == ScheduleMediaExportResult.FAILED
+                feedback.show(message, findViewById(R.id.schedule_compose_bottom_bar),
+                    actionText = if (retry) getString(R.string.notices_retry) else null,
+                    action = if (retry) ({ downloadMedia(item) }) else null)
             }
         }
     }

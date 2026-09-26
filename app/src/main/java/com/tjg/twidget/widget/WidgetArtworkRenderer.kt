@@ -74,7 +74,7 @@ object WidgetArtworkRenderer {
 
         val handle = "@${stats.userName}"
         val footerCenterY = height - pad - footerHeight / 2f
-        val logoSize = 12f * density
+        val logoSize = context.resources.getDimension(R.dimen.widget_footer_logo_size)
         val chipPadding = if (contained) 6f * density else 0f
         val deltaWidth = if (deltaText.isEmpty()) 0f else if (contained) badgeSize else deltaPaint.measureText(deltaText)
         val handleMaxWidth = (textMaxWidth - logoSize - 6f * density - chipPadding * 2 - deltaWidth -
@@ -301,7 +301,7 @@ object WidgetArtworkRenderer {
         if (!compact) {
             val handle = "@${stats.userName}"
             val handlePaint = paint(600, colors.secondary, if (settings.style == WidgetStyle.MATERIAL) 14f else 12f, 51, 100)
-            val footerLogoSize = 12f * density
+            val footerLogoSize = context.resources.getDimension(R.dimen.widget_footer_logo_size)
             shrinkToFit(handlePaint, handle, width - footerLogoSize - 34f * density)
             val handleGap = 6f * density
             val handleCenterY = top + 41f * density

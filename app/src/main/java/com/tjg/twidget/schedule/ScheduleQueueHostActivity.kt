@@ -74,6 +74,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private lateinit var content: LinearLayout
     private lateinit var primaryButton: FloatingActionButton
     private lateinit var queueChrome: ScheduleQueueChrome
+    private lateinit var feedback: com.tjg.twidget.ui.TwidgetSnackbar
     private lateinit var queueRoot: View
     private lateinit var queueTabs: RoundedTabLayout
     private lateinit var scroll: RoundedNestedScrollView
@@ -103,6 +104,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        feedback = com.tjg.twidget.ui.TwidgetSnackbar(this)
         if (embedsScheduleQueue) return
         setContentView(R.layout.activity_schedule)
         attachScheduleQueue(
@@ -223,6 +225,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     protected fun hideEmbeddedScheduleQueue() {
         if (!::queueRoot.isInitialized) return
+        feedback.dismiss()
         if (queueSelectionMode) exitQueueSelection()
         queueRoot.visibility = View.GONE
     }
@@ -384,6 +387,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             return
         }
         syncing = true
+        if (userInitiated) feedback.dismiss()
         if (userInitiated) refresh.isRefreshing = true
         AppExecutors.execute(
             onRejected = {
@@ -402,20 +406,14 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 renderQueue()
                 if (userInitiated) {
                     if (result.isSuccess) {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.schedule_sync_complete, result.imported, result.updated),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        showFeedback(getString(R.string.schedule_sync_complete, result.imported, result.updated))
                     } else {
-                        Toast.makeText(
-                            this,
+                        showFeedback(
                             getString(
                                 R.string.schedule_sync_failed,
                                 result.errors.firstOrNull() ?: getString(R.string.schedule_unknown_error),
                             ),
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        ) { syncBufferQueue(userInitiated = true) }
                     }
                 }
             }
@@ -911,6 +909,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun downloadPostMedia(post: ScheduledPost) {
         val items = post.thread.filter { it.media.isNotEmpty() }
         if (items.isEmpty()) return
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
@@ -931,7 +930,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             }
             runOnUiThread {
                 setBusy(false)
-                if (!isFinishing && !isDestroyed) showExportOutcome(outcome)
+                if (!isFinishing && !isDestroyed) showExportOutcome(outcome) { downloadPostMedia(post) }
             }
         }
     }
@@ -1537,6 +1536,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun downloadMedia(item: ScheduleThreadItem) {
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = {
@@ -1550,12 +1550,12 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             runOnUiThread {
                 setBusy(false)
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                showExportOutcome(outcome)
+                showExportOutcome(outcome) { downloadMedia(item) }
             }
         }
     }
 
-    private fun showExportOutcome(outcome: ScheduleMediaExportOutcome) {
+    private fun showExportOutcome(outcome: ScheduleMediaExportOutcome, retry: () -> Unit) {
         val message = when (outcome.result) {
             ScheduleMediaExportResult.SAVED -> {
                 if (outcome.detail.isNullOrBlank()) {
@@ -1567,7 +1567,14 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             ScheduleMediaExportResult.NOTHING_TO_SAVE -> getString(R.string.schedule_media_nothing_to_save)
             ScheduleMediaExportResult.FAILED -> outcome.detail ?: getString(R.string.schedule_media_save_failed)
         }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        // Retrying partial success would save already-downloaded files again.
+        showFeedback(message, retry.takeIf { outcome.result == ScheduleMediaExportResult.FAILED })
+    }
+
+    private fun showFeedback(message: CharSequence, retry: (() -> Unit)? = null) {
+        if (!::queueRoot.isInitialized || !queueRoot.isShown) return
+        feedback.show(message, queueChrome.snackbarAnchor,
+            actionText = retry?.let { getString(R.string.notices_retry) }, action = retry)
     }
 
     private fun completedItemIds(postId: String): Set<String> =

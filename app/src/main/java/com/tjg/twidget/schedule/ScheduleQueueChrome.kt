@@ -30,6 +30,8 @@ internal class ScheduleQueueChrome(
     private val scroll: RoundedNestedScrollView,
 ) {
     val floating = true
+    val snackbarAnchor: View?
+        get() = listOf(fab, selection, trash, navigationRow).firstOrNull { it.isShown }
     private val overlay = FrameLayout(root.context).apply {
         clipChildren = false
         clipToPadding = false

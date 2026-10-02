@@ -57,3 +57,20 @@ test("daily refreshes run once per cadence and do not duplicate running scans", 
     snapshot: null, scan: { status: "running", startedAt: now - day * 2 }, now, refreshMs: day,
   }), false);
 });
+
+test("completion time does not walk the next refresh later than the cadence", () => {
+  const day = 24 * 60 * 60 * 1000;
+  const now = 10 * day;
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: { completedAt: now - 60 * 60 * 1000 },
+    scan: { status: "complete", startedAt: now - day, updatedAt: now - 60 * 60 * 1000 },
+    now,
+    refreshMs: day,
+  }), true);
+  assert.equal(shouldRefreshTopFollowers({
+    snapshot: { completedAt: now - day * 3 },
+    scan: { status: "failed", startedAt: now - 60 * 60 * 1000, updatedAt: now - 1000 },
+    now,
+    refreshMs: day,
+  }), false);
+});

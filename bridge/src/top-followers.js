@@ -9,10 +9,12 @@ export function shouldRefreshTopFollowers({
   refreshMs = 24 * 60 * 60 * 1000,
 }) {
   if (scan?.status === "running") return false;
-  const lastAttemptAt = Math.max(
-    Number(snapshot?.completedAt || snapshot?.cachedAt || 0),
-    Number(scan?.startedAt || scan?.updatedAt || 0),
-  );
+  // Measure the cadence from the attempt start. Folding in snapshot completion
+  // adds that scan's runtime onto every cycle, so the next update walks later
+  // by however long the previous scan took.
+  const scanAttemptAt = Number(scan?.startedAt || scan?.updatedAt || 0);
+  const publishedAt = Number(snapshot?.completedAt || snapshot?.cachedAt || 0);
+  const lastAttemptAt = scanAttemptAt > 0 ? scanAttemptAt : publishedAt;
   return lastAttemptAt <= 0 || now - lastAttemptAt >= refreshMs;
 }
 

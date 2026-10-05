@@ -1213,6 +1213,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
         if (locale.language == "de") {
             date.format(DateTimeFormatter.ofPattern("EEE, d. MMMM yyyy 'um' HH:mm", locale))
+        } else if (locale.language == "fr") {
+            date.format(DateTimeFormatter.ofPattern("EEE d MMMM yyyy 'à' HH:mm", locale))
         } else {
             val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
             val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))

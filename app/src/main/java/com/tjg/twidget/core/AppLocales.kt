@@ -68,9 +68,14 @@ object AppLocales {
         timestamp: Long,
         germanPattern: String,
         englishPattern: String,
+        frenchPattern: String,
         locale: Locale = applicationLocale(),
     ): String {
-        val pattern = if (locale.language == "de") germanPattern else englishPattern
+        val pattern = when (locale.language) {
+            "de" -> germanPattern
+            "fr" -> frenchPattern
+            else -> englishPattern
+        }
         return SimpleDateFormat(pattern, locale).format(Date(timestamp))
     }
 }

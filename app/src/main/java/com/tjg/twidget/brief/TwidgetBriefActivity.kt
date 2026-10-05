@@ -776,7 +776,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun scheduleDate(timestamp: Long): String = if (timestamp > 0L) {
-        AppLocales.formatDate(timestamp, "EEE, d. MMM · HH:mm", "EEE, MMM d · h:mm a")
+        AppLocales.formatDate(timestamp, "EEE, d. MMM · HH:mm", "EEE, MMM d · h:mm a", "EEE d MMM · HH:mm")
     } else {
         getString(R.string.time_unavailable)
     }
@@ -1277,7 +1277,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     ).apply { topMargin = dp(top) }
 
     private fun postDate(post: PostSummary): String = if (post.timestamp > 0L) {
-        AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
+        AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a", "d MMM, HH:mm")
     } else post.createdAt
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

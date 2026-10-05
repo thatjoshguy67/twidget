@@ -240,7 +240,7 @@ internal class MainPostAnalyticsBinder(
 
     private fun postDate(post: PostSummary): String =
         if (post.timestamp > 0L) {
-            AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
+            AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a", "d MMM, HH:mm")
         } else {
             post.createdAt
         }

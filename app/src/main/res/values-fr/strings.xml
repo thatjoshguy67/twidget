@@ -65,8 +65,8 @@
     <string name="banger_scanning">Analyse de tout l\'historique des tweets…</string>
     <string name="banger_scanning_progress">Analyse de tout l\'historique des tweets… %1$s tweets éligibles vérifiés</string>
     <string name="preview_follower_count">7 671</string>
-    <string name="preview_followers_large">Sept mille six\ncent soixante\net onze abonnés</string>
-    <string name="preview_followers_square">Sept mille\nsix cent\nsoixante et onze\nabonnés</string>
+    <string name="preview_followers_large">Sept Mille Six\nCent Soixante\net Onze Abonnés</string>
+    <string name="preview_followers_square">Sept Mille\nSix Cent\nSoixante et Onze\nAbonnés</string>
     <string name="tweet_metrics">%1$s vues · %2$s réponses · %3$s J\'aime</string>
     <string name="post_metric_views">%1$s vues</string>
     <string name="post_metric_replies">%1$s réponses</string>

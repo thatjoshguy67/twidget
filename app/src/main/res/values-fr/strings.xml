@@ -6,6 +6,7 @@
     <string name="widget_language_default">Langue de l\'application</string>
     <string name="widget_language_de">Allemand (Deutsch)</string>
     <string name="widget_language_en">Anglais (English)</string>
+    <string name="widget_language_fr">Français</string>
     <string name="lockscreen_follower_1x1_label">Abonnés 1x1</string>
     <string name="lockscreen_follower_2x1_label">Abonnés 2x1</string>
     <string name="last_synced">Dernière synchronisation : %1$s</string>
@@ -113,6 +114,7 @@
     <string name="language_system">Par défaut du système</string>
     <string name="language_german">Allemand (Deutsch)</string>
     <string name="language_english">Anglais (English)</string>
+    <string name="language_french">Français</string>
     <string name="milestone_use_auto">Utiliser le palier automatique</string>
     <string name="milestone_edit_button">Modifier</string>
     <string name="milestone_show_percent">Afficher le pourcentage de progression</string>

@@ -7,6 +7,7 @@
     <string name="widget_language_default">App default</string>
     <string name="widget_language_de">German (Deutsch)</string>
     <string name="widget_language_en">English</string>
+    <string name="widget_language_fr">French (Français)</string>
     <string name="lockscreen_follower_1x1_label">Followers 1x1</string>
     <string name="lockscreen_follower_2x1_label">Followers 2x1</string>
     <string name="dashboard_title" translatable="false">That Josh Guy</string>
@@ -119,6 +120,7 @@
     <string name="language_system">System default</string>
     <string name="language_german">German (Deutsch)</string>
     <string name="language_english">English</string>
+    <string name="language_french">French (Français)</string>
     <string name="milestone_use_auto">Use auto milestone</string>
     <string name="milestone_edit_button">Edit</string>
     <string name="milestone_show_percent">Show progress percentage</string>

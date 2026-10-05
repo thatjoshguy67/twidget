@@ -7,9 +7,9 @@ import org.junit.Test
 
 class AppLocalesTest {
     @Test fun unsupportedLanguagesUseEnglishButSupportedRegionsKeepTheirFormatting() {
-        assertEquals(Locale.ENGLISH, AppLocales.supportedLocale(Locale.FRANCE))
         assertEquals(Locale.ENGLISH, AppLocales.supportedLocale(Locale.JAPAN))
         assertEquals(Locale.GERMANY, AppLocales.supportedLocale(Locale.GERMANY))
+        assertEquals(Locale.FRANCE, AppLocales.supportedLocale(Locale.FRANCE))
         assertEquals(Locale.UK, AppLocales.supportedLocale(Locale.UK))
     }
 

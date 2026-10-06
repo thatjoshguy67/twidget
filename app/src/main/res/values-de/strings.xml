@@ -6,6 +6,7 @@
     <string name="widget_language_default">App-Standard</string>
     <string name="widget_language_de">Deutsch</string>
     <string name="widget_language_en">Englisch (English)</string>
+    <string name="widget_language_fr">Französisch (Français)</string>
     <string name="lockscreen_follower_1x1_label">Follower 1x1</string>
     <string name="lockscreen_follower_2x1_label">Follower 2x1</string>
     <string name="last_synced">Zuletzt aktualisiert: %1$s</string>
@@ -105,6 +106,7 @@
     <string name="language_system">Systemstandard</string>
     <string name="language_german">Deutsch</string>
     <string name="language_english">Englisch (English)</string>
+    <string name="language_french">Französisch (Français)</string>
     <string name="milestone_target">Follower-Ziel</string>
     <string name="milestone_target_hint">100 oder One Hundred</string>
     <string name="milestone_progress_percent">%1$d%%</string>

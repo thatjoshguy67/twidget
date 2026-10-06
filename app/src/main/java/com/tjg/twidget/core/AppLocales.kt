@@ -32,13 +32,14 @@ object AppLocales {
     }
 
     internal fun supportedLocale(locale: Locale): Locale = when (locale.language) {
-        "de", "en" -> locale
+        "de", "en", "fr" -> locale
         else -> Locale.ENGLISH
     }
 
     fun resolve(languageTag: String? = DEFAULT): Locale = when (languageTag?.lowercase(Locale.ROOT)) {
         "de" -> Locale.GERMAN
         "en" -> Locale.ENGLISH
+        "fr" -> Locale.FRENCH
         else -> applicationLocale()
     }
 
@@ -67,9 +68,14 @@ object AppLocales {
         timestamp: Long,
         germanPattern: String,
         englishPattern: String,
+        frenchPattern: String,
         locale: Locale = applicationLocale(),
     ): String {
-        val pattern = if (locale.language == "de") germanPattern else englishPattern
+        val pattern = when (locale.language) {
+            "de" -> germanPattern
+            "fr" -> frenchPattern
+            else -> englishPattern
+        }
         return SimpleDateFormat(pattern, locale).format(Date(timestamp))
     }
 }

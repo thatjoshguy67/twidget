@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_followers_browser_title">Meilleurs abonnés</string>
+    <string name="top_followers_browser_search">Rechercher des abonnés</string>
+    <string name="top_followers_browser_search_hint">Rechercher</string>
+    <string name="top_followers_browser_refresh">Actualiser la liste complète</string>
+    <string name="top_followers_browser_refreshed">%1$d abonnés synchronisés</string>
+    <string name="top_followers_browser_refresh_failed">Impossible d\'actualiser la liste complète des abonnés. Réessaie.</string>
+    <string name="top_followers_browser_empty">Aucun classement des abonnés n\'est encore disponible.</string>
+    <string name="top_followers_browser_no_results">Aucun abonné ne correspond à ta recherche.</string>
+</resources>

@@ -7,10 +7,17 @@ import org.junit.Test
 
 class AppLocalesTest {
     @Test fun unsupportedLanguagesUseEnglishButSupportedRegionsKeepTheirFormatting() {
-        assertEquals(Locale.ENGLISH, AppLocales.supportedLocale(Locale.FRANCE))
         assertEquals(Locale.ENGLISH, AppLocales.supportedLocale(Locale.JAPAN))
         assertEquals(Locale.GERMANY, AppLocales.supportedLocale(Locale.GERMANY))
+        assertEquals(Locale.FRANCE, AppLocales.supportedLocale(Locale.FRANCE))
         assertEquals(Locale.UK, AppLocales.supportedLocale(Locale.UK))
+    }
+
+    @Test fun datePatternsFollowTheLocaleLanguage() {
+        assertEquals("de", AppLocales.formatDate(0L, "'de'", "'en'", "'fr'", Locale.GERMANY))
+        assertEquals("fr", AppLocales.formatDate(0L, "'de'", "'en'", "'fr'", Locale.FRANCE))
+        assertEquals("en", AppLocales.formatDate(0L, "'de'", "'en'", "'fr'", Locale.UK))
+        assertEquals("en", AppLocales.formatDate(0L, "'de'", "'en'", "'fr'", Locale.JAPAN))
     }
 
     @Test fun widgetDeltasFollowTheExplicitWidgetLocale() {

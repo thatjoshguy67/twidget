@@ -625,7 +625,12 @@ object TwidgetStore {
             else -> false
         }
         val locale = AppLocales.applicationLocale()
-        val pattern = if (monthly) "MMM" else if (locale.language == "de") "d. MMM" else "MMM d"
+        val pattern = when {
+            monthly -> "MMM"
+            locale.language == "de" -> "d. MMM"
+            locale.language == "fr" -> "d MMM"
+            else -> "MMM d"
+        }
         val labelFormat = SimpleDateFormat(pattern, locale)
         var previousEnd = rangeStart(all, range) - 1
         return bucketEnds(all, range).mapNotNull { end ->
@@ -840,7 +845,7 @@ object TwidgetStore {
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
         if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
-        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a")
+        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a", "d MMM, HH:mm")
         return context.getString(R.string.last_synced, formatterDate)
     }
 
@@ -904,7 +909,7 @@ object TwidgetStore {
 
     private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
-            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d"),
+            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d", "d MMM"),
             followers = stats.followersCount,
             following = stats.followingsCount,
             posts = stats.statusesCount,
@@ -1112,7 +1117,11 @@ object TwidgetStore {
 
     private fun demoHistory(): List<HistorySample> {
         val formatter = SimpleDateFormat(
-            if (AppLocales.applicationLocale().language == "de") "d. MMM" else "MMM d",
+            when (AppLocales.applicationLocale().language) {
+                "de" -> "d. MMM"
+                "fr" -> "d MMM"
+                else -> "MMM d"
+            },
             AppLocales.applicationLocale(),
         )
         val today = startOfDay(System.currentTimeMillis())

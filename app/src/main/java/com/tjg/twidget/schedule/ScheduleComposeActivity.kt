@@ -446,6 +446,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             editorTime.timeInMillis,
             "d. MMM · HH:mm",
             "MMM d · h:mm a",
+            "d MMM · HH:mm",
         )
         return if (AppLocales.applicationLocale().language == "de") {
             formatted

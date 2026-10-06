@@ -351,7 +351,11 @@ open class TwidgetWidget : AppWidgetProvider() {
 
         fun followersInWords(value: Long, locale: Locale = Locale.ENGLISH): String {
             if (value < 0L) return fullNumber(value, locale)
-            return if (locale.language == "de") germanNumberWords(value) else numberWords(value)
+            return when (locale.language) {
+                "de" -> germanNumberWords(value)
+                "fr" -> frenchNumberWords(value)
+                else -> numberWords(value)
+            }
         }
 
         private fun numberWords(value: Long): String {
@@ -476,6 +480,79 @@ open class TwidgetWidget : AppWidgetProvider() {
                 }
             }
         }
+
+        private fun frenchNumberWords(value: Long): String {
+            if (value == 0L) return "Zéro"
+            if (value < 1_000L) return frenchHundreds(value.toInt(), beforeMille = false)
+            val scales = listOf(
+                1_000_000_000_000_000_000L to ("Trillion" to "Trillions"),
+                1_000_000_000_000_000L to ("Billiard" to "Billiards"),
+                1_000_000_000_000L to ("Billion" to "Billions"),
+                1_000_000_000L to ("Milliard" to "Milliards"),
+                1_000_000L to ("Million" to "Millions"),
+                1_000L to ("Mille" to "Mille"),
+            )
+            val (scale, names) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
+            return buildString {
+                // "Mille" stands alone for one thousand; the larger scales are nouns.
+                if (scale == 1_000L && leading == 1L) {
+                    append(names.first)
+                } else {
+                    append(if (leading < 1_000L) frenchHundreds(leading.toInt(), beforeMille = scale == 1_000L) else frenchNumberWords(leading))
+                    append(' ')
+                    append(if (leading == 1L) names.first else names.second)
+                }
+                if (remainder > 0) {
+                    append(' ')
+                    append(frenchNumberWords(remainder))
+                }
+            }
+        }
+
+        // Spaced like the German words so the word-art widget can wrap each token.
+        // "Cents" and "Vingts" drop their plural s when followed by a number or "Mille".
+        private fun frenchHundreds(value: Int, beforeMille: Boolean): String {
+            val hundred = value / 100
+            val remainder = value % 100
+            return listOfNotNull(
+                when {
+                    hundred == 0 -> null
+                    hundred == 1 -> "Cent"
+                    remainder == 0 && !beforeMille -> "${frenchUnits[hundred]} Cents"
+                    else -> "${frenchUnits[hundred]} Cent"
+                },
+                if (remainder > 0) frenchTens(remainder, beforeMille) else null,
+            ).joinToString(" ")
+        }
+
+        private fun frenchTens(value: Int, beforeMille: Boolean): String {
+            val ten = value / 10
+            val one = value % 10
+            return when {
+                value < 17 -> frenchUnits[value]
+                value < 20 -> "Dix ${frenchUnits[one]}"
+                value == 80 -> if (beforeMille) "Quatre Vingt" else "Quatre Vingts"
+                ten == 7 || ten == 9 -> {
+                    val base = if (ten == 7) "Soixante" else "Quatre Vingt"
+                    if (value == 71) "$base et Onze" else "$base ${frenchTens(value - ten * 10 + 10, beforeMille)}"
+                }
+                ten == 8 -> "Quatre Vingt ${frenchUnits[one]}"
+                one == 0 -> frenchTensNames[ten]
+                one == 1 -> "${frenchTensNames[ten]} et Un"
+                else -> "${frenchTensNames[ten]} ${frenchUnits[one]}"
+            }
+        }
+
+        private val frenchUnits = arrayOf(
+            "", "Un", "Deux", "Trois", "Quatre", "Cinq", "Six", "Sept", "Huit", "Neuf",
+            "Dix", "Onze", "Douze", "Treize", "Quatorze", "Quinze", "Seize",
+        )
+
+        private val frenchTensNames = arrayOf(
+            "", "", "Vingt", "Trente", "Quarante", "Cinquante", "Soixante",
+        )
     }
 }
 

@@ -1142,6 +1142,6 @@
     <string name="debug_haptics_force_waveforms">Force waveforms</string>
     <string name="debug_haptics_force_waveforms_summary">Use waveform approximations for primitive effects throughout the app. Platform action feedback stays unchanged.</string>
     <string name="about_evowizz_title" translatable="false">Dy (evowizz)</string>
-    <string name="about_evowizz_summary">Knows his shit; localised to french</string>
+    <string name="about_evowizz_summary">Knows his shit; localised to French</string>
     <string name="link_evowizz" translatable="false">https://evowizz.dev/</string>
 </resources>

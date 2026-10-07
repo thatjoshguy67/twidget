@@ -1121,5 +1121,5 @@
     <string name="debug_haptics_stop">Arrêter la lecture</string>
     <string name="debug_haptics_force_waveforms">Forcer les formes d\'onde</string>
     <string name="debug_haptics_force_waveforms_summary">Utiliser des approximations par forme d\'onde pour les effets primitifs dans toute l\'application. Les retours des actions de la plateforme restent inchangés.</string>
-    <string name="about_evowizz_summary">Il s’y connaît, putain ; traduction française</string>
+    <string name="about_evowizz_summary">Il s’y connaît, putain ; localisé en français</string>
 </resources>

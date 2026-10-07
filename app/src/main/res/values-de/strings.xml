@@ -1102,5 +1102,5 @@
     <string name="debug_haptics_stop">Wiedergabe stoppen</string>
     <string name="debug_haptics_force_waveforms">Wellenformen erzwingen</string>
     <string name="debug_haptics_force_waveforms_summary">Wellenform-Annäherungen für primitive Effekte in der gesamten App verwenden. System-Aktionsfeedback bleibt unverändert.</string>
-    <string name="about_evowizz_summary">Hat’s drauf; ins Französische übersetzt</string>
+    <string name="about_evowizz_summary">Hat den Scheiß drauf; ins Französische übersetzt</string>
 </resources>

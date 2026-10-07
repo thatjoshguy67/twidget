@@ -130,7 +130,10 @@
     <string name="daily_streak_keep_going">Tweet on X to keep your streak</string>
     <string name="daily_streak_last_active">Last active %1$s</string>
     <string name="daily_streak_detail">Counts original tweets detected on X. Replies, reposts and likes do not count.</string>
-    <string name="daily_streak_days">%1$d days</string>
+    <plurals name="daily_streak_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
     <string name="daily_streak_none">No streak yet</string>
     <string name="per_range">%1$s / range</string>
     <string name="per_day">%1$s / day</string>
@@ -993,12 +996,27 @@
     <string name="brief_card_streak_start_ready">A tweet is ready to post now. Publish it to start a new daily rhythm.</string>
     <string name="brief_card_streak_start_queued">You have a tweet queued today. Post it to start a new daily rhythm.</string>
     <string name="brief_card_streak_start_idle">Twidget hasn’t detected an original tweet for more than three days. Tweet today to begin.</string>
-    <string name="brief_card_streak_title">%1$d-day posting streak</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="one">%1$d-day posting streak</item>
+        <item quantity="other">%1$d-day posting streak</item>
+    </plurals>
     <string name="brief_card_streak_kept_today">You’ve already kept the streak alive today. Nice work.</string>
-    <string name="brief_card_streak_buffer">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_ready">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_queued">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_tweet_today">Tweet today to keep your %1$d-day rhythm going.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="one">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</item>
+        <item quantity="other">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="one">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="one">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="one">Tweet today to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">Tweet today to keep your %1$d-day rhythm going.</item>
+    </plurals>
     <string name="brief_card_top_follower_new">A new top follower</string>
     <string name="brief_card_top_follower_moved">A follower moved up</string>
     <string name="brief_card_top_follower_title">Your top follower</string>
@@ -1074,7 +1092,10 @@
     <string name="brief_api_key_privacy_open_failed">Couldn’t open the privacy policy.</string>
     <string name="widget_contained_footer">Contained username</string>
     <string name="widget_contained_footer_summary">Puts the username in a contained shape, for better readability.</string>
-    <string name="dashboard_streak_days">days</string>
+    <plurals name="dashboard_streak_days">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
     <string name="streak_card_steady">Steady streak</string>
     <string name="streak_card_record">New high streak score</string>
     <string name="streak_card_save">Save your streak</string>
@@ -1120,4 +1141,7 @@
     <string name="debug_haptics_stop">Stop playback</string>
     <string name="debug_haptics_force_waveforms">Force waveforms</string>
     <string name="debug_haptics_force_waveforms_summary">Use waveform approximations for primitive effects throughout the app. Platform action feedback stays unchanged.</string>
+    <string name="about_evowizz_title" translatable="false">Dy (evowizz)</string>
+    <string name="about_evowizz_summary">Knows his shit; localised to French</string>
+    <string name="link_evowizz" translatable="false">https://evowizz.dev/</string>
 </resources>

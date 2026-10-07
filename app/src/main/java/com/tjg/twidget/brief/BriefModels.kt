@@ -226,6 +226,7 @@ data class BriefEditorialSummary(
                     followersToday = followersToday,
                     followersWeek = followersWeek,
                     types = types,
+                    restartStreak = cards.any { it.type == BriefCardType.STREAK && it.id == "start-streak" },
                     hasGoal = hasGoal,
                     upcomingTweets = upcomingTweets,
                     strings = strings,
@@ -239,6 +240,7 @@ data class BriefEditorialSummary(
                 followersToday = snapshot.followersToday,
                 followersWeek = snapshot.followersWeek,
                 types = types,
+                restartStreak = snapshot.cards.any { it.type == BriefCardType.STREAK && it.id == "start-streak" },
                 hasGoal = snapshot.cards.any {
                     it.type == BriefCardType.MILESTONE &&
                         it.actionData != BRIEF_MILESTONE_SETUP_ACTION
@@ -252,6 +254,7 @@ data class BriefEditorialSummary(
             followersToday: Long,
             followersWeek: Long,
             types: Set<BriefCardType>,
+            restartStreak: Boolean,
             hasGoal: Boolean,
             upcomingTweets: Int,
             strings: BriefStrings,
@@ -267,6 +270,7 @@ data class BriefEditorialSummary(
                 upcomingTweets > 0 ->
                     strings.quantityText(R.plurals.brief_short_upcoming, upcomingTweets, upcomingTweets)
                 BriefCardType.TOP_FOLLOWER in types -> strings.text(R.string.brief_short_top_followers)
+                restartStreak -> strings.text(R.string.brief_summary_streak_restart)
                 BriefCardType.STREAK in types -> strings.text(R.string.brief_summary_streak_active)
                 BriefCardType.SCHEDULE_GUIDE in types -> strings.text(R.string.brief_short_schedule_step)
                 BriefCardType.POST_FOLLOW_THROUGH in types -> strings.text(R.string.brief_short_follow_through)

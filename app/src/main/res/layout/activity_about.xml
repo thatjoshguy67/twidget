@@ -228,6 +228,18 @@
                     app:summary="@string/about_aaron_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_aaron_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_evowizz_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:showTopDivider="true"
+                    app:fullWidthDivider="true"
+                    app:summary="@string/about_evowizz_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_evowizz_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             <dev.oneuiproject.oneui.widget.Separator

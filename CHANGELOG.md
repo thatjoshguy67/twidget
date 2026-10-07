@@ -4,6 +4,9 @@ All notable changes to Twidget are documented here.
 
 ## Unreleased
 
+- Added a personal thank-you to Dy (evowizz) for the French translation, with his
+  Twitter avatar and website link, localized in English, German, and French.
+
 - Fixed one-day streak wording in Your Brief and dashboard cards in English,
   German, and French.
 - Corrected the German Brief/widget restart summary and kept German noun

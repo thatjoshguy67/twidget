@@ -2,6 +2,14 @@
 
 All notable changes to Twidget are documented here.
 
+## Unreleased
+
+- Fixed one-day streak wording in Your Brief and dashboard cards in English,
+  German, and French.
+- Corrected the German Brief/widget restart summary and kept German noun
+  capitalization in the instructions used by both AI providers. A streak waiting
+  to restart is no longer described as active in the compact fallback.
+
 ## [1.3.0-beta.4] - 2026-10-02
 
 A smoother dashboard editing experience, a new card picker, and more refinements

@@ -124,7 +124,10 @@
     <string name="daily_streak_keep_going">Tweete auf X um deinen Streak zu erhalten</string>
     <string name="daily_streak_last_active">Zul. aktiv %1$s</string>
     <string name="daily_streak_detail">Zählt originale Tweets auf X. Antworten, Reposts und Likes werden nicht gezählt.</string>
-    <string name="daily_streak_days">%1$d Tage</string>
+    <plurals name="daily_streak_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
     <string name="daily_streak_none">Noch kein Streak</string>
     <string name="per_range">%1$s / Bereich</string>
     <string name="per_day">%1$s / Tag</string>
@@ -913,7 +916,7 @@
         <item quantity="other">%1$d geplante Tweets stehen bereit.</item>
     </plurals>
     <string name="brief_summary_top_followers">Bei deinen Top-Followern gibt es eine bedeutende Veränderung.</string>
-    <string name="brief_summary_streak_restart">Zeit, deinen Posting-Rhythmus neu zu starten?</string>
+    <string name="brief_summary_streak_restart">Starte deinen Posting-Rhythmus neu.</string>
     <string name="brief_summary_streak_active">Dein Posting-Rhythmus ist aktiv.</string>
     <string name="brief_summary_schedule_step">In deinem Zeitplan wartet ein sinnvoller nächster Schritt.</string>
     <string name="brief_summary_follow_through">Ein kürzlich geplanter Tweet liefert eine Lektion für deinen nächsten Post.</string>
@@ -954,12 +957,27 @@
     <string name="brief_card_streak_start_ready">Ein Tweet ist jetzt bereit. Veröffentliche ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_idle">Twidget hat seit mehr als drei Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen.</string>
-    <string name="brief_card_streak_title">%1$d Streak-Tage</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="one">%1$d Streak-Tag</item>
+        <item quantity="other">%1$d Streak-Tage</item>
+    </plurals>
     <string name="brief_card_streak_kept_today">Du hast den Streak heute schon am Leben gehalten. Gute Arbeit.</string>
-    <string name="brief_card_streak_buffer">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tage-Rhythmus am Laufen.</string>
-    <string name="brief_card_streak_ready">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</string>
-    <string name="brief_card_streak_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</string>
-    <string name="brief_card_streak_tweet_today">Tweete heute, um deinen %1$d-Tage-Rhythmus zu halten.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="one">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tag-Rhythmus am Laufen.</item>
+        <item quantity="other">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tage-Rhythmus am Laufen.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="one">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="one">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="one">Tweete heute, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Tweete heute, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
     <string name="brief_card_top_follower_new">Ein neuer Top-Follower</string>
     <string name="brief_card_top_follower_moved">Ein Follower ist aufgestiegen</string>
     <string name="brief_card_top_follower_title">Dein Top-Follower</string>
@@ -1035,7 +1053,10 @@
     <string name="brief_api_key_privacy_open_failed">Die Datenschutzerklärung konnte nicht geöffnet werden.</string>
     <string name="widget_contained_footer">Nutzername hervorheben</string>
     <string name="widget_contained_footer_summary">Nutzername auf größeren Material-Widgets mit einem Hintergrund anzeigen.</string>
-    <string name="dashboard_streak_days">Tage</string>
+    <plurals name="dashboard_streak_days">
+        <item quantity="one">Tag</item>
+        <item quantity="other">Tage</item>
+    </plurals>
     <string name="streak_card_steady">Stabile Serie</string>
     <string name="streak_card_record">Neuer Serienrekord</string>
     <string name="streak_card_save">Rette deine Serie</string>

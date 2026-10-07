@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="widget_description">Suivi des abonnés X/Twitter avec des widgets floutés pour l\'écran d\'accueil</string>
     <string name="widget_label">Twidget Abonnés</string>
     <string name="widget_language">Langue</string>
@@ -124,7 +124,11 @@
     <string name="daily_streak_keep_going">Tweete sur X pour garder ta série</string>
     <string name="daily_streak_last_active">Dernière activité : %1$s</string>
     <string name="daily_streak_detail">Seuls les tweets originaux détectés sur X sont pris en compte. Les réponses, reposts et J\'aime ne comptent pas.</string>
-    <string name="daily_streak_days">%1$d jours</string>
+    <plurals name="daily_streak_days">
+        <item quantity="one">%1$d jour</item>
+        <item quantity="many">%1$d jours</item>
+        <item quantity="other">%1$d jours</item>
+    </plurals>
     <string name="daily_streak_none">Pas encore de série</string>
     <string name="per_range">%1$s / période</string>
     <string name="per_day">%1$s / jour</string>
@@ -961,12 +965,32 @@
     <string name="brief_card_streak_start_ready">Un tweet est prêt à être publié. Publie-le pour lancer un nouveau rythme quotidien.</string>
     <string name="brief_card_streak_start_queued">Tu as un tweet en attente aujourd\'hui. Publie-le pour lancer un nouveau rythme quotidien.</string>
     <string name="brief_card_streak_start_idle">Twidget n\'a détecté aucun tweet original depuis plus de trois jours. Tweete aujourd\'hui pour commencer.</string>
-    <string name="brief_card_streak_title">Série de publications de %1$d jours</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="one">Série de publications de %1$d jour</item>
+        <item quantity="many">Série de publications de %1$d jours</item>
+        <item quantity="other">Série de publications de %1$d jours</item>
+    </plurals>
     <string name="brief_card_streak_kept_today">Tu as déjà maintenu ta série aujourd\'hui. Bravo.</string>
-    <string name="brief_card_streak_buffer">Un tweet est programmé pour être publié aujourd\'hui et prolonger ton rythme de %1$d jours.</string>
-    <string name="brief_card_streak_ready">Ton prochain tweet est prêt. Publie-le pour garder ton rythme de %1$d jours.</string>
-    <string name="brief_card_streak_queued">Tu as un tweet en attente aujourd\'hui. Publie-le pour garder ton rythme de %1$d jours.</string>
-    <string name="brief_card_streak_tweet_today">Tweete aujourd\'hui pour garder ton rythme de %1$d jours.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="one">Un tweet est programmé pour être publié aujourd\'hui et prolonger ton rythme de %1$d jour.</item>
+        <item quantity="many">Un tweet est programmé pour être publié aujourd\'hui et prolonger ton rythme de %1$d jours.</item>
+        <item quantity="other">Un tweet est programmé pour être publié aujourd\'hui et prolonger ton rythme de %1$d jours.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="one">Ton prochain tweet est prêt. Publie-le pour garder ton rythme de %1$d jour.</item>
+        <item quantity="many">Ton prochain tweet est prêt. Publie-le pour garder ton rythme de %1$d jours.</item>
+        <item quantity="other">Ton prochain tweet est prêt. Publie-le pour garder ton rythme de %1$d jours.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="one">Tu as un tweet en attente aujourd\'hui. Publie-le pour garder ton rythme de %1$d jour.</item>
+        <item quantity="many">Tu as un tweet en attente aujourd\'hui. Publie-le pour garder ton rythme de %1$d jours.</item>
+        <item quantity="other">Tu as un tweet en attente aujourd\'hui. Publie-le pour garder ton rythme de %1$d jours.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="one">Tweete aujourd\'hui pour garder ton rythme de %1$d jour.</item>
+        <item quantity="many">Tweete aujourd\'hui pour garder ton rythme de %1$d jours.</item>
+        <item quantity="other">Tweete aujourd\'hui pour garder ton rythme de %1$d jours.</item>
+    </plurals>
     <string name="brief_card_top_follower_new">Un nouveau meilleur abonné</string>
     <string name="brief_card_top_follower_moved">Un abonné a progressé</string>
     <string name="brief_card_top_follower_title">Ton meilleur abonné</string>
@@ -1045,7 +1069,12 @@
     <string name="brief_api_key_privacy_open_failed">Impossible d\'ouvrir la politique de confidentialité.</string>
     <string name="widget_contained_footer">Nom d\'utilisateur encadré</string>
     <string name="widget_contained_footer_summary">Place le nom d\'utilisateur dans une forme encadrée pour une meilleure lisibilité.</string>
-    <string name="dashboard_streak_days">jours</string>
+    <!-- The count is rendered separately above this unit label in the dashboard card. -->
+    <plurals name="dashboard_streak_days" tools:ignore="ImpliedQuantity">
+        <item quantity="one">jour</item>
+        <item quantity="many">jours</item>
+        <item quantity="other">jours</item>
+    </plurals>
     <string name="streak_card_steady">Série régulière</string>
     <string name="streak_card_record">Nouveau record de série</string>
     <string name="streak_card_save">Sauve ta série</string>

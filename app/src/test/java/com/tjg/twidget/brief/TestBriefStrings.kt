@@ -7,21 +7,24 @@ import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
 
 /**
- * Resolves Brief copy from the default `values/strings.xml` on disk so JVM tests
- * exercise the real English resources without an Android runtime. Resource ids
+ * Resolves Brief copy from the actual localized XML resources, falling back to
+ * default resources, so JVM tests exercise translations without an Android runtime. Resource ids
  * are mapped back to names through the generated `R` class.
  */
 class TestBriefStrings(override val locale: Locale = Locale.US) : BriefStrings {
+    private val copy = copies.computeIfAbsent(locale.language, ::loadCopy)
+
     override fun text(id: Int, vararg args: Any): String {
-        val pattern = strings[name(R.string::class.java, id)]
+        val pattern = copy.strings[name(R.string::class.java, id)]
             ?: error("Missing <string> for id $id in ${resourceDir.path}")
         return format(pattern, args)
     }
 
     override fun quantityText(id: Int, quantity: Int, vararg args: Any): String {
         val name = name(R.plurals::class.java, id)
-        val items = plurals[name] ?: error("Missing <plurals> for $name in ${resourceDir.path}")
-        val pattern = (if (quantity == 1) items["one"] else null) ?: items["other"]
+        val items = copy.plurals[name] ?: error("Missing <plurals> for $name in ${resourceDir.path}")
+        val one = quantity == 1 || (locale.language == "fr" && quantity == 0)
+        val pattern = (if (one) items["one"] else null) ?: items["other"]
             ?: error("<plurals name=\"$name\"> has no 'other' item")
         return format(pattern, args)
     }
@@ -39,19 +42,25 @@ class TestBriefStrings(override val locale: Locale = Locale.US) : BriefStrings {
             .firstOrNull(File::isDirectory)
             ?: error("Could not locate the default values/ resource folder from ${File(".").absolutePath}")
 
-        val strings = mutableMapOf<String, String>()
-        val plurals = mutableMapOf<String, Map<String, String>>()
+        data class ResourceCopy(val strings: Map<String, String>, val plurals: Map<String, Map<String, String>>)
+        val copies = java.util.concurrent.ConcurrentHashMap<String, ResourceCopy>()
 
-        init {
+        fun loadCopy(language: String): ResourceCopy {
+            val strings = mutableMapOf<String, String>()
+            val plurals = mutableMapOf<String, Map<String, String>>()
             val builder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-            resourceDir.listFiles { file -> file.extension == "xml" }.orEmpty().sorted().forEach { file ->
-                val root = builder.parse(file).documentElement
-                root.elements("string").forEach { strings[it.getAttribute("name")] = unescape(it.textContent) }
-                root.elements("plurals").forEach { element ->
-                    plurals[element.getAttribute("name")] = element.elements("item")
-                        .associate { it.getAttribute("quantity") to unescape(it.textContent) }
+            listOf(resourceDir, resourceDir.parentFile.resolve("values-$language"))
+                .filter(File::isDirectory).forEach { directory ->
+                    directory.listFiles { file -> file.extension == "xml" }.orEmpty().sorted().forEach { file ->
+                        val root = builder.parse(file).documentElement
+                        root.elements("string").forEach { strings[it.getAttribute("name")] = unescape(it.textContent) }
+                        root.elements("plurals").forEach { element ->
+                            plurals[element.getAttribute("name")] = element.elements("item")
+                                .associate { it.getAttribute("quantity") to unescape(it.textContent) }
+                        }
+                    }
                 }
-            }
+            return ResourceCopy(strings, plurals)
         }
 
         fun Element.elements(tag: String): List<Element> {

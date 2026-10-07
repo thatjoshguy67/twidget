@@ -819,7 +819,7 @@ internal class MainDashboardBinder(
                 InsightSpec(
                     label = activity.getString(R.string.daily_streak),
                     value = if (streak.streak > 0) {
-                        activity.getString(R.string.daily_streak_days, streak.streak)
+                        activity.resources.getQuantityString(R.plurals.daily_streak_days, streak.streak, streak.streak)
                     } else {
                         activity.getString(R.string.daily_streak_none)
                     },

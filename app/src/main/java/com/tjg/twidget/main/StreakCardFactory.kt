@@ -99,7 +99,7 @@ internal object StreakCardFactory {
                 setTextColor(if (night) Color.WHITE else Color.BLACK)
             }
             findViewById<TextView>(R.id.stat_detail).apply {
-                text = context.getString(R.string.dashboard_streak_days)
+                text = context.resources.getQuantityString(R.plurals.dashboard_streak_days, dayCount)
                 setTextColor(Color.rgb(132, 132, 135))
             }
             addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->

@@ -501,9 +501,10 @@ private object GeminiCloudBriefProvider {
 private const val SYSTEM_INSTRUCTION =
     "You write a concise, personal social guide focused on the user's next useful move. " +
         "You may only reword the supplied factual Brief summary and cards and must preserve their order. " +
-        "Never add numbers, names, causes, predictions, or claims. Use sentence case for every title: capitalise " +
-        "only the first word and proper nouns, never every major word. Use 'follower' for exactly 1 and " +
-        "'followers' for every other count. Keep titles under 45 characters and bodies under 150 characters. " +
+        "Never add numbers, names, causes, predictions, or claims. Follow the target language's native " +
+        "capitalisation and singular/plural rules. Write complete grammatical sentences; do not splice " +
+        "sentence fragments or change the action requested in the source. " +
+        "Keep titles under 45 characters and bodies under 150 characters. " +
         "For the brief_summary only, also write a distinct shortDescription of no more than 100 characters for compact " +
         "surfaces. It may use one or two short sentences, should fill up to two lines when useful, and must preserve " +
         "every numeric fact in its supplied value without adding facts. " +
@@ -521,10 +522,18 @@ private const val SUMMARY_ID = "__brief_summary__"
  */
 internal fun languageInstruction(strings: BriefStrings): String =
     if (strings.isEnglish) {
-        ""
+        "Use sentence case, never Title Case. Capitalise only the first word and proper nouns. " +
+            "Use 'follower' for exactly 1 and 'followers' otherwise. "
     } else {
         "Write every title, body, and shortDescription in ${strings.locale.getDisplayLanguage(Locale.ENGLISH)}, " +
-            "matching the language of the supplied text. "
+            "matching the language of the supplied text. Use the language's native capitalisation and " +
+            "singular/plural rules. " + if (strings.locale.language == "de") {
+                "Capitalise all German nouns, including Follower, Fortschritt, Ziel and Posting-Rhythmus. " +
+                    "For a posting rhythm that needs restarting, preserve that action: " +
+                    "'Starte deinen Posting-Rhythmus neu.' Do not describe it as already active. "
+            } else {
+                ""
+            }
     }
 
 internal fun promptFor(source: BriefSnapshot, strings: BriefStrings): String {
@@ -576,7 +585,7 @@ internal fun localPromptFor(source: BriefSnapshot, strings: BriefStrings): Strin
         ## TASK
         Rewrite the Brief summary and first $outputCount cards in the supplied order.
         ## RULES
-        ${languageInstruction(strings)}Preserve order. Keep every id and numeric fact unchanged. Use sentence case, never Title Case. Use "follower" for 1 and "followers" otherwise. Keep quote tweets and retweets separate. Always call them quote tweets and retweets; never shares or reposts. Title max 32 characters. Body max 80 characters. For the summary, write a distinct compact description in s, max 100 characters and one or two short sentences, using only the facts supplied in s. If follower totals are absent from the summary body, keep them only in s because a follower card already shows them.
+        ${languageInstruction(strings)}Preserve order. Keep every id and numeric fact unchanged. Write complete grammatical sentences without splicing fragments or changing the source action. Keep quote tweets and retweets separate. Always call them quote tweets and retweets; never shares or reposts. Title max 32 characters. Body max 80 characters. For the summary, write a distinct compact description in s, max 100 characters and one or two short sentences, using only the facts supplied in s. If follower totals are absent from the summary body, keep them only in s because a follower card already shows them.
         ## OUTPUT
         JSON array only. Cards use [{"i":"id","t":"title","b":"body"}]. The summary also uses "s":"short description".
         ## CARDS

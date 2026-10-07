@@ -1,7 +1,5 @@
 package com.tjg.twidget.data
 
-import com.tjg.twidget.BuildConfig
-
 import android.content.Context
 import android.content.SharedPreferences
 import com.tjg.twidget.R
@@ -10,6 +8,7 @@ import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.core.HistoryMigrationPolicy
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
 import com.tjg.twidget.main.MilestonePolicy
@@ -261,7 +260,7 @@ object TwidgetStore {
     }
 
     fun fakeUpdateAvailable(context: Context): Boolean =
-        BuildConfig.IN_APP_UPDATES && prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
+        BuildVars.IN_APP_UPDATES && prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
 
     /** Debug-only installed-version override used for GitHub release eligibility checks. */
     fun spoofedAppVersion(context: Context): String? =
@@ -288,7 +287,7 @@ object TwidgetStore {
     }
 
     fun updateCheckVersion(context: Context, installedVersion: String): String =
-        if (BuildConfig.IN_APP_UPDATES && debugMenuUnlocked(context) &&
+        if (BuildVars.IN_APP_UPDATES && debugMenuUnlocked(context) &&
             spoofedAppVersionEnabled(context)) {
             spoofedAppVersion(context) ?: installedVersion
         } else {
@@ -306,7 +305,7 @@ object TwidgetStore {
     // Powers the update badges (Settings "About Twidget" row, drawer settings
     // cog). Reflects the last completed real check, or the debug fake flag.
     fun updateAvailable(context: Context): Boolean =
-        BuildConfig.IN_APP_UPDATES && (fakeUpdateAvailable(context) ||
+        BuildVars.IN_APP_UPDATES && (fakeUpdateAvailable(context) ||
             prefs(context).getBoolean(KEY_UPDATE_AVAILABLE, false))
 
     fun setUpdateAvailable(context: Context, available: Boolean, version: String? = null) {
@@ -328,7 +327,7 @@ object TwidgetStore {
 
     /** Last successfully detected update, independent of whether its Settings card was dismissed. */
     fun detectedUpdateVersion(context: Context): String? {
-        if (!BuildConfig.IN_APP_UPDATES) return null
+        if (!BuildVars.IN_APP_UPDATES) return null
         val preferences = prefs(context)
         if (fakeUpdateAvailable(context)) return fakeUpdateVersion(context)
         if (!preferences.getBoolean(KEY_UPDATE_AVAILABLE, false)) return null

@@ -1,7 +1,5 @@
 package com.tjg.twidget.main
 
-import com.tjg.twidget.BuildConfig
-
 import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
@@ -29,6 +27,7 @@ import com.tjg.twidget.analytics.XAnalyticsMovement
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.followers.TopFollowersBridgeSyncWorker
 import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
@@ -283,7 +282,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     private fun checkReleasesOnLaunch() {
-        if (!BuildConfig.IN_APP_UPDATES) return
+        if (!BuildVars.IN_APP_UPDATES) return
         val appContext = applicationContext
         val installedVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: return
         val channel = AboutActivity.savedUpdateChannel(this)

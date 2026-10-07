@@ -61,6 +61,9 @@ jobs:
           # The legacy "tools" package was removed from Google's repository.
           packages: platform-tools
 
+      - name: Use CI Gradle properties
+        run: mkdir -p ~/.gradle && cp .github/ci-gradle.properties ~/.gradle/gradle.properties
+
       # Only trusted branch/manual builds receive the production signing key.
       # Pull-request code must never run with production signing credentials.
       - name: Decode release keystore

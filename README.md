@@ -102,8 +102,9 @@ $env:JAVA_HOME = "C:\path\to\jdk25"
 The app id is `com.tjg.twidget`.
 
 Buffer scheduling uses a public OAuth client with PKCE. Register the redirect
-URI `https://thatjoshguy67.github.io/twidget/oauth/buffer/` in Buffer. The
-minimal callback page forwards the short-lived response to
+URI `https://thatjoshguy67.github.io/twidget/oauth/buffer/` in Buffer, or build
+with your own using `BUFFER_OAUTH_REDIRECT_URI` or `-PbufferOAuthRedirectUri=...`.
+The minimal callback page forwards the short-lived response to
 `twidget://oauth/buffer` on the device. Provide the client ID at build time with
 `BUFFER_OAUTH_CLIENT_ID` or `-PbufferOAuthClientId=...`; no client secret is
 embedded in the Android app.

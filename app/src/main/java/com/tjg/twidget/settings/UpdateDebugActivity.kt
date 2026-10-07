@@ -7,9 +7,9 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.SwitchPreferenceCompat
-import com.tjg.twidget.BuildConfig
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.update.AppVersion
@@ -57,7 +57,7 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
             isIconSpaceReserved = false
         })
         screen.addPreference(SwitchPreferenceCompat(context).apply {
-            isVisible = BuildConfig.IN_APP_UPDATES
+            isVisible = BuildVars.IN_APP_UPDATES
             key = "debug_spoof_app_version_enabled"
             title = getString(R.string.debug_spoof_app_version_enabled)
             summary = getString(R.string.debug_spoof_app_version_enabled_summary)
@@ -72,7 +72,7 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
             }
         })
         screen.addPreference(EditTextPreference(context).apply {
-            isVisible = BuildConfig.IN_APP_UPDATES
+            isVisible = BuildVars.IN_APP_UPDATES
             key = "debug_spoof_app_version"
             title = getString(R.string.debug_spoof_app_version)
             summary = getString(R.string.debug_spoof_app_version_summary)
@@ -100,7 +100,7 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
             isIconSpaceReserved = false
         })
         screen.addPreference(SwitchPreferenceCompat(context).apply {
-            isVisible = BuildConfig.IN_APP_UPDATES
+            isVisible = BuildVars.IN_APP_UPDATES
             key = "debug_fake_update_pref"
             title = getString(R.string.trigger_fake_update)
             summary = getString(R.string.trigger_fake_update_summary)
@@ -111,7 +111,7 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
             }
         })
         screen.addPreference(Preference(context).apply {
-            isVisible = BuildConfig.IN_APP_UPDATES
+            isVisible = BuildVars.IN_APP_UPDATES
             key = "debug_update_download_notification"
             title = getString(R.string.debug_test_update_download_notification)
             summary = getString(R.string.debug_test_update_download_notification_summary)

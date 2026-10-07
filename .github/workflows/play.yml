@@ -37,6 +37,9 @@ jobs:
           # The legacy "tools" package was removed from Google's repository.
           packages: platform-tools
 
+      - name: Use CI Gradle properties
+        run: mkdir -p ~/.gradle && cp .github/ci-gradle.properties ~/.gradle/gradle.properties
+
       - name: Resolve build mode
         id: mode
         env:
@@ -47,8 +50,8 @@ jobs:
             echo "variant=release" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if ! [[ "$BETA_NUMBER" =~ ^[1-9][0-9]*$ ]] || [ "$BETA_NUMBER" -gt 19 ]; then
-            echo "::error::beta_number must be between 1 and 19"
+          if ! [[ "$BETA_NUMBER" =~ ^[1-9][0-9]*$ ]] || [ "$BETA_NUMBER" -gt 18 ]; then
+            echo "::error::beta_number must be between 1 and 18"
             exit 1
           fi
           if ! [[ "$HIGHEST_PLAY_CODE" =~ ^[1-9][0-9]*$ ]]; then

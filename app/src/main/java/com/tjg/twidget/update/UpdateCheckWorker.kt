@@ -1,7 +1,5 @@
 package com.tjg.twidget.update
 
-import com.tjg.twidget.BuildConfig
-
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -13,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.main.AboutActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
 import java.util.concurrent.TimeUnit
@@ -20,7 +19,7 @@ import java.util.concurrent.TimeUnit
 class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result {
         val context = applicationContext
-        if (!BuildConfig.IN_APP_UPDATES) {
+        if (!BuildVars.IN_APP_UPDATES) {
             cancelLegacyUpdates(context)
             return Result.success()
         }
@@ -53,7 +52,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
         private const val REMIND_LATER_HOURS = 24L
 
         fun schedule(context: Context) {
-            if (!BuildConfig.IN_APP_UPDATES) {
+            if (!BuildVars.IN_APP_UPDATES) {
                 cancelLegacyUpdates(context)
                 return
             }
@@ -71,7 +70,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
 
         /** Runs a real GitHub release check immediately after a debug version override changes. */
         fun checkNow(context: Context) {
-            if (!BuildConfig.IN_APP_UPDATES) return
+            if (!BuildVars.IN_APP_UPDATES) return
             val request = OneTimeWorkRequest.Builder(UpdateCheckWorker::class.java)
                 .setConstraints(networkConstraints())
                 .build()
@@ -82,7 +81,7 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : Worker(con
             )
         }
         fun scheduleReminder(context: Context) {
-            if (!BuildConfig.IN_APP_UPDATES) {
+            if (!BuildVars.IN_APP_UPDATES) {
                 cancelLegacyUpdates(context)
                 return
             }

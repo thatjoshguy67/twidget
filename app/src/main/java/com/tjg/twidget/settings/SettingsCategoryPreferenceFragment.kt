@@ -27,10 +27,10 @@ import androidx.preference.PreferenceViewHolder
 import androidx.preference.SwitchPreferenceCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.tjg.twidget.R
-import com.tjg.twidget.BuildConfig
 import com.tjg.twidget.analytics.AnalyticsImportActivity
 import com.tjg.twidget.data.TwidgetSettings
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
@@ -474,7 +474,7 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             }
         }.apply {
             key = "settings_app_font"
-            if (BuildConfig.FLAVOR == "github" && TwidgetFonts.hasSystemOneUiSans) {
+            if (BuildVars.DISTRIBUTION.isGithub() && TwidgetFonts.hasSystemOneUiSans) {
                 widgetLayoutResource = R.layout.preference_font_tip
             }
             isPersistent = false

@@ -9,9 +9,13 @@ import android.content.res.Resources
 import android.content.res.loader.ResourcesLoader
 import android.graphics.Color
 import android.os.Build
+import androidx.annotation.ColorRes
 import androidx.annotation.RequiresApi
+import androidx.appcompat.R as SeslR
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.color.TwidgetPaletteLoader
+import com.tjg.twidget.R
+import dev.oneuiproject.oneui.design.R as OneUiR
 import java.util.WeakHashMap
 
 enum class AppPaletteMode(val storedValue: String) {
@@ -140,14 +144,14 @@ object AppPaletteManager {
     }
 
     fun resolvedColors(context: Context): List<Pair<String, Int>> = listOf(
-        "Twidget accent" to resolveColor(context, "oneui_accent"),
-        "SESL primary · light" to resolveColor(context, "sesl_primary_color_light"),
-        "SESL primary · dark" to resolveColor(context, "sesl_primary_color_dark"),
-        "SESL control · light" to resolveColor(context, "sesl_primary_dark_color_light"),
-        "SESL control · dark" to resolveColor(context, "sesl_primary_dark_color_dark"),
-        "SESL blue · light" to resolveColor(context, "sesl_blue_color_light"),
-        "SESL blue · dark" to resolveColor(context, "sesl_blue_color_dark"),
-        "One UI selected text" to resolveColor(context, "oui_des_floating_action_bar_selected_text_color"),
+        "Twidget accent" to resolveColor(context, R.color.oneui_accent),
+        "SESL primary · light" to resolveColor(context, SeslR.color.sesl_primary_color_light),
+        "SESL primary · dark" to resolveColor(context, SeslR.color.sesl_primary_color_dark),
+        "SESL control · light" to resolveColor(context, SeslR.color.sesl_primary_dark_color_light),
+        "SESL control · dark" to resolveColor(context, SeslR.color.sesl_primary_dark_color_dark),
+        "SESL blue · light" to resolveColor(context, SeslR.color.sesl_blue_color_light),
+        "SESL blue · dark" to resolveColor(context, SeslR.color.sesl_blue_color_dark),
+        "One UI selected text" to resolveColor(context, OneUiR.color.oui_des_floating_action_bar_selected_text_color),
     ).filter { it.second != Color.TRANSPARENT }
 
     fun colorHex(color: Int): String = String.format("#%08X", color)
@@ -184,19 +188,15 @@ object AppPaletteManager {
     )
 
     private fun resolvedSystemPalette(context: Context) = AppAccentPalette(
-        seed = resolveColor(context, "sesl_primary_color_light"),
-        primaryLight = resolveColor(context, "sesl_primary_color_light"),
-        primaryDark = resolveColor(context, "sesl_primary_color_dark"),
-        controlLight = resolveColor(context, "sesl_primary_dark_color_light"),
-        controlDark = resolveColor(context, "sesl_primary_dark_color_dark"),
+        seed = resolveColor(context, SeslR.color.sesl_primary_color_light),
+        primaryLight = resolveColor(context, SeslR.color.sesl_primary_color_light),
+        primaryDark = resolveColor(context, SeslR.color.sesl_primary_color_dark),
+        controlLight = resolveColor(context, SeslR.color.sesl_primary_dark_color_light),
+        controlDark = resolveColor(context, SeslR.color.sesl_primary_dark_color_dark),
     )
 
-    @Suppress("DiscouragedApi")
-    private fun resolveColor(context: Context, name: String): Int {
-        val id = context.resources.getIdentifier(name, "color", context.packageName)
-        return if (id != 0) runCatching { context.getColor(id) }.getOrDefault(Color.TRANSPARENT)
-        else Color.TRANSPARENT
-    }
+    private fun resolveColor(context: Context, @ColorRes id: Int): Int =
+        runCatching { context.getColor(id) }.getOrDefault(Color.TRANSPARENT)
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -242,7 +242,7 @@ object AppPaletteManager {
                 // Create the replacement before removing the currently working table.
                 val replacement = palette?.let {
                     LoadedPalette(requireNotNull(fingerprint),
-                        checkNotNull(TwidgetPaletteLoader.create(context, colorOverrides(context, it))) {
+                        checkNotNull(TwidgetPaletteLoader.create(context, colorOverrides(it))) {
                             "Unable to create the custom palette resource table."
                         })
                 }
@@ -269,24 +269,18 @@ object AppPaletteManager {
             return PaletteApplyResult(success = true, changed = changed)
         }
 
-        @Suppress("DiscouragedApi")
-        private fun colorOverrides(context: Context, palette: AppAccentPalette): Map<Int, Int> =
-            mapOf(
-                "sesl_blue_color_light" to palette.primaryLight,
-                "sesl_blue_color_dark" to palette.primaryDark,
-                "sesl_blue_dark_color_light" to palette.controlLight,
-                "sesl_blue_dark_color_dark" to palette.controlDark,
-                "sesl_primary_color_light" to palette.primaryLight,
-                "sesl_primary_color_dark" to palette.primaryDark,
-                "sesl_primary_dark_color_light" to palette.controlLight,
-                "sesl_primary_dark_color_dark" to palette.controlDark,
-                "sesl_control_activated_color" to palette.controlLight,
-                "oui_des_floating_action_bar_selected_text_color" to palette.primaryLight,
-            ).map { (name, color) ->
-                val id = context.resources.getIdentifier(name, "color", context.packageName)
-                check(id != 0) { "Missing palette colour resource: $name" }
-                id to color
-            }.toMap()
+        private fun colorOverrides(palette: AppAccentPalette): Map<Int, Int> = mapOf(
+            SeslR.color.sesl_blue_color_light to palette.primaryLight,
+            SeslR.color.sesl_blue_color_dark to palette.primaryDark,
+            SeslR.color.sesl_blue_dark_color_light to palette.controlLight,
+            SeslR.color.sesl_blue_dark_color_dark to palette.controlDark,
+            SeslR.color.sesl_primary_color_light to palette.primaryLight,
+            SeslR.color.sesl_primary_color_dark to palette.primaryDark,
+            SeslR.color.sesl_primary_dark_color_light to palette.controlLight,
+            SeslR.color.sesl_primary_dark_color_dark to palette.controlDark,
+            SeslR.color.sesl_control_activated_color to palette.controlLight,
+            OneUiR.color.oui_des_floating_action_bar_selected_text_color to palette.primaryLight,
+        )
     }
 
     private fun failure(context: Context, message: String): PaletteApplyResult {

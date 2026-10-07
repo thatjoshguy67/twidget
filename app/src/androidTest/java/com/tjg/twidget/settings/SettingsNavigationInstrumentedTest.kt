@@ -12,7 +12,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tjg.twidget.R
-import com.tjg.twidget.BuildConfig
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.ui.AppAppearance
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.brief.BriefSettingsStore
@@ -149,8 +149,8 @@ class SettingsNavigationInstrumentedTest {
             assertTrue(activity.findViewById<android.view.View>(R.id.about_tjg_credit).findViewById<android.view.View>(dev.oneuiproject.oneui.design.R.id.cardview_container).hasOnClickListeners())
             assertNull(activity.findViewById<dev.oneuiproject.oneui.widget.CardItemView>(R.id.about_fxtwitter_credit).summary)
             val toolbar = activity.findViewById<androidx.appcompat.widget.Toolbar>(R.id.about_toolbar)
-            assertEquals(if (BuildConfig.IN_APP_UPDATES) 2 else 1, toolbar.menu.size())
-            if (BuildConfig.IN_APP_UPDATES) assertTrue(toolbar.menu.getItem(1).hasSubMenu())
+            assertEquals(if (BuildVars.IN_APP_UPDATES) 2 else 1, toolbar.menu.size())
+            if (BuildVars.IN_APP_UPDATES) assertTrue(toolbar.menu.getItem(1).hasSubMenu())
             assertEquals("https://github.com/tribalfs/oneui-design", context.getString(R.string.link_oneui_project))
             TwidgetStore.setDebugMenuUnlocked(context, false)
             repeat(7) { header.getSummaryView().performClick() }
@@ -275,7 +275,7 @@ class SettingsNavigationInstrumentedTest {
             assertEquals(listOf("settings_widget_opacity", "settings_widget_font", "settings_widget_colours",
                 "settings_widget_contained_footer", "settings_widget_contained_footer_description"),
                 ordered.drop(defaultsIndex + 3).take(5).map { it.key })
-            val showsFontTip = BuildConfig.FLAVOR == "github" && TwidgetFonts.hasSystemOneUiSans
+            val showsFontTip = BuildVars.DISTRIBUTION.isGithub() && TwidgetFonts.hasSystemOneUiSans
             assertEquals(showsFontTip, ordered[3].widgetLayoutResource == R.layout.preference_font_tip)
             assertNull(screen.findPreference<Preference>("settings_app_font_tip"))
             assertNull(screen.findPreference<Preference>("settings_app_font_inset"))

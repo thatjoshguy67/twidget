@@ -18,6 +18,50 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class WidgetThemeRemoteViewsInstrumentedTest {
+    @Test fun oversizedSingleLayoutKeepsBothThemeImagesWithinTheBudget() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 31)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val id = 97541
+        val requestedDp = kotlin.math.ceil(2000.0 / context.resources.displayMetrics.density).toInt().coerceAtLeast(1000)
+        val original = TwidgetStore.widgetSettings(context, id)
+        val settings = original.copy(colorMode = TwidgetStore.COLOR_MODE_SYSTEM,
+            fontFamily = TwidgetStore.FONT_SYSTEM)
+        TwidgetStore.saveWidgetSettings(context, id, settings)
+        try {
+            for (brief in listOf(false, true)) {
+                // Samsung sends one layout directly, with no responsive-map admission check.
+                val source = if (brief) TwidgetBriefWidget.createViews(context, id, requestedDp, requestedDp, "", null)
+                else TwidgetWidget.createRemoteViews(context, id, requestedDp, requestedDp, TwidgetWidget.LAYOUT_MODE_LARGE,
+                    settings, "test", ProfileStats("Test", "test", 7782, 0, 0, 0), 0, false)
+                val parcel = Parcel.obtain()
+                val cached = try {
+                    source.writeToParcel(parcel, 0)
+                    parcel.setDataPosition(0)
+                    RemoteViews.CREATOR.createFromParcel(parcel)
+                } finally { parcel.recycle() }
+                var totalBytes = 0L
+                for (dark in listOf(false, true)) {
+                    val hostContext = context.createConfigurationContext(Configuration(context.resources.configuration).apply {
+                        uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                            if (dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+                    })
+                    instrumentation.runOnMainSync {
+                        val root = cached.apply(hostContext, FrameLayout(hostContext))
+                        val image = root.findViewById<ImageView>(if (brief) R.id.brief_widget_artwork else R.id.widget_artwork)
+                        val bitmap = (image.drawable as BitmapDrawable).bitmap
+                        totalBytes += bitmap.allocationByteCount
+                        val requestedSize = (requestedDp * context.resources.displayMetrics.density).toInt()
+                        assertTrue("Oversized artwork must render at lower resolution", bitmap.width < requestedSize)
+                        assertEquals("Square artwork must remain square", bitmap.width, bitmap.height)
+                    }
+                }
+                val budget = remoteViewsBitmapBudget(context, if (brief) 8_000_000L else 12_000_000L)
+                assertTrue("Both theme images must fit the transport budget", totalBytes <= budget)
+            }
+        } finally { TwidgetStore.saveWidgetSettings(context, id, original) }
+    }
+
     @Test fun launcherSelectsThemeWithoutAnotherProviderUpdate() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -96,8 +140,12 @@ class WidgetThemeRemoteViewsInstrumentedTest {
                         assertNotNull("Launcher must receive rendered artwork", artwork)
                         val bitmap = (artwork.drawable as BitmapDrawable).bitmap
                         val density = context.resources.displayMetrics.density
-                        assertEquals("Resized artwork width", (width * density).toInt(), bitmap.width)
-                        assertEquals("Resized artwork height", (height * density).toInt(), bitmap.height)
+                        val settings = TwidgetStore.widgetSettings(context, id)
+                        val budget = remoteViewsBitmapBudget(context, if (brief) 8_000_000L else 12_000_000L) /
+                            widgetArtworkVariants(settings)
+                        val expected = widgetBitmapSize((width * density).toInt(), (height * density).toInt(), budget)
+                        assertEquals("Resized artwork width", expected.width, bitmap.width)
+                        assertEquals("Resized artwork height", expected.height, bitmap.height)
                     }
                 }
             }

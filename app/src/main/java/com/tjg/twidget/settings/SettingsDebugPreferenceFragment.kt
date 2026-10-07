@@ -1,7 +1,5 @@
 package com.tjg.twidget.settings
 
-import com.tjg.twidget.BuildConfig
-
 import androidx.appcompat.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
@@ -17,6 +15,7 @@ import com.tjg.twidget.bridge.DebugBridgeLogActivity
 import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.main.OnboardingActivity
 
 import com.tjg.twidget.ui.AppPaletteManager
@@ -74,7 +73,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
             }
         })
         screen.addPreference(Preference(context).apply {
-            isVisible = BuildConfig.IN_APP_UPDATES
+            isVisible = BuildVars.IN_APP_UPDATES
             key = "debug_twidget_update"
             title = getString(R.string.twidget_update_debug)
             setOnPreferenceClickListener {

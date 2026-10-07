@@ -93,12 +93,12 @@ internal object BriefWidgetArtworkRenderer {
         style: WidgetStyle = WidgetStyle.ONE_UI,
         background: Int? = null,
         useProfileImages: Boolean = true,
+        bitmapBudgetBytes: Long = Long.MAX_VALUE,
     ): Bitmap {
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
         val density = context.resources.displayMetrics.density
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+        val (bitmap, canvas) = widgetArtworkSurface(width, height, bitmapBudgetBytes)
         background?.let { color ->
             val radius = dp(context, if (style == WidgetStyle.MATERIAL || height / density > 110f) 26f else height / density / 2f)
             canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius,

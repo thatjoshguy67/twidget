@@ -31,14 +31,14 @@ object WidgetArtworkRenderer {
         dark: Boolean,
         delta: Long = 0,
         drawBackground: Boolean = false,
+        bitmapBudgetBytes: Long = Long.MAX_VALUE,
     ): Bitmap {
         if (mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 || mode == TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP) {
-            return renderCompact(context, widthPx, heightPx, stats, settings, mode, dark, delta, drawBackground)
+            return renderCompact(context, widthPx, heightPx, stats, settings, mode, dark, delta, drawBackground, bitmapBudgetBytes)
         }
         val width = widthPx.coerceAtLeast(dp(context, 120))
         val height = heightPx.coerceAtLeast(dp(context, 120))
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+        val (bitmap, canvas) = widgetArtworkSurface(width, height, bitmapBudgetBytes)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val density = context.resources.displayMetrics.density
         val colors = WidgetColors.resolve(context, settings, dark)
@@ -145,12 +145,12 @@ object WidgetArtworkRenderer {
         dark: Boolean,
         delta: Long,
         drawBackground: Boolean,
+        bitmapBudgetBytes: Long,
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+        val (bitmap, canvas) = widgetArtworkSurface(width, height, bitmapBudgetBytes)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val colors = WidgetColors.resolve(context, settings, dark)
         val locale = AppLocales.resolve(settings.language)

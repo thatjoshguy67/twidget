@@ -56,13 +56,6 @@ The values in `bridge/.env.example` are documentation, not hosted-service
 credentials. Put local overrides in an ignored `.env` file and never submit a
 populated environment file.
 
-## SESL9 and isolated device testing
-
-All builds use SESL9. The optional `-Psesl9Prototype=true` flag changes only the
-installation identity and disables updater/OAuth integration so **Twidget SESL9**
-can remain installed alongside Twidget. See [SESL9 notes](docs/SESL9_PROTOTYPE.md)
-for installation, compatibility notes, and validation commands.
-
 ## Pull requests
 
 - Keep each pull request focused and explain the user-visible behavior.

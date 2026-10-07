@@ -83,9 +83,10 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             val views = linkedMapOf<SizeF, RemoteViews>()
             var bytes = 0L
             val variants = widgetArtworkVariants(TwidgetStore.widgetSettings(context, id))
+            val budget = remoteViewsBitmapBudget(context, BITMAP_BUDGET)
             fun add(key: SizeF, width: Int, height: Int) {
                 val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants
-                if (bytes + cost > BITMAP_BUDGET || views.containsKey(key)) return
+                if (bytes + cost > budget || views.containsKey(key)) return
                 views[key] = createViews(context, id, width, height, account, snapshot)
                 bytes += cost
             }
@@ -132,6 +133,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 } else {
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
+                val artworkBudget = remoteViewsBitmapBudget(context, BITMAP_BUDGET) / widgetArtworkVariants(settings)
                 setWidgetArtwork(R.id.brief_widget_artwork, settings) { artworkDark ->
                     BriefWidgetArtworkRenderer.render(
                         context = localizedContext,
@@ -144,6 +146,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         fontFamily = settings.fontFamily,
                         style = settings.style,
                         background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
+                        bitmapBudgetBytes = artworkBudget,
                     )
                 }
                 setContentDescription(

@@ -30,6 +30,7 @@ import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
+import com.tjg.twidget.ui.TwidgetHaptics
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.io.File
 import java.io.InputStream
@@ -399,12 +400,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     internal fun onComposeAddThreadRequested() {
         if (editorItems.size >= MAX_THREAD_ITEMS) return
         editorItems += EditorItem()
+        TwidgetHaptics.confirm(window.decorView)
         composeUi.refreshFromEditor(focusLast = true)
     }
 
     internal fun onComposeRemoveThreadRequested(index: Int) {
         if (editorItems.size <= 1 || index !in editorItems.indices) return
         cleanupUnstoredOwnedMedia(editorItems.removeAt(index).media)
+        TwidgetHaptics.confirm(window.decorView)
         composeUi.refreshFromEditor()
     }
 
@@ -529,6 +532,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             runRemote { coordinator.saveDraftWithProvider(draft) }
         } else {
             editorPost = coordinator.saveDraft(draft)
+            TwidgetHaptics.confirm(window.decorView)
             toast(R.string.schedule_draft_saved)
             finish()
         }
@@ -536,6 +540,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     private fun submitSchedule() {
         if (composeHasInvalidLength()) {
+            TwidgetHaptics.reject(window.decorView)
             toast(R.string.schedule_character_limit_error)
             return
         }
@@ -612,6 +617,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         when {
             result == null -> toast(R.string.schedule_not_found)
             result.isSuccess -> {
+                if (hasWindowFocus()) TwidgetHaptics.confirm(window.decorView)
                 toast(
                     if (result.fellBackToLocal && result.post.status == ScheduleStatus.DRAFT) {
                         R.string.schedule_draft_fell_back_local
@@ -656,6 +662,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     }
 
     private fun showErrors(errors: List<String>) {
+        if (hasWindowFocus()) TwidgetHaptics.reject(window.decorView)
         AlertDialog.Builder(this)
             .setTitle(R.string.schedule_error_title)
             .setMessage(errors.filter(String::isNotBlank).joinToString("\n"))

@@ -1,0 +1,35 @@
+<en-GB>
+Twidget’s first public release on Google Play is here!
+
+• Keep an eye on your X/Twitter followers with home screen widgets and charts.
+• Make your dashboard yours with cards you can add and rearrange.
+• Get a personal update with Your Brief, explore Top Followers, and plan your posts.
+• Choose One UI or Material widgets, custom fonts, and light or dark themes.
+• Available in English, German and French.
+
+Thanks to everyone who helped test it. Welcome aboard!
+</en-GB>
+
+<de-DE>
+Twidget ist jetzt erstmals öffentlich auf Google Play!
+
+• Behalte deine X/Twitter-Follower mit Widgets und Diagrammen im Blick.
+• Gestalte dein Dashboard mit Karten, die du hinzufügen und umsortieren kannst.
+• Hol dir dein persönliches Briefing, entdecke Top Follower und plane deine Posts.
+• Wähle One UI- oder Material-Widgets, Schriften und helle oder dunkle Designs.
+• Auf Deutsch, Englisch und Französisch.
+
+Danke an alle, die mitgetestet haben. Willkommen an Bord!
+</de-DE>
+
+<fr-FR>
+Twidget débarque sur Google Play pour son premier lancement public !
+
+• Suis tes abonnés X/Twitter avec des widgets et des graphiques.
+• Personnalise ton tableau de bord : ajoute et réorganise les cartes.
+• Consulte ton Brief personnel, découvre tes meilleurs abonnés et planifie tes posts.
+• Choisis des widgets One UI ou Material, ta police et un thème clair ou sombre.
+• Disponible en français, anglais et allemand.
+
+Merci à tous ceux qui ont testé l’app. Bienvenue à bord !
+</fr-FR>

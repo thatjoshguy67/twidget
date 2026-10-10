@@ -341,7 +341,7 @@ class MetricChartView @JvmOverloads constructor(
                 if (!touchMoved) {
                     val hitBar = barHitBounds.any { it.contains(event.x, event.y) }
                     if (hitBar) {
-                        updateActiveBar(event.x, event.y)
+                        updateActiveBar(event.x, event.y, fromTouch = true)
                         postDelayed(hideTooltipRunnable, TOUCH_TOOLTIP_TIMEOUT_MS)
                     } else {
                         onChartTapListener?.invoke()
@@ -395,10 +395,11 @@ class MetricChartView @JvmOverloads constructor(
         super.onWindowVisibilityChanged(visibility)
     }
 
-    private fun updateActiveBar(x: Float, y: Float) {
+    private fun updateActiveBar(x: Float, y: Float, fromTouch: Boolean = false) {
         val nextIndex = barHitBounds.indexOfFirst { it.contains(x, y) }
         if (nextIndex != activeIndex) {
             activeIndex = nextIndex
+            if (fromTouch && nextIndex >= 0) TwidgetHaptics.selection(this)
             invalidate()
         }
     }

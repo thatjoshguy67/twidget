@@ -16,7 +16,7 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.UpdateAppearance
 import android.util.Size
 import android.view.DragEvent
-import android.view.HapticFeedbackConstants
+import com.tjg.twidget.ui.TwidgetHaptics
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -177,9 +177,11 @@ internal class ScheduleComposeUi(
             index + 1,
         )
         reorderThread.tooltipText = reorderThread.contentDescription
-        reorderThread.setOnLongClickListener {
-            startReorderDrag(index, row, reorderThread)
-        }
+        reorderThread.setOnLongClickListener(object : View.OnLongClickListener {
+            override fun onLongClick(view: View): Boolean = startReorderDrag(index, row, reorderThread)
+
+            override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
+        })
         row.setOnDragListener(reorderDragListener(row))
         input.setOnFocusChangeListener { _, focused ->
             if (focused) {
@@ -280,7 +282,7 @@ internal class ScheduleComposeUi(
             return false
         }
         activeItem = index
-        handle.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        TwidgetHaptics.dragPickup(handle)
         row.visibility = View.GONE
         return true
     }
@@ -336,8 +338,10 @@ internal class ScheduleComposeUi(
             insertionIndex,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, placeholder.minimumHeight),
         )
+        val previousDropIndex = dragDropIndex
         dragDropIndex = countThreadRowsBefore(placeholder)
             .coerceIn(0, activity.composeItemCount() - 1)
+        if (dragDropIndex != previousDropIndex) TwidgetHaptics.selection(threadContainer)
     }
 
     private fun countThreadRowsBefore(placeholder: View): Int {
@@ -362,6 +366,7 @@ internal class ScheduleComposeUi(
         dragSource = null
         dragPlaceholder = null
         if (commit) {
+            if (destination != from) TwidgetHaptics.confirm(threadContainer)
             activity.onComposeMoveThreadRequested(from, destination - from)
         } else {
             refreshFromEditor(activeIndex = from)

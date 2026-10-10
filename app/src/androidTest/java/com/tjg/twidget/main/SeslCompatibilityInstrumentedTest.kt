@@ -342,6 +342,15 @@ class SeslCompatibilityInstrumentedTest {
                         val safe = ViewCompat.getRootWindowInsets(panel)!!.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).top
                         val y = IntArray(2).also(panel::getLocationOnScreen)[1]
                         assertTrue("Drawer surface must begin below the status bar (open=$open, tablet=${drawer.isLargeScreenMode}, y=$y, inset=$safe)", y >= safe)
+                        val bottomInset = ViewCompat.getRootWindowInsets(panel)!!
+                            .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).bottom
+                        val window = panel.rootView
+                        val windowY = IntArray(2).also(window::getLocationOnScreen)[1]
+                        val safeBottom = windowY + window.height - bottomInset
+                        assertTrue(
+                            "Drawer surface must end above navigation (open=$open, tablet=${drawer.isLargeScreenMode}, bottom=${y + panel.height}, safeBottom=$safeBottom)",
+                            y + panel.height <= safeBottom,
+                        )
                         val button = if (open) dev.oneuiproject.oneui.design.R.id.oui_des_drawer_header_button
                             else dev.oneuiproject.oneui.design.R.id.navRailDrawerButton
                         assertFullyVisible(activity.findViewById(button))

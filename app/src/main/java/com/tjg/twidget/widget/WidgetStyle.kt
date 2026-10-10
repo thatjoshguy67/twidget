@@ -3,6 +3,7 @@ package com.tjg.twidget.widget
 import android.content.Context
 import android.graphics.Color
 import android.os.Build
+import androidx.core.graphics.ColorUtils
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import com.tjg.twidget.ui.TwidgetFonts
@@ -27,6 +28,28 @@ internal fun widgetUsesDarkTheme(colorMode: String): Boolean = when (colorMode) 
 }
 
 internal data class WidgetColors(val background: Int, val primary: Int, val secondary: Int) {
+    /** Keep signed changes readable against the widget tint, including wallpaper palettes. */
+    fun deltaColor(delta: Long, dark: Boolean): Int {
+        val background = ColorUtils.setAlphaComponent(background, 255)
+        val base = when {
+            delta < 0 && dark -> Color.rgb(255, 105, 97)
+            delta < 0 -> Color.rgb(190, 40, 29)
+            dark -> Color.rgb(105, 220, 118)
+            else -> Color.rgb(0, 128, 64)
+        }
+        if (ColorUtils.calculateContrast(base, background) >= 4.5) return base
+        val endpoint = if (ColorUtils.calculateContrast(Color.WHITE, background) >
+            ColorUtils.calculateContrast(Color.BLACK, background)) Color.WHITE else Color.BLACK
+        var low = 0f
+        var high = 1f
+        repeat(12) {
+            val fraction = (low + high) / 2f
+            if (ColorUtils.calculateContrast(ColorUtils.blendARGB(base, endpoint, fraction), background) >= 4.5)
+                high = fraction else low = fraction
+        }
+        return ColorUtils.blendARGB(base, endpoint, high)
+    }
+
     companion object {
         fun resolve(context: Context, style: WidgetStyle, dark: Boolean, alpha: Int = 205): WidgetColors {
             if (style == WidgetStyle.ONE_UI) {

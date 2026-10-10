@@ -207,7 +207,7 @@ class WidgetProportionsInstrumentedTest {
                     val bitmap = WidgetArtworkRenderer.render(context, 352 * scale, 176 * scale,
                         ProfileStats("Test", "twidget", 7671, 0, 0, 0), settings,
                         TwidgetWidget.LAYOUT_MODE_LARGE, dark, delta)
-                    val deltaColor = if (delta < 0) Color.rgb(229, 83, 75) else Color.rgb(0, 170, 86)
+                    val deltaColor = WidgetColors.resolve(context, settings, dark).deltaColor(delta, dark)
                     val ink = android.graphics.Rect()
                     for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) {
                         val pixel = bitmap.getPixel(x, y)

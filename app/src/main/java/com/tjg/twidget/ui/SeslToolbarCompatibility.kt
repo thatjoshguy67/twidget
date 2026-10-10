@@ -18,6 +18,24 @@ import com.google.android.material.oneui.floatingactioncontainer.FloatingToolbar
 
 /** Bridges the OneUI8 design wrapper to SESL9's sibling floating toolbar contract. */
 internal object SeslToolbarCompatibility {
+    fun applyDrawerBottomInset(root: View, bottom: Int) {
+        val group = root as? ViewGroup ?: return
+        val slidingDrawer = descendants(group).filterIsInstance<SlidingPaneLayout>().firstOrNull()
+        if (slidingDrawer != null) {
+            // SESL owns both the tablet rail's bounds and its rounded surface.
+            // A margin on drawer_panel alone is ignored by this container.
+            slidingDrawer.seslSetDrawerMarginBottom(bottom)
+        } else {
+            group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel)?.let { panel ->
+                val params = panel.layoutParams as? ViewGroup.MarginLayoutParams
+                if (params != null && params.bottomMargin != bottom) {
+                    params.bottomMargin = bottom
+                    panel.layoutParams = params
+                }
+            }
+        }
+    }
+
     fun applyTopInset(root: View, top: Int): Boolean {
         val group = root as? ViewGroup ?: return false
         val appBar = descendants(group).filterIsInstance<AppBarLayout>().firstOrNull() ?: return false

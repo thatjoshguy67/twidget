@@ -11,6 +11,9 @@ the Git repository.
   `~/.config/twidget/github.properties` with owner-only permissions.
 - GitHub Actions stores the base64-encoded release keystore, signing passwords,
   and package-registry credentials as encrypted repository secrets.
+- GitHub Actions stores the Play publisher service account JSON as the encrypted
+  repository secret `PLAY_SERVICE_ACCOUNT_JSON`. It is used only by the Play
+  publishing job, never by debug or pull-request builds.
 - Railway stores the server-only Top Followers provider credential as the
   sealed `TWITTERAPIS_API_KEY` service variable. It is never injected into an
   APK or GitHub Actions build.
@@ -76,7 +79,8 @@ CI provides these downloads in each run's **Artifacts** section:
 | Release | Signed release APK/AAB on the GitHub release | Signed release APK/AAB in `twidget-play-<version>` |
 
 The Play APK can be installed directly for testing; upload the Play AAB to
-Play Console. The signed APK and AAB must have matching certificates, and
+Play Console manually until automatic publishing is enabled below. The signed
+APK and AAB must have matching certificates, and
 stable/beta workflows also verify that Play matches the GitHub distribution.
 Play artifacts stay separate from GitHub release assets because older GitHub
 updaters may select any attached APK.
@@ -99,6 +103,60 @@ The corrected beta.2 uses `100300181`, beta.3 will use `100300182`, and stable
 1.3.0 will use `100300199`. Retain the offset for future versions: 1.3.1 beta.1
 uses `100300280`, preserving upgrades. Both distributions keep the same code
 allocation. Never upload an unreleased stable build as a beta.
+
+### Automatic Google Play publishing
+
+GitHub debug releases remain unchanged and are never submitted to Play. Once
+enabled, **Pre-release** publishes its GitHub pre-release, then submits the same
+version's signed Play AAB to open testing (API track `beta`). **Release** publishes
+its GitHub release, then submits its signed Play AAB to `production` at 100%.
+The Play build comes from the same commit as the corresponding GitHub build;
+the separate distribution flavors retain their existing updater behavior.
+Closed testing remains a manual option for initial setup or private tests.
+
+Complete the one-time setup before enabling publishing:
+
+1. Finish the initial Play Console setup, manual bundle upload, Play App Signing,
+   required testing, and access to open testing and production.
+2. Enable the Google Play Android Developer API in a Google Cloud project and
+   create a service account. Invite its email in Play Console **Users and
+   permissions**, with access to Twidget and permissions to view app information,
+   release to testing tracks, and release to production. See Google's
+   [service account setup](https://developers.google.com/android-publisher/getting_started#service-account).
+3. Store its JSON key contents in the GitHub repository secret
+   `PLAY_SERVICE_ACCOUNT_JSON`. Keep the key outside the repository.
+4. Leave **managed publishing off** for automatic availability after approval.
+   If it is enabled, approved changes must be published through Play Console.
+5. Set the GitHub repository variable `PLAY_PUBLISHING_ENABLED` to `true`.
+   An unset variable keeps the existing GitHub-only publishing process.
+
+Before each beta or stable release, add
+`docs/play-console/<version>-release-notes.txt` (for example,
+`1.4.0-beta.1-release-notes.txt`). Use the existing Play Console format with
+`<en-GB>`, `<de-DE>`, and any other translated language blocks. Each language
+must contain 1–500 Unicode characters. These are concise, localized versions
+of the GitHub changelog, which can be longer. When publishing is enabled, CI
+validates the notes before building or publishing the GitHub release.
+
+The shared **Publish to Google Play** workflow downloads the signed artifact
+from the current run and submits it for review. Its summary confirms submission,
+not approval or availability. Google review and publishing settings determine
+when testers or users receive it; see
+[Google's publishing controls](https://support.google.com/googleplay/android-developer/answer/9859654).
+Release runs and Play edits are serialized to avoid conflicting versions/edits.
+Do not edit the app in Play Console while an automated submission is running.
+
+If the Play job fails, the GitHub release and signed workflow artifact remain
+available. Fix credentials or Play Console prerequisites, then **Re-run failed
+jobs** to retry just publishing. If Play already accepted the version code
+(including an interrupted submission), inspect Play Console and finish the
+release using that existing bundle rather than uploading the same code again.
+Do not rerun all jobs or change an existing published tag for Play recovery.
+If Google requires explicit review submission, use **Send for review** in Play
+Console; CI does not silently fall back to a draft or skip review.
+
+To pause automatic submissions, unset `PLAY_PUBLISHING_ENABLED` or set it to
+`false`. This does not withdraw versions already submitted to Play.
 
 ### Publishing
 

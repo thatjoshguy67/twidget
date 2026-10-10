@@ -78,6 +78,13 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             // Other screens keep their entire content viewport above system navigation.
             val bottomPadding = if (onNavigationBarInset == null) maxOf(ime.bottom, safe.bottom) else ime.bottom
             view.setPadding(safe.left, topPadding, safe.right, bottomPadding)
+            // The drawer surface stops above system navigation even when the
+            // page scrolls behind it. Root padding may already cover part or all
+            // of this space (including the keyboard), so avoid counting it twice.
+            SeslToolbarCompatibility.applyDrawerBottomInset(
+                view,
+                (maxOf(safe.bottom, ime.bottom) - bottomPadding).coerceAtLeast(0),
+            )
             // IME insets already include the navigation region on Samsung and
             // several other OEM keyboards. Do not add it to floating chrome twice.
             onNavigationBarInset?.invoke(if (imeVisible) 0 else safe.bottom)

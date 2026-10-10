@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.LruCache
 import androidx.core.content.ContextCompat
@@ -51,7 +52,7 @@ object WidgetArtworkRenderer {
             applyWidgetTypeface(context, settings.fontFamily, 600, if (contained) 25 else 51, 100)
         }
         val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, AppLocales.resolve(settings.language))
-        val deltaColor = if (delta < 0) Color.rgb(229, 83, 75) else Color.rgb(0, 170, 86)
+        val deltaColor = colors.deltaColor(delta, dark)
         val footerHeight = (if (contained) 20f else 14f) * density
         val textMaxWidth = width - pad * 2
         val textMaxHeight = height - pad * 2 - footerHeight - 8f * density
@@ -106,6 +107,7 @@ object WidgetArtworkRenderer {
             val supporting = index >= countWordCount
             val connector = words[index].equals("and", ignoreCase = true) || words[index].equals("und", ignoreCase = true)
             val weight = when {
+                index > countWordCount -> 400
                 supporting || connector -> 200
                 flex -> (500 + emphasis[index] * 330 + fullness * 70).toInt().coerceIn(450, 900)
                 // A wider weight range gives non-width-variable fonts contrast too.
@@ -166,11 +168,12 @@ object WidgetArtworkRenderer {
         val valuePaint = paint(700, colors.primary, 26f, 110, 100)
         val labelPaint = paint(400, colors.secondary, 26f, 80, 0)
         val compact = mode == TwidgetWidget.LAYOUT_MODE_COMPACT_2X1
-        val deltaPaint = paint(400, if (delta < 0) Color.rgb(255, 59, 48) else
-            if (settings.style == WidgetStyle.MATERIAL) Color.rgb(12, 162, 86) else Color.rgb(46, 125, 50),
+        val deltaPaint = paint(500, colors.deltaColor(delta, dark),
             if (compact && settings.style == WidgetStyle.ONE_UI) 20f else 26f, 57, 100)
-        val gap = (if (compact) 6f else 10f) * density
-        val logoSize = 26f * density
+        var gap = (if (compact) 6f else 10f) * density
+        val digitBounds = Rect()
+        valuePaint.getTextBounds("0123456789", 0, 10, digitBounds)
+        var logoSize = digitBounds.height().toFloat()
         fun lineWidth() = valuePaint.measureText(value) +
             (if (compact) logoSize + gap else gap + labelPaint.measureText(label)) +
             (if (deltaText.isEmpty()) 0f else gap + deltaPaint.measureText(deltaText))
@@ -181,17 +184,19 @@ object WidgetArtworkRenderer {
                 if (lineWidth() <= width - 18f * density) break
             }
         }
-        // The logo and gaps stay fixed while the text shrinks into the remaining width.
+        // Fit the whole row together so a long count never leaves an oversized logo.
         val availableWidth = width - 18f * density
-        if (lineWidth() > availableWidth) {
-            val fixedWidth = (if (compact) logoSize else 0f) +
-                gap + (if (deltaText.isEmpty()) 0f else gap)
-            val scale = ((availableWidth - fixedWidth) / (lineWidth() - fixedWidth)).coerceIn(0.01f, 1f)
-            listOf(valuePaint, labelPaint, deltaPaint).forEach { it.textSize *= scale }
-        }
+        val rowHeight = maxOf(logoSize, valuePaint.fontMetrics.descent - valuePaint.fontMetrics.ascent,
+            deltaPaint.fontMetrics.descent - deltaPaint.fontMetrics.ascent)
+        val availableHeight = if (compact) height - 18f * density else height - 42f * density
+        val scale = minOf(1f, availableWidth / lineWidth(), availableHeight / rowHeight).coerceAtLeast(0.01f)
+        listOf(valuePaint, labelPaint, deltaPaint).forEach { it.textSize *= scale }
+        logoSize *= scale
+        gap *= scale
         val blockHeight = if (compact) 26f * density else 50f * density
         val top = (height - blockHeight) / 2f
-        val baseline = top + 13f * density - (valuePaint.fontMetrics.ascent + valuePaint.fontMetrics.descent) / 2f
+        val baseline = (if (compact) height / 2f else top + 13f * density) -
+            (valuePaint.fontMetrics.ascent + valuePaint.fontMetrics.descent) / 2f
         var x = (width - lineWidth()) / 2f
         if (compact) {
             drawLogo(context, canvas, settings, colors.secondary, x, (height - logoSize) / 2f, logoSize)

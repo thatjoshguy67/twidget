@@ -2,16 +2,92 @@
 
 All notable changes to Twidget are documented here.
 
-## Unreleased
+## [1.3.0] - 2026-10-10
 
-- Added a personal thank-you to Dy (evowizz) for the French translation, with his
-  Twitter avatar and website link, localized in English, German, and French.
+One UI 9 throughout the app, a dashboard you can make your own, and widgets that
+fit your device. This is the stable release of the 1.3.0 beta changes, with French
+localisation and the latest fixes included. These changes are since stable 1.2.1.
 
-- Fixed one-day streak wording in Your Brief and dashboard cards in English,
-  German, and French.
-- Corrected the German Brief/widget restart summary and kept German noun
-  capitalization in the instructions used by both AI providers. A streak waiting
-  to restart is no longer described as active in the compact fallback.
+### One UI 9 and app appearance
+
+- Rebuilt the interface on SESL9, with floating toolbars, softer cards, scrolling
+  fades, and layouts that adapt to phones, tablets, and foldables.
+- Reorganised Settings into smaller categories, including a dedicated Appearance
+  page for app fonts, widget defaults, and light, dark, or system themes.
+- Choose One UI Sans, Google Sans Flex, or the system font for the app separately
+  from your widget font. Headings, charts, dialogs, and controls follow your choice
+  while respecting device text scaling.
+- Refined the welcome screen, privacy links, API-key dialog, and tablet toolbars.
+  Fixed clipped notices, shadows, and drawer clearance above system navigation.
+
+### Your dashboard
+
+- Press and hold a card, or tap Edit dashboard, to rearrange your dashboard.
+  Cards animate into edit mode with soft shadows and haptic feedback.
+- Added a grouped card picker with live previews. Hold a preview to drag a new
+  card directly into position on your dashboard.
+- Improved half-width card placement, drag autoscroll, and transitions when
+  dropping cards or leaving edit mode. Card navigation stays disabled while editing.
+- Refined metric and streak cards, including a personal-best streak state,
+  clearer chart labels, and headings that fit smaller cards.
+
+### Home screen widgets
+
+- Added One UI and Material 3 Expressive styles for follower and Your Brief
+  widgets. Defaults follow your device; customise the style, font, platform logo,
+  and theme per widget or in Appearance settings.
+- One UI widgets keep their opacity and blur controls. Material widgets use
+  wallpaper colours and Google Sans Flex, with an optional contained username.
+- Improved follower typography, wrapping, spacing, and baselines across widget
+  sizes. Counts make better use of the available space when resizing.
+- Made resizing quicker and more accurate, and kept artwork within Android's
+  bitmap memory limit to avoid oversized widget updates.
+- Improved positive and negative delta contrast on dark and wallpaper-coloured
+  backgrounds. Compact platform icons now scale with the count rather than
+  dominating when long numbers shrink.
+- Updated widget picker previews and fixed configuration-preview flicker,
+  opacity controls, logo updates, and automatic theme changes.
+
+### Your Brief, languages, and follower rankings
+
+- Added French throughout the app and widgets, including dates and follower
+  counts written in words. Improved language selection on older Android versions.
+- Corrected one-day streak wording in English, German, and French. German Brief
+  copy now uses native noun capitalisation and clearer restart wording, and compact
+  summaries preserve the difference between an active streak and one to restart.
+- Improved Brief fallback and goal wording, and simplified the Gemini API-key
+  dialog with an inline privacy link and clearer actions.
+- Limited tall tweet images while preserving shorter images' proportions. Your
+  Brief now lets you scroll through all photos in a tweet.
+- Improved remote Top Followers scans, ranked browsing, search clearance, and
+  the return-to-top action.
+- Thanks to [Dy (evowizz)](https://evowizz.dev/) for the French localisation and
+  build improvements, and [Aaron the Techie](https://x.com/aaronthetechie) for German.
+  Dy now has a personal thank-you in About, with his avatar and website link.
+
+### Scheduling, imports, and feedback
+
+- Paste images from the clipboard into the tweet composer. Refined thread
+  reordering and added haptic feedback for selection, saving, scheduling, and errors.
+- Added clearer feedback to manual refreshes and improved app haptics, with
+  waveform fallbacks where hardware primitives are unavailable.
+- Improved X Analytics imports when export and history timestamps differ slightly.
+  Import failures show clearer count comparisons and retry guidance.
+- Added native One UI snackbars for scheduling feedback and made chart-estimate
+  tips dismissible across refreshes, accounts, and app restarts.
+
+### Distribution and maintenance
+
+- Prepared the Google Play distribution without the APK updater or its install
+  permissions. GitHub builds retain download notifications and pause, resume,
+  and stop controls for app updates.
+- Fixed beta version-code ordering, duplicate update downloads, and update
+  actions that remained unavailable after a release was detected.
+- Modernised the build with AGP 9.4.1, Gradle 9.8, and a shared build-logic module.
+  Target SDK is now 37; minimum support remains Android 8.0 (API 26).
+- Updated bridge dependencies to address reported security issues.
+
+[1.3.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.2.1...twidget-v1.3.0
 
 ## [1.3.0-beta.4] - 2026-10-02
 
@@ -150,47 +226,6 @@ since that build.
 - Added English and German wording for the dismissible chart tip.
 
 [1.3.0-beta.2]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.1...twidget-v1.3.0-beta.2
-
-## [1.3.0] - Unreleased
-
-A new One UI 9 foundation, a reorganised Settings experience, and more ways to
-personalise Twidget. This release includes all changes since stable 1.2.1.
-
-### Updated One UI 9 interface
-
-- Updated the entire app to use SESL9, or One UI 9's app design style.
-- Toolbars now float when you scroll
-- A subtle gradient overflow is visible when you scroll, on the top and bottom of the display
-- Cards have shorter padding
-- Twidget feel basically 1:1 to a native One UI application now!
-
-### Redesigned settings, and custom fonts
-
-- Reorganised Settings into categories, instead of one giant list. 
-- Added a new Appearance page, with customisable fonts, widget presets and light/dark mode. 
-- Choose Default (One UI Sans), Google Sans Flex, or System default for the app
-  interface independently of widget fonts. Font weights and styles are preserved
-  across pages, dialogs, and charts. Widgets also gain a System default font option.
-- Language opens Android's app-language settings on Android 13+, with a
-  single-choice language dialog on older versions.
-- Cleaned up other messy Settings items, changed some copy in certain places. 
-
-### Scheduling and follower rankings
-
-- You can now paste images from the clipboard directly into the tweet composer.
-- Fixed Top Follower scan reliabillity; now runs fully remote from the client. 
-
-### Other fixes
-
-- Preparing work for the upcoming Google Play release (stay tuned)
-- Added German translations for the new Settings pages, shortened onboarding and
-  streak labels, separated the add-widget button from its page title, and improved
-  Brief fallback and goal wording. Thanks to [Aaron the Techie](https://x.com/aaronthetechie).
-- Fixed clipped shadow in Your Brief onboarding.  
-- Updated to AGP 9.3.3, Gradle 9.5, compile SDK 37, and JDK 25 in CI for SESL9.
-  Minimum Android version remains Android 8.0 (API 26), with target SDK 36.
-
-[1.3.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.2.1...staging
 
 ## [1.2.1] - 2026-09-13
 

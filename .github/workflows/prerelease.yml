@@ -5,6 +5,11 @@ on:
 
 permissions:
   contents: write # create the tag and the GitHub Release
+  actions: read # download this run's signed Play artifact
+
+concurrency:
+  group: twidget-versioned-release
+  cancel-in-progress: false
 
 jobs:
   bridge:
@@ -33,6 +38,8 @@ jobs:
   prerelease:
     needs: bridge
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,6 +102,15 @@ jobs:
             NUMBER=$((${LAST:-0} + 1))
           fi
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Play release notes before publishing
+        if: vars.PLAY_PUBLISHING_ENABLED == 'true'
+        env:
+          BETA_NUMBER: ${{ steps.beta.outputs.number }}
+        run: |
+          VERSION="$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)-beta.$BETA_NUMBER"
+          python3 .github/scripts/prepare-play-notes.py \
+            "docs/play-console/$VERSION-release-notes.txt" "$RUNNER_TEMP/play-notes"
 
       - name: Build signed beta APK and AAB
         env:
@@ -268,3 +284,16 @@ jobs:
             exit 0
           fi
           bash .github/scripts/notify-discord-release.sh
+
+  play-publish:
+    needs: prerelease
+    if: vars.PLAY_PUBLISHING_ENABLED == 'true'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/play-publish.yml
+    with:
+      version: ${{ needs.prerelease.outputs.version }}
+      track: beta
+    secrets:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}

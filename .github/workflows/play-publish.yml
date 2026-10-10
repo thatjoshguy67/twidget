@@ -1,0 +1,73 @@
+name: Publish to Google Play
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      track:
+        required: true
+        type: string
+    secrets:
+      PLAY_SERVICE_ACCOUNT_JSON:
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+# Google Play edits for the same app must not overlap, even across tracks.
+concurrency:
+  group: twidget-play-publishing
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate publishing configuration and release notes
+        env:
+          VERSION: ${{ inputs.version }}
+          TRACK: ${{ inputs.track }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          case "$TRACK:$VERSION" in
+            beta:*) [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[1-9][0-9]*$ ]] ;;
+            production:*) [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ;;
+            *) echo "::error::Only beta and production tracks are supported"; exit 1 ;;
+          esac
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::PLAY_SERVICE_ACCOUNT_JSON is required when Play publishing is enabled"
+            exit 1
+          fi
+          python3 .github/scripts/prepare-play-notes.py \
+            "docs/play-console/$VERSION-release-notes.txt" "$RUNNER_TEMP/play-notes"
+
+      - name: Download the signed Play bundle from this release run
+        uses: actions/download-artifact@v4
+        with:
+          name: twidget-play-${{ inputs.version }}
+          path: play-artifacts
+
+      - name: Submit matching release to Google Play
+        uses: r0adkll/upload-google-play@eb49699984a39f23558439581660aa6f088acfd6 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.tjg.twidget
+          releaseFiles: play-artifacts/twidget-play-v${{ inputs.version }}.aab
+          tracks: ${{ inputs.track }}
+          releaseName: Twidget v${{ inputs.version }}
+          status: completed
+          changesNotSentForReview: false
+          whatsNewDirectory: ${{ runner.temp }}/play-notes
+
+      - name: Record submission
+        env:
+          VERSION: ${{ inputs.version }}
+          TRACK: ${{ inputs.track }}
+        run: |
+          echo "### Google Play submission" >> "$GITHUB_STEP_SUMMARY"
+          echo "Twidget v$VERSION submitted to $TRACK. Availability depends on Google review and Play Console publishing settings." >> "$GITHUB_STEP_SUMMARY"

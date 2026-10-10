@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="dashboard_remove_button_bg">#FCFCFF</color>
+    <color name="card_preview_shadow">#29000000</color>
+    <color name="dashboard_edit_shadow">#18000000</color>
+    <color name="dashboard_edit_border">#33000000</color>
+    <color name="dashboard_edit_button_bg">#eaeaea</color>
     <color name="oneui_bg">#f1f1f3</color>
     <color name="oneui_card_bg">#fcfcff</color>
     <color name="oneui_drawer_bg">#fcfcff</color>
@@ -57,4 +62,5 @@
     <color name="brief_onboarding_top">#A1D5FF</color>
     <color name="brief_onboarding_bottom">#F1F1F3</color>
     <color name="brief_onboarding_button">#99FCFCFF</color>
+    <color name="card_catalogue_preview_bg">#EAEAEA</color>
 </resources>

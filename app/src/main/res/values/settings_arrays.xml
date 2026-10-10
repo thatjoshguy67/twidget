@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="settings_theme_labels">
+        <item>@string/widget_tint_light</item>
+        <item>@string/widget_tint_dark</item>
+    </string-array>
+    <string-array name="settings_theme_values" translatable="false">
+        <item>light</item><item>dark</item>
+    </string-array>
+    <array name="settings_theme_images">
+        <item>@drawable/settings_theme_light</item><item>@drawable/settings_theme_dark</item>
+    </array>
+    <array name="settings_theme_images_wide">
+        <item>@drawable/settings_theme_light_wide</item><item>@drawable/settings_theme_dark_wide</item>
+    </array>
+    <array name="settings_theme_images_tablet">
+        <item>@drawable/settings_theme_light_tablet</item><item>@drawable/settings_theme_dark_tablet</item>
+    </array>
+</resources>

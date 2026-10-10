@@ -13,6 +13,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.graphics.ColorUtils
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ImportedChartPoint
 import com.tjg.twidget.data.HistorySample
@@ -27,13 +28,13 @@ class MetricChartView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     private val axisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
-        textSize = 10f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.oneUiSans(context, 700)
+        textSize = 14f * resources.displayMetrics.scaledDensity
+        typeface = TwidgetFonts.forApp(context, 200)
     }
     private val dateLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
         textSize = 10f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.oneUiSans(context, 700)
+        typeface = TwidgetFonts.forApp(context, 700)
     }
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_divider)
@@ -43,7 +44,7 @@ class MetricChartView @JvmOverloads constructor(
     private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_card_bg)
         textSize = 12f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.oneUiSans(context, 700)
+        typeface = TwidgetFonts.forApp(context, 700)
     }
     private val tooltipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
@@ -150,13 +151,14 @@ class MetricChartView @JvmOverloads constructor(
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
         val density = resources.displayMetrics.density
-        val top = 18f * density
+        val top = 12f * density
+        val accent = context.getColor(R.color.oneui_accent)
         barGradient = LinearGradient(
             0f,
             top,
             0f,
             (height - 30f * density).coerceAtLeast(top + 1f),
-            intArrayOf(Color.rgb(56, 122, 255), Color.rgb(133, 163, 222)),
+            intArrayOf(accent, ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
             null,
             Shader.TileMode.CLAMP,
         )
@@ -169,8 +171,8 @@ class MetricChartView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val labelInset = 20f * density
         val right = 20f * density
-        val top = 18f * density
-        val bottomLabels = 30f * density
+        val top = 12f * density
+        val bottomLabels = 34f * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         // The numbered axis belongs to the current week's bars. Including the
@@ -210,7 +212,7 @@ class MetricChartView @JvmOverloads constructor(
         plotRect.set(left, top, width - right, chartBottom)
         val plotCheckpoint = canvas.save()
         plotClipPath.reset()
-        plotClipPath.addRoundRect(plotRect, 16f * density, 16f * density, Path.Direction.CW)
+        plotClipPath.addRoundRect(plotRect, 10f * density, 10f * density, Path.Direction.CW)
         canvas.clipPath(plotClipPath)
 
         // The Figma graph uses four alternating rear columns rather than
@@ -273,9 +275,16 @@ class MetricChartView @JvmOverloads constructor(
         barPaint.shader = null
         canvas.restoreToCount(plotCheckpoint)
 
+        val axisTextBounds = android.graphics.Rect()
         axisLabels.forEachIndexed { index, label ->
             val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
-            canvas.drawText(label, labelInset, y + 4f * density, axisLabelPaint)
+            axisLabelPaint.getTextBounds(label, 0, label.length, axisTextBounds)
+            val baseline = when (index) {
+                0 -> top - axisTextBounds.top
+                axisLabels.lastIndex -> chartBottom - axisTextBounds.bottom
+                else -> y - (axisTextBounds.top + axisTextBounds.bottom) / 2f
+            }
+            canvas.drawText(label, labelInset, baseline, axisLabelPaint)
         }
         labels.forEachIndexed { index, label ->
             if ((labels.lastIndex - index) % labelStep == 0) {
@@ -332,7 +341,7 @@ class MetricChartView @JvmOverloads constructor(
                 if (!touchMoved) {
                     val hitBar = barHitBounds.any { it.contains(event.x, event.y) }
                     if (hitBar) {
-                        updateActiveBar(event.x, event.y)
+                        updateActiveBar(event.x, event.y, fromTouch = true)
                         postDelayed(hideTooltipRunnable, TOUCH_TOOLTIP_TIMEOUT_MS)
                     } else {
                         onChartTapListener?.invoke()
@@ -386,10 +395,11 @@ class MetricChartView @JvmOverloads constructor(
         super.onWindowVisibilityChanged(visibility)
     }
 
-    private fun updateActiveBar(x: Float, y: Float) {
+    private fun updateActiveBar(x: Float, y: Float, fromTouch: Boolean = false) {
         val nextIndex = barHitBounds.indexOfFirst { it.contains(x, y) }
         if (nextIndex != activeIndex) {
             activeIndex = nextIndex
+            if (fromTouch && nextIndex >= 0) TwidgetHaptics.selection(this)
             invalidate()
         }
     }

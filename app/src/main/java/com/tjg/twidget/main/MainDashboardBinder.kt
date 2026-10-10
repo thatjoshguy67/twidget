@@ -1,14 +1,14 @@
 package com.tjg.twidget.main
 
-import android.animation.LayoutTransition
 import android.content.ClipData
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Canvas
+import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
-import android.util.TypedValue
-import android.view.DragEvent
+import android.view.MotionEvent
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -18,10 +18,8 @@ import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.widget.TextViewCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ActivityClient
 import com.tjg.twidget.analytics.AnalyticsBlendPolicy
@@ -43,6 +41,8 @@ import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.followers.TopFollowersCardBinder
 import com.tjg.twidget.ui.MetricChartView
+import com.tjg.twidget.ui.setCardCornerRadius
+import dev.oneuiproject.oneui.widget.TipsCard
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
 import java.util.Locale
@@ -52,10 +52,10 @@ import kotlin.math.roundToLong
 // Two grid footprints only: half-width and full-width. Charts are
 // full-width cards with extra height.
 internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
-    HALF(1, 140),
+    HALF(1, 160),
     MILESTONE(2, 112),
-    FULL(2, 156),
-    CHART(2, 260),
+    FULL(2, 160),
+    CHART(2, 263),
     TOP_FOLLOWERS(2, 430),
     POST(2, 360),
 }
@@ -124,6 +124,101 @@ internal class MainDashboardBinder(
     }
 
     private val editModeController get() = activity.editModeController
+    private var editTransitionGeneration = 0
+
+    fun animateEditModeChange(enabled: Boolean, onTransitionStart: () -> Unit, render: () -> Unit) {
+        val generation = ++editTransitionGeneration
+        val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
+        if (grid == null || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            render()
+            onTransitionStart()
+            return
+        }
+        data class Start(val x: Int, val y: Int, val scale: Float, val decorations: List<View>)
+        val before = (0 until grid.childCount).map { grid.getChildAt(it) }.filterIsInstance<FrameLayout>()
+            .associate { card ->
+                val position = IntArray(2)
+                card.getLocationInWindow(position)
+                card.animate().cancel()
+                card.tag.toString() to Start(position[0], position[1], card.scaleX,
+                    (0 until card.childCount).map { card.getChildAt(it) }.filter {
+                        it is com.tjg.twidget.ui.CardShadowView || it is ImageButton || it.tag == EDIT_BORDER_TAG
+                    })
+            }
+        render()
+        val next = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
+        next.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                next.viewTreeObserver.removeOnPreDrawListener(this)
+                if (generation != editTransitionGeneration) return true
+                onTransitionStart()
+                val easing = android.view.animation.PathInterpolator(0.25f, 0f, 0.25f, 1f)
+                for (index in 0 until next.childCount) {
+                    val card = next.getChildAt(index) as? FrameLayout ?: continue
+                    val start = before[card.tag.toString()] ?: continue
+                    card.animate().cancel()
+                    val position = IntArray(2)
+                    card.getLocationInWindow(position)
+                    card.translationX = (start.x - position[0]).toFloat()
+                    card.translationY = (start.y - position[1]).toFloat()
+                    card.scaleX = start.scale
+                    card.scaleY = start.scale
+                    val decorations = if (enabled) (0 until card.childCount).map { card.getChildAt(it) }.filter {
+                        it is com.tjg.twidget.ui.CardShadowView || it is ImageButton || it.tag == EDIT_BORDER_TAG
+                    } else start.decorations.onEach { decoration ->
+                        val params = FrameLayout.LayoutParams(decoration.layoutParams as FrameLayout.LayoutParams)
+                        (decoration.parent as? ViewGroup)?.removeView(decoration)
+                        decoration.isEnabled = false
+                        decoration.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                        card.clipChildren = false
+                        card.clipToPadding = false
+                        card.addView(decoration, if (decoration is com.tjg.twidget.ui.CardShadowView) 0 else card.childCount, params)
+                    }
+                    decorations.forEach { decoration ->
+                        decoration.animate().cancel()
+                        if (enabled) {
+                            decoration.alpha = 0f
+                            if (decoration is ImageButton) {
+                                decoration.scaleX = 0.65f
+                                decoration.scaleY = 0.65f
+                            }
+                        }
+                    }
+                    val initialX = card.translationX
+                    val initialY = card.translationY
+                    val initialAlpha = decorations.associateWith { it.alpha }
+                    val targetScale = if (enabled) EDIT_CARD_SCALE else 1f
+                    android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                        duration = 140L
+                        interpolator = easing
+                        addUpdateListener {
+                            if (!card.isAttachedToWindow || generation != editTransitionGeneration) { cancel(); return@addUpdateListener }
+                            val progress = it.animatedValue as Float
+                            card.scaleX = start.scale + (targetScale - start.scale) * progress
+                            card.scaleY = card.scaleX
+                            card.translationX = initialX * (1f - progress)
+                            card.translationY = initialY * (1f - progress)
+                            decorations.forEach { decoration ->
+                                val alpha = initialAlpha.getValue(decoration)
+                                decoration.alpha = alpha + ((if (enabled) 1f else 0f) - alpha) * progress
+                                if (decoration is ImageButton) {
+                                    decoration.scaleX = if (enabled) 0.65f + 0.35f * progress else 1f - 0.35f * progress
+                                    decoration.scaleY = decoration.scaleX
+                                }
+                            }
+                        }
+                        addListener(object : android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: android.animation.Animator) {
+                                if (!enabled) decorations.forEach { card.removeView(it) }
+                            }
+                        })
+                        start()
+                    }
+                }
+                return true
+            }
+        })
+    }
 
     fun bindContent() {
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
@@ -153,28 +248,55 @@ internal class MainDashboardBinder(
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         container.columnCount = DASHBOARD_GRID_COLUMNS
+        container.clipChildren = false
+        container.clipToPadding = false
+        // Soft shadows extend past the grid; its wrapping column must not crop them.
+        (container.parent as? ViewGroup)?.apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        // Let the blur reach the viewport margins rather than ending at the
+        // scrolling child's rectangular bounds.
+        page.findViewById<ViewGroup>(R.id.dashboard_scroll).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        (page as? ViewGroup)?.apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        activity.findViewById<ViewGroup>(R.id.main_content_host).apply {
+            clipChildren = false
+            clipToPadding = false
+        }
+        activity.findViewById<ViewGroup>(R.id.main_refresh).apply {
+            clipChildren = false
+            clipToPadding = false
+            (parent as? ViewGroup)?.apply {
+                clipChildren = false
+                clipToPadding = false
+            }
+        }
+        page.findViewById<TextView>(R.id.dashboard_edit_button).apply {
+            visibility = if (editModeController.editMode) View.GONE else View.VISIBLE
+            background = GradientDrawable().apply {
+                cornerRadius = activity.dp(40).toFloat()
+                setColor(activity.getColor(R.color.dashboard_edit_button_bg))
+            }
+            val icon = AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_edit)?.apply {
+                setTint(activity.getColor(R.color.oneui_text_secondary))
+            }
+            setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null)
+            compoundDrawablePadding = activity.dp(6)
+            elevation = activity.dp(10).toFloat()
+            setOnClickListener { editModeController.setEditMode(true) }
+        }
         // Rebuild synchronously behind the launch skeleton. LayoutTransition's
         // default APPEARING animation otherwise exposes a frame where every
         // newly added card is still transparent.
         container.layoutTransition = null
-        container.setOnDragListener { source, event ->
-            when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
-                DragEvent.ACTION_DRAG_LOCATION -> {
-                    editModeController.updateDashboardDragAutoScroll(source, event)
-                    true
-                }
-                DragEvent.ACTION_DROP -> {
-                    editModeController.finishDashboardDrag(commit = true)
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENDED -> {
-                    editModeController.finishDashboardDrag(commit = false)
-                    true
-                }
-                else -> true
-            }
-        }
+        container.setOnDragListener(editModeController.dashboardDragListener)
+        page.findViewById<View>(R.id.dashboard_scroll).setOnDragListener(editModeController.dashboardDragListener)
         container.removeAllViews()
 
         TwidgetStore.dashboardCards(activity)
@@ -182,19 +304,7 @@ internal class MainDashboardBinder(
             .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
             .filter { it != DashboardCardType.MILESTONE || isDefaultAccount(account) }
             .forEach { card ->
-                val content = if (card == DashboardCardType.TOP_FOLLOWERS) {
-                    createTopFollowersCard(account)
-                } else if (card in POST_CARD_TYPES) {
-                    activity.postAnalyticsBinder.createGridCard(card, account)
-                } else if (card.size == DashboardCardSize.CHART) {
-                    createChartCard(card, account, stats, chartHistory, fullHistory)
-                } else if (card == DashboardCardType.MILESTONE) {
-                    createBriefCard(stats, account)
-                } else if (card == DashboardCardType.DAILY_STREAK) {
-                    createStreakCard(stats)
-                } else {
-                    createInsightCard(card, stats, history)
-                }
+                val content = createCardContent(card, account, stats, history, chartHistory, fullHistory)
                 val wrapper = createDashboardCardWrapper(card, content)
                 container.addView(
                     wrapper,
@@ -205,31 +315,33 @@ internal class MainDashboardBinder(
                 )
             }
 
-        // Card movement still animates in edit mode, but initial/rebound cards
-        // are immediately visible when the skeleton is removed.
-        container.layoutTransition = LayoutTransition().apply {
-            disableTransitionType(LayoutTransition.APPEARING)
-            disableTransitionType(LayoutTransition.DISAPPEARING)
-            disableTransitionType(LayoutTransition.CHANGE_APPEARING)
-            disableTransitionType(LayoutTransition.CHANGE_DISAPPEARING)
-            enableTransitionType(LayoutTransition.CHANGING)
-            setDuration(140)
-        }
+        // Reorder animations use final positions, so half-width cards never stretch
+        // or animate through the intermediate layout from removing the placeholder.
+        container.layoutTransition = null
 
         activity.syncController.maybeRefreshAnalytics(account)
         activity.syncController.maybeRefreshStreak(account)
     }
 
     private fun bindHistoryNotice(page: View, chartHistory: List<HistorySample>) {
-        val notice = page.findViewById<TextView>(R.id.history_notice) ?: return
-        // The daily-capture explanation lives in onboarding now; only the
-        // estimate footnote still surfaces on the dashboard.
-        if (chartHistory.any { it.estimated }) {
-            notice.setText(R.string.estimated_notice)
-            notice.visibility = View.VISIBLE
-        } else {
+        val notice = page.findViewById<TipsCard>(R.id.history_notice) ?: return
+        if (TwidgetStore.isEstimateTipDismissed(activity) || chartHistory.none { it.estimated }) {
             notice.visibility = View.GONE
+            return
         }
+        notice.setTitle(activity.getString(R.string.estimated_notice_title))
+        notice.setSummary(activity.getString(R.string.estimated_notice))
+        // The account page is reused on refresh; add the action only once.
+        if (notice.findViewById<View>(R.id.history_notice_dismiss) == null) {
+            notice.addButton(activity.getString(R.string.estimated_notice_dismiss)) {
+                TwidgetStore.dismissEstimateTip(activity)
+                notice.visibility = View.GONE
+            }.apply {
+                id = R.id.history_notice_dismiss
+                minimumHeight = activity.dp(48)
+            }
+        }
+        notice.visibility = View.VISIBLE
     }
 
     private fun bindPrivateAccountNotice(page: View, stats: ProfileStats) {
@@ -243,103 +355,44 @@ internal class MainDashboardBinder(
         return selector(history.last()) - selector(history.first())
     }
 
+    fun createCardPreview(card: DashboardCardType): View {
+        val account = activity.selectedAccount
+        return createCardContent(
+            card, account, TwidgetStore.currentStats(activity, account),
+            TwidgetStore.rangedHistory(activity, account, HistoryRange.WEEK),
+            TwidgetStore.chartHistory(activity, account, HistoryRange.WEEK),
+            TwidgetStore.fullHistory(activity, account),
+        )
+    }
+
+    private fun createCardContent(
+        card: DashboardCardType, account: String, stats: ProfileStats,
+        history: List<HistorySample>, chartHistory: List<HistorySample>, fullHistory: List<HistorySample>,
+    ): View = when {
+        card == DashboardCardType.TOP_FOLLOWERS -> createTopFollowersCard(account)
+        card in POST_CARD_TYPES -> activity.postAnalyticsBinder.createGridCard(card, account)
+        card.size == DashboardCardSize.CHART -> createChartCard(card, account, stats, chartHistory, fullHistory)
+        card == DashboardCardType.MILESTONE -> createBriefCard(stats, account)
+        card == DashboardCardType.DAILY_STREAK -> createStreakCard(stats)
+        else -> createInsightCard(card, stats, history)
+    }
+
     private fun createInsightCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
         val spec = insightSpec(card, stats, history)
-        val valueTextSize = if (card.size == DashboardCardSize.FULL) 38f else 32f
-        val labelTextSize = 13f
-        val detailTextSize = 14f
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(activity.dp(16), activity.dp(14), activity.dp(16), activity.dp(14))
-            background = AppCompatResources.getDrawable(activity, R.drawable.metric_card_bg)
-
-            val labelRow = LinearLayout(activity).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                orientation = LinearLayout.HORIZONTAL
+        return LayoutInflater.from(activity).inflate(R.layout.metric_card_small_stat, null, false).apply {
+            findViewById<ImageView>(R.id.metric_platform_icon).apply {
+                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
+                imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_secondary))
             }
-            labelRow.addView(View(activity).apply {
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(spec.accent)
-                }
-            }, LinearLayout.LayoutParams(activity.dp(8), activity.dp(8)))
-            labelRow.addView(TextView(activity).apply {
-                text = spec.label
-                includeFontPadding = false
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = labelTextSize
-                typeface = Typeface.create("sec", Typeface.BOLD)
-                setPadding(activity.dp(6), 0, 0, 0)
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            addView(labelRow, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
-
-            // Auto-size needs a bounded height to reach the max size — with
-            // wrap_content it locks to the first measured bounds. Fix the row
-            // height to the max text size's line and let width do the shrinking.
-            val valueHeight = (valueTextSize * 1.3f * resources.displayMetrics.scaledDensity).toInt()
-            addView(TextView(activity).apply {
+            findViewById<TextView>(R.id.metric_label).text = spec.label
+            findViewById<TextView>(R.id.followers_value).apply {
                 text = spec.value
-                includeFontPadding = false
-                maxLines = 1
-                gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                setTextColor(activity.getColor(R.color.oneui_text_primary))
-                typeface = heavyTypeface
-                TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                    this, 16, valueTextSize.toInt(), 1, TypedValue.COMPLEX_UNIT_SP,
-                )
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                valueHeight,
-            ).apply {
-                topMargin = activity.dp(4)
-            })
-
-            if (spec.progress != null) {
-                val progressValue = spec.progress.coerceIn(0, 100)
-                addView(TextView(activity).apply {
-                    text = activity.getString(R.string.milestone_progress_percent, progressValue)
-                    includeFontPadding = false
-                    gravity = Gravity.END
-                    setTextColor(spec.accent)
-                    textSize = 12f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                }, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = activity.dp(9)
-                })
-                addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
-                    max = 100
-                    progress = progressValue
-                    progressTintList = ColorStateList.valueOf(spec.accent)
-                    progressBackgroundTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_divider))
-                }, LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    activity.dp(6),
-                ).apply {
-                    topMargin = activity.dp(4)
-                })
+                com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.DASHBOARD_VALUE)
             }
-
-            addView(TextView(activity).apply {
+            findViewById<TextView>(R.id.stat_detail).apply {
                 text = spec.detail
-                includeFontPadding = false
-                maxLines = if (spec.progress == null) 2 else 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                textSize = detailTextSize
-                setPadding(0, activity.dp(7), 0, 0)
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ))
+                visibility = if (spec.detail.isBlank()) View.GONE else View.VISIBLE
+            }
         }
     }
 
@@ -399,7 +452,6 @@ internal class MainDashboardBinder(
     private fun createTopFollowersCard(account: String): View {
         return TopFollowersCardBinder(
             activity = activity,
-            onStateChanged = { activity.dashboardBinder.bindContent() },
             requestNotificationPermission = { activity.requestTopFollowersNotificationPermission() },
         ).create(account)
     }
@@ -447,6 +499,7 @@ internal class MainDashboardBinder(
             else -> error("Compact cards do not have chart layouts.")
         }
         return LayoutInflater.from(activity).inflate(layoutRes, null, false).also { root ->
+            root.findViewById<ImageView>(R.id.metric_platform_icon).setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(activity))
             bindMetric(
                 root,
                 valueId,
@@ -476,18 +529,41 @@ internal class MainDashboardBinder(
         FrameLayout(activity).apply {
             background = GradientDrawable().apply {
                 cornerRadius = activity.dp(22).toFloat()
-                setColor(Color.TRANSPARENT)
-                setStroke(activity.dp(2), activity.getColor(R.color.oneui_accent), activity.dp(10).toFloat(), activity.dp(6).toFloat())
+                val neutral = activity.getColor(R.color.oneui_text_secondary)
+                setColor((neutral and 0x00ffffff) or 0x18000000)
             }
             alpha = 0.75f
             contentDescription = activity.getString(card.labelRes)
         }
 
     private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
-        FrameLayout(activity).apply {
+        object : FrameLayout(activity) {
+            private val holdFeedback = com.tjg.twidget.ui.CardHoldFeedback(this, enabled = { !editModeController.editMode })
+            private var touchingRemoveButton = false
+            override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+                if (!editModeController.editMode) return super.onInterceptTouchEvent(event)
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    val remove = (0 until childCount).map { getChildAt(it) }.filterIsInstance<ImageButton>().firstOrNull()
+                    touchingRemoveButton = remove != null && event.x >= remove.left && event.x < remove.right &&
+                        event.y >= remove.top && event.y < remove.bottom
+                }
+                // The wrapper owns pickup gestures. Card links, buttons and
+                // charts must never receive this stream while editing.
+                return !touchingRemoveButton
+            }
+            override fun dispatchTouchEvent(event: MotionEvent): Boolean =
+                holdFeedback.onTouch(event) || super.dispatchTouchEvent(event)
+            override fun onDetachedFromWindow() {
+                holdFeedback.detach()
+                super.onDetachedFromWindow()
+            }
+        }.apply {
             tag = card.id
-            val longPressHandler = View.OnLongClickListener {
-                handleDashboardCardLongPress(card, this)
+            val longPressHandler = object : View.OnLongClickListener {
+                override fun onLongClick(view: View): Boolean = handleDashboardCardLongPress(card, this@apply)
+
+                // API 34+ uses our action-specific feedback; older releases retain automatic pickup.
+                override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
             }
             addView(content, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -497,66 +573,102 @@ internal class MainDashboardBinder(
                     FrameLayout.LayoutParams.MATCH_PARENT
                 },
             ))
-            alpha = if (editModeController.editMode) 0.96f else 1f
+            if (editModeController.editMode) {
+                content.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                clipChildren = false
+                clipToPadding = false
+                (content as? dev.oneuiproject.oneui.delegates.ViewRoundedCorner)?.roundedCorners = 0
+                val radius = activity.dp(28).toFloat()
+                content.background?.mutate()?.setCardCornerRadius(radius)
+                val inset = activity.dp(com.tjg.twidget.ui.CardShadow.PADDING_DP)
+                addView(com.tjg.twidget.ui.CardShadowView(activity, radius), 0,
+                    FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT).apply {
+                        setMargins(-inset, -inset, -inset, -inset)
+                    })
+                addView(View(activity).apply {
+                    tag = EDIT_BORDER_TAG
+                    background = GradientDrawable().apply {
+                        cornerRadius = radius
+                        setColor(Color.TRANSPARENT)
+                        setStroke(activity.dp(1), activity.getColor(R.color.dashboard_edit_border))
+                    }
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                scaleX = 0.97f
+                scaleY = 0.97f
+            }
             setOnLongClickListener(longPressHandler)
             attachCardLongPress(content, longPressHandler)
-            setOnDragListener { source, event ->
-                when (event.action) {
-                    DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
-                    DragEvent.ACTION_DRAG_LOCATION -> {
-                        editModeController.updateDashboardDragAutoScroll(source, event)
-                        true
-                    }
-                    DragEvent.ACTION_DRAG_ENTERED -> {
-                        val dragged = event.localState as? String ?: editModeController.draggedCardId
-                        if (editModeController.editMode && dragged != null && dragged != card.id) {
-                            animate().scaleX(0.98f).scaleY(0.98f).setDuration(80).start()
-                            editModeController.previewMoveDashboardCard(dragged, card.id)
-                        }
-                        true
-                    }
-                    DragEvent.ACTION_DRAG_EXITED -> {
-                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
-                        true
-                    }
-                    DragEvent.ACTION_DROP -> {
-                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
-                        editModeController.finishDashboardDrag(commit = true)
-                        true
-                    }
-                    DragEvent.ACTION_DRAG_ENDED -> {
-                        editModeController.finishDashboardDrag(commit = false)
-                        animate().scaleX(1f).scaleY(1f).setDuration(80).start()
-                        true
-                    }
-                    else -> true
-                }
-            }
+            setOnDragListener(editModeController.dashboardDragListener)
             if (editModeController.editMode) {
-                addView(removeCardButton(card), FrameLayout.LayoutParams(activity.dp(36), activity.dp(36), Gravity.TOP or Gravity.END).apply {
-                    topMargin = activity.dp(6)
-                    marginEnd = activity.dp(6)
+                addView(removeCardButton(card), FrameLayout.LayoutParams(activity.dp(30), activity.dp(30), Gravity.TOP or Gravity.END).apply {
+                    topMargin = activity.dp(10)
+                    marginEnd = activity.dp(10)
                 })
             }
         }
 
+    fun showDropBounce(cardId: String) {
+        val grid = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
+        val card = (0 until grid.childCount).map { grid.getChildAt(it) }.firstOrNull { it.tag == cardId } ?: return
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return
+        card.post {
+            card.animate().cancel()
+            android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 420L
+                interpolator = android.view.animation.LinearInterpolator()
+                addUpdateListener {
+                    if (!card.isAttachedToWindow) { cancel(); return@addUpdateListener }
+                    val time = it.animatedValue as Float
+                    val scale = EDIT_CARD_SCALE * (1.0 - 0.035 * kotlin.math.exp(-7.0 * time) * kotlin.math.cos(18.0 * time)).toFloat()
+                    card.scaleX = scale
+                    card.scaleY = scale
+                }
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        card.scaleX = EDIT_CARD_SCALE
+                        card.scaleY = EDIT_CARD_SCALE
+                    }
+                })
+                start()
+            }
+        }
+    }
+
     private fun handleDashboardCardLongPress(card: DashboardCardType, dragView: View): Boolean {
         if (!editModeController.editMode) {
+            // Entry feedback is synchronized with the replacement card's first animation frame.
             editModeController.setEditMode(true)
         } else {
             editModeController.draggedCardId = card.id
             editModeController.dragPreviewOrder = TwidgetStore.dashboardCards(activity)
             editModeController.dragSourceView = dragView
-            val dragShadow = View.DragShadowBuilder(dragView)
+            val dragShadow = object : View.DragShadowBuilder(dragView) {
+                override fun onDrawShadow(canvas: Canvas) {
+                    val layer = canvas.saveLayerAlpha(0f, 0f, dragView.width.toFloat(), dragView.height.toFloat(), 180)
+                    val radius = (0 until ((dragView as? ViewGroup)?.childCount ?: 0))
+                        .mapNotNull { ((dragView as ViewGroup).getChildAt(it).background as? GradientDrawable)?.cornerRadius }
+                        .firstOrNull { it > 0f } ?: activity.dp(28).toFloat()
+                    canvas.clipPath(Path().apply {
+                        addRoundRect(0f, 0f, dragView.width.toFloat(), dragView.height.toFloat(),
+                            radius, radius, Path.Direction.CW)
+                    })
+                    super.onDrawShadow(canvas)
+                    canvas.restoreToCount(layer)
+                }
+            }
             moveDropPlaceholder(card, card.id)
-            dragView.visibility = View.GONE
             val started = dragView.startDragAndDrop(
                 ClipData.newPlainText("dashboard_card", card.id),
                 dragShadow,
                 card.id,
                 0,
             )
-            if (!started) {
+            if (started) {
+                com.tjg.twidget.ui.TwidgetHaptics.dragPickup(dragView)
+                (dragView.parent as? ViewGroup)?.removeView(dragView)
+                editModeController.startDragHoldFeedback()
+            } else {
                 editModeController.finishDashboardDrag(commit = false)
             }
         }
@@ -585,14 +697,20 @@ internal class MainDashboardBinder(
 
     private fun removeCardButton(card: DashboardCardType): ImageButton =
         ImageButton(activity).apply {
-            setImageResource(OneUiIconR.drawable.ic_oui_remove)
+            setImageResource(OneUiIconR.drawable.ic_oui_minus)
             imageTintList = ColorStateList.valueOf(activity.getColor(R.color.metric_red))
+            scaleType = ImageView.ScaleType.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(activity.getColor(R.color.oneui_card_bg))
-                setStroke(activity.dp(1), activity.getColor(R.color.oneui_divider))
+                setColor(activity.getColor(R.color.dashboard_remove_button_bg))
+                setStroke(activity.dp(1), activity.getColor(R.color.dashboard_edit_border))
             }
-            setPadding(activity.dp(8), activity.dp(8), activity.dp(8), activity.dp(8))
+            elevation = activity.dp(12).toFloat()
+            if (Build.VERSION.SDK_INT >= 28) {
+                outlineAmbientShadowColor = 0x40000000
+                outlineSpotShadowColor = 0x40000000
+            }
+            setPadding(activity.dp(3), activity.dp(3), activity.dp(3), activity.dp(3))
             contentDescription = activity.getString(R.string.delete)
             setOnClickListener { editModeController.removeDashboardCard(card.id) }
         }
@@ -619,6 +737,7 @@ internal class MainDashboardBinder(
             typeface = heavyTypeface
         }
         root.findViewById<TextView>(deltaId)?.apply {
+            com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.CHART_DELTA)
             text = if (delta == 0L) "" else TwidgetStore.signedNumber(delta)
             setTextColor(if (delta < 0) activity.getColor(R.color.metric_red) else activity.getColor(R.color.metric_green))
             visibility = if (delta == 0L) View.GONE else View.VISIBLE
@@ -700,7 +819,7 @@ internal class MainDashboardBinder(
                 InsightSpec(
                     label = activity.getString(R.string.daily_streak),
                     value = if (streak.streak > 0) {
-                        activity.getString(R.string.daily_streak_days, streak.streak)
+                        activity.resources.getQuantityString(R.plurals.daily_streak_days, streak.streak, streak.streak)
                     } else {
                         activity.getString(R.string.daily_streak_none)
                     },
@@ -947,7 +1066,7 @@ internal class MainDashboardBinder(
             String.format(Locale.US, "%s%.1f", sign, value)
         }
 
-    fun moveDropPlaceholder(card: DashboardCardType, targetId: String) {
+    fun moveDropPlaceholder(card: DashboardCardType, targetId: String, after: Boolean = false) {
         val container = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         val placeholder = editModeController.dragPlaceholderView ?: FrameLayout(activity).apply {
             tag = DRAG_PLACEHOLDER_TAG
@@ -955,29 +1074,19 @@ internal class MainDashboardBinder(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ))
-            setOnDragListener { source, event ->
-                when (event.action) {
-                    DragEvent.ACTION_DRAG_STARTED -> editModeController.editMode && (event.localState as? String) != null
-                    DragEvent.ACTION_DRAG_LOCATION -> {
-                        editModeController.updateDashboardDragAutoScroll(source, event)
-                        true
-                    }
-                    DragEvent.ACTION_DROP -> {
-                        editModeController.finishDashboardDrag(commit = true)
-                        true
-                    }
-                    DragEvent.ACTION_DRAG_ENDED -> {
-                        editModeController.finishDashboardDrag(commit = false)
-                        true
-                    }
-                    else -> true
-                }
-            }
+            setOnDragListener(editModeController.dashboardDragListener)
         }.also { editModeController.dragPlaceholderView = it }
 
+        val previousPositions = if (placeholder.parent === container) {
+            (0 until container.childCount).map { container.getChildAt(it) }
+                .filter { it !== placeholder && it !== editModeController.dragSourceView }
+                .associateWith { it.x to it.y }
+        } else emptyMap()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) container.suppressLayout(true)
         val existingParent = placeholder.parent as? ViewGroup
         var targetIndex = container.childIndexWithTag(targetId)
         if (targetIndex == -1) targetIndex = container.childCount
+        else if (after) targetIndex++
         if (existingParent === container) {
             val oldIndex = container.indexOfChild(placeholder)
             if (oldIndex != -1 && oldIndex < targetIndex) targetIndex--
@@ -990,6 +1099,19 @@ internal class MainDashboardBinder(
             targetIndex.coerceIn(0, container.childCount),
             dashboardCardLayoutParams(card, editModeController.dragSourceView?.height),
         )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) container.suppressLayout(false)
+        if (previousPositions.isNotEmpty()) container.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(view: View, left: Int, top: Int, right: Int, bottom: Int,
+                oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                container.removeOnLayoutChangeListener(this)
+                previousPositions.forEach { (child, position) ->
+                    child.animate().cancel()
+                    child.translationX = position.first - child.left
+                    child.translationY = position.second - child.top
+                    child.animate().translationX(0f).translationY(0f).setDuration(160).start()
+                }
+            }
+        })
     }
 
     private fun ViewGroup.childIndexWithTag(tagValue: String): Int {
@@ -1015,6 +1137,8 @@ internal class MainDashboardBinder(
         String.format(Locale.US, "%.1f%s", value, suffix)
 
     private companion object {
+        private const val EDIT_BORDER_TAG = "dashboard_edit_border"
+        private const val EDIT_CARD_SCALE = 0.97f
         private const val DASHBOARD_GRID_COLUMNS = 2
         private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"

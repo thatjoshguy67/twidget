@@ -5,6 +5,16 @@ import org.junit.Test
 import java.time.LocalDate
 
 class DailyStreakStoreTest {
+    @Test fun longestStreakSurvivesABrokenCurrentRun() {
+        assertEquals(3, DailyStreakStore.computeLongestStreak(setOf(
+            "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-20", "2026-07-21", "invalid",
+        )))
+    }
+
+    @Test fun emptyHistoryHasNoRecord() {
+        assertEquals(0, DailyStreakStore.computeLongestStreak(emptySet()))
+    }
+
     @Test
     fun countsConsecutiveDaysThroughToday() {
         val today = LocalDate.of(2026, 7, 22)

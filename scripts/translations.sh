@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 res=app/src/main/res
 default_dir=$res/values
 target_dir=$res/values-$qualifier
-translatable_files=(strings milestone_strings streak_splash_strings top_followers_browser_strings)
+translatable_files=(strings settings_strings milestone_strings streak_splash_strings top_followers_browser_strings)
 
 # Prints the resource names of every translatable <string> and <plurals>
 # element in the given files. Non-translatable strings are excluded.

@@ -8,8 +8,8 @@ import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.providers.RettiwtClient
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.widget.TwidgetWidget
+import com.tjg.twidget.ui.TwidgetHaptics
 import dev.oneuiproject.oneui.layout.NavDrawerLayout
 import java.util.Locale
 
@@ -30,7 +30,6 @@ internal class MainSyncController(
 
     fun setupRefresh() {
         activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { handlePullRefresh() }
         }
     }
@@ -42,16 +41,18 @@ internal class MainSyncController(
             activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
             return
         }
-        sync()
+        sync(userInitiated = true)
     }
 
-    fun sync() {
+    fun sync(userInitiated: Boolean = false) {
         if (isSyncing) {
             activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
             return
         }
         val account = activity.selectedAccount.ifBlank { TwidgetStore.settings(activity).username }
         isSyncing = true
+        val refreshView = activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh)
+        if (userInitiated) TwidgetHaptics.refresh(refreshView)
         val generation = ++syncGeneration
         val lifecycleToken = lifecycleGeneration
         // Launch-time syncs show the same spinner as a pull refresh.
@@ -62,6 +63,7 @@ internal class MainSyncController(
                 isSyncing = false
                 activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
                 Toast.makeText(activity, R.string.sync_failed, Toast.LENGTH_SHORT).show()
+                if (userInitiated && activity.hasWindowFocus()) TwidgetHaptics.reject(refreshView)
             }
         }) {
             val appContext = activity.applicationContext
@@ -76,6 +78,10 @@ internal class MainSyncController(
                 isSyncing = false
                 activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false
                 activity.render()
+                if (userInitiated && activity.hasWindowFocus() && activity.selectedAccount.equals(account, ignoreCase = true)) {
+                    if (result.isSuccess) TwidgetHaptics.confirm(refreshView)
+                    else TwidgetHaptics.reject(refreshView)
+                }
                 if (result.isFailure) {
                     Toast.makeText(activity, R.string.sync_failed, Toast.LENGTH_SHORT).show()
                 }

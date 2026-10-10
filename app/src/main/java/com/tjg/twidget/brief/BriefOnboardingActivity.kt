@@ -32,8 +32,18 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
             return
         }
 
-        applyEdgeToEdgeInsets(findViewById(R.id.brief_onboarding_root))
+        applyEdgeToEdgeInsets(findViewById(R.id.brief_onboarding_root)) { bottomInset ->
+            findViewById<android.view.View>(R.id.brief_onboarding_scroll)
+                .updateBottomMarginForNavigationBar(0, bottomInset)
+        }
         bindChrome()
+        if (savedInstanceState == null) {
+            findViewById<android.view.View>(R.id.brief_onboarding_root).post {
+                if (!isFinishing && !isDestroyed) {
+                    com.tjg.twidget.ui.TwidgetHaptics.quickRise(findViewById(R.id.brief_onboarding_root))
+                }
+            }
+        }
         generation = BriefLaunchGeneration.start(this, username, restartIfComplete = true)
         watchGenerationForApiKeyRequirement()
     }

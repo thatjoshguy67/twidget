@@ -4,12 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.Animatable
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.TypedValue
 import android.view.HapticFeedbackConstants
 import android.view.Menu
 import android.view.MenuItem
@@ -19,7 +18,6 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -34,14 +32,17 @@ import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.update.AppRelease
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.update.AppVersion
 import com.tjg.twidget.update.UpdateChannel
 import com.tjg.twidget.update.UpdateNotificationHelper
+import com.tjg.twidget.update.UpdateDownloadCancelledException
+import com.tjg.twidget.update.UpdateDownloadController
+import com.tjg.twidget.update.UpdateDownloadNotificationHelper
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 import dev.oneuiproject.oneui.widget.CardItemView
 import java.io.File
@@ -63,6 +64,7 @@ class AboutActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedInstallVersion = intent.getStringExtra(EXTRA_INSTALL_VERSION)
+            ?.takeIf { BuildVars.IN_APP_UPDATES }
             ?.takeIf(String::isNotBlank)
         if (requestedInstallVersion != null) UpdateNotificationHelper.cancel(this)
         setContentView(R.layout.activity_about)
@@ -87,6 +89,9 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<View>(R.id.about_aaron_credit).setOnClickListener {
             openUrl(getString(R.string.link_aaron))
         }
+        findViewById<View>(R.id.about_evowizz_credit).setOnClickListener {
+            openUrl(getString(R.string.link_evowizz))
+        }
         findViewById<View>(R.id.about_fxtwitter_credit).setOnClickListener {
             openUrl(getString(R.string.link_fxtwitter))
         }
@@ -105,24 +110,25 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(Menu.NONE, MENU_GITHUB, 0, R.string.about_repo_link)
-            .setIcon(R.drawable.ic_github_24)
-            .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
         menu.add(Menu.NONE, MENU_APP_INFO, 1, R.string.app_info)
-            .setIcon(R.drawable.ic_info_24)
+            .setIcon(R.drawable.ic_settings_info)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
-        menu.add(MENU_UPDATE_CHANNEL, MENU_STABLE, 2, R.string.update_channel_stable)
+        if (!BuildVars.IN_APP_UPDATES) return true
+        val channels = menu.addSubMenu(Menu.NONE, MENU_UPDATE_CHANNEL, 2, R.string.settings_update_channel)
+        channels.item.setIcon(R.drawable.ic_settings_labs)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        channels.add(MENU_UPDATE_CHANNEL, MENU_STABLE, 0, R.string.update_channel_stable)
             .setCheckable(true)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(MENU_UPDATE_CHANNEL, MENU_BETA, 2, R.string.update_channel_beta)
+        channels.add(MENU_UPDATE_CHANNEL, MENU_BETA, 2, R.string.update_channel_beta)
             .setCheckable(true)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         if (AppUpdateManager.isDebugBuild(appVersionName())) {
-            menu.add(MENU_UPDATE_CHANNEL, MENU_DEBUG, 2, R.string.update_channel_debug)
+            channels.add(MENU_UPDATE_CHANNEL, MENU_DEBUG, 2, R.string.update_channel_debug)
                 .setCheckable(true)
                 .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         }
-        menu.setGroupCheckable(MENU_UPDATE_CHANNEL, true, true)
+        channels.setGroupCheckable(MENU_UPDATE_CHANNEL, true, true)
         val selectedItem = when (updateChannel) {
             UpdateChannel.STABLE -> MENU_STABLE
             UpdateChannel.BETA -> MENU_BETA
@@ -137,10 +143,6 @@ class AboutActivity : FoldablePopOverActivity() {
             onBackPressedDispatcher.onBackPressed()
             return true
         }
-        if (item.itemId == MENU_GITHUB) {
-            openUrl(getString(R.string.link_app_repo))
-            return true
-        }
         if (item.itemId == MENU_APP_INFO) {
             startActivity(
                 Intent(
@@ -150,8 +152,8 @@ class AboutActivity : FoldablePopOverActivity() {
             )
             return true
         }
-        if (item.itemId == MENU_STABLE || item.itemId == MENU_BETA ||
-            (item.itemId == MENU_DEBUG && AppUpdateManager.isDebugBuild(appVersionName()))
+        if (BuildVars.IN_APP_UPDATES && (item.itemId == MENU_STABLE || item.itemId == MENU_BETA ||
+            (item.itemId == MENU_DEBUG && AppUpdateManager.isDebugBuild(appVersionName())))
         ) {
             val channel = when (item.itemId) {
                 MENU_BETA -> UpdateChannel.BETA
@@ -171,7 +173,7 @@ class AboutActivity : FoldablePopOverActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (waitingForInstallPermission && packageManager.canRequestPackageInstalls()) {
+        if (BuildVars.IN_APP_UPDATES && waitingForInstallPermission && packageManager.canRequestPackageInstalls()) {
             waitingForInstallPermission = false
             pendingInstallApk?.let(::launchPackageInstaller)
         }
@@ -181,6 +183,7 @@ class AboutActivity : FoldablePopOverActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         requestedInstallVersion = intent.getStringExtra(EXTRA_INSTALL_VERSION)
+            ?.takeIf { BuildVars.IN_APP_UPDATES }
             ?.takeIf(String::isNotBlank)
         if (requestedInstallVersion == null) return
         UpdateNotificationHelper.cancel(this)
@@ -238,10 +241,35 @@ class AboutActivity : FoldablePopOverActivity() {
 
     private fun setupVersion() {
         val text = getString(R.string.about_version, appVersionName())
-        listOf(R.id.about_header_version, R.id.about_compact_version).forEach { id ->
-            findViewById<TextView>(id).apply {
-                this.text = text
+        val feedback = TypedValue()
+        theme.resolveAttribute(android.R.attr.selectableItemBackground, feedback, true)
+        val versionFeedback = feedback.resourceId
+        theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, feedback, true)
+        val iconFeedback = feedback.resourceId
+        findViewById<TextView>(R.id.about_header_version).apply {
+            this.text = text
+            setBackgroundResource(versionFeedback)
+            isFocusable = true
+            setOnClickListener { onVersionTapped() }
+        }
+        findViewById<CardItemView>(R.id.about_compact_header).apply {
+            summary = text
+            getSummaryView().apply {
+                setBackgroundResource(versionFeedback)
+                isFocusable = true
                 setOnClickListener { onVersionTapped() }
+            }
+            getEndImageView().apply {
+                contentDescription = getString(R.string.about_repo_link)
+                val touchSize = (48 * resources.displayMetrics.density).toInt()
+                layoutParams = layoutParams.apply {
+                    width = touchSize
+                    height = touchSize
+                }
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setBackgroundResource(iconFeedback)
+                isFocusable = true
+                setOnClickListener { openUrl(getString(R.string.link_app_repo)) }
             }
         }
     }
@@ -293,12 +321,16 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun setupRefresh() {
+        if (!BuildVars.IN_APP_UPDATES) {
+            findViewById<SwipeRefreshLayout>(R.id.about_refresh).isEnabled = false
+            return
+        }
         val appBar = findViewById<AppBarLayout>(R.id.about_app_bar)
         findViewById<SwipeRefreshLayout>(R.id.about_refresh).apply {
             setOnChildScrollUpCallback { _, child ->
                 appBar.y < 0f || child?.canScrollVertically(-1) == true
             }
-            setOnRefreshListener { checkForUpdates(updateChannel) }
+            setOnRefreshListener { checkForUpdates(updateChannel, preserveExisting = true) }
         }
     }
 
@@ -380,15 +412,24 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun setupUpdates() {
+        if (!BuildVars.IN_APP_UPDATES) {
+            hideUpdateUi()
+            return
+        }
         findViewById<AppCompatButton>(R.id.about_update_button).setOnClickListener {
             availableRelease?.let(::downloadUpdate)
         }
-        checkForUpdates(updateChannel)
+        val knownRelease = TwidgetStore.detectedUpdateVersion(this)
+            ?.let { AppUpdateManager.knownRelease(it, updateChannel) }
+        availableRelease = knownRelease
+        knownRelease?.let(::showUpdateAvailable)
+        checkForUpdates(updateChannel, preserveExisting = knownRelease != null)
     }
 
-    private fun checkForUpdates(channel: UpdateChannel) {
+    private fun checkForUpdates(channel: UpdateChannel, preserveExisting: Boolean = false) {
+        if (!BuildVars.IN_APP_UPDATES) return
         val generation = ++updateCheckGeneration
-        availableRelease = null
+        if (!preserveExisting) availableRelease = null
         if (TwidgetStore.fakeUpdateAvailable(this)) {
             val release = fakeRelease()
             availableRelease = release
@@ -397,33 +438,34 @@ class AboutActivity : FoldablePopOverActivity() {
             finishPullRefresh()
             return
         }
-        showUpdateChecking()
+        if (availableRelease == null) showUpdateChecking()
         AppExecutors.execute(
             onRejected = {
                 runOnUiThread {
                     if (generation != updateCheckGeneration) return@runOnUiThread
-                    hideUpdateUi()
+                    availableRelease?.let(::showUpdateAvailable) ?: hideUpdateUi()
                     finishPullRefresh()
                 }
             },
         ) {
             val result = runCatching {
-                AppUpdateManager.findUpdate(appVersionName(), channel)
+                AppUpdateManager.findUpdate(TwidgetStore.updateCheckVersion(this, appVersionName()), channel)
             }
             runOnUiThread {
                 if (generation != updateCheckGeneration || isFinishing || isDestroyed) return@runOnUiThread
-                // Only a completed check may flip the persisted badge state;
-                // a network failure keeps whatever the last check concluded.
                 result.onSuccess { release ->
                     TwidgetStore.setUpdateAvailable(this, release != null, release?.version?.toString())
-                }
-                val release = result.getOrNull()
-                availableRelease = release
-                if (release == null) {
-                    hideUpdateUi()
-                } else {
-                    showUpdateAvailable(release)
-                    maybeInstallRequestedUpdate(release)
+                    availableRelease = release
+                    if (release == null) {
+                        hideUpdateUi()
+                    } else {
+                        showUpdateAvailable(release)
+                        maybeInstallRequestedUpdate(release)
+                    }
+                }.onFailure {
+                    // Keep the last successful detection actionable through
+                    // transient GitHub, DNS, and connectivity failures.
+                    availableRelease?.let(::showUpdateAvailable) ?: hideUpdateUi()
                 }
                 finishPullRefresh()
             }
@@ -450,11 +492,7 @@ class AboutActivity : FoldablePopOverActivity() {
     private fun showUpdateChecking() {
         findViewById<View>(R.id.about_update_action).visibility = View.VISIBLE
         findViewById<AppCompatButton>(R.id.about_update_button).visibility = View.GONE
-        findViewById<ImageView>(R.id.about_update_spinner).apply {
-            visibility = View.VISIBLE
-            setImageResource(R.drawable.oneui_spinner)
-            OneUiSpinner.loop(this)
-        }
+        findViewById<View>(R.id.about_update_spinner).visibility = View.VISIBLE
     }
 
     private fun showUpdateAvailable(release: AppRelease) {
@@ -476,41 +514,71 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun hideUpdateSpinner() {
-        findViewById<ImageView>(R.id.about_update_spinner).apply {
-            (drawable as? Animatable)?.stop()
-            setImageDrawable(null)
-            visibility = View.GONE
-        }
+        findViewById<View>(R.id.about_update_spinner).visibility = View.GONE
     }
 
     private fun downloadUpdate(release: AppRelease) {
+        if (!BuildVars.IN_APP_UPDATES) return
+        if (!UpdateDownloadController.tryBegin()) {
+            Toast.makeText(this, R.string.update_download_in_progress, Toast.LENGTH_SHORT).show()
+            return
+        }
         val generation = ++updateCheckGeneration
         findViewById<AppCompatButton>(R.id.about_update_button).apply {
             isEnabled = false
             visibility = View.GONE
         }
         showUpdateChecking()
+        UpdateDownloadNotificationHelper.show(this, com.tjg.twidget.update.UpdateDownloadProgress(0L, -1L))
+        val startMessage = if (UpdateDownloadNotificationHelper.notificationsAvailable(this)) {
+            R.string.update_download_started
+        } else {
+            R.string.update_download_started_without_notification
+        }
+        Toast.makeText(this, startMessage, Toast.LENGTH_LONG).show()
         AppExecutors.execute(
-            onRejected = { runOnUiThread { showDownloadFailure(release) } },
+            onRejected = { runOnUiThread {
+                UpdateDownloadController.finish()
+                UpdateDownloadNotificationHelper.cancel(applicationContext)
+                if (!isFinishing && !isDestroyed) showDownloadFailure(release)
+            } },
         ) {
-            val apk = runCatching {
-                AppUpdateManager.download(release, File(cacheDir, "updates"))
-            }.getOrNull()
+            val result = runCatching {
+                AppUpdateManager.download(
+                    release,
+                    File(cacheDir, "updates"),
+                    onProgress = { UpdateDownloadNotificationHelper.show(applicationContext, it) },
+                    awaitPermissionToContinue = UpdateDownloadController::awaitPermissionToContinue,
+                )
+            }
+            val apk = result.getOrNull()
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
+                UpdateDownloadController.finish()
+                if (isFinishing || isDestroyed) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
+                    apk?.delete()
+                    return@runOnUiThread
+                }
                 if (generation != updateCheckGeneration) {
+                    UpdateDownloadNotificationHelper.cancel(applicationContext)
                     apk?.delete()
                     return@runOnUiThread
                 }
                 if (apk == null) {
-                    showDownloadFailure(release)
+                    UpdateDownloadNotificationHelper.cancel(this)
+                    if (result.exceptionOrNull() is UpdateDownloadCancelledException) showUpdateAvailable(release)
+                    else showDownloadFailure(release)
                 } else if (!isValidUpdateApk(apk, release)) {
+                    UpdateDownloadNotificationHelper.cancel(this)
                     apk.delete()
                     showUpdateAvailable(release)
                     Toast.makeText(this, R.string.update_invalid_apk, Toast.LENGTH_LONG).show()
                 } else {
+                    UpdateDownloadNotificationHelper.showCompleted(this)
                     pendingInstallApk = apk
-                    beginInstall(apk)
+                    window.decorView.postDelayed({
+                        if (!isFinishing && !isDestroyed) beginInstall(apk)
+                    }, 350L)
                 }
             }
         }
@@ -535,6 +603,7 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun beginInstall(apk: File) {
+        if (!BuildVars.IN_APP_UPDATES) return
         hideUpdateUi()
         if (packageManager.canRequestPackageInstalls()) {
             launchPackageInstaller(apk)
@@ -551,6 +620,7 @@ class AboutActivity : FoldablePopOverActivity() {
     }
 
     private fun launchPackageInstaller(apk: File) {
+        if (!BuildVars.IN_APP_UPDATES) return
         val uri = FileProvider.getUriForFile(this, "$packageName.update_files", apk)
         startActivity(
             Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
@@ -595,11 +665,12 @@ class AboutActivity : FoldablePopOverActivity() {
         loadCreditAvatar(R.id.about_tjg_credit, TJG_X_USERNAME)
         loadCreditAvatar(R.id.about_kingowen_credit, KINGOWEN_X_USERNAME)
         loadCreditAvatar(R.id.about_aaron_credit, AARON_X_USERNAME)
+        loadCreditAvatar(R.id.about_evowizz_credit, EVOWIZZ_X_USERNAME)
     }
 
     private fun loadCreditAvatar(rowId: Int, username: String) {
         val row = findViewById<CardItemView>(rowId).apply {
-            iconSize = (48 * resources.displayMetrics.density).toInt()
+            iconSize = (34 * resources.displayMetrics.density).toInt()
             icon = getDrawable(R.drawable.avatar_twidget)
         }
         ProfileImageLoader.loadInto(
@@ -613,20 +684,12 @@ class AboutActivity : FoldablePopOverActivity() {
         val notices = resources.openRawResource(R.raw.open_source_licenses)
             .bufferedReader()
             .use { it.readText() }
-        val padding = (24 * resources.displayMetrics.density).toInt()
-        val textView = TextView(this).apply {
-            text = notices
-            setTextColor(getColor(R.color.oneui_text_primary))
-            textSize = 13f
-            typeface = Typeface.MONOSPACE
-            setTextIsSelectable(true)
-            setPadding(padding, padding / 2, padding, padding)
-        }
         AlertDialog.Builder(this)
             .setTitle(R.string.about_open_source_licenses_title)
-            .setView(ScrollView(this).apply { addView(textView) })
+            .setMessage(notices)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+            .findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
     }
 
     private fun showLegalNotice() {
@@ -685,13 +748,13 @@ class AboutActivity : FoldablePopOverActivity() {
         private const val TJG_X_USERNAME = "thatjoshguy69"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
         private const val AARON_X_USERNAME = "aaronthetechie"
+        private const val EVOWIZZ_X_USERNAME = "evowizz"
         private const val PREF_BETA_RELEASES = "beta_releases"
         private const val PREF_UPDATE_CHANNEL = "update_channel"
         private const val MENU_APP_INFO = 1
         private const val MENU_UPDATE_CHANNEL = 2
         private const val MENU_STABLE = 3
         private const val MENU_BETA = 4
-        private const val MENU_GITHUB = 5
         private const val MENU_DEBUG = 6
     }
 }

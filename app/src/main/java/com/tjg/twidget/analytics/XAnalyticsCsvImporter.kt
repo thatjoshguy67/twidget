@@ -41,6 +41,7 @@ class AnalyticsCsvException(
     val detectedFollowers: Long?,
     message: String,
     cause: Throwable? = null,
+    val code: String = "invalid_analytics_csv",
 ) : IllegalArgumentException(message, cause)
 
 /**
@@ -78,10 +79,7 @@ object XAnalyticsCsvImporter {
                 .firstNotNullOfOrNull(header::get)
             val requiredWidth = maxOf(dateIndex, followsIndex, unfollowsIndex) + 1
             val dataRecords = records.drop(1).filterNot { row -> row.all { it.isBlank() } }
-            detectedFollowers = followerCountIndex?.let { index ->
-                dataRecords.firstOrNull()?.getOrNull(index)?.trim()?.replace(",", "")?.toLongOrNull()
-            }
-
+            val followerTotals = mutableMapOf<LocalDate, Long>()
             val days = dataRecords.mapIndexed { offset, row ->
                 require(row.size >= requiredWidth) { "Row ${offset + 2} is incomplete." }
                 val movement = XAnalyticsMovement(
@@ -101,15 +99,21 @@ object XAnalyticsCsvImporter {
                     videoViews = optionalUnsignedLong(row, header, offset + 2, "Video views"),
                     mediaViews = optionalUnsignedLong(row, header, offset + 2, "Media views"),
                 )
+                followerCountIndex?.let { index ->
+                    row.getOrNull(index)?.takeIf { it.isNotBlank() }?.let { value ->
+                        followerTotals[movement.date] = unsignedLong(value.replace(",", ""), offset + 2, "Followers")
+                    }
+                }
                 validateMetricConsistency(movement, offset + 2)
                 movement
             }.sortedByDescending { it.date }
 
             require(days.isNotEmpty()) { "The file does not contain any analytics rows." }
+            detectedFollowers = followerTotals[days.first().date]
             require(days.size <= 366) { "The export contains more than one year of data." }
             require(days.map { it.date }.distinct().size == days.size) { "The export contains duplicate dates." }
             require(days.first().date == today) {
-                "The newest row must be today so the live follower count can anchor the import."
+                "This export does not include today. Download a new export that includes today, then try again."
             }
             days.zipWithNext().forEach { (newer, older) ->
                 require(older.date == newer.date.minusDays(1)) {
@@ -118,18 +122,18 @@ object XAnalyticsCsvImporter {
             }
 
             detectedFollowers?.let { detected ->
-                if (abs(detected - anchorFollowers) > XAnalyticsImportPolicy.trendTolerance(0, anchorFollowers)) {
+                if (abs(detected - anchorFollowers) > XAnalyticsImportPolicy.importTolerance(0, anchorFollowers)) {
                     throw AnalyticsValidationException(
                         code = "analytics_follower_mismatch",
                         expectedFollowers = anchorFollowers,
                         detectedFollowers = detected,
                         message = "The follower count in the CSV does not match the cached account count.",
+                        comparisonDay = days.first().date.toString(),
                     )
                 }
             }
 
             var followers = anchorFollowers
-            var netMovement = 0L
             val samplesDescending = mutableListOf<HistorySample>()
             days.forEachIndexed { index, day ->
                 if (followers >= 0L) {
@@ -148,16 +152,13 @@ object XAnalyticsCsvImporter {
                     )
                 }
                 val movement = day.newFollows - day.unfollows
-                netMovement += movement
                 followers -= movement
                 val elapsedDays = index + 1
-                val tolerance = XAnalyticsImportPolicy.trendTolerance(elapsedDays, anchorFollowers)
+                val tolerance = XAnalyticsImportPolicy.importTolerance(elapsedDays, anchorFollowers)
                 if (followers < -tolerance) {
                     impossibleCount(
                         cachedFollowers = anchorFollowers,
-                        netMovement = netMovement,
                         date = day.date.minusDays(1),
-                        tolerance = tolerance,
                     )
                 }
             }
@@ -186,21 +187,16 @@ object XAnalyticsCsvImporter {
 
     private fun impossibleCount(
         cachedFollowers: Long,
-        netMovement: Long,
         date: LocalDate,
-        tolerance: Long,
     ): Nothing {
-        val reconstructed = cachedFollowers - netMovement
         throw AnalyticsCsvException(
             cachedFollowers = cachedFollowers,
             detectedFollowers = null,
-            message = "The CSV reports a net gain of ${formatSigned(netMovement)} followers through $date. " +
-                "Working back from the cached count of $cachedFollowers produces $reconstructed, " +
-                "outside the allowed discrepancy of $tolerance.",
+            message = "The follower changes in this export would produce a negative count on $date. " +
+                "X Analytics and the saved count may have updated at different times.",
+            code = "analytics_impossible_followers",
         )
     }
-
-    private fun formatSigned(value: Long): String = if (value >= 0L) "+$value" else value.toString()
 
     private fun unsignedLong(value: String, row: Int, column: String): Long {
         val clean = value.trim()
@@ -291,7 +287,7 @@ object XAnalyticsImportPolicy {
     ): Int {
         require(imported.isNotEmpty()) { "The import contains no follower history." }
         val newest = imported.maxBy { it.timestamp }
-        if (abs(newest.followers - currentFollowers) > trendTolerance(0, currentFollowers)) {
+        if (abs(newest.followers - currentFollowers) > importTolerance(0, currentFollowers)) {
             throw AnalyticsValidationException(
                 code = "analytics_follower_mismatch",
                 expectedFollowers = currentFollowers,
@@ -305,19 +301,25 @@ object XAnalyticsImportPolicy {
             .filter { importedByDay.containsKey(it.timestamp) }
             .sortedBy { it.timestamp }
         val historical = anchors.filter { it.timestamp < newest.timestamp }
-        require(historical.isNotEmpty()) {
-            "There is not enough trusted local history to verify this CSV yet."
+        if (historical.isEmpty()) {
+            throw AnalyticsValidationException(
+                code = "insufficient_trusted_history",
+                expectedFollowers = null,
+                detectedFollowers = null,
+                message = "There is not enough trusted local history to verify this CSV yet.",
+            )
         }
         anchors.forEach { anchor ->
             val reconstructed = importedByDay.getValue(anchor.timestamp)
             val days = (abs(newest.timestamp - anchor.timestamp).toDouble() / DAY_MILLIS).roundToInt()
-            val tolerance = trendTolerance(days, currentFollowers)
+            val tolerance = importTolerance(days, currentFollowers)
             if (abs(anchor.followers - reconstructed.followers) > tolerance) {
                 throw AnalyticsValidationException(
                     code = "analytics_trend_mismatch",
                     expectedFollowers = anchor.followers,
                     detectedFollowers = reconstructed.followers,
                     message = "The CSV follower trend differs from trusted local history on ${anchor.dayLabel}.",
+                    comparisonDay = anchor.dayLabel,
                 )
             }
         }
@@ -330,6 +332,13 @@ object XAnalyticsImportPolicy {
             ceil(currentFollowers * 0.001).toLong(),
             ceil(maxOf(0, days) / 30.0).toLong() * 2L,
         )
+
+    // CSV exports and profile snapshots have no shared capture timestamp. Allow
+    // a small, bounded difference (0.3%, rounded up), without accumulating a
+    // fresh allowance per day or replacing independently observed history.
+    // Keep this policy in sync with bridge/src/analytics-import.js.
+    fun importTolerance(days: Int, currentFollowers: Long): Long =
+        maxOf(trendTolerance(days, currentFollowers), ceil(currentFollowers * 0.003).toLong())
 }
 
 class AnalyticsValidationException(
@@ -337,4 +346,5 @@ class AnalyticsValidationException(
     val expectedFollowers: Long?,
     val detectedFollowers: Long?,
     message: String,
+    val comparisonDay: String? = null,
 ) : IllegalArgumentException(message)

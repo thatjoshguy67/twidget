@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Repeat. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M16.1692 4.375L18.2221 6.4276C18.3681 6.5736 18.3681 6.8104 18.2221 6.9567L16.1535 9.0253M17.972 6.7001H8.64151C6.71631 6.7001 5.15601 8.2607 5.15601 10.1853V12.5085M7.83011 19.6259L5.77721 17.5731C5.63121 17.4271 5.63121 17.1903 5.77721 17.0443L7.84611 14.9754M6.02721 17.3007H15.358C17.2832 17.3007 18.8435 15.7404 18.8435 13.8155V11.4926" android:fillColor="#00000000" android:strokeColor="?android:attr/textColorPrimary" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

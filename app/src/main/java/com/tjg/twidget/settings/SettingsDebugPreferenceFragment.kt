@@ -1,32 +1,23 @@
 package com.tjg.twidget.settings
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.content.Intent
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.InputType
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
-import android.view.Gravity
-import android.view.View
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.bridge.DebugBridgeLogActivity
 import com.tjg.twidget.data.HistorySample
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.main.OnboardingActivity
+
 import com.tjg.twidget.ui.AppPaletteManager
 import com.tjg.twidget.ui.AppPaletteMode
 import com.tjg.twidget.ui.InsetPreferenceFragment
@@ -60,6 +51,61 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
         val hasDummy = hasDummyProfile()
+
+        screen.addPreference(dev.oneuiproject.oneui.preference.SwitchBarPreference(context).apply {
+            key = "debug_enabled"
+            isPersistent = false
+            isChecked = TwidgetStore.debugMenuUnlocked(context)
+            setOnPreferenceChangeListener { _, value ->
+                TwidgetStore.setDebugMenuUnlocked(context, value as Boolean)
+                if (!value) requireActivity().finish()
+                true
+            }
+        })
+        screen.addPreference(category(0))
+
+        screen.addPreference(Preference(context).apply {
+            key = "debug_rerun_onboarding"
+            title = getString(R.string.rerun_onboarding)
+            setOnPreferenceClickListener {
+                startActivity(Intent(context, OnboardingActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            isVisible = BuildVars.IN_APP_UPDATES
+            key = "debug_twidget_update"
+            title = getString(R.string.twidget_update_debug)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, UpdateDebugActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            key = "debug_bridge_log"
+            title = getString(R.string.bridge_log)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, DebugBridgeLogActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(category(0))
+        screen.addPreference(Preference(context).apply {
+            key = "debug_haptics"
+            title = getString(R.string.debug_haptics_title)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, HapticsDebugActivity::class.java))
+                true
+            }
+        })
+        screen.addPreference(Preference(context).apply {
+            key = "debug_brief_workbench"
+            title = getString(R.string.brief_debug_title)
+            setOnPreferenceClickListener {
+                requireActivity().startSettingsSubActivity(Intent(context, BriefDebugActivity::class.java))
+                true
+            }
+        })
 
         val paletteState = AppPaletteManager.debugState(context)
         screen.addPreference(category(R.string.debug_palette_category))
@@ -109,60 +155,24 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-        screen.addPreference(category(0))
-
-        screen.addPreference(Preference(context).apply {
-            key = "debug_rerun_onboarding"
-            title = getString(R.string.rerun_onboarding)
-            summary = getString(R.string.rerun_onboarding_summary)
-            setOnPreferenceClickListener {
-                startActivity(Intent(context, OnboardingActivity::class.java))
-                true
-            }
-        })
-        screen.addPreference(SwitchPreferenceCompat(context).apply {
-            key = "debug_fake_update_pref"
-            title = getString(R.string.trigger_fake_update)
-            summary = getString(R.string.trigger_fake_update_summary)
-            isChecked = TwidgetStore.fakeUpdateAvailable(context)
-            setOnPreferenceChangeListener { _, value ->
-                TwidgetStore.setFakeUpdateAvailable(context, value as Boolean)
-                true
-            }
-        })
-        screen.addPreference(Preference(context).apply {
-            key = "debug_bridge_log"
-            title = getString(R.string.bridge_log)
-            summary = getString(R.string.bridge_log_summary)
-            setOnPreferenceClickListener {
-                requireActivity().startSettingsSubActivity(Intent(context, DebugBridgeLogActivity::class.java))
-                true
-            }
-        })
-        screen.addPreference(Preference(context).apply {
-            key = "debug_brief_workbench"
-            title = getString(R.string.brief_debug_title)
-            summary = getString(R.string.brief_debug_summary)
-            setOnPreferenceClickListener {
-                requireActivity().startSettingsSubActivity(Intent(context, BriefDebugActivity::class.java))
-                true
-            }
-        })
-
         screen.addPreference(category(R.string.dummy_profile))
-        if (!hasDummy) {
-            screen.addPreference(Preference(context).apply {
-                key = "debug_add_dummy"
-                title = getString(R.string.add_dummy_profile)
-                summary = getString(R.string.add_dummy_profile_summary, DUMMY_USERNAME)
-                setOnPreferenceClickListener {
-                    saveDummyProfile(DEFAULT_DUMMY_FOLLOWERS)
-                    Toast.makeText(context, R.string.dummy_profile_added, Toast.LENGTH_SHORT).show()
-                    buildScreen()
-                    true
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "debug_dummy_enabled"
+            isPersistent = false
+            setTitle(R.string.settings_enable_dummy)
+            isChecked = hasDummy
+            setOnPreferenceChangeListener { _, value ->
+                if (value == true) saveDummyProfile(DEFAULT_DUMMY_FOLLOWERS)
+                else {
+                    TwidgetStore.removeAccount(context, DUMMY_USERNAME)
+                    TwidgetWidget.updateAll(context)
+                    TwidgetBriefWidget.updateAll(context)
                 }
-            })
-        } else {
+                listView.post { if (isAdded) buildScreen() }
+                true
+            }
+        })
+        if (hasDummy) {
             val followers = TwidgetStore.currentStats(context, DUMMY_USERNAME).followersCount
             screen.addPreference(EditTextPreference(context).apply {
                 key = "debug_dummy_followers"
@@ -180,31 +190,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
                     true
                 }
             })
-            screen.addPreference(Preference(context).apply {
-                key = "debug_remove_dummy"
-                title = SpannableString(getString(R.string.remove_dummy_profile)).apply {
-                    setSpan(ForegroundColorSpan(context.getColor(R.color.metric_red)), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-                setOnPreferenceClickListener {
-                    TwidgetStore.removeAccount(context, DUMMY_USERNAME)
-                    TwidgetWidget.updateAll(context)
-                    Toast.makeText(context, R.string.dummy_profile_removed, Toast.LENGTH_SHORT).show()
-                    buildScreen()
-                    true
-                }
-            })
         }
-
-        screen.addPreference(category(0))
-        screen.addPreference(Preference(context).apply {
-            key = "debug_hide_menu"
-            title = getString(R.string.hide_debug_menu)
-            setOnPreferenceClickListener {
-                TwidgetStore.setDebugMenuUnlocked(context, false)
-                requireActivity().finish()
-                true
-            }
-        })
 
         screen.addBottomInset()
         preferenceScreen = screen
@@ -256,7 +242,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         }
         val overlay = when {
             !state.supported -> getString(R.string.debug_palette_overlay_unsupported)
-            state.overlayRegistered -> getString(R.string.debug_palette_overlay_registered)
+            state.customPaletteApplied -> getString(R.string.debug_palette_overlay_registered)
             else -> getString(R.string.debug_palette_overlay_not_registered)
         }
         return "$mode • $overlay"
@@ -266,76 +252,30 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         val context = requireContext()
         val state = AppPaletteManager.debugState(context)
         val generated = AppPaletteManager.generatedPalette(context)
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(8), dp(24), dp(12))
-            addView(TextView(context).apply {
-                setTextColor(context.getColor(R.color.oneui_text_secondary))
-                textSize = 13f
-                text = buildString {
-                    append(paletteViewerSummary(state))
-                    append("\nAndroid API ${android.os.Build.VERSION.SDK_INT}")
-                    state.overlayDetails.forEach { append("\n$it") }
-                    state.lastError?.let { append("\nLast error: $it") }
-                }
-                setPadding(0, 0, 0, dp(14))
-            })
-            addView(paletteHeading(getString(R.string.debug_palette_generated)))
+        val rows = buildList {
+            add(paletteViewerSummary(state))
+            add(getString(R.string.settings_android_api, android.os.Build.VERSION.SDK_INT))
+            state.lastError?.let { add(getString(R.string.settings_last_error, it)) }
+            add(getString(R.string.debug_palette_generated))
             listOf(
-                "Seed" to generated.seed,
-                "Primary · light" to generated.primaryLight,
-                "Primary · dark" to generated.primaryDark,
-                "Control · light" to generated.controlLight,
-                "Control · dark" to generated.controlDark,
-            ).forEach { (label, color) -> addView(paletteRow(label, color)) }
-            addView(paletteHeading(getString(R.string.debug_palette_resolved)).apply {
-                setPadding(0, dp(18), 0, dp(6))
-            })
+                R.string.settings_palette_seed to generated.seed,
+                R.string.settings_palette_primary_light to generated.primaryLight,
+                R.string.settings_palette_primary_dark to generated.primaryDark,
+                R.string.settings_palette_control_light to generated.controlLight,
+                R.string.settings_palette_control_dark to generated.controlDark,
+            ).forEach { (label, color) -> add(getString(R.string.settings_palette_token, getString(label), AppPaletteManager.colorHex(color))) }
+            add(getString(R.string.debug_palette_resolved))
             AppPaletteManager.resolvedColors(context).forEach { (label, color) ->
-                addView(paletteRow(label, color))
+                add(getString(R.string.settings_palette_token, label, AppPaletteManager.colorHex(color)))
             }
+            addAll(state.loaderDetails)
         }
         AlertDialog.Builder(context)
             .setTitle(R.string.debug_palette_view)
-            .setView(ScrollView(context).apply { addView(content) })
+            .setItems(rows.toTypedArray(), null)
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }
-
-    private fun paletteHeading(label: String) = TextView(requireContext()).apply {
-        text = label
-        textSize = 15f
-        setTextColor(requireContext().getColor(R.color.oneui_text_primary))
-        setTypeface(typeface, android.graphics.Typeface.BOLD)
-        setPadding(0, 0, 0, dp(6))
-    }
-
-    private fun paletteRow(label: String, color: Int) = LinearLayout(requireContext()).apply {
-        gravity = Gravity.CENTER_VERTICAL
-        orientation = LinearLayout.HORIZONTAL
-        minimumHeight = dp(48)
-        addView(View(context).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(10).toFloat()
-                setColor(color)
-                setStroke(dp(1), context.getColor(R.color.oneui_divider))
-            }
-        }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
-        addView(TextView(context).apply {
-            text = label
-            textSize = 14f
-            setTextColor(context.getColor(R.color.oneui_text_primary))
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        addView(TextView(context).apply {
-            text = AppPaletteManager.colorHex(color)
-            textSize = 13f
-            setTextColor(context.getColor(R.color.oneui_text_secondary))
-        })
-    }
-
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density + 0.5f).toInt()
 
     private fun hasDummyProfile(): Boolean =
         TwidgetStore.accounts(requireContext()).any { it.equals(DUMMY_USERNAME, ignoreCase = true) }
@@ -348,7 +288,7 @@ class SettingsDebugPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.saveStats(
             context,
             ProfileStats(
-                fullName = "Twidget Demo",
+                fullName = getString(R.string.settings_demo_name),
                 userName = DUMMY_USERNAME,
                 followersCount = followers,
                 followingsCount = (followers / 12).coerceAtLeast(1),

@@ -3,17 +3,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Lets Android 16 QPR2+ and supporting OEM surfaces promote an active
-         scan to a Live Update. This is a normal, non-runtime permission. -->
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Top Followers scans run on the bridge. Remove WorkManager's optional foreground
+         service declarations as well as the app's former data-sync permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" tools:node="remove" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.APP_BROWSER" />
@@ -113,6 +115,7 @@
 
         <activity
             android:name=".widget.WidgetConfigActivity"
+            android:theme="@style/Theme.Twidget.WidgetConfig"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
@@ -121,12 +124,19 @@
 
         <activity
             android:name=".main.AboutActivity"
+            android:theme="@style/Theme.Twidget.Settings"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
         <activity
+            android:name=".settings.SettingsCategoryActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false"
+            android:theme="@style/Theme.Twidget.Settings" />
+        <activity
             android:name=".settings.SettingsActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
@@ -159,6 +169,7 @@
         <activity
             android:name=".settings.SettingsScheduleActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
@@ -179,22 +190,31 @@
         <activity
             android:name=".settings.SettingsAdvancedActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
             android:name=".settings.BriefSettingsActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
             android:name=".settings.BriefContentSettingsActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
             android:name=".followers.TopFollowersBrowseActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:exported="false" />
+            android:windowSoftInputMode="adjustResize"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+            </intent-filter>
+            <meta-data android:name="android.app.searchable" android:resource="@xml/top_followers_searchable" />
+        </activity>
 
         <activity
             android:name=".main.MetricChartActivity"
@@ -219,6 +239,19 @@
         <activity
             android:name=".settings.SettingsDebugActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
+            android:exported="false" />
+
+        <activity
+            android:name=".settings.HapticsDebugActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
+            android:exported="false" />
+
+        <activity
+            android:name=".settings.UpdateDebugActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/Theme.Twidget.Settings"
             android:exported="false" />
 
         <activity
@@ -236,22 +269,9 @@
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:exported="false" />
 
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.update_files"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/update_file_paths" />
-        </provider>
-
-        <!-- Top-follower scans become foreground data-sync work when the app
-             leaves the screen, allowing the paid paginated scan to continue. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
-            tools:node="merge" />
+            tools:node="remove" />
 
         <receiver
             android:name=".TwidgetWidget"
@@ -291,10 +311,6 @@
 
         <receiver
             android:name=".widget.WidgetRefreshReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name=".update.UpdateReminderReceiver"
             android:exported="false" />
 
         <receiver

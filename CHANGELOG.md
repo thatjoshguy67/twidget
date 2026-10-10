@@ -2,6 +2,231 @@
 
 All notable changes to Twidget are documented here.
 
+## [1.3.0] - 2026-10-10
+
+One UI 9 throughout the app, a dashboard you can make your own, and widgets that
+fit your device. This is the stable release of the 1.3.0 beta changes, with French
+localisation and the latest fixes included. These changes are since stable 1.2.1.
+
+### One UI 9 and app appearance
+
+- Rebuilt the interface on SESL9, with floating toolbars, softer cards, scrolling
+  fades, and layouts that adapt to phones, tablets, and foldables.
+- Reorganised Settings into smaller categories, including a dedicated Appearance
+  page for app fonts, widget defaults, and light, dark, or system themes.
+- Choose One UI Sans, Google Sans Flex, or the system font for the app separately
+  from your widget font. Headings, charts, dialogs, and controls follow your choice
+  while respecting device text scaling.
+- Refined the welcome screen, privacy links, API-key dialog, and tablet toolbars.
+  Fixed clipped notices, shadows, and drawer clearance above system navigation.
+
+### Your dashboard
+
+- Press and hold a card, or tap Edit dashboard, to rearrange your dashboard.
+  Cards animate into edit mode with soft shadows and haptic feedback.
+- Added a grouped card picker with live previews. Hold a preview to drag a new
+  card directly into position on your dashboard.
+- Improved half-width card placement, drag autoscroll, and transitions when
+  dropping cards or leaving edit mode. Card navigation stays disabled while editing.
+- Refined metric and streak cards, including a personal-best streak state,
+  clearer chart labels, and headings that fit smaller cards.
+
+### Home screen widgets
+
+- Added One UI and Material 3 Expressive styles for follower and Your Brief
+  widgets. Defaults follow your device; customise the style, font, platform logo,
+  and theme per widget or in Appearance settings.
+- One UI widgets keep their opacity and blur controls. Material widgets use
+  wallpaper colours and Google Sans Flex, with an optional contained username.
+- Improved follower typography, wrapping, spacing, and baselines across widget
+  sizes. Counts make better use of the available space when resizing.
+- Made resizing quicker and more accurate, and kept artwork within Android's
+  bitmap memory limit to avoid oversized widget updates.
+- Improved positive and negative delta contrast on dark and wallpaper-coloured
+  backgrounds. Compact platform icons now scale with the count rather than
+  dominating when long numbers shrink.
+- Updated widget picker previews and fixed configuration-preview flicker,
+  opacity controls, logo updates, and automatic theme changes.
+
+### Your Brief, languages, and follower rankings
+
+- Added French throughout the app and widgets, including dates and follower
+  counts written in words. Improved language selection on older Android versions.
+- Corrected one-day streak wording in English, German, and French. German Brief
+  copy now uses native noun capitalisation and clearer restart wording, and compact
+  summaries preserve the difference between an active streak and one to restart.
+- Improved Brief fallback and goal wording, and simplified the Gemini API-key
+  dialog with an inline privacy link and clearer actions.
+- Limited tall tweet images while preserving shorter images' proportions. Your
+  Brief now lets you scroll through all photos in a tweet.
+- Improved remote Top Followers scans, ranked browsing, search clearance, and
+  the return-to-top action.
+- Thanks to [Dy (evowizz)](https://evowizz.dev/) for the French localisation and
+  build improvements, and [Aaron the Techie](https://x.com/aaronthetechie) for German.
+  Dy now has a personal thank-you in About, with his avatar and website link.
+
+### Scheduling, imports, and feedback
+
+- Paste images from the clipboard into the tweet composer. Refined thread
+  reordering and added haptic feedback for selection, saving, scheduling, and errors.
+- Added clearer feedback to manual refreshes and improved app haptics, with
+  waveform fallbacks where hardware primitives are unavailable.
+- Improved X Analytics imports when export and history timestamps differ slightly.
+  Import failures show clearer count comparisons and retry guidance.
+- Added native One UI snackbars for scheduling feedback and made chart-estimate
+  tips dismissible across refreshes, accounts, and app restarts.
+
+### Distribution and maintenance
+
+- Prepared the Google Play distribution without the APK updater or its install
+  permissions. GitHub builds retain download notifications and pause, resume,
+  and stop controls for app updates.
+- Fixed beta version-code ordering, duplicate update downloads, and update
+  actions that remained unavailable after a release was detected.
+- Modernised the build with AGP 9.4.1, Gradle 9.8, and a shared build-logic module.
+  Target SDK is now 37; minimum support remains Android 8.0 (API 26).
+- Updated bridge dependencies to address reported security issues.
+
+[1.3.0]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.2.1...twidget-v1.3.0
+
+## [1.3.0-beta.4] - 2026-10-02
+
+A smoother dashboard editing experience, a new card picker, and more refinements
+to home screen widgets, typography, and Your Brief. These changes are since beta.3.
+
+### Dashboard editing and card picker
+
+- Press and hold a card to enter edit mode, with a subtle press animation and
+  haptic build-up. You can also use the new Edit dashboard button at the bottom
+  of the list.
+- Cards shrink slightly and gain soft shadows in edit mode, with smooth
+  transitions when entering and leaving. Releasing a dragged card gives it a
+  gentle bounce.
+- Improved rearranging, especially for half-width cards, and made edge scrolling
+  more reliable while dragging up or down the dashboard.
+- Replaced the add-card dialog with a drawer of grouped card previews. Categories
+  open and close together in an accordion animation, with available-card counts
+  and disabled states when everything has been added.
+- Press and hold a preview to drag a new card straight onto the dashboard and
+  choose its position. The picker adapts to phones, tablets, and foldables.
+- Disabled card navigation and other content actions during editing, while
+  keeping remove controls available.
+- Refined preview shadows, rounded corners, remove controls, and scrolling fades.
+  Improved editing performance and shadow visibility in dark mode.
+- Fixed toolbar jumps between normal and edit modes, and kept the tablet toolbar
+  floating when opening its overflow menu.
+
+### Haptic feedback
+
+- Added quick-rise feedback when opening Your Brief and on the welcome and final
+  onboarding steps.
+- Use supported haptic primitives, with waveform fallbacks for devices that do
+  not support an effect. Hold feedback waits briefly before starting so scrolling
+  can cancel it.
+- Added a Haptics page in Debug settings to preview app effects and individual
+  primitives, plus a Force waveforms toggle for comparison.
+
+### Home screen widgets
+
+- Improved follower text fitting, emphasis, spacing, and baselines across widget
+  sizes and font choices. Counts make better use of the space when resizing.
+- Further reduced rendering work during resizing for a quicker response.
+- Added an optional contained username for Material widgets and refined widget
+  proportions and footer logo sizing.
+- Updated widget defaults in Settings to match the individual widget settings.
+  Fixed wallpaper-preview flicker, scrolling, and native control sizing.
+
+### Cards, Your Brief, and other fixes
+
+- Refined dashboard metric and streak cards, including a new personal-best
+  streak state and colours that adapt to light and dark mode.
+- Capped tweet-image height in the dashboard and Your Brief, cropping tall images
+  while preserving the aspect ratio of shorter ones. Your Brief now lets you
+  scroll through every image in tweets with multiple photos.
+- Made chart deltas and scale labels follow the selected app font, and fitted
+  long small-card headings onto one line.
+- Improved Top Followers browsing with a rank-aware fast scroller, better search
+  clearance, and a more reliable return-to-top action.
+- Added native One UI snackbars for scheduling feedback and corrected widget
+  logo updates while preserving individual widget choices.
+- Updated English and German wording and patched bridge dependencies flagged by
+  the security audit.
+
+[1.3.0-beta.4]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.3...twidget-v1.3.0-beta.4
+
+## [1.3.0-beta.3] - 2026-09-25
+
+New home screen widget styles, faster resizing, and refinements to typography,
+Your Brief, updates, and onboarding. These changes are since beta.2.
+
+### Home screen widgets
+
+- Added One UI and Material 3 Expressive styles for follower and Your Brief
+  widgets. One UI is the default on One UI devices; other Android skins default
+  to Material. Switch styles per widget or set defaults in Settings → Appearance.
+- One UI keeps its opacity, blur, and One UI Sans styling. Material uses fully
+  opaque wallpaper colours and Google Sans Flex, with font, logo, and
+  light/dark/system choices still available.
+- Lightened Material widget backgrounds in dark mode and made widgets follow
+  device theme changes without needing a tap or app refresh.
+- Refined Google Sans Flex weight, width, roundness, and emphasis. Follower hero
+  text makes better use of the available space, platform logos are smaller and
+  aligned with the handle, and larger widgets use rounded, condensed deltas.
+- Made resizing faster and more accurate by following the launcher's allocated
+  size, reusing text-fitting work, and discarding outdated renders.
+- Corrected Your Brief spacing and dial artwork, and allowed long strip
+  headlines to wrap beside the icon.
+- Rebuilt widget picker previews to match the device's native widget style and
+  current theme, including the correct fonts, logo colours, and Brief layout.
+  Removed the oversized 4×4 and 4×6 picker entries.
+- Fixed widget settings previews, appearance row separators, and the opacity
+  slider's initial position when switching from Material to One UI.
+
+### App appearance and Your Brief
+
+- Refined Google Sans Flex throughout the app, including headings, setting
+  labels, and toggles, while preserving the device's text scaling.
+- Redesigned the Gemini API-key dialog with shorter copy, an inline privacy
+  link, a clearer input field, and separate Cancel and Save actions. Longer
+  content scrolls while the actions remain accessible.
+- Added German translations for the redesigned dialog and more Brief diagnostic
+  text, and corrected German verified-follower goal wording. Thanks to
+  [Aaron the Techie](https://x.com/aaronthetechie) for the Brief translations.
+- Refreshed the first-launch welcome screen and matched its privacy link to the
+  app accent colour.
+
+### Imports, updates, and distribution
+
+- Improved X Analytics imports to allow small differences between export and
+  saved-history update times. Import failures now show clearer count comparisons
+  and guidance for choosing a file or retrying.
+- Added update download notifications with progress and pause, resume, and stop
+  controls, including live updates on supported Android 16 devices.
+- Prevented duplicate update downloads, kept detected updates immediately
+  actionable, and centred the About-page loading spinner.
+- Corrected Google Play beta version codes so newer betas can upgrade existing
+  installs, separated upload builds from validation builds, and kept APK-updater
+  permissions out of the Play distribution.
+
+[1.3.0-beta.3]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.2...twidget-v1.3.0-beta.3
+
+## [1.3.0-beta.2] - 2026-09-20
+
+A small follow-up to beta.1, fixing the toolbar and dashboard issues reported
+since that build.
+
+### Fixes since beta.1
+
+- Fixed missing backgrounds behind the floating back and drawer buttons in
+  beta/release builds, including the issue reported on Pixel devices.
+- Replaced the large chart-estimate notice with a native tips card and shorter
+  wording. Tap **Got it** to dismiss it; it stays dismissed across refreshes,
+  app restarts, and accounts.
+- Fixed clipped dashboard notice text, including the private-account notice.
+- Added English and German wording for the dismissible chart tip.
+
+[1.3.0-beta.2]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0-beta.1...twidget-v1.3.0-beta.2
+
 ## [1.2.1] - 2026-09-13
 
 A localisation patch. German now covers the rest of the app, and the repo has

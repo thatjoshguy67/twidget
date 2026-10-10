@@ -8,6 +8,7 @@ import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.core.HistoryMigrationPolicy
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.schedule.ScheduleAccountCleanup
 import com.tjg.twidget.schedule.json
 import com.tjg.twidget.main.MilestonePolicy
@@ -90,6 +91,8 @@ data class TwidgetWidgetSettings(
     val fontFamily: String,
     val showDelta: Boolean = true,
     val language: String = "DEFAULT",
+    val style: com.tjg.twidget.widget.WidgetStyle = com.tjg.twidget.widget.WidgetStyle.ONE_UI,
+    val containedFooter: Boolean = false,
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -113,6 +116,7 @@ object TwidgetStore {
     const val COLOR_MODE_LIGHT = "light"
     const val COLOR_MODE_DARK = "dark"
     const val COLOR_MODE_SYSTEM = "system"
+    const val FONT_SYSTEM = "system"
     const val FONT_ONE_UI_SANS = "one_ui_sans"
     const val FONT_GOOGLE_SANS_FLEX = "google_sans_flex"
 
@@ -138,8 +142,11 @@ object TwidgetStore {
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
     private const val KEY_DEBUG_MENU = "debug_menu_unlocked"
     private const val KEY_FAKE_UPDATE = "debug_fake_update"
+    private const val KEY_SPOOFED_APP_VERSION = "debug_spoofed_app_version"
+    private const val KEY_SPOOFED_APP_VERSION_ENABLED = "debug_spoofed_app_version_enabled"
     private const val KEY_UPDATE_AVAILABLE = "update_available"
     private const val KEY_UPDATE_VERSION = "update_version"
+    private const val KEY_ESTIMATE_TIP_DISMISSED = "estimate_tip_dismissed"
     private const val KEY_UPDATE_SUGGESTION_DISMISSED = "update_suggestion_dismissed"
     const val DEFAULT_BRIDGE_URL = "https://twidget-bridge-production.up.railway.app"
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
@@ -244,13 +251,48 @@ object TwidgetStore {
             putBoolean(KEY_DEBUG_MENU, unlocked)
             // A faked update must not leave a phantom badge behind once the
             // debug menu (its only off switch) is hidden.
-            if (!unlocked) remove(KEY_FAKE_UPDATE)
+            if (!unlocked) {
+                remove(KEY_FAKE_UPDATE)
+                remove(KEY_SPOOFED_APP_VERSION)
+                remove(KEY_SPOOFED_APP_VERSION_ENABLED)
+            }
         }.apply()
     }
 
     fun fakeUpdateAvailable(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
+        BuildVars.IN_APP_UPDATES && prefs(context).getBoolean(KEY_FAKE_UPDATE, false)
 
+    /** Debug-only installed-version override used for GitHub release eligibility checks. */
+    fun spoofedAppVersion(context: Context): String? =
+        prefs(context).getString(KEY_SPOOFED_APP_VERSION, null)?.trim()?.takeIf(String::isNotBlank)
+
+    fun spoofedAppVersionEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SPOOFED_APP_VERSION_ENABLED, false)
+
+    fun setSpoofedAppVersionEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().apply {
+            putBoolean(KEY_SPOOFED_APP_VERSION_ENABLED, enabled)
+            if (enabled) remove(KEY_FAKE_UPDATE)
+        }.apply()
+    }
+
+    fun setSpoofedAppVersion(context: Context, version: String?) {
+        prefs(context).edit().apply {
+            if (version.isNullOrBlank()) remove(KEY_SPOOFED_APP_VERSION)
+            else {
+                putString(KEY_SPOOFED_APP_VERSION, version.trim())
+                remove(KEY_FAKE_UPDATE)
+            }
+        }.apply()
+    }
+
+    fun updateCheckVersion(context: Context, installedVersion: String): String =
+        if (BuildVars.IN_APP_UPDATES && debugMenuUnlocked(context) &&
+            spoofedAppVersionEnabled(context)) {
+            spoofedAppVersion(context) ?: installedVersion
+        } else {
+            installedVersion
+        }
     fun setFakeUpdateAvailable(context: Context, enabled: Boolean) {
         val preferences = prefs(context)
         val wasEnabled = preferences.getBoolean(KEY_FAKE_UPDATE, false)
@@ -263,8 +305,8 @@ object TwidgetStore {
     // Powers the update badges (Settings "About Twidget" row, drawer settings
     // cog). Reflects the last completed real check, or the debug fake flag.
     fun updateAvailable(context: Context): Boolean =
-        fakeUpdateAvailable(context) ||
-            prefs(context).getBoolean(KEY_UPDATE_AVAILABLE, false)
+        BuildVars.IN_APP_UPDATES && (fakeUpdateAvailable(context) ||
+            prefs(context).getBoolean(KEY_UPDATE_AVAILABLE, false))
 
     fun setUpdateAvailable(context: Context, available: Boolean, version: String? = null) {
         val preferences = prefs(context)
@@ -283,15 +325,21 @@ object TwidgetStore {
         }.apply()
     }
 
-    fun updateSuggestionVersion(context: Context): String? {
+    /** Last successfully detected update, independent of whether its Settings card was dismissed. */
+    fun detectedUpdateVersion(context: Context): String? {
+        if (!BuildVars.IN_APP_UPDATES) return null
         val preferences = prefs(context)
-        if (preferences.getBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, false)) return null
         if (fakeUpdateAvailable(context)) return fakeUpdateVersion(context)
         if (!preferences.getBoolean(KEY_UPDATE_AVAILABLE, false)) return null
         val available = preferences.getString(KEY_UPDATE_VERSION, null)?.takeIf(String::isNotBlank) ?: return null
         val availableVersion = AppVersion.parse(available) ?: return null
         val installedVersion = installedAppVersion(context) ?: return null
         return available.takeIf { availableVersion > installedVersion }
+    }
+
+    fun updateSuggestionVersion(context: Context): String? {
+        if (prefs(context).getBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, false)) return null
+        return detectedUpdateVersion(context)
     }
 
     private fun fakeUpdateVersion(context: Context): String {
@@ -304,6 +352,14 @@ object TwidgetStore {
 
     fun dismissUpdateSuggestion(context: Context) {
         prefs(context).edit().putBoolean(KEY_UPDATE_SUGGESTION_DISMISSED, true).apply()
+    }
+
+    // This chart legend is shared by every account, so acknowledgement is app-wide.
+    fun isEstimateTipDismissed(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ESTIMATE_TIP_DISMISSED, false)
+
+    fun dismissEstimateTip(context: Context) {
+        prefs(context).edit().putBoolean(KEY_ESTIMATE_TIP_DISMISSED, true).apply()
     }
 
     fun cachedXApiBearer(context: Context): String {
@@ -358,18 +414,21 @@ object TwidgetStore {
     fun widgetSettings(context: Context, appWidgetId: Int = 0): TwidgetWidgetSettings {
         val prefs = prefs(context)
         val suffix = if (appWidgetId > 0) "_$appWidgetId" else ""
+        val style = com.tjg.twidget.widget.WidgetStyle.resolve(prefs.getString("widget_style$suffix", prefs.getString("widget_style", null)))
         return TwidgetWidgetSettings(
             tintAlpha = prefs.getInt("widget_tint_alpha$suffix", prefs.getInt("widget_tint_alpha", 205)).coerceIn(30, 245),
             tintColor = prefs.getInt("widget_tint_color$suffix", prefs.getInt("widget_tint_color", 0x00FFFFFF)),
-            logo = prefs.getString("widget_logo$suffix", prefs.getString("widget_logo", LOGO_X)) ?: LOGO_X,
+            logo = prefs.getString("widget_logo$suffix", prefs.getString("widget_logo", if (appWidgetId == 0) com.tjg.twidget.ui.AppAppearance.logo(context) else LOGO_X)) ?: LOGO_X,
             tapAction = prefs.getString("widget_tap_action$suffix", prefs.getString(KEY_TAP_ACTION, TAP_REFRESH)) ?: TAP_REFRESH,
             accountUsername = prefs.getString("widget_account$suffix", "") ?: "",
-            colorMode = prefs.getString("widget_color_mode$suffix", COLOR_MODE_SYSTEM) ?: COLOR_MODE_SYSTEM,
+            colorMode = prefs.getString("widget_color_mode$suffix", prefs.getString("widget_color_mode", COLOR_MODE_SYSTEM)) ?: COLOR_MODE_SYSTEM,
             fontFamily = normalizeWidgetFont(
-                prefs.getString("widget_font_family$suffix", FONT_ONE_UI_SANS),
+                prefs.getString("widget_font_family$suffix", prefs.getString("widget_font_family", style.defaultFont)),
             ),
             showDelta = prefs.getBoolean("widget_show_delta$suffix", prefs.getBoolean("widget_show_delta", true)),
             language = prefs.getString("widget_language$suffix", prefs.getString("widget_language", "DEFAULT")) ?: "DEFAULT",
+            style = style,
+            containedFooter = prefs.getBoolean("widget_contained_footer$suffix", prefs.getBoolean("widget_contained_footer", false)),
         )
     }
 
@@ -385,11 +444,16 @@ object TwidgetStore {
             .putString("widget_font_family$suffix", normalizeWidgetFont(settings.fontFamily))
             .putBoolean("widget_show_delta$suffix", settings.showDelta)
             .putString("widget_language$suffix", settings.language)
+            .putString("widget_style$suffix", settings.style.storedValue)
+            .putBoolean("widget_contained_footer$suffix", settings.containedFooter)
             .apply()
     }
 
-    fun normalizeWidgetFont(fontFamily: String?): String =
-        if (fontFamily == FONT_GOOGLE_SANS_FLEX) FONT_GOOGLE_SANS_FLEX else FONT_ONE_UI_SANS
+    fun normalizeWidgetFont(fontFamily: String?): String = when (fontFamily) {
+        FONT_SYSTEM -> FONT_SYSTEM
+        FONT_GOOGLE_SANS_FLEX -> FONT_GOOGLE_SANS_FLEX
+        else -> FONT_ONE_UI_SANS
+    }
 
     fun accounts(context: Context): List<String> {
         val saved = prefs(context).getString(KEY_ACCOUNTS, null)?.let { encoded ->
@@ -433,6 +497,8 @@ object TwidgetStore {
         }
         edit.apply()
         clearCachedStats(context, cleanUsername)
+        com.tjg.twidget.analytics.ImportedAnalyticsStore.clear(context, cleanUsername)
+        com.tjg.twidget.followers.TopFollowersStore.clear(context, cleanUsername)
         BangerClient.clear(context, cleanUsername)
         BangerScanWorker.clear(context, cleanUsername)
         ScheduleAccountCleanup.removeAccountSchedules(context, cleanUsername)
@@ -558,7 +624,12 @@ object TwidgetStore {
             else -> false
         }
         val locale = AppLocales.applicationLocale()
-        val pattern = if (monthly) "MMM" else if (locale.language == "de") "d. MMM" else "MMM d"
+        val pattern = when {
+            monthly -> "MMM"
+            locale.language == "de" -> "d. MMM"
+            locale.language == "fr" -> "d MMM"
+            else -> "MMM d"
+        }
         val labelFormat = SimpleDateFormat(pattern, locale)
         var previousEnd = rangeStart(all, range) - 1
         return bucketEnds(all, range).mapNotNull { end ->
@@ -759,8 +830,7 @@ object TwidgetStore {
     fun followersDelta(context: Context, username: String = settings(context).username): Long =
         todayDelta(context, username) { it.followers }
 
-    fun compactNumber(value: Long): String {
-        val locale = AppLocales.applicationLocale()
+    fun compactNumber(value: Long, locale: Locale = AppLocales.applicationLocale()): String {
         val absValue = abs(value)
         return when {
             absValue >= 1_000_000 -> "${String.format(locale, "%.1f", value / 1_000_000f)}M"
@@ -769,12 +839,12 @@ object TwidgetStore {
         }
     }
 
-    fun signedNumber(value: Long): String =
-        if (value > 0) "+${compactNumber(value)}" else compactNumber(value)
+    fun signedNumber(value: Long, locale: Locale = AppLocales.applicationLocale()): String =
+        if (value > 0) "+${compactNumber(value, locale)}" else compactNumber(value, locale)
 
     fun lastSyncedText(context: Context, stats: ProfileStats = currentStats(context)): String {
         if (stats.syncedAt <= 0L) return context.getString(R.string.not_synced_yet)
-        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a")
+        val formatterDate = AppLocales.formatDate(stats.syncedAt, "d. MMM, HH:mm", "MMM d, h:mm a", "d MMM, HH:mm")
         return context.getString(R.string.last_synced, formatterDate)
     }
 
@@ -838,7 +908,7 @@ object TwidgetStore {
 
     private fun sampleFor(stats: ProfileStats): HistorySample =
         HistorySample(
-            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d"),
+            dayLabel = AppLocales.formatDate(stats.syncedAt, "d. MMM", "MMM d", "d MMM"),
             followers = stats.followersCount,
             following = stats.followingsCount,
             posts = stats.statusesCount,
@@ -1046,7 +1116,11 @@ object TwidgetStore {
 
     private fun demoHistory(): List<HistorySample> {
         val formatter = SimpleDateFormat(
-            if (AppLocales.applicationLocale().language == "de") "d. MMM" else "MMM d",
+            when (AppLocales.applicationLocale().language) {
+                "de" -> "d. MMM"
+                "fr" -> "d MMM"
+                else -> "MMM d"
+            },
             AppLocales.applicationLocale(),
         )
         val today = startOfDay(System.currentTimeMillis())

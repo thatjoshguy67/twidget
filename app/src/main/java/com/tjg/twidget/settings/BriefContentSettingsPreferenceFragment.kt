@@ -1,30 +1,42 @@
 package com.tjg.twidget.settings
 
-import android.content.Context
-import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
+import android.widget.LinearLayout
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.preference.PreferenceCategory
-import androidx.preference.PreferenceViewHolder
 import androidx.preference.SeslSwitchPreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefContentCategory
 import com.tjg.twidget.brief.BriefSettingsStore
-import com.tjg.twidget.brief.BriefVisuals
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MilestoneGoalActivity
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 
 class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        fun centreIcon(row: View) {
+            row.findViewById<LinearLayout>(androidx.preference.R.id.icon_frame)?.apply {
+                gravity = Gravity.CENTER
+                // Balance the row's leading inset inside the existing SESL icon column.
+                setPaddingRelative(0, paddingTop, row.paddingStart, paddingBottom)
+            }
+        }
+        listView.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
+            override fun onChildViewAttachedToWindow(view: View) = centreIcon(view)
+            override fun onChildViewDetachedFromWindow(view: View) = Unit
+        })
+        for (index in 0 until listView.childCount) centreIcon(listView.getChildAt(index))
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
@@ -95,7 +107,7 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         category: BriefContentCategory,
         titleRes: Int,
         onOpen: () -> Unit,
-    ) = AlignedSwitchPreferenceScreen(requireContext()).apply {
+    ) = SeslSwitchPreferenceScreen(requireContext()).apply {
         configureCategory(this, category, titleRes)
         setOnPreferenceClickListener {
             onOpen()
@@ -121,6 +133,8 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         titleRes: Int,
     ) {
         val context = requireContext()
+        // Use the same SESL icon column for plain switches and navigable switch rows.
+        preference.layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
         preference.key = "brief_content_${category.storageId}"
         preference.title = getString(titleRes)
         preference.isPersistent = false
@@ -135,11 +149,11 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
 
     private fun tintedIcon(category: BriefContentCategory): Drawable? {
         val context = requireContext()
-        val tinted = AppCompatResources.getDrawable(context, BriefVisuals.categoryIcon(category))
+        val tinted = AppCompatResources.getDrawable(context, categoryIcon(category))
             ?.mutate()
             ?.also { DrawableCompat.setTint(it, context.getColor(iconColor(category))) }
             ?: return null
-        return SizedDrawable(tinted, (ICON_SIZE_DP * context.resources.displayMetrics.density).toInt())
+        return tinted
     }
 
     private fun iconColor(category: BriefContentCategory): Int = when (category) {
@@ -159,58 +173,16 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         isIconSpaceReserved = false
     }
 
-    private class SizedDrawable(
-        private val delegate: Drawable,
-        private val sizePx: Int,
-    ) : Drawable() {
-        override fun draw(canvas: Canvas) = delegate.draw(canvas)
-
-        override fun onBoundsChange(bounds: Rect) {
-            delegate.bounds = bounds
-        }
-
-        override fun setAlpha(alpha: Int) {
-            delegate.alpha = alpha
-        }
-
-        override fun setColorFilter(colorFilter: ColorFilter?) {
-            delegate.colorFilter = colorFilter
-        }
-
-        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-
-        override fun getIntrinsicWidth(): Int = sizePx
-
-        override fun getIntrinsicHeight(): Int = sizePx
-
-        override fun isStateful(): Boolean = delegate.isStateful
-
-        override fun onStateChange(state: IntArray): Boolean = delegate.setState(state)
-    }
-
-    /**
-     * Samsung's switch-screen layout starts its icon at the leading edge of a
-     * 56dp slot with 16dp end padding. The regular switch layout centres its
-     * 24dp icon in the remaining 40dp, so apply the missing 8dp half-gap.
-     */
-    private class AlignedSwitchPreferenceScreen(context: Context) :
-        SeslSwitchPreferenceScreen(context) {
-        override fun onBindViewHolder(holder: PreferenceViewHolder) {
-            super.onBindViewHolder(holder)
-            holder.findViewById(android.R.id.icon)?.let { icon ->
-                val offset = NAVIGABLE_ICON_OFFSET_DP * icon.resources.displayMetrics.density
-                icon.translationX = if (icon.layoutDirection == View.LAYOUT_DIRECTION_RTL) {
-                    -offset
-                } else {
-                    offset
-                }
-            }
-        }
-    }
-
-    companion object {
-        private const val ICON_SIZE_DP = 24f
-        private const val NAVIGABLE_ICON_OFFSET_DP = 8f
+    private fun categoryIcon(category: BriefContentCategory): Int = when (category) {
+        BriefContentCategory.TOP_TWEET -> R.drawable.ic_settings_top_post
+        BriefContentCategory.WORST_TWEET -> R.drawable.ic_settings_delete
+        BriefContentCategory.FOLLOWERS -> R.drawable.ic_settings_community
+        BriefContentCategory.TOP_FOLLOWERS -> R.drawable.ic_settings_diamond
+        BriefContentCategory.TWEET_ACTIVITY -> R.drawable.ic_settings_send
+        BriefContentCategory.SCHEDULED_TWEETS -> R.drawable.ic_settings_clock
+        BriefContentCategory.SCHEDULE_HEALTH -> R.drawable.ic_settings_calendar
+        BriefContentCategory.POST_FOLLOW_THROUGH -> R.drawable.ic_settings_repeat
+        BriefContentCategory.POSTING_GUIDANCE -> R.drawable.ic_settings_star
+        BriefContentCategory.ACCOUNT_GOALS -> R.drawable.ic_settings_flag
     }
 }

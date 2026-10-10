@@ -8,11 +8,11 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="76dp"
+        android:layout_height="68dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="20dp"
-        android:paddingEnd="16dp">
+        android:paddingEnd="20dp">
 
         <ImageView
             android:layout_width="24dp"
@@ -24,7 +24,7 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="20dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -40,7 +40,7 @@
                     android:includeFontPadding="false"
                     android:textColor="@color/oneui_text_primary"
                     android:textFontWeight="700"
-                    android:textSize="28sp"
+                    android:textSize="22sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -50,7 +50,7 @@
                     android:layout_marginStart="6dp"
                     android:includeFontPadding="false"
                     android:textColor="@color/metric_green"
-                    android:textSize="13sp" />
+                    android:textSize="22sp" />
             </LinearLayout>
 
             <TextView
@@ -59,8 +59,17 @@
                 android:includeFontPadding="false"
                 android:text="@string/following"
                 android:textColor="@color/oneui_text_secondary"
-                android:textSize="12sp" />
+                android:textSize="14sp" />
         </LinearLayout>
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="20dp"
+            android:contentDescription="@null"
+            android:id="@+id/metric_platform_icon"
+            android:src="@drawable/ic_logo_twitter"
+            app:tint="@color/oneui_text_primary" />
+
     </LinearLayout>
 
     <View

@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import com.tjg.twidget.R
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.main.AboutActivity
 
 internal object UpdateNotificationPolicy {
@@ -38,6 +39,7 @@ object UpdateNotificationHelper {
         release: AppRelease,
         now: Long = System.currentTimeMillis(),
     ): Boolean {
+        if (!BuildVars.IN_APP_UPDATES) return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -113,6 +115,14 @@ object UpdateNotificationHelper {
         }
     }
 
+    /** Lets a debug version override show the result even if this release was notified before. */
+    fun resetNotificationHistory(context: Context) {
+        prefs(context).edit()
+            .remove(KEY_LAST_NOTIFIED_VERSION)
+            .remove(KEY_REMINDER_VERSION)
+            .remove(KEY_REMIND_AFTER)
+            .apply()
+    }
     fun remindLater(context: Context, version: String, now: Long = System.currentTimeMillis()) {
         prefs(context).edit()
             .putString(KEY_REMINDER_VERSION, version)
@@ -146,7 +156,7 @@ object UpdateNotificationHelper {
 
 class UpdateReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION_REMIND_LATER) return
+        if (!BuildVars.IN_APP_UPDATES || intent.action != ACTION_REMIND_LATER) return
         val version = intent.getStringExtra(EXTRA_VERSION)?.takeIf(String::isNotBlank) ?: return
         UpdateNotificationHelper.remindLater(context, version)
         UpdateCheckWorker.scheduleReminder(context)

@@ -23,6 +23,7 @@ object TopFollowersArchiveStore {
     @Synchronized
     fun clear(context: Context, username: String) {
         archiveFile(context, username).delete()
+        replacementFile(context, username).delete()
     }
 
     @Synchronized

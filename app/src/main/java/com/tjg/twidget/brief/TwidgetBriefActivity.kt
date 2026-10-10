@@ -105,7 +105,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) {
             prepareOnboardingBackgroundTransition()
         }
-        afterFirstFrame(::loadInitialBrief)
+        afterFirstFrame {
+            if (savedInstanceState == null) {
+                com.tjg.twidget.ui.TwidgetHaptics.quickRise(findViewById(R.id.brief_root))
+            }
+            loadInitialBrief()
+        }
     }
 
     private fun loadInitialBrief() {
@@ -256,6 +261,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                         BriefStore.resetAi(this@TwidgetBriefActivity, username)
                     }
                     debugScenario.snapshot(
+                        this@TwidgetBriefActivity,
                         BriefEngine.rebuild(
                             this@TwidgetBriefActivity,
                             username,
@@ -445,15 +451,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             setLineSpacing(dp(2).toFloat(), 1f)
         }, matchWrap(top = 10))
 
-        post.media.firstOrNull()?.let { media ->
-            addView(ImageView(context).apply {
-                contentDescription = media.alt.ifBlank { getString(R.string.post_media) }
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                ProfileImageLoader.loadMediaInto(context, this, media.url, dp(14))
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(218),
-            ).apply { topMargin = dp(10) })
+        post.media.takeIf { it.isNotEmpty() }?.let { media ->
+            addView(com.tjg.twidget.ui.TweetMediaView.create(context, media), matchWrap(top = 10))
         }
 
         addView(LinearLayout(context).apply {
@@ -648,9 +647,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }, matchWrap(top = 10))
 
         firstPost?.media?.firstOrNull()?.let { media ->
-            addView(ImageView(context).apply {
+            addView(com.tjg.twidget.ui.MediaAspectImageView(context).apply {
                 contentDescription = getString(R.string.post_media)
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 when (media) {
                     is LocalUriMedia -> {
                         background = AppCompatResources.getDrawable(context, R.drawable.schedule_media_preview_bg)
@@ -667,7 +666,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
             }, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(218),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(10) })
         }
 
@@ -723,9 +722,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         firstTweet?.media
             ?.firstOrNull { media -> media.mimeType?.startsWith("image/", ignoreCase = true) != false }
             ?.let { media ->
-            addView(ImageView(context).apply {
+            addView(com.tjg.twidget.ui.MediaAspectImageView(context).apply {
                 contentDescription = getString(R.string.post_media)
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 when (media) {
                     is LocalUriMedia -> {
                         background = AppCompatResources.getDrawable(context, R.drawable.schedule_media_preview_bg)
@@ -742,7 +741,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
             }, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(218),
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(10) })
         }
 
@@ -777,7 +776,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun scheduleDate(timestamp: Long): String = if (timestamp > 0L) {
-        AppLocales.formatDate(timestamp, "EEE, d. MMM · HH:mm", "EEE, MMM d · h:mm a")
+        AppLocales.formatDate(timestamp, "EEE, d. MMM · HH:mm", "EEE, MMM d · h:mm a", "EEE d MMM · HH:mm")
     } else {
         getString(R.string.time_unavailable)
     }
@@ -1278,7 +1277,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     ).apply { topMargin = dp(top) }
 
     private fun postDate(post: PostSummary): String = if (post.timestamp > 0L) {
-        AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a")
+        AppLocales.formatDate(post.timestamp, "d. MMM, HH:mm", "MMM d, h:mm a", "d MMM, HH:mm")
     } else post.createdAt
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

@@ -26,6 +26,7 @@ class BriefAiCardResponseTest {
             BriefCard("steady", BriefCardType.SUMMARY, "Steady", "Everything is steady.", 60),
         ),
         topFollowerRanks = emptyMap(),
+        language = strings.languageTag,
     )
 
     @Test

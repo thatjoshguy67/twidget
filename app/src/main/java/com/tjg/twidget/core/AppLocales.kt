@@ -2,6 +2,9 @@ package com.tjg.twidget.core
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
+import android.os.Build
+import androidx.core.app.LocaleManagerCompat
 import android.os.LocaleList
 import androidx.appcompat.app.AppCompatDelegate
 import java.text.NumberFormat
@@ -18,15 +21,37 @@ import java.util.Locale
 object AppLocales {
     const val DEFAULT = "DEFAULT"
 
+    private var appContext: Context? = null
+
+    /** Restore AppCompat's persisted choice before a worker or widget is started. */
+    fun initialize(context: Context) {
+        appContext = context.applicationContext
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            AppCompatDelegate.setApplicationLocales(LocaleManagerCompat.getApplicationLocales(context))
+        }
+    }
+
+    internal fun supportedLocale(locale: Locale): Locale = when (locale.language) {
+        "de", "en", "fr" -> locale
+        else -> Locale.ENGLISH
+    }
+
     fun resolve(languageTag: String? = DEFAULT): Locale = when (languageTag?.lowercase(Locale.ROOT)) {
         "de" -> Locale.GERMAN
         "en" -> Locale.ENGLISH
+        "fr" -> Locale.FRENCH
         else -> applicationLocale()
     }
 
     fun applicationLocale(): Locale {
-        val stored = runCatching { AppCompatDelegate.getApplicationLocales() }.getOrNull()
-        return stored?.takeUnless { it.isEmpty }?.get(0) ?: Locale.getDefault()
+        if (appContext == null) return supportedLocale(Locale.getDefault())
+        val stored = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && appContext != null) {
+            LocaleManagerCompat.getApplicationLocales(requireNotNull(appContext))
+        } else {
+            AppCompatDelegate.getApplicationLocales()
+        }
+        return supportedLocale(stored.takeUnless { it.isEmpty }?.get(0)
+            ?: Resources.getSystem().configuration.locales.get(0) ?: Locale.ENGLISH)
     }
 
     fun wrap(context: Context, languageTag: String? = DEFAULT): Context {
@@ -43,9 +68,14 @@ object AppLocales {
         timestamp: Long,
         germanPattern: String,
         englishPattern: String,
+        frenchPattern: String,
         locale: Locale = applicationLocale(),
     ): String {
-        val pattern = if (locale.language == "de") germanPattern else englishPattern
+        val pattern = when (locale.language) {
+            "de" -> germanPattern
+            "fr" -> frenchPattern
+            else -> englishPattern
+        }
         return SimpleDateFormat(pattern, locale).format(Date(timestamp))
     }
 }

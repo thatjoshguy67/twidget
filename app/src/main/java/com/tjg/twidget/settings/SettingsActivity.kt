@@ -3,6 +3,7 @@ package com.tjg.twidget.settings
 import android.os.Bundle
 import com.tjg.twidget.R
 import com.tjg.twidget.ui.FoldablePopOverActivity
+import com.tjg.twidget.ui.startSettingsSubActivity
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 
 class SettingsActivity : FoldablePopOverActivity() {
@@ -15,14 +16,10 @@ class SettingsActivity : FoldablePopOverActivity() {
             setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
         }
         if (savedInstanceState == null) {
-            val fragment = SettingsPreferenceFragment().apply {
-                arguments = Bundle().apply {
-                    putString(
-                        SettingsPreferenceFragment.ARG_SCROLL_TO_PREFERENCE,
-                        intent.getStringExtra(EXTRA_SCROLL_TO_PREFERENCE),
-                    )
-                }
+            if (intent.getStringExtra(EXTRA_SCROLL_TO_PREFERENCE) == PREFERENCE_SCHEDULING) {
+                startSettingsSubActivity(SettingsCategoryActivity.intent(this, SettingsPage.SCHEDULING))
             }
+            val fragment = SettingsPreferenceFragment()
             supportFragmentManager.beginTransaction()
                 .replace(R.id.preference_fragment_container, fragment)
                 .commit()

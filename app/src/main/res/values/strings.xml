@@ -7,6 +7,7 @@
     <string name="widget_language_default">App default</string>
     <string name="widget_language_de">German (Deutsch)</string>
     <string name="widget_language_en">English</string>
+    <string name="widget_language_fr">French (Français)</string>
     <string name="lockscreen_follower_1x1_label">Followers 1x1</string>
     <string name="lockscreen_follower_2x1_label">Followers 2x1</string>
     <string name="dashboard_title" translatable="false">That Josh Guy</string>
@@ -119,6 +120,7 @@
     <string name="language_system">System default</string>
     <string name="language_german">German (Deutsch)</string>
     <string name="language_english">English</string>
+    <string name="language_french">French (Français)</string>
     <string name="milestone_use_auto">Use auto milestone</string>
     <string name="milestone_edit_button">Edit</string>
     <string name="milestone_show_percent">Show progress percentage</string>
@@ -128,7 +130,10 @@
     <string name="daily_streak_keep_going">Tweet on X to keep your streak</string>
     <string name="daily_streak_last_active">Last active %1$s</string>
     <string name="daily_streak_detail">Counts original tweets detected on X. Replies, reposts and likes do not count.</string>
-    <string name="daily_streak_days">%1$d days</string>
+    <plurals name="daily_streak_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
     <string name="daily_streak_none">No streak yet</string>
     <string name="per_range">%1$s / range</string>
     <string name="per_day">%1$s / day</string>
@@ -141,7 +146,9 @@
     <string name="no_recent_gain">No recent gain</string>
     <string name="history_notice">History is captured once per day. Weekly data needs at least 7 days; longer ranges fill in as Twidget keeps syncing.</string>
     <string name="private_account_notice">Private account: X exposes only limited public data. Some statistics, post analytics, and history may be unavailable or incomplete.</string>
-    <string name="estimated_notice">Faded bars are estimates reconstructed from limited history. Solid bars are real data, which grows as Twidget keeps syncing.</string>
+    <string name="estimated_notice_title">About chart estimates</string>
+    <string name="estimated_notice">Faded bars are estimates. Solid bars are recorded data.</string>
+    <string name="estimated_notice_dismiss">Got it</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Open settings</string>
     <string name="refresh_stats">Refresh stats</string>
@@ -221,7 +228,7 @@
     <string name="import_premium_title">X Premium/Premium+ subscribers only</string>
     <string name="import_premium_summary">Pulling your stats from X Analytics requires a paid subscription to X.</string>
     <string name="import_accuracy_title">Check for accuracy</string>
-    <string name="import_accuracy_summary">We’ll check your stats for accuracy before importing. The process will fail if the stats are inaccurate.</string>
+    <string name="import_accuracy_summary">We’ll compare the export with saved follower history, allowing small differences between update times.</string>
     <string name="import_for_account">Import data for @%1$s?</string>
     <string name="import_range">Range</string>
     <string name="import_detected_followers">Detected follower count</string>
@@ -252,9 +259,23 @@
     <string name="notices_empty_summary">Pull down to refresh. Published GitHub releases will appear here automatically.</string>
     <string name="notices_retry">Try again</string>
     <string name="not_imported">Not imported</string>
-    <string name="import_failure_default">The analytics file could not be verified</string>
-    <string name="import_failure_range">Follower count was not within range</string>
-    <string name="import_stored_followers">Cached follower count</string>
+    <string name="import_failure_default">We couldn’t verify this export.</string>
+    <string name="import_failure_range">The export and saved follower counts differ too much.</string>
+    <string name="import_stored_followers">Saved follower count</string>
+    <string name="import_csv_followers">Follower count in export</string>
+    <string name="import_calculated_followers">Count calculated from export</string>
+    <string name="import_failure_difference">Difference: %1$s followers</string>
+    <string name="import_failure_comparison_day">Counts compared for %1$s</string>
+    <string name="import_failure_impossible">The follower changes in this export would produce a negative count.</string>
+    <string name="import_failure_refresh_help">X Analytics and saved counts may update at different times. Refresh this account, then download a new export including today. If it still fails, wait and try again.</string>
+    <string name="import_failure_old_export">This export does not include today.</string>
+    <string name="import_failure_invalid_rows">The export has missing or invalid daily data.</string>
+    <string name="import_failure_connection">We couldn’t check the follower count with the server.</string>
+    <string name="import_failure_connection_help">Check your connection and try again shortly.</string>
+    <string name="import_failure_history_help">Keep syncing this account to build up daily history, then try again with a fresh export covering those days.</string>
+    <string name="import_failure_private_help">Use local history without a bridge to import analytics for a private account.</string>
+    <string name="import_failure_file_help">Choose an Account overview CSV for this account from X Analytics. Include today in the date range.</string>
+    <string name="import_try_another_file">Choose CSV</string>
     <string name="analytics_url" translatable="false">https://analytics.x.com/</string>
     <string name="import_no_browser">No web browser is available.</string>
     <string name="import_action">Import</string>
@@ -266,7 +287,7 @@
     <string name="analytics_import_confirm_local">Import %2$d days of local follower history into @%1$s?\n\nRange: %3$s to %4$s\nCurrent local count: %5$s followers\n\nTwidget will reconstruct the CSV from daily follows and unfollows, then compare every overlapping day with trusted local snapshots. The import is refused if the latest count or trend differs beyond a tiny margin. Nothing is uploaded.</string>
     <string name="analytics_import_checking_bridge">Checking the CSV against bridge history…</string>
     <string name="analytics_import_busy">Twidget is busy. Try the import again shortly.</string>
-    <string name="analytics_import_trend_mismatch">The CSV trend does not match trusted follower history.</string>
+    <string name="analytics_import_trend_mismatch">The follower changes don’t match the saved history.</string>
     <string name="analytics_import_not_enough_history">There is not enough trusted history to verify this CSV safely.</string>
     <string name="analytics_import_private">Private accounts cannot contribute to shared history.</string>
     <string name="analytics_import_complete_bridge">Added %1$d verified gap days after checking %2$d trusted snapshots.</string>
@@ -288,9 +309,10 @@
     <string name="widget_logo_twitter" translatable="false">Twitter</string>
     <string name="widget_show_delta">Show follower delta</string>
     <string name="widget_font">Font</string>
+    <string name="widget_font_system">System default</string>
     <string name="widget_font_one_ui" translatable="false">One UI Sans</string>
     <string name="widget_font_google" translatable="false">Google Sans Flex</string>
-    <string name="clear_cache">Clear cache</string>
+    <string name="clear_cache">Clear cached data</string>
     <string name="about_twidget">About Twidget</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
@@ -304,19 +326,19 @@
     <string name="about_credits_section">Thanks to</string>
     <string name="about_projects_section">Open source projects</string>
     <string name="about_tjg_title" translatable="false">That Josh Guy</string>
-    <string name="about_tjg_summary">Created the app. Far too many red bulls consumed in the process.</string>
+    <string name="about_tjg_summary">Created Twidget. Far too many red bulls consumed in the process.</string>
     <string name="about_kingowen_title" translatable="false">KingOwenFYI</string>
     <string name="about_kingowen_summary">Contributor, motivator and idea generator.</string>
     <string name="about_aaron_title" translatable="false">Aaron the Techie</string>
-    <string name="about_aaron_summary">German localisation.</string>
+    <string name="about_aaron_summary">Localised to German</string>
     <string name="link_aaron" translatable="false">https://x.com/aaronthetechie</string>
     <string name="about_fxtwitter_title" translatable="false">FxTwitter / FxEmbed</string>
     <string name="about_fxtwitter_summary">Default data source. Public profile, status, media, and recent-post analytics data</string>
-    <string name="about_oneui_summary">One UI interface components. The magic behind the app\'s design</string>
-    <string name="about_legal_section">Legal</string>
+    <string name="about_oneui_summary">Tribalfs fork - SESL 9.0</string>
+    <string name="about_legal_section">Boring stuff</string>
     <string name="about_privacy_policy_title">Privacy policy</string>
     <string name="about_privacy_policy_summary">How Twidget handles, protects and deletes information</string>
-    <string name="about_open_source_licenses_title">Open Source Licences</string>
+    <string name="about_open_source_licenses_title">Open source licenses</string>
     <string name="about_open_source_licenses_summary">Apache License 2.0 • MIT License • BSD 3-Clause License • SIL Open Font License 1.1</string>
     <string name="about_legal_notice_title">Legal notice</string>
     <string name="about_legal_disclaimer_summary">Twidget is an independent, unofficial project. It is not affiliated with, sponsored, or endorsed by Samsung Electronics, X Corp., Google LLC, or any other third party referenced in this app. Samsung, One UI, X, Twitter, Google, Android, and related names and logos are trademarks of their respective owners.</string>
@@ -332,6 +354,31 @@
     <string name="update_channel_beta">Beta releases</string>
     <string name="update_channel_debug">Debug builds</string>
     <string name="update_download_failed">Couldn\'t download the update.</string>
+    <string name="update_download_started">Update is downloading. Check the notification for download status.</string>
+    <string name="update_download_started_without_notification">Update is downloading. Keep this screen open to install it when complete.</string>
+    <string name="update_download_in_progress">An update is already downloading.</string>
+    <string name="update_download_notification_title">Twidget update</string>
+    <string name="update_downloading">Downloading update</string>
+    <string name="update_download_progress">Downloading update: %1$d%%</string>
+    <string name="update_download_complete">Download complete · 100%</string>
+    <string name="update_download_paused">Download paused</string>
+    <string name="update_download_paused_progress">Download paused · %1$d%%</string>
+    <string name="update_pause">Pause</string>
+    <string name="update_resume">Resume</string>
+    <string name="update_stop">Stop</string>
+    <string name="update_download_notification_channel_name">Update download progress</string>
+    <string name="update_download_notification_channel_description">Live status and controls while a Twidget update downloads</string>
+    <string name="twidget_update_debug">Twidget update debug</string>
+    <string name="debug_version_spoofing">Version spoofing</string>
+    <string name="debug_update_tools">Update tools</string>
+    <string name="debug_spoof_app_version_enabled">Use spoofed app version</string>
+    <string name="debug_spoof_app_version_enabled_summary">When enabled, GitHub update checks use the version below instead of the installed version</string>
+    <string name="debug_spoof_app_version">Spoof installed app version</string>
+    <string name="debug_spoof_app_version_summary">Uses this version only when checking GitHub updates; leave empty to use the real version</string>
+    <string name="debug_spoof_app_version_invalid">Enter a version such as 1.2.3 or 1.2.3-beta.1.</string>
+    <string name="debug_spoof_app_version_checking">Checking GitHub updates now.</string>
+    <string name="debug_test_update_download_notification">Test update download notification</string>
+    <string name="debug_test_update_download_notification_summary">Runs a simulated download with progress, pause and stop controls</string>
     <string name="update_install_permission">Allow Twidget to install updates, then return to continue.</string>
     <string name="update_invalid_apk">The downloaded update isn\'t a valid Twidget package.</string>
     <string name="update_notification_title">Twidget update available</string>
@@ -344,13 +391,15 @@
     <string name="link_tjg" translatable="false">https://tjg.gg</string>
     <string name="link_kingowen" translatable="false">https://x.com/KingOwenFYI</string>
     <string name="link_fxtwitter" translatable="false">https://github.com/FxEmbed/FxEmbed</string>
-    <string name="link_oneui_project" translatable="false">https://github.com/OneUIProject</string>
+    <string name="link_oneui_project" translatable="false">https://github.com/tribalfs/oneui-design</string>
     <string name="link_rettiwt" translatable="false">https://github.com/Rishikant181/Rettiwt-API</string>
     <string name="link_app_repo" translatable="false">https://github.com/thatjoshguy67/twidget</string>
     <string name="link_privacy_policy" translatable="false">https://tjg.gg/blog/twidget-privacy-policy</string>
     <string name="sync_failed">Sync failed; showing cached stats.</string>
     <string name="onboarding_title" translatable="false">Twidget</string>
     <string name="onboarding_overview_title">Welcome to Twidget</string>
+    <string name="onboarding_welcome_terms">By using Twidget, you accept the Twidget Privacy Policy as well as each platform’s terms and conditions.</string>
+    <string name="onboarding_privacy_link">Twidget Privacy Policy</string>
     <string name="onboarding_done_title">You\'re all set!</string>
     <string name="onboarding_done_summary">Stats are captured daily, so give it a week to fully populate.</string>
     <string name="onboarding_handle_hint" translatable="false">\@</string>
@@ -398,7 +447,7 @@
     <string name="continue_button">Continue</string>
     <string name="starting_twidget">Starting…</string>
     <string name="set">Set</string>
-    <string name="debug_menu">Debug menu</string>
+    <string name="debug_menu">Debug</string>
     <string name="debug_menu_unlocked">Debug menu unlocked</string>
     <string name="debug_menu_already_unlocked">Debug menu is already unlocked</string>
     <string name="debug_menu_countdown">%1$d more taps to unlock the debug menu</string>
@@ -416,7 +465,7 @@
     <string name="debug_palette_generated">Generated roles</string>
     <string name="debug_palette_resolved">Resolved resources</string>
     <string name="debug_palette_requires_android_14">Custom palettes require Android 14 or newer</string>
-    <string name="debug_palette_overlay_registered">Overlay registered</string>
+    <string name="debug_palette_overlay_registered">Custom palette active</string>
     <string name="debug_palette_overlay_not_registered">System-managed</string>
     <string name="debug_palette_overlay_unsupported">Overlay unsupported</string>
     <string name="debug_palette_apply_failed">Couldn’t apply palette: %1$s</string>
@@ -477,6 +526,70 @@
     <string name="brief_debug_nano_refresh_summary">Query the on-device feature and model state again</string>
     <string name="brief_debug_nano_test">Run provider test</string>
     <string name="brief_debug_nano_test_summary">Rebuild the Brief and run the configured local/cloud selection now</string>
+    <string name="brief_debug_scenario_real">Real account data</string>
+    <string name="brief_debug_scenario_post">Getting attention</string>
+    <string name="brief_debug_scenario_worst_post">Quietest tweet</string>
+    <string name="brief_debug_scenario_growth">Growth surge</string>
+    <string name="brief_debug_scenario_slowdown">Growth slowdown</string>
+    <string name="brief_debug_scenario_milestone">Milestone reached</string>
+    <string name="brief_debug_scenario_top_follower">New top follower</string>
+    <string name="brief_debug_scenario_inactivity">Start a streak</string>
+    <string name="brief_debug_scenario_streak">Posting streak</string>
+    <string name="brief_debug_scenario_schedule_guide">Schedule health guide</string>
+    <string name="brief_debug_scenario_post_follow_through">Scheduled post follow-through</string>
+    <string name="brief_debug_scenario_posting_guide">Next post guidance</string>
+    <string name="brief_debug_scenario_steady">Everything steady</string>
+    <string name="brief_debug_card_post_title">Why this tweet worked</string>
+    <string name="brief_debug_card_post_body">It reached substantially more people than your typical tweet this week.</string>
+    <string name="brief_debug_card_worst_post_title">What may have limited it</string>
+    <string name="brief_debug_card_worst_post_body">It reached fewer people than your typical tweet this week.</string>
+    <string name="brief_debug_card_growth_title">Your audience is taking off</string>
+    <string name="brief_debug_card_growth_body">You gained 84 followers today and 679 over the last week.</string>
+    <string name="brief_debug_card_slowdown_title">Growth has slowed down</string>
+    <string name="brief_debug_card_slowdown_body">Your recent pace is behind the previous few days. A fresh post could help restart it.</string>
+    <string name="brief_debug_card_milestone_title">Milestone reached!</string>
+    <string name="brief_debug_card_milestone_body">You made it to %1$s followers. That deserves a victory lap.</string>
+    <string name="brief_debug_card_top_follower_title">A new top follower</string>
+    <string name="brief_debug_card_top_follower_body">\@JohnCena is now your #2 most popular follower.</string>
+    <string name="brief_debug_card_inactivity_title">Start a posting streak</string>
+    <string name="brief_debug_card_inactivity_body">Twidget hasn’t detected an original tweet for more than three days. Tweet today to begin.</string>
+    <string name="brief_debug_card_streak_title">14-day posting streak</string>
+    <string name="brief_debug_card_streak_body">Tweet today to keep your 14-day rhythm going.</string>
+    <string name="brief_debug_card_schedule_guide_title">Plan your next tweet</string>
+    <string name="brief_debug_card_schedule_guide_body">Nothing is scheduled for the next three days. Queue one idea while the week is still flexible.</string>
+    <string name="brief_debug_card_post_follow_through_title">Build on your scheduled tweet</string>
+    <string name="brief_debug_card_post_follow_through_body">It beat your recent baseline. Open it, note what people responded to, then plan a useful follow-up.</string>
+    <string name="brief_debug_card_source_buffer">Tweeted with Buffer</string>
+    <string name="brief_debug_card_posting_guide_title">Try your next tweet in the evening</string>
+    <string name="brief_debug_card_posting_guide_body">Your recent evening tweets performed better than your other time windows. Test that timing again.</string>
+    <string name="brief_debug_card_steady_title">Everything looks steady</string>
+    <string name="brief_debug_card_steady_body">Keep showing up and Twidget will watch for the next meaningful change.</string>
+    <string name="brief_debug_synthetic_provider_message">Synthetic debug state · no AI request was made</string>
+    <string name="brief_debug_report_title">Twidget Brief engine report</string>
+    <string name="brief_debug_report_account">Account: @%1$s</string>
+    <string name="brief_debug_report_generated">Generated: %1$s</string>
+    <string name="brief_debug_report_input_facts">INPUT FACTS</string>
+    <string name="brief_debug_report_ranked_candidates">RANKED CANDIDATES</string>
+    <string name="brief_debug_report_selected">SELECTED</string>
+    <string name="brief_debug_report_omitted">OMITTED</string>
+    <string name="brief_debug_report_none">none</string>
+    <string name="brief_debug_report_followers">followers=%1$s</string>
+    <string name="brief_debug_report_following">following=%1$s</string>
+    <string name="brief_debug_report_posts">posts=%1$s</string>
+    <string name="brief_debug_report_followers_today">followersToday=%1$s</string>
+    <string name="brief_debug_report_followers_week">followersWeek=%1$s</string>
+    <string name="brief_debug_report_history_samples">historySamples=%1$d</string>
+    <string name="brief_debug_report_analytics_cached_at">analyticsCachedAt=%1$s</string>
+    <string name="brief_debug_report_standout_post_views">standoutPostViews=%1$s</string>
+    <string name="brief_debug_report_quiet_post_views">quietPostViews=%1$s</string>
+    <string name="brief_debug_report_posting_streak">postingStreak=%1$d</string>
+    <string name="brief_debug_report_original_activity_complete">originalActivityComplete=%1$b</string>
+    <string name="brief_debug_report_upcoming_tweets">upcomingTweets=%1$d</string>
+    <string name="brief_debug_report_follower_scan_completed_at">followerScanCompletedAt=%1$s</string>
+    <string name="brief_debug_report_followers_scanned">followersScanned=%1$d</string>
+    <string name="brief_debug_report_candidate">%1$d. rank=%2$d base=%3$d type=%4$s %5$s id=%6$s</string>
+    <string name="brief_debug_report_candidate_title">   %1$s</string>
+    <string name="brief_debug_report_candidate_body">   %1$s</string>
     <string name="schedule_title">Scheduled tweets</string>
     <string name="schedule_new">New scheduled tweet</string>
     <string name="schedule_queue_for">Schedule · %1$s</string>
@@ -673,51 +786,27 @@
     <string name="top_followers">Your Top Followers</string>
     <string name="top_followers_question">Who is your</string>
     <string name="top_followers_hero">Top follower?</string>
-    <string name="top_followers_start_scan">Start scan</string>
     <string name="top_followers_find_with_bridge">Find top follower</string>
     <string name="top_followers_bridge_scan_requested">Your first ranking is being prepared. Twidget will keep it refreshed daily while shared history is enabled.</string>
     <string name="top_followers_results_title">Your top followers</string>
-    <string name="top_followers_scanning_title">Scanning</string>
-    <string name="top_followers_scanning_progress_title">Scanning · %1$d%% · Page %2$d</string>
-    <string name="top_followers_scanning_page_title">Scanning · Page %1$d</string>
-    <string name="top_followers_refresh">Scan again</string>
-    <string name="top_followers_stop_scan">Stop scan</string>
-    <string name="top_followers_scan_stopped">Scan stopped. You can resume it later today.</string>
-    <string name="top_followers_add_api_key">Add API key</string>
-    <string name="top_followers_start">Start</string>
-    <string name="top_followers_api_key_required">Add a personal TwitterAPIs key or official X API credentials in Advanced settings before starting an on-device scan.</string>
-    <string name="top_followers_daily_limit">You’ve already scanned this account today. Try again tomorrow.</string>
     <string name="top_follower_accessibility">Number %1$d, %2$s, at %3$s, %4$s followers. Opens X profile.</string>
     <string name="top_follower_row">%1$d. @%2$s · %3$s followers</string>
     <string name="top_followers_ready">Ready to find your biggest followers</string>
-    <string name="top_followers_setup">Enable shared history or add API credentials</string>
+    <string name="top_followers_setup">Enable shared history in Data and sources to find your top followers.</string>
     <string name="top_followers_tap">Tap to find your top follower</string>
-    <string name="top_followers_scanning">Scanning %1$d followers across %2$d pages…</string>
-    <string name="top_followers_complete">Scanned %1$d followers across %2$d paid pages</string>
-    <string name="top_followers_scan_title">Start scan?</string>
-    <string name="top_followers_scan_message_trial">A personal TwitterAPIs key or compatible official X API credentials runs this scan directly from your device. Shared-history users can use the bridge instead.</string>
-    <string name="top_followers_scan_message_shared">Twidget’s bridge will reuse a recent opted-in scan when available, or scan this public account securely on the server. One completed scan per account is allowed each day.</string>
-    <string name="top_followers_scan_message_personal">This scan uses your personal TwitterAPIs key. Twidget applies no daily scan limit, but TwitterAPIs usage charges and provider limits still apply.</string>
-    <string name="top_followers_scan_message_x_api">This scan uses your official X API credentials and may consume paid API reads.</string>
     <string name="scan">Scan</string>
-    <string name="twitterapis_title">TwitterAPIs · Top followers</string>
+    <string name="twitterapis_title">TwitterAPIs · Profiles and posts</string>
     <string name="twitterapis_api_key">TwitterAPIs API key</string>
-    <string name="twitterapis_explainer">Twidget includes rate-limited trial access for Your Top Followers. Add your own key for no Twidget daily scan limit, optional profile stats, and bounded seven-day post analytics cached for six hours. Your key is encrypted on this device and sent only to TwitterAPIs. Opening Settings does not make a paid test call.</string>
+    <string name="twitterapis_explainer">Add your own key for optional profile stats and bounded seven-day post analytics cached for six hours. Your key is encrypted on this device and sent only to TwitterAPIs. Top Followers uses the shared-history bridge. Opening Settings does not make a paid test call.</string>
     <string name="twitterapis_personal_key_active">Personal key active · %1$s</string>
-    <string name="twitterapis_trial_key_active">App trial key active · One scan per account each day</string>
-    <string name="twitterapis_no_key_available">No trial key in this build · Add your own key</string>
+    <string name="twitterapis_no_key_available">Add your own key for profile stats and post analytics</string>
     <string name="source_twitterapis" translatable="false">TwitterAPIs</string>
     <string name="twitterapis_status">TwitterAPIs status</string>
     <string name="scan_again">Scan again</string>
     <string name="compact_followers">%1$s followers</string>
     <string name="post_card_waiting">No result yet for @%1$s</string>
     <string name="top_followers_notifications">Top follower updates</string>
-    <string name="top_followers_notifications_description">Notifies when a new high-ranking follower appears or an API scan finishes</string>
-    <string name="top_followers_progress_notifications">Top follower scan progress</string>
-    <string name="top_followers_progress_notifications_description">Shows progress while a top-followers scan is running</string>
-    <string name="top_followers_progress_title">Scanning top followers for @%1$s</string>
-    <string name="top_followers_notification_title">Top followers ready for @%1$s</string>
-    <string name="top_followers_notification_leader">%1$s leads with %2$s followers</string>
+    <string name="top_followers_notifications_description">Notifies when a new high-ranking follower appears</string>
     <string name="top_followers_new_high_ranking_title">New top follower for @%1$s</string>
     <string name="top_followers_new_high_ranking_detail">@%1$s followed you and is now your #%2$d top follower</string>
     <string name="top_followers_last_scan">Last scanned %1$s · %2$d followers across %3$d pages</string>
@@ -781,7 +870,7 @@
     <string name="brief_ai_disclaimer">AI information</string>
     <string name="brief_ai_disclaimer_body">AI-generated wording may be incomplete or inaccurate. Twidget limits it to facts calculated from your account data, but you should verify important information.\n\n%1$s</string>
     <string name="brief_enabled">Enable daily brief</string>
-    <string name="brief_enabled_summary">Build a private daily guide and scan top followers once a day when access is configured</string>
+    <string name="brief_enabled_summary">Build a private daily guide, including bridge follower rankings when shared history is enabled</string>
     <string name="brief_provider">AI provider</string>
     <string name="brief_provider_auto">Auto (local, then cloud)</string>
     <string name="brief_provider_local">Local</string>
@@ -790,12 +879,13 @@
     <string name="brief_provider_local_summary">Use Gemini Nano only. Account facts never leave this device.</string>
     <string name="brief_provider_cloud_summary">Use Gemini Cloud with your own API key</string>
     <string name="brief_cloud_key">Gemini API key</string>
+    <string name="brief_cloud_privacy_summary">Cloud writing sends Brief summaries and cards, including public names, account statistics, goals and scheduling summaries, to Google. Auto mode may use cloud writing when local writing is unavailable. Google’s API terms govern retention and use of this content. ML Kit also collects diagnostic and usage data. Choose Local or remove your key to stop future cloud writing.</string>
     <string name="brief_cloud_key_summary">Sent only to Google’s Gemini API and encrypted in Android Keystore</string>
     <string name="brief_cloud_key_configured">Configured and encrypted</string>
     <string name="brief_open">Open Your Brief</string>
     <string name="brief_followers">Followers</string>
     <string name="brief_top_followers">Top followers</string>
-    <string name="brief_top_followers_empty">No follower ranking yet. Use Find top follower on the dashboard with shared history enabled, or add API credentials.</string>
+    <string name="brief_top_followers_empty">No follower ranking yet. Enable shared history in Data and sources, then use Find top follower on the dashboard.</string>
     <string name="brief_post_love">Your last post got a lot of love!</string>
     <string name="brief_weekly_growth">You gained %1$s new followers in the past week.</string>
     <string name="brief_weekly_decline">You lost %1$s followers in the past week.</string>
@@ -826,6 +916,7 @@
     <string name="brief_goal_heading">Your %1$s goal</string>
     <string name="brief_goal_close_heading">You’re close to your %1$s goal</string>
     <string name="brief_goal_reached_heading">Your %1$s goal is reached</string>
+    <string name="brief_goal_noun_verified_follower">verified follower</string>
     <string name="brief_streak_heading">Your posting streak</string>
     <string name="back">Back</string>
     <string name="info">Information</string>
@@ -905,12 +996,27 @@
     <string name="brief_card_streak_start_ready">A tweet is ready to post now. Publish it to start a new daily rhythm.</string>
     <string name="brief_card_streak_start_queued">You have a tweet queued today. Post it to start a new daily rhythm.</string>
     <string name="brief_card_streak_start_idle">Twidget hasn’t detected an original tweet for more than three days. Tweet today to begin.</string>
-    <string name="brief_card_streak_title">%1$d-day posting streak</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="one">%1$d-day posting streak</item>
+        <item quantity="other">%1$d-day posting streak</item>
+    </plurals>
     <string name="brief_card_streak_kept_today">You’ve already kept the streak alive today. Nice work.</string>
-    <string name="brief_card_streak_buffer">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_ready">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_queued">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</string>
-    <string name="brief_card_streak_tweet_today">Tweet today to keep your %1$d-day rhythm going.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="one">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</item>
+        <item quantity="other">A tweet is scheduled to publish today and keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="one">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">Your next tweet is ready now. Post it to keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="one">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">You have a tweet queued today. Post it to keep your %1$d-day rhythm going.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="one">Tweet today to keep your %1$d-day rhythm going.</item>
+        <item quantity="other">Tweet today to keep your %1$d-day rhythm going.</item>
+    </plurals>
     <string name="brief_card_top_follower_new">A new top follower</string>
     <string name="brief_card_top_follower_moved">A follower moved up</string>
     <string name="brief_card_top_follower_title">Your top follower</string>
@@ -977,4 +1083,65 @@
     <string name="milestone_noun_verified_follower">verified follower</string>
     <string name="milestone_noun_engagement_rate">engagement rate</string>
     <string name="milestone_noun_impression">impression</string>
+    <string name="top_followers_enable_shared_history">Enable shared history</string>
+    <string name="widget_style">Widget style</string>
+    <string name="widget_style_one_ui">One UI</string>
+    <string name="widget_style_material">Material 3 Expressive</string>
+    <string name="brief_api_key_dialog_body">Create and copy an API key in Google AI Studio, then paste it here. This lets Your Brief process summaries. Read the <annotation link="privacy">Privacy Policy</annotation> for information on how this data is used and secured.</string>
+    <string name="brief_api_key_studio_link">Tap here to go to Google AI Studio</string>
+    <string name="brief_api_key_privacy_open_failed">Couldn’t open the privacy policy.</string>
+    <string name="widget_contained_footer">Contained username</string>
+    <string name="widget_contained_footer_summary">Puts the username in a contained shape, for better readability.</string>
+    <plurals name="dashboard_streak_days">
+        <item quantity="one">day</item>
+        <item quantity="other">days</item>
+    </plurals>
+    <string name="streak_card_steady">Steady streak</string>
+    <string name="streak_card_record">New high streak score</string>
+    <string name="streak_card_save">Save your streak</string>
+    <string name="streak_card_restart">Restart your streak</string>
+    <string name="settings_app_logo_style">Twitter/X Logo style</string>
+    <string name="card_catalogue_hint">Tap a card preview to add it to your dashboard.</string>
+    <string name="card_group_metrics">Account and audience</string>
+    <string name="card_group_growth">Growth and activity</string>
+    <string name="card_group_posts">Tweet analysis</string>
+    <string name="card_group_x">X analytics</string>
+    <string name="card_group_community">Brief and community</string>
+    <string name="card_catalogue_all_added">All added</string>
+    <string name="card_catalogue_half_width">Half width</string>
+    <string name="card_catalogue_full_width">Full width</string>
+    <string name="card_catalogue_add_named">Add %1$s</string>
+    <string name="card_catalogue_added">%1$s added to dashboard</string>
+    <plurals name="card_catalogue_available">
+        <item quantity="one">%d card available</item>
+        <item quantity="other">%d cards available</item>
+    </plurals>
+    <string name="debug_haptics_title">Haptics</string>
+    <string name="debug_haptics_actions">App effects</string>
+    <string name="debug_haptics_unsupported">Not supported on this device</string>
+    <string name="debug_haptics_hold">Hold ramp → edit-mode pop</string>
+    <string name="debug_haptics_enter">Enter edit mode</string>
+    <string name="debug_haptics_exit">Exit edit mode</string>
+    <string name="debug_haptics_long_press">Long press</string>
+    <string name="debug_haptics_drag_pickup">Drag pickup</string>
+    <string name="debug_haptics_drag_hold">Gentle tick while dragging</string>
+    <string name="debug_haptics_selection">Selection / reorder tick</string>
+    <string name="debug_haptics_confirm">Confirmation</string>
+    <string name="debug_haptics_reject">Rejection</string>
+    <string name="debug_haptics_refresh">Pull to refresh</string>
+    <string name="debug_haptics_primitives">Individual primitives</string>
+    <string name="debug_haptics_low_tick">Low tick</string>
+    <string name="debug_haptics_tick">Tick</string>
+    <string name="debug_haptics_click">Click</string>
+    <string name="debug_haptics_slow_rise">Slow rise</string>
+    <string name="debug_haptics_quick_rise">Quick rise</string>
+    <string name="debug_haptics_quick_fall">Quick fall</string>
+    <string name="debug_haptics_thud">Thud</string>
+    <string name="debug_haptics_spin">Spin</string>
+    <string name="debug_haptics_stop">Stop playback</string>
+    <string name="debug_haptics_force_waveforms">Force waveforms</string>
+    <string name="debug_haptics_force_waveforms_summary">Use waveform approximations for primitive effects throughout the app. Platform action feedback stays unchanged.</string>
+    <string name="about_evowizz_title" translatable="false">Dy (evowizz)</string>
+    <string name="about_evowizz_summary">Knows his shit; localised to French</string>
+    <string name="link_evowizz" translatable="false">https://evowizz.dev/</string>
 </resources>

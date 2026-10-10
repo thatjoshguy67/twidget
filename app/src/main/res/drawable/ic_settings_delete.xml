@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: DeleteOutline. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M18.2369 6.8955L17.2849 19.1545C17.2049 20.1965 16.3359 20.9995 15.2919 20.9995H8.70887C7.66387 20.9995 6.79586 20.1965 6.71486 19.1545L5.76386 6.8955M4.31396 6.5H19.686M13.8702 11.6641V16.1141M10.1304 11.6641V16.1141M9.24957 6V3.75C9.24957 3.475 9.47457 3.25 9.74957 3.25H14.2496C14.5246 3.25 14.7496 3.475 14.7496 3.75V6" android:fillColor="#00000000" android:strokeColor="?android:attr/textColorPrimary" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

@@ -4,12 +4,9 @@ import android.content.Context
 import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.SecureCredentialStore
-import com.tjg.twidget.followers.TopFollower
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import org.json.JSONObject
-
-data class TopFollowersPage(val users: List<TopFollower>, val nextCursor: String)
 
 data class TwitterApisTimelinePage(
     val tweets: List<JSONObject>,
@@ -17,36 +14,14 @@ data class TwitterApisTimelinePage(
     val hasMore: Boolean,
 )
 
-enum class TwitterApisAccessSource {
-    PERSONAL,
-}
-
-data class TwitterApisAccess(
-    val apiKey: String,
-    val source: TwitterApisAccessSource,
-)
-
 object TwitterApisClient {
     const val WEBSITE_URL = "https://twitterapis.com"
-    private const val ENDPOINT = "https://api.twitterapis.com/twitter/user/followers_v2"
     private const val PROFILE_ENDPOINT = "https://api.twitterapis.com/twitter/user/info"
     private const val TIMELINE_ENDPOINT = "https://api.twitterapis.com/twitter/user/tweets"
 
     /** Full profile-provider access remains bring-your-own-key only. */
     fun hasCredentials(context: Context): Boolean =
         SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY).isNotBlank()
-
-    fun hasTopFollowersAccess(context: Context): Boolean = topFollowersAccess(context) != null
-
-    fun topFollowersAccess(context: Context): TwitterApisAccess? = selectTopFollowersAccess(
-        SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY),
-    )
-
-    internal fun selectTopFollowersAccess(personalKey: String): TwitterApisAccess? {
-        val personal = personalKey.trim()
-        if (personal.isNotBlank()) return TwitterApisAccess(personal, TwitterApisAccessSource.PERSONAL)
-        return null
-    }
 
     fun fetchProfile(context: Context, username: String): ProfileStats {
         val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
@@ -111,23 +86,7 @@ object TwitterApisClient {
         )
     }
 
-    fun fetchFollowers(username: String, cursor: String, apiKey: String): TopFollowersPage {
-        require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }
-        val encodedUsername = encode(username.trim().trimStart('@'))
-        val url = buildString {
-            append(ENDPOINT).append("?username=").append(encodedUsername)
-            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
-        }
-        val response = HttpTransport.get(
-            url,
-            headers = mapOf("Authorization" to "Bearer ${apiKey.trim()}"),
-            userAgent = "Twidget (Android)",
-        )
-        val body = HttpTransport.requireSuccess(response, "TwitterAPIs")
-        return parsePage(body)
-    }
-
-    /** Recent timeline reads are always bring-your-own-key; the app trial key is scan-only. */
+    /** Recent timeline reads use the user's personal key. */
     fun fetchTimelinePage(context: Context, username: String, cursor: String): TwitterApisTimelinePage {
         val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
         require(apiKey.isNotBlank()) { "TwitterAPIs key is not configured" }
@@ -163,43 +122,6 @@ object TwitterApisClient {
             ?.let { it.optBoolean("has_more", it.optBoolean("hasMore")) }
             ?: nextCursor.isNotBlank()
         return TwitterApisTimelinePage(tweets, nextCursor, hasMore)
-    }
-
-    internal fun parsePage(body: String): TopFollowersPage {
-        val root = JSONObject(body)
-        val array = root.optJSONArray("users")
-        val users = buildList {
-            if (array != null) for (index in 0 until array.length()) {
-                val user = array.optJSONObject(index) ?: continue
-                val handle = user.optString("username").trim().trimStart('@')
-                if (handle.isBlank()) continue
-                add(TopFollower(
-                    id = user.optString("id"),
-                    username = handle,
-                    name = user.optString("name").ifBlank { handle },
-                    followers = user.optLong("followers_count").coerceAtLeast(0),
-                    verified = user.optBoolean("is_blue_verified"),
-                    avatarUrl = highResolutionAvatar(
-                        sequenceOf(
-                            "profile_image_url_https",
-                            "profile_image_url",
-                            "avatar_url",
-                            "avatar",
-                            "profile_image",
-                        ).map(user::optString).firstOrNull { it.isNotBlank() }.orEmpty(),
-                    ),
-                    mutual = parseMutual(user),
-                ))
-            }
-        }
-        return TopFollowersPage(users, root.optString("next_cursor"))
-    }
-
-    internal fun parseMutual(user: org.json.JSONObject): Boolean? = when {
-        user.has("following") && !user.isNull("following") -> user.optBoolean("following")
-        user.has("is_following") && !user.isNull("is_following") -> user.optBoolean("is_following")
-        user.has("follows_back") && !user.isNull("follows_back") -> user.optBoolean("follows_back")
-        else -> null
     }
 
     private fun encode(value: String): String =

@@ -24,7 +24,8 @@ import java.util.concurrent.TimeUnit
 class TopFollowersBridgeSyncWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result {
         val username = inputData.getString(KEY_USERNAME).orEmpty().trim().trimStart('@')
-        if (username.isBlank() || !TwidgetStore.settings(applicationContext).shareHistory) {
+        if (username.isBlank() || !TwidgetStore.settings(applicationContext).shareHistory ||
+            TwidgetStore.accounts(applicationContext).none { it.equals(username, ignoreCase = true) }) {
             return Result.success()
         }
         return try {
@@ -46,12 +47,14 @@ class TopFollowersBridgeSyncWorker(context: Context, params: WorkerParameters) :
     }
 
     companion object {
+        const val ACTION_UPDATED = "com.tjg.twidget.TOP_FOLLOWERS_UPDATED"
+        const val EXTRA_USERNAME = "username"
         private const val KEY_USERNAME = "username"
         private const val KEY_REQUEST_SCAN = "request_scan"
 
         fun enqueueScanRequest(context: Context, username: String) {
             val clean = username.trim().trimStart('@')
-            if (clean.isBlank()) return
+            if (clean.isBlank() || !TwidgetStore.settings(context).shareHistory) return
             val request = OneTimeWorkRequestBuilder<TopFollowersBridgeSyncWorker>()
                 .setInputData(
                     Data.Builder()
@@ -90,6 +93,10 @@ internal object TopFollowersBridgeSync {
             return previousState
         }
 
+        if (TwidgetStore.accounts(context).none { it.equals(username, ignoreCase = true) }) {
+            TopFollowersStore.clear(context, username)
+            return null
+        }
         val completed = latest.copy(
             scanning = false,
             complete = true,
@@ -98,9 +105,9 @@ internal object TopFollowersBridgeSync {
         )
         TopFollowersStore.write(context, username, completed)
         context.applicationContext.sendBroadcast(
-            Intent(TopFollowersScanWorker.ACTION_UPDATED)
+            Intent(TopFollowersBridgeSyncWorker.ACTION_UPDATED)
                 .setPackage(context.packageName)
-                .putExtra(TopFollowersScanWorker.EXTRA_USERNAME, username),
+                .putExtra(TopFollowersBridgeSyncWorker.EXTRA_USERNAME, username),
         )
 
         if (notifyChanges && previousState.complete && !TwidgetAppVisibility.isVisible()) {

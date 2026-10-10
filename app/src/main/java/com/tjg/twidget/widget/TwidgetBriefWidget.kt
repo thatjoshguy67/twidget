@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
-import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
@@ -66,6 +65,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             } else {
                 createViews(context, id, width, height, account, snapshot)
             }
+            if (!widgetSizeOptionsMatch(options, manager.getAppWidgetOptions(id))) return
             manager.updateAppWidget(id, views)
             warmAvatars(context, manager, id, account)
         }
@@ -82,23 +82,29 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         ): RemoteViews {
             val views = linkedMapOf<SizeF, RemoteViews>()
             var bytes = 0L
+            val variants = widgetArtworkVariants(TwidgetStore.widgetSettings(context, id))
+            val budget = remoteViewsBitmapBudget(context, BITMAP_BUDGET)
             fun add(key: SizeF, width: Int, height: Int) {
-                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L
-                if (bytes + cost > BITMAP_BUDGET || views.containsKey(key)) return
+                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants
+                if (bytes + cost > budget || views.containsKey(key)) return
                 views[key] = createViews(context, id, width, height, account, snapshot)
                 bytes += cost
             }
             widgetSizes(options)
                 .sortedBy { kotlin.math.abs(it.width - currentWidth) + kotlin.math.abs(it.height - currentHeight) }
                 .forEach { size -> add(size, size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1)) }
-            add(SizeF(110f, 40f), 162, 76)
-            add(SizeF(231f, 40f), 352, 76)
-            add(SizeF(110f, 111f), 162, 176)
-            add(SizeF(231f, 111f), 352, 175)
+            // Launchers that provide exact sizes must not select a mismatched
+            // breakpoint bitmap in between resize updates.
+            if (views.isEmpty()) {
+                add(SizeF(110f, 40f), 162, 76)
+                add(SizeF(231f, 40f), 352, 76)
+                add(SizeF(110f, 111f), 162, 176)
+                add(SizeF(231f, 111f), 352, 175)
+            }
             return RemoteViews(views)
         }
 
-        private fun createViews(
+        internal fun createViews(
             context: Context,
             id: Int,
             width: Int,
@@ -107,42 +113,46 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             snapshot: com.tjg.twidget.brief.BriefSnapshot?,
         ): RemoteViews {
             val oneRow = height <= 110
-            val summary = snapshot?.let { BriefEditorialSummary.from(it, BriefStrings.from(context)) }
             val settings = TwidgetStore.widgetSettings(context, id)
+            val localizedContext = com.tjg.twidget.core.AppLocales.wrap(context, settings.language)
+            val strings = BriefStrings.from(context, settings.language)
+            val summary = snapshot?.let { BriefEditorialSummary.from(it, strings) }
             val dark = isDark(context, settings.colorMode)
-            val base = if (dark) 16 else 255
-            val backgroundColor = Color.argb(settings.tintAlpha, base, base, base)
+            val backgroundColor = WidgetColors.resolve(context, settings, dark).background
             return RemoteViews(
                 context.packageName,
                 if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card,
             ).apply {
+                setInt(android.R.id.background, "setBackgroundResource",
+                    if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    setColorStateList(
-                        android.R.id.background,
-                        "setBackgroundTintList",
-                        ColorStateList.valueOf(backgroundColor),
-                    )
+                    setWidgetBackgroundTint(context, settings)
                 } else {
-                    setInt(android.R.id.background, "setBackgroundColor", backgroundColor)
+                    setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
-                setImageViewBitmap(
-                    R.id.brief_widget_artwork,
+                val artworkBudget = remoteViewsBitmapBudget(context, BITMAP_BUDGET) / widgetArtworkVariants(settings)
+                setWidgetArtwork(R.id.brief_widget_artwork, settings) { artworkDark ->
                     BriefWidgetArtworkRenderer.render(
-                        context = context,
+                        context = localizedContext,
+                        strings = strings,
                         widthPx = dp(context, width),
                         heightPx = dp(context, height),
                         account = account,
                         snapshot = snapshot,
-                        dark = dark,
+                        dark = artworkDark,
                         fontFamily = settings.fontFamily,
-                    ),
-                )
+                        style = settings.style,
+                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
+                        bitmapBudgetBytes = artworkBudget,
+                    )
+                }
                 setContentDescription(
                     android.R.id.background,
                     listOfNotNull(summary?.title, summary?.body).joinToString(". ")
-                        .ifBlank { context.getString(R.string.brief_widget_empty_title) },
+                        .ifBlank { localizedContext.getString(R.string.brief_widget_empty_title) },
                 )
                 if (account.isNotBlank()) {
                     setOnClickPendingIntent(
@@ -160,6 +170,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
 
         private fun warmAvatars(context: Context, manager: AppWidgetManager, id: Int, account: String) {
             val urls = listOf(
+                TwidgetStore.currentStats(context, account).profileImage,
                 TopFollowersStore.read(context, account).top.firstOrNull()?.avatarUrl.orEmpty(),
             ).filter(String::isNotBlank).distinct()
             val missing = urls.filter { ProfileImageLoader.cachedBitmap(context, it) == null }
@@ -180,12 +191,6 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         private fun dp(context: Context, value: Int): Int =
             (value * context.resources.displayMetrics.density).toInt()
 
-        private fun isDark(context: Context, colorMode: String): Boolean =
-            when (colorMode) {
-                TwidgetStore.COLOR_MODE_DARK -> true
-                TwidgetStore.COLOR_MODE_LIGHT -> false
-                else -> context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
-                    Configuration.UI_MODE_NIGHT_YES
-            }
+        private fun isDark(context: Context, colorMode: String): Boolean = widgetUsesDarkTheme(colorMode)
     }
 }

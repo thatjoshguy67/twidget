@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Twidget" parent="OneUITheme">
+        <item name="viewInflaterClass">com.tjg.twidget.ui.TwidgetViewInflater</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="colorPrimary">@color/oneui_accent</item>
         <item name="drawerBackgroundColor">@color/oneui_drawer_bg</item>
         <item name="drawerSelectedBackgroundColor">@color/oneui_drawer_selected_bg</item>
+    </style>
+
+    <!-- Settings spacing; typography inherits the One UI component defaults. -->
+    <style name="Theme.Twidget.Settings" parent="Theme.Twidget">
+        <item name="listPreferredItemHeightSmall">@dimen/settings_row_height</item>
+        <item name="android:listPreferredItemHeightSmall">@dimen/settings_row_height</item>
+        <item name="android:listPreferredItemPaddingStart">@dimen/settings_content_inset</item>
+        <item name="android:listPreferredItemPaddingEnd">@dimen/settings_content_inset</item>
     </style>
 
     <style name="Theme.Twidget.Launcher" parent="Theme.Twidget" />
@@ -29,14 +38,14 @@
 
     <style name="SettingsRadioRow">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">64dp</item>
+        <item name="android:layout_height">@dimen/settings_row_height</item>
         <item name="android:background">?android:attr/selectableItemBackground</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:orientation">horizontal</item>
         <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">20dp</item>
+        <item name="android:paddingEnd">@dimen/settings_content_inset</item>
     </style>
 
     <style name="TwidgetBriefSectionLabel">
@@ -48,5 +57,18 @@
         <item name="android:paddingEnd">19dp</item>
         <item name="android:textColor">@color/oneui_text_primary</item>
         <item name="android:textSize">14sp</item>
+    </style>
+    <style name="ThemeOverlay.Twidget.ApiKeyDialog" parent="Theme.AppCompat.DayNight.Dialog.Alert">
+        <item name="viewInflaterClass">com.tjg.twidget.ui.TwidgetViewInflater</item>
+        <item name="android:textColorPrimary">@color/oneui_text_primary</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@drawable/dialog_api_key_background</item>
+        <item name="android:windowElevation">0dp</item>
+        <item name="colorPrimary">@color/oneui_accent</item>
+    </style>
+    <style name="Theme.Twidget.WidgetConfig" parent="Theme.Twidget">
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
     </style>
 </resources>

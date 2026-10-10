@@ -84,6 +84,7 @@ object ProfileImageLoader {
 
     fun loadMediaInto(context: Context, imageView: ImageView, url: String, radiusPx: Int) {
         applyRoundedClip(imageView, radiusPx)
+        if (imageView is MediaAspectImageView) imageView.scaleType = ImageView.ScaleType.FIT_CENTER
         val imageUrl = tweetMediaUrl(url)
         val requestToken = "media:$imageUrl"
         imageView.setTag(R.id.profile_image_request, requestToken)

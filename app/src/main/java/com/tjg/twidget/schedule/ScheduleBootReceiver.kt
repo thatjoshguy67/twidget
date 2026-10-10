@@ -24,6 +24,14 @@ class ScheduleBootReceiver : BroadcastReceiver() {
                 // skips posts that no longer need a publish check, and the
                 // unique work names make both calls idempotent.
                 RefreshWorker.schedule(context)
+                if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(context)
+                    com.tjg.twidget.data.TwidgetStore.accounts(context).forEach { username ->
+                        if (com.tjg.twidget.banger.BangerScanWorker.isScanning(context, username)) {
+                            com.tjg.twidget.banger.BangerScanWorker.enqueue(context, username)
+                        }
+                    }
+                }
                 ScheduleStore(context).list().forEach { post ->
                     BufferPublishCheckWorker.cancelLegacyPostponeWork(context, post.id)
                     BufferPublishCheckWorker.enqueue(context, post)

@@ -5,6 +5,11 @@ on:
 
 permissions:
   contents: write # create the tag and the GitHub Release
+  actions: read # download this run's signed Play artifact
+
+concurrency:
+  group: twidget-versioned-release
+  cancel-in-progress: false
 
 jobs:
   bridge:
@@ -33,6 +38,8 @@ jobs:
   prerelease:
     needs: bridge
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,15 +64,21 @@ jobs:
             exit 1
           fi
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # The legacy "tools" package was removed from Google's repository.
+          packages: platform-tools
+
+      - name: Use CI Gradle properties
+        run: mkdir -p ~/.gradle && cp .github/ci-gradle.properties ~/.gradle/gradle.properties
 
       - name: Decode release keystore
         env:
@@ -90,6 +103,15 @@ jobs:
           fi
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
 
+      - name: Validate Play release notes before publishing
+        if: vars.PLAY_PUBLISHING_ENABLED == 'true'
+        env:
+          BETA_NUMBER: ${{ steps.beta.outputs.number }}
+        run: |
+          VERSION="$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)-beta.$BETA_NUMBER"
+          python3 .github/scripts/prepare-play-notes.py \
+            "docs/play-console/$VERSION-release-notes.txt" "$RUNNER_TEMP/play-notes"
+
       - name: Build signed beta APK and AAB
         env:
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
@@ -102,7 +124,8 @@ jobs:
           CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
           CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
         run: |
-          ./gradlew testBetaUnitTest assembleBeta bundleBeta lintVitalBeta \
+          ./gradlew testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintVitalGithubBeta \
+            testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta \
             -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
 
       - name: Verify signed beta APK and AAB
@@ -112,20 +135,20 @@ jobs:
             echo "::error::Unable to locate apksigner in the Android SDK"
             exit 1
           fi
-          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/beta/app-beta.apk
-          APK_CERT=$("$APKSIGNER" verify --print-certs-pem app/build/outputs/apk/beta/app-beta.apk \
+          "$APKSIGNER" verify --verbose --print-certs app/build/outputs/apk/github/beta/app-github-beta.apk
+          APK_CERT=$("$APKSIGNER" verify --print-certs-pem app/build/outputs/apk/github/beta/app-github-beta.apk \
             | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' \
             | openssl x509 -outform DER \
             | openssl dgst -sha256 -r \
             | awk '{print $1}')
-          AAB_SIGNATURE=$(zipinfo -1 app/build/outputs/bundle/beta/app-beta.aab \
+          AAB_SIGNATURE=$(zipinfo -1 app/build/outputs/bundle/githubBeta/app-github-beta.aab \
             | sed -n -E '/^META-INF\/.*\.(RSA|DSA|EC)$/ {p;q;}')
-          AAB_CERT=$(unzip -p app/build/outputs/bundle/beta/app-beta.aab "$AAB_SIGNATURE" \
+          AAB_CERT=$(unzip -p app/build/outputs/bundle/githubBeta/app-github-beta.aab "$AAB_SIGNATURE" \
             | openssl pkcs7 -inform DER -print_certs \
             | openssl x509 -outform DER \
             | openssl dgst -sha256 -r \
             | awk '{print $1}')
-          if ! jarsigner -verify app/build/outputs/bundle/beta/app-beta.aab >/dev/null 2>&1; then
+          if ! jarsigner -verify app/build/outputs/bundle/githubBeta/app-github-beta.aab >/dev/null 2>&1; then
             echo "::error::Beta AAB signature verification failed"
             exit 1
           fi
@@ -139,7 +162,7 @@ jobs:
       - name: Read and validate beta version
         id: version
         run: |
-          VERSION=$(jq -r '.elements[0].versionName' app/build/outputs/apk/beta/output-metadata.json)
+          VERSION=$(jq -r '.elements[0].versionName' app/build/outputs/apk/github/beta/output-metadata.json)
           if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-beta\.[1-9][0-9]*$'; then
             echo "::error::Built APK has invalid beta version $VERSION"
             exit 1
@@ -160,6 +183,24 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Verify signed Play beta APK and AAB
+        run: |
+          bash scripts/verify-signed-distribution.sh app/build/outputs/apk/play/beta/app-play-beta.apk app/build/outputs/bundle/playBeta/app-play-beta.aab app/build/outputs/apk/github/beta/app-github-beta.apk
+          python3 scripts/verify-play-bundle.py app/build/outputs/bundle/playBeta/app-play-beta.aab
+
+      - name: Stage signed Play beta APK and AAB
+        run: |
+          mkdir -p play-artifacts
+          cp app/build/outputs/apk/play/beta/app-play-beta.apk "play-artifacts/twidget-play-v${{ steps.version.outputs.version }}.apk"
+          cp app/build/outputs/bundle/playBeta/app-play-beta.aab "play-artifacts/twidget-play-v${{ steps.version.outputs.version }}.aab"
+
+      - name: Upload signed Play beta APK and AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: twidget-play-${{ steps.version.outputs.version }}
+          path: play-artifacts/
+          if-no-files-found: error
+
       - name: Create tag if missing
         run: |
           TAG="twidget-v${{ steps.version.outputs.version }}"
@@ -170,8 +211,8 @@ jobs:
 
       - name: Stage APK and AAB with version in filenames
         run: |
-          cp app/build/outputs/apk/beta/app-beta.apk "twidget-v${{ steps.version.outputs.version }}.apk"
-          cp app/build/outputs/bundle/beta/app-beta.aab "twidget-v${{ steps.version.outputs.version }}.aab"
+          cp app/build/outputs/apk/github/beta/app-github-beta.apk "twidget-v${{ steps.version.outputs.version }}.apk"
+          cp app/build/outputs/bundle/githubBeta/app-github-beta.aab "twidget-v${{ steps.version.outputs.version }}.aab"
 
       - name: Generate changelog
         env:
@@ -243,3 +284,16 @@ jobs:
             exit 0
           fi
           bash .github/scripts/notify-discord-release.sh
+
+  play-publish:
+    needs: prerelease
+    if: vars.PLAY_PUBLISHING_ENABLED == 'true'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/play-publish.yml
+    with:
+      version: ${{ needs.prerelease.outputs.version }}
+      track: beta
+    secrets:
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}

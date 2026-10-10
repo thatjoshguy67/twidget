@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@id/btn_cancel" android:title="@string/cancel" android:checkable="false" />
+    <item android:id="@id/btn_save" android:title="@string/save" android:checkable="false" />
+</menu>

@@ -15,6 +15,8 @@ data class StreakSnapshot(
     val activityWindowStartAt: Long = 0L,
     val activityCheckedAt: Long = 0L,
     val activityComplete: Boolean = false,
+    val longestStreak: Int = 0,
+    val previousLongestStreak: Int = 0,
 )
 
 object DailyStreakStore {
@@ -65,6 +67,8 @@ object DailyStreakStore {
             streak = streak,
             activeToday = activeToday,
             lastActiveDay = lastActiveDay,
+            longestStreak = computeLongestStreak(days),
+            previousLongestStreak = computeLongestStreak(days - todayKey),
             lastOriginalPostAt = preferences.getLong(latestPostKey(accountKey), 0L),
             activityWindowStartAt = preferences.getLong(windowStartKey(accountKey), 0L),
             activityCheckedAt = preferences.getLong(checkedAtKey(accountKey), 0L),
@@ -99,6 +103,19 @@ object DailyStreakStore {
             cursor = cursor.minusDays(1)
         }
         return streak
+    }
+
+    internal fun computeLongestStreak(activeDays: Set<String>): Int {
+        val dates = activeDays.mapNotNull { runCatching { LocalDate.parse(it) }.getOrNull() }.sorted()
+        var longest = 0
+        var run = 0
+        var previous: LocalDate? = null
+        for (date in dates) {
+            run = if (previous?.plusDays(1) == date) run + 1 else 1
+            longest = maxOf(longest, run)
+            previous = date
+        }
+        return longest
     }
 
     internal fun localDayKey(timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): String =

@@ -154,4 +154,26 @@ class BriefEditorialSummaryTest {
 
         assertEquals("You gained 1 follower today and 1 follower this week.", summary.body)
     }
+    @Test
+    fun summariesInAnotherOrUnknownLanguageUseLocalisedFacts() {
+        val snapshot = BriefSnapshot(
+            username = "test", generatedAt = 1, sourceSyncedAt = 1,
+            analyticsCachedAt = 0, followerScanCompletedAt = 0,
+            followers = 1234, following = 0, posts = 0,
+            followersToday = 1, followersWeek = 1, cards = emptyList(),
+            topFollowerRanks = emptyMap(), headline = "Alter Titel",
+            subheading = "Alter Text", shortDescription = "Alte Kurzfassung",
+            language = "de",
+        )
+        for (language in listOf("de", "")) {
+            val summary = BriefEditorialSummary.from(snapshot.copy(language = language), strings)
+            assertEquals("Momentum is building", summary.title)
+            assertEquals("You gained 1 follower today and 1 follower this week.", summary.body)
+            assertFalse(summary.shortDescription.contains("Alte"))
+        }
+        val matching = BriefEditorialSummary.from(snapshot.copy(language = strings.languageTag), strings)
+        assertEquals(snapshot.headline, matching.title)
+        assertEquals(snapshot.shortDescription, matching.shortDescription)
+    }
+
 }

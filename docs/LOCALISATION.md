@@ -108,6 +108,9 @@ English.
   in a translation pull request. If you find a typo or unclear English
   string, open a separate issue or pull request.
 
+The helper also includes `settings_strings.xml`, which contains the Settings
+category and navigation labels.
+
 ### Brief template copy
 
 The Brief engine writes its card titles, bodies, summary, and provider notes
@@ -126,8 +129,8 @@ from resources too. Their names start with `brief_summary_`, `brief_short_`,
   `milestone_goal_*` strings, so check those sentences with each noun.
 - The Brief is generated once and cached. When the app language changes, the
   next refresh rewrites the template copy and asks the AI (if enabled) to
-  write in the new language, so a stale-language Brief is expected only until
-  that refresh.
+  write in the new language. Widgets immediately use a localised factual
+  summary when the stored summary is in another language.
 
 ### What the resource files do not cover
 
@@ -168,9 +171,11 @@ Use the BCP-47 tag from the Step 1 table, not the folder qualifier.
    "sr-latn" -> Locale.forLanguageTag("sr-Latn")
    ```
 
-3. `app/src/main/java/com/tjg/twidget/settings/SettingsPreferenceFragment.kt`
-   — add the tag (`"fr"`, `"pt-BR"`) to the `tags` array of the language
-   preference and a matching entry backed by a new `language_<name>` string.
+   Add the language to `AppLocales.supportedLocale()` as well, so Brief prompts
+   and background rendering use the same supported-language fallback.
+
+3. `app/src/main/java/com/tjg/twidget/settings/SettingsLanguage.kt`
+   — add the tag (`"fr"`, `"pt-BR"`) to the legacy dialog’s `tags` array and a matching entry backed by a new `language_<name>` string.
 4. `app/src/main/java/com/tjg/twidget/widget/WidgetConfigActivity.kt` — the
    same pattern in `pickLanguage()` and `languageLabel()` with the same tag
    (`"fr"`, `"pt-BR"`), backed by a new `widget_language_<tag>` string. The
@@ -207,7 +212,7 @@ If you have an Android build environment (see
 a `github.properties` with a `read:packages` token), run:
 
 ```bash
-./gradlew :app:lintDebug :app:testDebugUnitTest :app:assembleDebug
+./gradlew :app:lintGithubDebug :app:testGithubDebugUnitTest :app:assembleGithubDebug
 ```
 
 Lint catches missing translations, placeholder mismatches, malformed XML, and
@@ -223,10 +228,9 @@ On a device or emulator, check:
 - Android 13+: System Settings → Apps → Twidget → Language lists your
   language.
 - Widget configuration offers your language, and the follower artwork and
-  lock-screen 1x1/2x1 widgets re-render in it. The Brief widget does not yet
-  honour the per-widget language (`TwidgetBriefWidget.createViews()` ignores
-  `settings.language`) and its summary text is the English fallback copy
-  noted above, so check only its labels, and only in the app language.
+  lock-screen 1x1/2x1 widgets re-render in it. Brief widgets also honour their
+  selected language, using localised template summaries when it differs from
+  the cached AI summary. Changing one widget must not change the app cache.
 - No clipped or overlapping text in widgets, buttons, dialogs, and the
   milestone and streak screens. Tablet and foldable layouts use the same
   strings.

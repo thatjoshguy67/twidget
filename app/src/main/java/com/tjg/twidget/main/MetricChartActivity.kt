@@ -34,7 +34,6 @@ class MetricChartActivity : FoldablePopOverActivity() {
     private lateinit var subtitleView: TextView
     private var fullHistory = emptyList<HistorySample>()
     private var selectedRange = HistoryRange.WEEK
-    private var rangeChanged = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +47,7 @@ class MetricChartActivity : FoldablePopOverActivity() {
 
         val root = findViewById<ToolbarLayout>(R.id.metric_chart_root)
         root.setTitle(metricTitle(metricId))
-        root.setNavigationButtonOnClickListener { finishWithResult() }
+        root.setNavigationButtonOnClickListener { finish() }
         applyEdgeToEdgeInsets(root)
 
         chartView = findViewById(R.id.metric_chart_view)
@@ -60,17 +59,6 @@ class MetricChartActivity : FoldablePopOverActivity() {
         selectedRange = TwidgetStore.chartRange(this, username, metricId)
         buildRangeChips()
         renderChart()
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (rangeChanged) setResult(RESULT_OK)
-        super.onBackPressed()
-    }
-
-    private fun finishWithResult() {
-        if (rangeChanged) setResult(RESULT_OK)
-        finish()
     }
 
     private fun buildRangeChips() {
@@ -113,7 +101,9 @@ class MetricChartActivity : FoldablePopOverActivity() {
                 if (range == selectedRange) return@setOnClickListener
                 selectedRange = range
                 TwidgetStore.saveChartRange(this@MetricChartActivity, username, metricId, range)
-                rangeChanged = true
+                // Publish the saved change immediately so gesture, toolbar, and system
+                // back all return it through the default back dispatcher.
+                setResult(RESULT_OK)
                 buildRangeChips()
                 renderChart()
             }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Flag. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M18.4393 4.49007H6.18331C5.73931 3.72307 5.46731 3.25507 5.45731 3.23707C5.24931 2.87907 4.79131 2.75707 4.43231 2.96407C4.07331 3.17207 3.95131 3.63107 4.15931 3.98907C4.22331 4.09907 13.8773 20.7611 13.8773 20.7611C14.0153 21.0011 14.2673 21.1361 14.5263 21.1361C14.6533 21.1361 14.7833 21.1021 14.9013 21.0341C15.2603 20.8261 15.3823 20.3671 15.1743 20.0091C15.1743 20.0091 13.5713 17.2421 11.6683 13.9571L19.4493 7.09807C20.4623 6.17607 19.8103 4.49007 18.4393 4.49007Z" android:fillColor="?android:attr/textColorPrimary" />
+</vector>

@@ -47,6 +47,7 @@ internal class MainDrawerController(
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
     private var showingEditNavigation = false
+    private var expandedBeforeEditing = false
     private var lastDrawerClosedState: Boolean? = null
 
     fun setupDrawerChrome() {
@@ -163,12 +164,16 @@ internal class MainDrawerController(
 
     private fun renderEditModeNavigation(layout: DrawerLayout) {
         if (!showingEditNavigation) {
-            layout.setExpanded(expanded = false, animate = true)
+            expandedBeforeEditing = layout.isExpanded
+            // Change the title and app-bar geometry together. Animating the old
+            // collapsing title while replacing it with the edit title makes both
+            // headers briefly appear and moves the dashboard underneath the hold.
+            layout.setExpanded(expanded = false, animate = false)
             layout.isExpandable = false
             showingEditNavigation = true
         }
         layout.showNavigationButton = true
-        val closeIcon = AppCompatResources.getDrawable(activity, R.drawable.ic_dashboard_edit_close)
+        val closeIcon = AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_close)
         if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
             layout.setNavigationButtonIcon(
                 AppCompatResources.getDrawable(activity, OneUiDesignR.drawable.oui_des_ic_ab_drawer),
@@ -190,7 +195,7 @@ internal class MainDrawerController(
     private fun renderDrawerNavigation(layout: DrawerLayout) {
         if (showingEditNavigation) {
             layout.isExpandable = true
-            layout.setExpanded(expanded = true, animate = true)
+            layout.setExpanded(expanded = expandedBeforeEditing, animate = false)
             showingEditNavigation = false
         }
         layout.showNavigationButton = true

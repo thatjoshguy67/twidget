@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Send. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M20.3656 4.02093C19.9506 3.40693 19.1186 3.19693 18.2786 3.53793L4.61164 9.27793C3.82164 9.60293 3.35864 10.1289 3.37364 10.6849C3.38264 10.9859 3.53964 11.5399 4.50964 11.8769L9.42464 13.5179L13.6406 9.30193C13.9326 9.00893 14.4076 9.00893 14.7006 9.30193C14.9936 9.59493 14.9936 10.0699 14.7006 10.3629L10.4856 14.5789L12.1326 19.4889C12.4846 20.5139 13.0986 20.6249 13.3466 20.6249C13.8986 20.6249 14.4016 20.1749 14.7246 19.3909L20.4626 5.71393C20.7116 5.09893 20.6756 4.48193 20.3656 4.02093Z" android:fillColor="?android:attr/textColorPrimary" />
+</vector>

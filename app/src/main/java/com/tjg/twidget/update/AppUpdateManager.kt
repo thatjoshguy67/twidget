@@ -1,6 +1,7 @@
 package com.tjg.twidget.update
 
 import com.tjg.twidget.core.HttpTransport
+import com.tjg.twidget.env.BuildVars
 import com.tjg.twidget.schedule.json
 import java.io.File
 import java.net.HttpURLConnection
@@ -18,12 +19,23 @@ data class AppRelease(
     val assetName: String,
     val downloadUrl: String,
     val prerelease: Boolean,
+    val downloadSizeBytes: Long = -1L,
 )
 
 data class AppReleaseCheck(
     val update: AppRelease?,
     val notices: List<ReleaseNotice>,
 )
+
+data class UpdateDownloadProgress(
+    val downloadedBytes: Long,
+    val totalBytes: Long,
+) {
+    val percent: Int? get() = totalBytes.takeIf { it > 0L }
+        ?.let { (downloadedBytes * 100 / it).toInt().coerceIn(0, 100) }
+}
+
+class UpdateDownloadCancelledException : java.io.IOException("Update download cancelled")
 
 data class ReleaseNotice(
     val tag: String,
@@ -85,13 +97,18 @@ object AppUpdateManager {
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 30_000
     private const val MAX_APK_BYTES = 250L * 1024L * 1024L
+    // Notification managers coalesce rapid updates; pace known downloads so users can read them.
+    private const val PROGRESS_STEP_PERCENT = 5
+    private const val MIN_PROGRESS_VISIBLE_MILLIS = 70L
 
     fun findUpdate(installedVersion: String, channel: UpdateChannel): AppRelease? {
+        if (!BuildVars.IN_APP_UPDATES) return null
         if (channel == UpdateChannel.DEBUG) return findDebugUpdate(installedVersion)
         return checkReleases(installedVersion, channel).update
     }
 
     fun checkReleases(installedVersion: String, channel: UpdateChannel): AppReleaseCheck {
+        if (!BuildVars.IN_APP_UPDATES) return AppReleaseCheck(null, emptyList())
         if (channel == UpdateChannel.DEBUG) {
             return AppReleaseCheck(findDebugUpdate(installedVersion), emptyList())
         }
@@ -174,6 +191,27 @@ object AppUpdateManager {
     internal fun isDebugBuild(installedVersion: String): Boolean =
         AppVersion.parse(installedVersion)?.prereleaseLabel.equals("debug", ignoreCase = true)
 
+    /**
+     * Rehydrates the release detected by the last successful check so the UI
+     * can remain actionable while GitHub metadata is refreshed.
+     */
+    fun knownRelease(versionText: String, channel: UpdateChannel): AppRelease? {
+        val version = AppVersion.parse(versionText) ?: return null
+        val isDebug = version.prereleaseLabel.equals("debug", ignoreCase = true)
+        val release = if (isDebug) {
+            AppRelease(version, DEBUG_ASSET_NAME, DEBUG_APK_URL, prerelease = true)
+        } else {
+            val assetName = "twidget-v$version.apk"
+            AppRelease(
+                version = version,
+                assetName = assetName,
+                downloadUrl = "https://github.com/thatjoshguy67/twidget/releases/download/twidget-v$version/$assetName",
+                prerelease = version.prereleaseLabel != null,
+            )
+        }
+        return release.takeIf { eligibleReleases(listOf(it), channel).isNotEmpty() }
+    }
+
     private fun isNewerThanInstalled(current: AppVersion, candidate: AppVersion): Boolean {
         val sameBaseVersion = candidate.major == current.major &&
             candidate.minor == current.minor &&
@@ -202,7 +240,13 @@ object AppUpdateManager {
                         ?.dropLast(4)
                         ?.let(AppVersion::parse)
                     if (assetVersion == version && url.startsWith("https://")) {
-                        add(AppRelease(version, name, url, prerelease))
+                        add(AppRelease(
+                            version = version,
+                            assetName = name,
+                            downloadUrl = url,
+                            prerelease = prerelease,
+                            downloadSizeBytes = asset.optLong("size", -1L),
+                        ))
                         break
                     }
                 }
@@ -225,7 +269,13 @@ object AppUpdateManager {
         return newestEligibleUpdate(installedVersion, listOf(release), UpdateChannel.DEBUG)
     }
 
-    fun download(release: AppRelease, destinationDirectory: File): File {
+    fun download(
+        release: AppRelease,
+        destinationDirectory: File,
+        onProgress: (UpdateDownloadProgress) -> Unit = {},
+        awaitPermissionToContinue: () -> Boolean = { true },
+    ): File {
+        check(BuildVars.IN_APP_UPDATES) { "Updates are managed by Google Play" }
         destinationDirectory.mkdirs()
         val target = File(destinationDirectory, release.assetName)
         val temporary = File(destinationDirectory, "${release.assetName}.part")
@@ -236,17 +286,42 @@ object AppUpdateManager {
                 error("APK download failed with HTTP ${connection.responseCode}")
             }
             val expectedSize = connection.contentLengthLong
+                .takeIf { it > 0L }
+                ?: release.downloadSizeBytes.takeIf { it > 0L }
+                ?: resolveDownloadSize(release.downloadUrl)
             if (expectedSize > MAX_APK_BYTES) error("APK is unexpectedly large")
+            onProgress(UpdateDownloadProgress(0L, expectedSize))
             connection.inputStream.use { input ->
                 temporary.outputStream().use { output ->
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
                     var total = 0L
+                    var reportedPercent = 0
+                    var lastProgressReportNanos = System.nanoTime()
                     while (true) {
+                        if (!awaitPermissionToContinue()) throw UpdateDownloadCancelledException()
                         val count = input.read(buffer)
                         if (count < 0) break
                         total += count
                         if (total > MAX_APK_BYTES) error("APK is unexpectedly large")
                         output.write(buffer, 0, count)
+                        if (expectedSize > 0L) {
+                            val currentPercent = (total * 100 / expectedSize).toInt().coerceIn(0, 100)
+                            while (reportedPercent + PROGRESS_STEP_PERCENT <= currentPercent) {
+                                val nextPercent = reportedPercent + PROGRESS_STEP_PERCENT
+                                val elapsedMillis = (System.nanoTime() - lastProgressReportNanos) / 1_000_000L
+                                if (elapsedMillis < MIN_PROGRESS_VISIBLE_MILLIS) {
+                                    Thread.sleep(MIN_PROGRESS_VISIBLE_MILLIS - elapsedMillis)
+                                }
+                                onProgress(UpdateDownloadProgress(
+                                    expectedSize * nextPercent / 100,
+                                    expectedSize,
+                                ))
+                                reportedPercent = nextPercent
+                                lastProgressReportNanos = System.nanoTime()
+                            }
+                        } else {
+                            onProgress(UpdateDownloadProgress(total, expectedSize))
+                        }
                     }
                 }
             }
@@ -260,6 +335,32 @@ object AppUpdateManager {
         check(temporary.renameTo(target)) { "Unable to finish APK download" }
         return target
     }
+
+    // GitHub's redirected asset response can be chunked and omit Content-Length.
+    // A one-byte range response contains the total in Content-Range instead.
+    private fun resolveDownloadSize(url: String): Long {
+        val connection = request(url).apply { setRequestProperty("Range", "bytes=0-0") }
+        return try {
+            connection.responseCode
+            resolvedDownloadSize(
+                contentLength = connection.contentLengthLong,
+                contentRange = connection.getHeaderField("Content-Range"),
+            )
+        } catch (_: Exception) {
+            -1L
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    internal fun resolvedDownloadSize(contentLength: Long, contentRange: String?): Long =
+        contentRange
+            ?.substringAfterLast('/', missingDelimiterValue = "")
+            ?.trim()
+            ?.toLongOrNull()
+            ?.takeIf { it > 0L }
+            ?: contentLength.takeIf { it > 0L }
+            ?: -1L
 
     private fun request(url: String): HttpURLConnection =
         HttpTransport.openConnection(

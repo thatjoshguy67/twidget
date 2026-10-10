@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_data_sources">Daten und Quellen</string>
+    <string name="settings_your_brief">Dein Briefing</string>
+    <string name="settings_notifications">Benachrichtigungen</string>
+    <string name="settings_scheduled_tweets">Geplante Tweets</string>
+    <string name="settings_main_account">Hauptaccount</string>
+    <string name="settings_other_accounts">Weitere Accounts</string>
+    <string name="settings_alternate_sources">Alternative Quellen verwalten</string>
+    <string name="settings_self_hosted_bridge">Selbst gehostete Twidget-Bridge</string>
+    <string name="settings_widget_defaults">Widget-Standardeinstellungen</string>
+    <string name="settings_system_default">Systemstandard</string>
+    <string name="settings_analytics_import">X-Analytics-Import</string>
+    <string name="settings_import_pending">Ausstehend</string>
+    <string name="settings_imported">Importiert</string>
+    <string name="settings_connected">Verbunden</string>
+    <string name="settings_enable_dummy">Demoprofil aktivieren</string>
+    <string name="settings_android_api">Android-API %1$d</string>
+    <string name="settings_last_error">Letzter Fehler: %1$s</string>
+    <string name="settings_palette_seed">Ausgangsfarbe</string>
+    <string name="settings_palette_primary_light">Primärfarbe · hell</string>
+    <string name="settings_palette_primary_dark">Primärfarbe · dunkel</string>
+    <string name="settings_palette_control_light">Bedienelemente · hell</string>
+    <string name="settings_palette_control_dark">Bedienelemente · dunkel</string>
+    <string name="settings_palette_token">%1$s: %2$s</string>
+    <string name="settings_demo_name">Twidget-Demo</string>
+    <string name="settings_brief_description">%1$s\n\n%2$s</string>
+    <string name="settings_update_channel">Update-Kanal</string>
+    <string name="settings_app_font">App-Schriftart</string>
+    <string name="settings_app_font_default">Standard (One UI Sans)</string>
+    <string name="settings_font_tip_title">Tipp zu eigenen Schriftarten</string>
+    <string name="settings_font_tip_summary">Ändere mit SamFonts die Systemschriftart von One UI und wähle dann unter App-Schriftart die Option Systemstandard aus.</string>
+    <string name="settings_font_tip_link">SamFonts herunterladen</string>
+</resources>

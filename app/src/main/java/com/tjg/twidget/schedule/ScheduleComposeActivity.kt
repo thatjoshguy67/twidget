@@ -30,6 +30,7 @@ import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
+import com.tjg.twidget.ui.TwidgetHaptics
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.io.File
 import java.io.InputStream
@@ -39,6 +40,7 @@ import java.util.Locale
 import java.util.UUID
 
 class ScheduleComposeActivity : FoldablePopOverActivity() {
+    private lateinit var feedback: com.tjg.twidget.ui.TwidgetSnackbar
     private val store by lazy { ScheduleStore(this) }
     private val coordinator by lazy { ScheduleCoordinator(this) }
 
@@ -87,8 +89,12 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         handlePickedMedia(uris.distinct())
     }
 
-    private fun handlePickedMedia(uris: List<Uri>) {
-        val target = editorItems.getOrNull(mediaTarget) ?: return
+    private fun handlePickedMedia(
+        uris: List<Uri>,
+        targetIndex: Int = mediaTarget,
+        restoreInputFocus: Boolean = false,
+    ) {
+        val target = editorItems.getOrNull(targetIndex) ?: return
         val room = SchedulePolicy.MAX_MEDIA_PER_ITEM - target.media.size
         val selected = uris.take(room.coerceAtLeast(0))
         if (selected.isEmpty()) return
@@ -114,7 +120,8 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
                 currentTarget.media += retained.map(ImportedMedia::source)
                 imported.drop(retained.size).forEach { it.file.delete() }
                 if (imported.size < selected.size) toast(R.string.schedule_media_permission_failed)
-                composeUi.refreshMediaForActiveItem()
+                val currentIndex = editorItems.indexOfFirst { it.id == targetId }
+                composeUi.refreshMediaForItem(currentIndex, restoreInputFocus)
             }
         }
     }
@@ -147,8 +154,10 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        feedback = com.tjg.twidget.ui.TwidgetSnackbar(this)
         setContentView(R.layout.activity_schedule_compose)
         val root = findViewById<ToolbarLayout>(R.id.schedule_compose_root)
+        ScheduleComposeChrome.install(root)
         val bottomBar = findViewById<View>(R.id.schedule_compose_bottom_bar)
         root.setNavigationButtonOnClickListener { requestClose() }
         applyEdgeToEdgeInsets(root) { navigationBarInset ->
@@ -198,10 +207,15 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         draftButton?.alpha = if (draftEnabled) 1f else 0.45f
         saveButton?.isEnabled = saveEnabled
         saveButton?.alpha = if (saveEnabled) 1f else 0.45f
+        ScheduleComposeChrome.prepareMenu(menu, draftEnabled, saveEnabled)
         return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.schedule_compose_draft_button) {
+            saveDraft()
+            return true
+        }
         if (item.itemId != R.id.schedule_compose_save) return super.onOptionsItemSelected(item)
         submitSchedule()
         return true
@@ -279,6 +293,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         }
     }
 
+    internal fun onComposePasteImages(index: Int, uris: List<Uri>) {
+        handlePickedMedia(
+            uris = uris.distinct(),
+            targetIndex = index,
+            restoreInputFocus = true,
+        )
+    }
+
     internal fun onComposePickTimeRequested() = pickDate()
 
     private fun importPickedMedia(uri: Uri): ImportedMedia? {
@@ -342,13 +364,18 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         val item = editorItems.getOrNull(itemIndex) ?: return
         val media = mediaIndex?.let { item.media.getOrNull(it)?.let(::listOf) } ?: item.media
         if (media.isEmpty()) return
+        downloadMedia(ScheduleThreadItem(item.id, item.text, media.toList()))
+    }
+
+    private fun downloadMedia(item: ScheduleThreadItem) {
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
         ) {
             val outcome = ScheduleMediaExporter.downloadItem(
                 this,
-                ScheduleThreadItem(item.id, item.text, media),
+                item,
             )
             runOnUiThread {
                 setBusy(false)
@@ -362,7 +389,10 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
                     ScheduleMediaExportResult.NOTHING_TO_SAVE -> getString(R.string.schedule_media_nothing_to_save)
                     ScheduleMediaExportResult.FAILED -> outcome.detail ?: getString(R.string.schedule_media_save_failed)
                 }
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                val retry = outcome.result == ScheduleMediaExportResult.FAILED
+                feedback.show(message, findViewById(R.id.schedule_compose_bottom_bar),
+                    actionText = if (retry) getString(R.string.notices_retry) else null,
+                    action = if (retry) ({ downloadMedia(item) }) else null)
             }
         }
     }
@@ -370,12 +400,14 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     internal fun onComposeAddThreadRequested() {
         if (editorItems.size >= MAX_THREAD_ITEMS) return
         editorItems += EditorItem()
+        TwidgetHaptics.confirm(window.decorView)
         composeUi.refreshFromEditor(focusLast = true)
     }
 
     internal fun onComposeRemoveThreadRequested(index: Int) {
         if (editorItems.size <= 1 || index !in editorItems.indices) return
         cleanupUnstoredOwnedMedia(editorItems.removeAt(index).media)
+        TwidgetHaptics.confirm(window.decorView)
         composeUi.refreshFromEditor()
     }
 
@@ -417,6 +449,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             editorTime.timeInMillis,
             "d. MMM · HH:mm",
             "MMM d · h:mm a",
+            "d MMM · HH:mm",
         )
         return if (AppLocales.applicationLocale().language == "de") {
             formatted
@@ -499,6 +532,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
             runRemote { coordinator.saveDraftWithProvider(draft) }
         } else {
             editorPost = coordinator.saveDraft(draft)
+            TwidgetHaptics.confirm(window.decorView)
             toast(R.string.schedule_draft_saved)
             finish()
         }
@@ -506,6 +540,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
 
     private fun submitSchedule() {
         if (composeHasInvalidLength()) {
+            TwidgetHaptics.reject(window.decorView)
             toast(R.string.schedule_character_limit_error)
             return
         }
@@ -582,6 +617,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
         when {
             result == null -> toast(R.string.schedule_not_found)
             result.isSuccess -> {
+                if (hasWindowFocus()) TwidgetHaptics.confirm(window.decorView)
                 toast(
                     if (result.fellBackToLocal && result.post.status == ScheduleStatus.DRAFT) {
                         R.string.schedule_draft_fell_back_local
@@ -626,6 +662,7 @@ class ScheduleComposeActivity : FoldablePopOverActivity() {
     }
 
     private fun showErrors(errors: List<String>) {
+        if (hasWindowFocus()) TwidgetHaptics.reject(window.decorView)
         AlertDialog.Builder(this)
             .setTitle(R.string.schedule_error_title)
             .setMessage(errors.filter(String::isNotBlank).joinToString("\n"))

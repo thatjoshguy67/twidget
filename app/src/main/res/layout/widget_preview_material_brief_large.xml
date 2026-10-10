@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Renderer-generated layers preserve typography and proportions when the picker scales them.
+     Framework tints resolve against the launcher's theme and wallpaper palette. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UseAppTint"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_material_brief_large_background"
+        android:tint="@color/picker_material_background"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_material_brief_large_primary"
+        android:tint="@color/picker_material_primary"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_material_brief_large_secondary"
+        android:tint="@color/picker_material_secondary"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/picker_material_brief_large_decoration"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null" />
+</FrameLayout>

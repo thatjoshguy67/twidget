@@ -222,7 +222,9 @@ class BufferClient(
 
 internal object BufferGraphQlCodec {
     fun createPostInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject =
-        contentInput(post, saveToDraft).put("channelId", post.accountUsername)
+        contentInput(post, saveToDraft)
+            .put("channelId", post.accountUsername)
+            .put("assets", post.thread.first().assetsJson())
 
     fun editPostInput(post: ScheduledPost, saveToDraft: Boolean): JSONObject =
         contentInput(post, saveToDraft).put(

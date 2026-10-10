@@ -30,7 +30,8 @@ interface BriefStrings {
         quantityText(R.plurals.brief_follower_count, quantity(value), number(value))
 
     companion object {
-        fun from(context: Context): BriefStrings = ResourceBriefStrings(AppLocales.wrap(context))
+        fun from(context: Context, languageTag: String = AppLocales.DEFAULT): BriefStrings =
+            ResourceBriefStrings(AppLocales.wrap(context, languageTag))
 
         fun quantity(value: Long): Int = value.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     }
@@ -38,7 +39,7 @@ interface BriefStrings {
 
 private class ResourceBriefStrings(private val context: Context) : BriefStrings {
     override val locale: Locale =
-        context.resources.configuration.locales.get(0) ?: Locale.getDefault()
+        AppLocales.supportedLocale(context.resources.configuration.locales.get(0) ?: Locale.getDefault())
 
     override fun text(id: Int, vararg args: Any): String =
         if (args.isEmpty()) context.getString(id) else context.getString(id, *args)

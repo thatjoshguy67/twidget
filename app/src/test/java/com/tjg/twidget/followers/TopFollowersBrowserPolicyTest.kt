@@ -67,18 +67,14 @@ class TopFollowersBrowserPolicyTest {
     }
 
     @Test
-    fun explicitRefreshRescansWithALinkedKeyOtherwiseDownloadsFromBridge() {
-        assertEquals(
-            TopFollowersBrowserRefreshMode.LINKED_API_RESCAN,
-            selectTopFollowersBrowserRefreshMode(linkedApiAvailable = true, shareHistory = true),
-        )
+    fun explicitRefreshRequiresSharedHistory() {
         assertEquals(
             TopFollowersBrowserRefreshMode.BRIDGE_DOWNLOAD,
-            selectTopFollowersBrowserRefreshMode(linkedApiAvailable = false, shareHistory = true),
+            selectTopFollowersBrowserRefreshMode(shareHistory = true),
         )
         assertEquals(
             TopFollowersBrowserRefreshMode.UNAVAILABLE,
-            selectTopFollowersBrowserRefreshMode(linkedApiAvailable = false, shareHistory = false),
+            selectTopFollowersBrowserRefreshMode(shareHistory = false),
         )
     }
 

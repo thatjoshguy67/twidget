@@ -15,31 +15,31 @@ language, follow the [localisation guide](docs/LOCALISATION.md).
 
 ## Development setup
 
-The Android app requires JDK 17 or newer and an Android SDK. GitHub Actions
-uses JDK 21; the app bytecode target remains JVM 17. Dependencies from the
+The Android app requires JDK 25 or newer and Android SDK 37. GitHub Actions
+uses JDK 25; the app bytecode target remains JVM 17. Dependencies from the
 Tribalfs GitHub Packages registry require a GitHub token with `read:packages`;
 copy `github.properties.example` to `~/.config/twidget/github.properties`,
 populate it, and run `chmod 600` on the result (on Windows, restrict file
 permissions through your account settings).
 
-**macOS (Android Studio bundled JBR):**
+**macOS (JDK 25+):**
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
-  ./gradlew testDebugUnitTest assembleDebug lintDebug
+JAVA_HOME="/path/to/jdk25/Contents/Home" \
+  ./gradlew testGithubDebugUnitTest assembleGithubDebug lintGithubDebug
 ```
 
-**Windows (PowerShell, Android Studio JBR):**
+**Windows (PowerShell, JDK 25+):**
 
 ```powershell
-$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\Android Studio\jbr"
-.\gradlew testDebugUnitTest assembleDebug lintDebug
+$env:JAVA_HOME = "C:\path\to\jdk25"
+.\gradlew testGithubDebugUnitTest assembleGithubDebug lintGithubDebug
 ```
 
-**Linux (system JDK 17+):**
+**Linux (system JDK 25+):**
 
 ```bash
-./gradlew testDebugUnitTest assembleDebug lintDebug
+./gradlew testGithubDebugUnitTest assembleGithubDebug lintGithubDebug
 ```
 
 The bridge uses the Node version in `bridge/.nvmrc`:

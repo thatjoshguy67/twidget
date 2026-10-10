@@ -27,7 +27,8 @@ import com.tjg.twidget.analytics.XAnalyticsMovement
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.followers.TopFollowersScanWorker
+import com.tjg.twidget.env.BuildVars
+import com.tjg.twidget.followers.TopFollowersBridgeSyncWorker
 import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
@@ -74,7 +75,7 @@ class MainActivity : ScheduleQueueHostActivity() {
 
     private val topFollowersUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val username = intent?.getStringExtra(TopFollowersScanWorker.EXTRA_USERNAME) ?: return
+            val username = intent?.getStringExtra(TopFollowersBridgeSyncWorker.EXTRA_USERNAME) ?: return
             if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
             dashboardBinder.bindContent()
         }
@@ -183,12 +184,13 @@ class MainActivity : ScheduleQueueHostActivity() {
         ContextCompat.registerReceiver(
             this,
             topFollowersUpdateReceiver,
-            IntentFilter(TopFollowersScanWorker.ACTION_UPDATED),
+            IntentFilter(TopFollowersBridgeSyncWorker.ACTION_UPDATED),
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
     }
 
     override fun onStop() {
+        editModeController.finishDashboardDrag(commit = false)
         runCatching { unregisterReceiver(bangerUpdateReceiver) }
         runCatching { unregisterReceiver(topFollowersUpdateReceiver) }
         super.onStop()
@@ -220,13 +222,22 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        menu.findItem(R.id.menu_open_profile)?.let { item ->
+            val logo = com.tjg.twidget.ui.AppAppearance.logoDrawable(this)
+            if (item !== preparedProfileItem || logo != preparedProfileLogo) {
+                item.setIcon(logo)
+                preparedProfileItem = item
+                preparedProfileLogo = logo
+            }
+        }
         if (destination == MainDestination.SCHEDULING) {
             setDashboardMenuVisible(menu, false)
             return super.onPrepareOptionsMenu(menu)
         }
         menu.findItem(R.id.schedule_trash_menu)?.isVisible = false
         menu.findItem(R.id.schedule_settings_menu)?.isVisible = false
-        setDashboardMenuVisible(menu, true)
+        // Set each item's final state once. Temporarily exposing the edit-only
+        // action makes the floating toolbar relayout as its overflow popup opens.
         menu.findItem(R.id.menu_notices)?.isVisible = !editModeController.editMode
         updateNoticesMenuIcon(menu)
         menu.findItem(R.id.menu_add_widget)?.isVisible = !editModeController.editMode
@@ -271,6 +282,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     private fun checkReleasesOnLaunch() {
+        if (!BuildVars.IN_APP_UPDATES) return
         val appContext = applicationContext
         val installedVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: return
         val channel = AboutActivity.savedUpdateChannel(this)
@@ -300,13 +312,22 @@ class MainActivity : ScheduleQueueHostActivity() {
 
     private fun updateNoticesMenuIcon(menu: Menu) {
         val item = menu.findItem(R.id.menu_notices) ?: return
+        val unseen = ReleaseNoticesStore.hasUnseen(this)
+        if (item === preparedNoticesItem && unseen == preparedNoticesUnseen && item.icon != null) return
         val base = AppCompatResources.getDrawable(this, OneUiIconR.drawable.ic_oui_notice_outline) ?: return
-        item.icon = if (ReleaseNoticesStore.hasUnseen(this)) {
+        item.icon = if (unseen) {
             NoticeBadgeDrawable(base, getColor(R.color.notice_badge_orange), resources.displayMetrics.density)
         } else {
             base
         }
+        preparedNoticesItem = item
+        preparedNoticesUnseen = unseen
     }
+
+    private var preparedProfileItem: MenuItem? = null
+    private var preparedProfileLogo: Int? = null
+    private var preparedNoticesItem: MenuItem? = null
+    private var preparedNoticesUnseen: Boolean? = null
 
     internal fun render(bindDashboard: Boolean = true) {
         accounts = TwidgetStore.accounts(this)

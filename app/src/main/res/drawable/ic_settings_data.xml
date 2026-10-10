@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Sync. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M18.9229 19.75H15.4119C15.1449 19.75 14.9279 19.533 14.9279 19.266V15.975M15.2085 19.2466C17.9515 18.0086 19.8645 15.2296 19.8645 12.0006C19.8645 8.5556 17.6885 5.6226 14.6475 4.5266M8.79589 4.7534C6.05189 5.9914 4.13989 8.7694 4.13989 12.0004C4.13989 15.4454 6.31589 18.3774 9.35589 19.4734M5.08149 4.25H8.59249C8.85949 4.25 9.07649 4.467 9.07649 4.734V8.025" android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

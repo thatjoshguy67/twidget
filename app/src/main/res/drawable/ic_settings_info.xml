@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- User-supplied corrected info_outline.svg; geometry unchanged, theme-aware tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M13.0732 10.7471C13.3013 10.7934 13.4727 10.9948 13.4727 11.2373V16.8262L13.4678 16.9111C13.4234 17.3045 13.0754 17.606 12.6631 17.5742L12.5742 17.5615C12.2182 17.4925 11.9727 17.1609 11.9727 16.7979V12.2373H11.0557L11.0283 12.2344C10.6762 12.2223 10.3583 11.9826 10.292 11.6348C10.2059 11.1858 10.5212 10.79 10.9424 10.7422L11.0283 10.7373H12.9727L13.0732 10.7471Z" android:fillColor="?android:attr/textColorPrimary" />
+    <path android:pathData="M12.375 7.11816C12.928 7.11816 13.375 7.56616 13.375 8.11816C13.3749 8.67005 12.9279 9.11816 12.375 9.11816C11.8231 9.11816 11.3751 8.67005 11.375 8.11816C11.375 7.56616 11.823 7.11816 12.375 7.11816Z" android:fillColor="?android:attr/textColorPrimary" />
+    <path android:pathData="M12.375 2.5C17.8225 2.5 22.25 6.92869 22.25 12.375C22.25 17.8213 17.8225 22.25 12.375 22.25C6.92857 22.25 2.5 17.8214 2.5 12.375C2.5 6.92857 6.92857 2.5 12.375 2.5ZM12.375 4C7.757 4 4 7.757 4 12.375C4 16.993 7.757 20.75 12.375 20.75C16.994 20.75 20.75 16.993 20.75 12.375C20.75 7.757 16.994 4 12.375 4Z" android:fillColor="?android:attr/textColorPrimary" android:fillType="evenOdd" />
+</vector>

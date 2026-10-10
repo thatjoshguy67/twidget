@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_data_sources">Data and sources</string>
+    <string name="settings_your_brief">Your Brief</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_scheduled_tweets">Scheduled tweets</string>
+    <string name="settings_main_account">Main account</string>
+    <string name="settings_other_accounts">Other accounts</string>
+    <string name="settings_alternate_sources">Manage alternate sources</string>
+    <string name="settings_self_hosted_bridge">Self hosted Twidget bridge</string>
+    <string name="settings_widget_defaults">Widget defaults</string>
+    <string name="settings_system_default">System default</string>
+    <string name="settings_analytics_import">X analytics import</string>
+    <string name="settings_import_pending">Pending</string>
+    <string name="settings_imported">Imported</string>
+    <string name="settings_connected">Connected</string>
+    <string name="settings_enable_dummy">Enable dummy profile</string>
+    <string name="settings_android_api">Android API %1$d</string>
+    <string name="settings_last_error">Last error: %1$s</string>
+    <string name="settings_palette_seed">Seed</string>
+    <string name="settings_palette_primary_light">Primary · light</string>
+    <string name="settings_palette_primary_dark">Primary · dark</string>
+    <string name="settings_palette_control_light">Control · light</string>
+    <string name="settings_palette_control_dark">Control · dark</string>
+    <string name="settings_palette_token">%1$s: %2$s</string>
+    <string name="settings_demo_name">Twidget Demo</string>
+    <string name="settings_brief_description">%1$s\n\n%2$s</string>
+    <string name="settings_update_channel">Update channel</string>
+    <string name="settings_app_font">App font</string>
+    <string name="settings_app_font_default">Default (One UI Sans)</string>
+    <string name="settings_font_tip_title">Custom font tip</string>
+    <string name="settings_font_tip_summary">Use SamFonts to change your One UI system font, then choose System default in App font.</string>
+    <string name="settings_font_tip_link">Get SamFonts</string>
+</resources>

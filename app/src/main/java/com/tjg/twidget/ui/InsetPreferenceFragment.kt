@@ -3,6 +3,8 @@ package com.tjg.twidget.ui
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.util.SeslRoundedCorner
+import androidx.preference.Preference
+import androidx.preference.SeslPreferenceCaption
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import androidx.recyclerview.widget.RecyclerView
@@ -30,6 +32,20 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         )
         for (index in 0 until listView.childCount) {
             TwidgetFonts.applyTo(listView.getChildAt(index))
+        }
+    }
+
+    /** Explanatory copy uses the library's page-coloured description below its card. */
+    protected fun PreferenceScreen.addDescribedPreference(preference: Preference) {
+        val description = preference.summary
+        preference.summary = null
+        addPreference(preference)
+        if (!description.isNullOrBlank()) {
+            addPreference(SeslPreferenceCaption(context).apply {
+                key = "${preference.key}_description"
+                title = description
+                isPersistent = false
+            })
         }
     }
 

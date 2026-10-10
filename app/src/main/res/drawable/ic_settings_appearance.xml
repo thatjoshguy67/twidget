@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Brightness. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M14.7405 9.25975C13.2275 7.74675 10.7725 7.74675 9.25951 9.25975C7.74651 10.7728 7.74651 13.2278 9.25951 14.7398C10.7725 16.2538 13.2275 16.2538 14.7405 14.7408C16.2535 13.2278 16.2535 10.7728 14.7405 9.25975Z" android:fillColor="#FFFFFF" />
+    <path android:pathData="M18.0989 5.9013L17.0259 6.9743M6.9739 17.0263L5.9009 18.0993M11.9998 3.375V4.892M11.9998 19.1084V20.6254M5.9012 5.9013L6.9742 6.9743M17.0262 17.0263L18.0992 18.0993M3.3748 12H4.8918M19.1082 12H20.6252" android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

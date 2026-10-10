@@ -11,11 +11,12 @@ MIT License
 Applies to:
 • Twidget
 • oneui-design
-• One UI Icons
+• One UI Icons (including @thatjoshguy/oneui-icons)
 • HiddenApiRefine
 
 Copyright (c) 2026 Josh Skinner (thatjoshguy)
 Copyright (c) 2024 Tribalfs
+Copyright (c) 2026 OneUI Icons
 Copyright (c) 2022 Yanndroid & BlackMesa123
 Copyright (c) 2021 Kr328 & RikkaW
 

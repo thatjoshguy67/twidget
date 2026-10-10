@@ -16,7 +16,7 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.UpdateAppearance
 import android.util.Size
 import android.view.DragEvent
-import android.view.HapticFeedbackConstants
+import com.tjg.twidget.ui.TwidgetHaptics
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -31,6 +31,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.ViewCompat
 import androidx.core.widget.NestedScrollView
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
@@ -119,7 +120,19 @@ internal class ScheduleComposeUi(
     }
 
     fun refreshMediaForActiveItem() {
-        refreshFromEditor()
+        refreshMediaForItem(activeItem)
+    }
+
+    fun refreshMediaForItem(index: Int, restoreInputFocus: Boolean = false) {
+        refreshFromEditor(activeIndex = index)
+        if (restoreInputFocus) {
+            threadContainer.getChildAt(index)
+                ?.findViewById<EditText>(R.id.schedule_thread_input)
+                ?.apply {
+                    requestFocus()
+                    setSelection(text.length)
+                }
+        }
     }
 
     private fun addThreadItem(index: Int) {
@@ -164,14 +177,31 @@ internal class ScheduleComposeUi(
             index + 1,
         )
         reorderThread.tooltipText = reorderThread.contentDescription
-        reorderThread.setOnLongClickListener {
-            startReorderDrag(index, row, reorderThread)
-        }
+        reorderThread.setOnLongClickListener(object : View.OnLongClickListener {
+            override fun onLongClick(view: View): Boolean = startReorderDrag(index, row, reorderThread)
+
+            override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
+        })
         row.setOnDragListener(reorderDragListener(row))
         input.setOnFocusChangeListener { _, focused ->
             if (focused) {
                 activeItem = index
             }
+        }
+        ViewCompat.setOnReceiveContentListener(input, IMAGE_MIME_TYPES) { _, payload ->
+            val split = payload.partition { item -> item.uri != null }
+            val pastedImages = split.first?.clip?.let { clip ->
+                buildList {
+                    for (itemIndex in 0 until clip.itemCount) {
+                        clip.getItemAt(itemIndex).uri?.let(::add)
+                    }
+                }
+            }.orEmpty()
+            if (pastedImages.isNotEmpty()) {
+                activeItem = index
+                activity.onComposePasteImages(index, pastedImages)
+            }
+            split.second
         }
         input.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -252,7 +282,7 @@ internal class ScheduleComposeUi(
             return false
         }
         activeItem = index
-        handle.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        TwidgetHaptics.dragPickup(handle)
         row.visibility = View.GONE
         return true
     }
@@ -308,8 +338,10 @@ internal class ScheduleComposeUi(
             insertionIndex,
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, placeholder.minimumHeight),
         )
+        val previousDropIndex = dragDropIndex
         dragDropIndex = countThreadRowsBefore(placeholder)
             .coerceIn(0, activity.composeItemCount() - 1)
+        if (dragDropIndex != previousDropIndex) TwidgetHaptics.selection(threadContainer)
     }
 
     private fun countThreadRowsBefore(placeholder: View): Int {
@@ -334,6 +366,7 @@ internal class ScheduleComposeUi(
         dragSource = null
         dragPlaceholder = null
         if (commit) {
+            if (destination != from) TwidgetHaptics.confirm(threadContainer)
             activity.onComposeMoveThreadRequested(from, destination - from)
         } else {
             refreshFromEditor(activeIndex = from)
@@ -675,6 +708,7 @@ internal class ScheduleComposeUi(
         const val DRAG_AUTO_SCROLL_EDGE_DP = 72
         const val DRAG_AUTO_SCROLL_STEP_DP = 12
         const val LINK_PREVIEW_DEBOUNCE_MS = 350L
+        val IMAGE_MIME_TYPES = arrayOf("image/*")
         val COMPOSER_URL_PATTERN = Regex("https?://[^\\s<>]+", RegexOption.IGNORE_CASE)
         val COMPOSER_TOKEN_PATTERN = Regex(
             "(?<![A-Za-z0-9_])@[A-Za-z0-9_]{1,15}|(?<![\\p{L}\\p{N}_])#[\\p{L}\\p{N}_]+"

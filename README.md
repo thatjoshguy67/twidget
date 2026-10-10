@@ -53,9 +53,9 @@ Twidget can fetch stats a few ways.
 2. **Twidget bridge** — an externally hosted instance of [`bridge/`](bridge/). Currently uses FxTwitter first and falls back to Rettiwt for profile lookups when possible. Caches fetched results for other Twidget users.
 3. **Self-hosted bridge** — deploy [`bridge/`](bridge/) yourself with any Node 22 host. Point Twidget at it under Settings → Advanced → Self-hosted bridge. Bridge routes include `GET /user/:username` and `GET /analytics/:username`. Set `BRIDGE_API_TOKEN` on self-hosted instances; the shared Twidget bridge remains token-free by design.
 4. **Official X API (bring your own credentials)** — for direct official profile stats. Bring your own API keys and fetch data directly from X using their V2 API. This is not cheap, so only paying X API users can utilise this option. Twidget does not provide this. 
-5. **TwitterAPIs** — opted-in Top Followers scans can run through Twidget's bridge and reuse a recent completed public scan. Add your own key for direct profile stats, bounded seven-day post analytics/media, and device-run follower scans without Twidget's daily limit. Paid post analytics are cached for six hours and fall back to the configured bridge when unavailable.
+5. **TwitterAPIs** — Top Followers scans use Twidget's bridge and require shared-history consent. Add your own key for direct profile stats and bounded seven-day post analytics/media. Paid post analytics are cached for six hours and fall back to the configured bridge when unavailable.
 
-The **Your Top Followers** dashboard card enumerates a public account's followers. With shared history enabled, Twidget first reuses a fresh completed bridge scan or asks the bridge to run one server-side through [TwitterAPIs](https://twitterapis.com); the latest completed list is available to other opted-in installs tracking that handle. A personal key entered under Settings → Advanced takes priority, stays encrypted on-device, and runs the scan directly without Twidget's daily limit; TwitterAPIs charges and provider limits still apply. Scans are manual, resumable, and capped at 6,250 paid pages per run (the provider's documented $5 at $0.0008 per read). Protected accounts are not supported.
+The **Your Top Followers** dashboard card uses the shared-history bridge in both GitHub and Play builds. Enable shared history under Settings → Data and sources, then tap **Find top follower**. The bridge reuses a fresh completed scan or scans the public account through [TwitterAPIs](https://twitterapis.com), then refreshes enrolled accounts daily. Completed lists are shared with other opted-in installs tracking that handle. Device-side follower scans and their foreground service have been removed. Existing rankings remain cached when upgrading or disabling shared history. Personal provider keys remain available for profile and post analytics. Protected accounts are not supported.
 
 > Shared history is opt-in. The [`bridge/`](bridge/) stores only accounts explicitly registered through the history route. Normal profile lookups do not create persistent records. 
 
@@ -77,33 +77,34 @@ The **Your Top Followers** dashboard card enumerates a public account's follower
 
 ## Build it yourself
 
-Requires JDK 17 or newer and the Android SDK. GitHub Actions uses JDK 21; the
+Requires JDK 25 or newer and Android SDK 37. GitHub Actions uses JDK 25; the
 app bytecode target is JVM 17.
 
 **macOS:**
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:assembleDebug
+JAVA_HOME="/path/to/jdk25/Contents/Home" ./gradlew :app:assembleGithubDebug
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-$env:JAVA_HOME = "$env:LOCALAPPDATA\Programs\Android Studio\jbr"
-.\gradlew :app:assembleDebug
+$env:JAVA_HOME = "C:\path\to\jdk25"
+.\gradlew :app:assembleGithubDebug
 ```
 
 **Linux:**
 
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:assembleGithubDebug
 ```
 
 The app id is `com.tjg.twidget`.
 
 Buffer scheduling uses a public OAuth client with PKCE. Register the redirect
-URI `https://thatjoshguy67.github.io/twidget/oauth/buffer/` in Buffer. The
-minimal callback page forwards the short-lived response to
+URI `https://thatjoshguy67.github.io/twidget/oauth/buffer/` in Buffer, or build
+with your own using `BUFFER_OAUTH_REDIRECT_URI` or `-PbufferOAuthRedirectUri=...`.
+The minimal callback page forwards the short-lived response to
 `twidget://oauth/buffer` on the device. Provide the client ID at build time with
 `BUFFER_OAUTH_CLIENT_ID` or `-PbufferOAuthClientId=...`; no client secret is
 embedded in the Android app.

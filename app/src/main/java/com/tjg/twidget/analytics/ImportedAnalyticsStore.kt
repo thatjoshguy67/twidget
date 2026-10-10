@@ -49,6 +49,10 @@ object ImportedAnalyticsStore {
         }.getOrDefault(emptyList())
     }
 
+    fun clear(context: Context, username: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(key(username)).apply()
+    }
+
     private fun hasAnalytics(sample: XAnalyticsMovement): Boolean =
         sample.analyticsValues().any { it.second != null }
 

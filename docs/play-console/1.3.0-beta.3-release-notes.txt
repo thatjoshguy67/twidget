@@ -1,0 +1,19 @@
+<en-GB>
+New in Beta 3
+• One UI and Material 3 Expressive widget styles.
+• Faster resizing, accurate previews and improved dark-mode colours.
+• Refined Google Sans Flex typography with correct system text scaling.
+• Better Your Brief layouts and a cleaner Gemini API-key dialog.
+• Clearer analytics import errors and a refreshed welcome screen.
+• Improved German translations.
+</en-GB>
+
+<de-DE>
+Neu in Beta 3
+• Widgets im One UI- und Material 3 Expressive-Stil.
+• Schnellere Größenanpassung, genauere Vorschauen und bessere Farben im Dunkelmodus.
+• Überarbeitete Google Sans Flex-Typografie mit korrekter System-Textskalierung.
+• Bessere Briefing-Layouts und ein übersichtlicherer Gemini-API-Key-Dialog.
+• Klarere Fehlermeldungen beim Analytics-Import und ein neuer Willkommensbildschirm.
+• Verbesserte deutsche Übersetzungen.
+</de-DE>

@@ -1,6 +1,7 @@
 package com.tjg.twidget.update
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -145,5 +146,55 @@ class AppUpdateManagerTest {
         assertEquals(UpdateChannel.DEBUG, AppUpdateManager.defaultUpdateChannel("1.1.0-debug.30"))
         assertEquals(UpdateChannel.BETA, AppUpdateManager.defaultUpdateChannel("1.1.0-beta.1"))
         assertEquals(UpdateChannel.STABLE, AppUpdateManager.defaultUpdateChannel("1.1.0"))
+    }
+
+    @Test
+    fun rangeResponseUsesTotalSizeInsteadOfOneByteContentLength() {
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 1L,
+                contentRange = "bytes 0-0/42000000",
+            ),
+        )
+    }
+
+    @Test
+    fun downloadSizeFallsBackToContentLengthWithoutValidRangeTotal() {
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 42_000_000L,
+                contentRange = null,
+            ),
+        )
+        assertEquals(
+            42_000_000L,
+            AppUpdateManager.resolvedDownloadSize(
+                contentLength = 42_000_000L,
+                contentRange = "bytes 0-0/*",
+            ),
+        )
+    }
+
+    @Test
+    fun knownDebugReleaseUsesRollingDebugArtifact() {
+        val release = AppUpdateManager.knownRelease("1.3.0-debug.43", UpdateChannel.DEBUG)!!
+
+        assertEquals("twidget-debug-latest.apk", release.assetName)
+        assertEquals(
+            "https://github.com/thatjoshguy67/twidget/releases/download/" +
+                "twidget-debug-latest/twidget-debug-latest.apk",
+            release.downloadUrl,
+        )
+    }
+
+    @Test
+    fun knownReleaseMustBelongToSelectedChannel() {
+        assertNull(AppUpdateManager.knownRelease("1.3.0-debug.43", UpdateChannel.STABLE))
+
+        val beta = AppUpdateManager.knownRelease("1.3.0-beta.2", UpdateChannel.BETA)!!
+        assertEquals("twidget-v1.3.0-beta.2.apk", beta.assetName)
+        assertTrue(beta.downloadUrl.endsWith("/twidget-v1.3.0-beta.2.apk"))
     }
 }

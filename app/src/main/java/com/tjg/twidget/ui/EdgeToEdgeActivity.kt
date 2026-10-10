@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -17,10 +16,8 @@ import dev.oneuiproject.oneui.utils.applyEdgeToEdge
  * their own padding while their backgrounds continue beneath both system bars.
  */
 abstract class EdgeToEdgeActivity : AppCompatActivity() {
-    private var fontRoot: ViewGroup? = null
-    private val fontLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
-        fontRoot?.let(TwidgetFonts::applyTo)
-    }
+    private lateinit var createdFont: AppAppearance.Font
+    private lateinit var createdLogo: String
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(newBase)
@@ -28,6 +25,8 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        createdFont = AppAppearance.font(this)
+        createdLogo = AppAppearance.logo(this)
         super.onCreate(savedInstanceState)
         // Apply after AppCompat installs the themed decor so the parent One UI
         // theme cannot restore an opaque navigation-bar colour afterwards.
@@ -35,11 +34,10 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     }
 
     override fun onContentChanged() {
-        fontRoot?.viewTreeObserver?.removeOnGlobalLayoutListener(fontLayoutListener)
         super.onContentChanged()
-        fontRoot = findViewById<ViewGroup>(android.R.id.content)?.also { root ->
-            TwidgetFonts.applyTo(root)
-            root.viewTreeObserver.addOnGlobalLayoutListener(fontLayoutListener)
+        findViewById<ViewGroup>(android.R.id.content)?.let { root ->
+            SeslToolbarCompatibility.install(root)
+            TwidgetFonts.observeWindow(root.rootView)
         }
     }
 
@@ -48,25 +46,25 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
         TwidgetAppVisibility.activityStarted()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Refresh screens already in the back stack, including their Canvas text.
+        if (createdFont != AppAppearance.font(this) || createdLogo != AppAppearance.logo(this)) recreate()
+    }
+
     override fun onStop() {
         TwidgetAppVisibility.activityStopped()
         super.onStop()
     }
 
-    override fun onDestroy() {
-        fontRoot?.viewTreeObserver?.removeOnGlobalLayoutListener(fontLayoutListener)
-        fontRoot = null
-        super.onDestroy()
-    }
-
     /**
-     * Insets fixed chrome but leaves the navigation edge available to scrolling
-     * content. Callers can use [onNavigationBarInset] to move bottom controls
-     * above button or gesture navigation without padding the whole window.
+     * Keeps content clear of system navigation and the keyboard. Callers with
+     * floating controls can use [onNavigationBarInset] to handle the navigation
+     * edge themselves while keeping their scrolling viewport full height.
      */
     protected fun applyEdgeToEdgeInsets(
         root: View,
-        onNavigationBarInset: (Int) -> Unit = {},
+        onNavigationBarInset: ((Int) -> Unit)? = null,
     ) {
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val safe = insets.getInsets(
@@ -75,10 +73,21 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             )
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime()) && ime.bottom > 0
-            view.setPadding(safe.left, safe.top, safe.right, ime.bottom)
+            val topPadding = if (SeslToolbarCompatibility.applyTopInset(view, safe.top)) 0 else safe.top
+            // Screens with floating controls handle their navigation inset in the callback.
+            // Other screens keep their entire content viewport above system navigation.
+            val bottomPadding = if (onNavigationBarInset == null) maxOf(ime.bottom, safe.bottom) else ime.bottom
+            view.setPadding(safe.left, topPadding, safe.right, bottomPadding)
+            // The drawer surface stops above system navigation even when the
+            // page scrolls behind it. Root padding may already cover part or all
+            // of this space (including the keyboard), so avoid counting it twice.
+            SeslToolbarCompatibility.applyDrawerBottomInset(
+                view,
+                (maxOf(safe.bottom, ime.bottom) - bottomPadding).coerceAtLeast(0),
+            )
             // IME insets already include the navigation region on Samsung and
             // several other OEM keyboards. Do not add it to floating chrome twice.
-            onNavigationBarInset(if (imeVisible) 0 else safe.bottom)
+            onNavigationBarInset?.invoke(if (imeVisible) 0 else safe.bottom)
             insets
         }
         ViewCompat.requestApplyInsets(root)

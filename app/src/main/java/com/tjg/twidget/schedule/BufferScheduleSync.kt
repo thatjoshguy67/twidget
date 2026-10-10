@@ -51,9 +51,7 @@ class BufferScheduleSync(
             organizationId = channel.organizationId
         }
 
-        val existing = store.list().filter {
-            it.provider == ScheduleProvider.BUFFER && it.accountUsername == channelId
-        }
+        val existing = storedPosts(channelId)
         val active = client.listPosts(organizationId, channelId, listOf("scheduled", "draft"))
         if (!active.isSuccess) return BufferSyncResult(errors = active.errors.map { it.message })
         val now = System.currentTimeMillis()
@@ -65,14 +63,30 @@ class BufferScheduleSync(
             client.listPosts(organizationId, channelId, listOf("sent", "error"), it)
         } ?: BufferResult(emptyList())
         if (!terminal.isSuccess) return BufferSyncResult(errors = terminal.errors.map { it.message })
-        val remotePosts = active.value.orEmpty() + terminal.value.orEmpty()
+        return reconcileRemotePosts(channelId, trackedUsername, active.value.orEmpty() + terminal.value.orEmpty(), now)
+    }
+
+    private fun storedPosts(channelId: String): List<ScheduledPost> =
+        (store.list() + store.listTrash()).filter {
+            it.provider == ScheduleProvider.BUFFER && it.accountUsername == channelId
+        }
+
+    internal fun reconcileRemotePosts(
+        channelId: String,
+        trackedUsername: String,
+        remotePosts: List<BufferPost>,
+        now: Long,
+    ): BufferSyncResult {
+        val existing = storedPosts(channelId)
         var imported = 0
         var updated = 0
         val seen = mutableSetOf<String>()
         remotePosts.forEach { bufferPost ->
             seen += bufferPost.id
             val current = existing.firstOrNull { it.remotePostId == bufferPost.id }
-                ?: existing.firstOrNull { it.matches(bufferPost, channelId) }
+                ?: existing.firstOrNull { it.deletedAt == null && it.matches(bufferPost, channelId) }
+            // A remote draft can outlive its local trash entry. Do not resurrect it.
+            if (current?.deletedAt != null) return@forEach
             val status = resolvedStatus(bufferPost.status, bufferPost.dueAt, now) ?: return@forEach
             val local = ScheduledPost(
                 id = current?.id ?: remoteLocalId(bufferPost.id),
@@ -110,7 +124,7 @@ class BufferScheduleSync(
 
         var removed = 0
         existing.filter {
-            shouldRemoveMissing(it, seen, now)
+            it.deletedAt == null && shouldRemoveMissing(it, seen, now)
         }.forEach {
             if (store.remove(it.id)) removed++
         }

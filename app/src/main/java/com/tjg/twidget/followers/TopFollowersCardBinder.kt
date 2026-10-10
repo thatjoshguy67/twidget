@@ -17,32 +17,27 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.widget.TextViewCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.MainActivity
-import com.tjg.twidget.settings.SettingsAdvancedActivity
-import com.tjg.twidget.ui.OneUiSpinner
+import com.tjg.twidget.settings.SettingsCategoryActivity
+import com.tjg.twidget.settings.SettingsPage
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 
-/** Renders the four Figma states for the dashboard's Top Followers card. */
+/** Shows completed bridge rankings and the shared-history entry point. */
 internal class TopFollowersCardBinder(
     private val activity: MainActivity,
-    private val onStateChanged: () -> Unit,
     private val requestNotificationPermission: () -> Unit,
 ) {
     fun create(account: String): View {
         val state = TopFollowersStore.read(activity, account)
         return when {
-            state.scanning && TopFollowersActiveScans.isActive(account) &&
-                TopFollowersScanWorker.linkedApiScanSource(activity) != null -> scanningCard(account, state)
             state.complete && state.top.isNotEmpty() -> resultsCard(account, state)
             else -> notScannedCard(account, state)
         }
@@ -61,9 +56,17 @@ internal class TopFollowersCardBinder(
                     topMargin = dp(110 + index * 54)
                 })
             }
-            addView(label(activity.getString(R.string.top_followers_question), 14f, primaryColor, 700).apply {
+            addView(LinearLayout(activity).apply {
                 gravity = Gravity.CENTER
-            }, matchFrameParams(19).apply { topMargin = dp(20) })
+                addView(ImageView(activity).apply {
+                    setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
+                    imageTintList = ColorStateList.valueOf(secondaryColor)
+                    contentDescription = null
+                }, LinearLayout.LayoutParams(dp(16), dp(16)))
+                addView(label(activity.getString(R.string.top_followers_question), 14f, secondaryColor, 700),
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                        .apply { marginStart = dp(10) })
+            }, matchFrameParams(19).apply { topMargin = dp(22) })
             addView(label(activity.getString(R.string.top_followers_hero), 48f, accentColor, 700).apply {
                 gravity = Gravity.CENTER
                 maxLines = 1
@@ -77,66 +80,30 @@ internal class TopFollowersCardBinder(
                 topMargin = dp(40)
             })
             addView(Button(activity).apply {
-                val linkedApi = TopFollowersScanWorker.linkedApiScanSource(activity)
                 val shareHistory = TwidgetStore.settings(activity).shareHistory
                 text = activity.getString(when {
-                    linkedApi != null -> R.string.top_followers_start_scan
                     shareHistory -> R.string.top_followers_find_with_bridge
-                    else -> R.string.top_followers_add_api_key
+                    else -> R.string.top_followers_enable_shared_history
                 })
                 isAllCaps = false
-                textSize = 20f
+                textSize = 14f
                 setTextColor(Color.WHITE)
-                typeface = weightedTypeface(700)
+                typeface = weightedTypeface(600)
+                setPadding(dp(20), dp(10), dp(20), dp(10))
                 stateListAnimator = null
                 elevation = dp(8).toFloat()
                 background = rounded(accentColor, 28f)
                 setOnClickListener {
                     when {
-                        linkedApi != null -> showStartDialog(account)
                         shareHistory -> requestBridgeScan(account)
-                        else -> openApiKeySettings()
+                        else -> openSharedHistorySettings()
                     }
                 }
                 contentDescription = if (state.error.isBlank()) text else "${text}. ${state.error}"
-            }, frameParams(206, 60).apply {
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 topMargin = dp(151)
             })
-        }
-
-    private fun scanningCard(account: String, state: TopFollowersState): View =
-        LinearLayout(activity).apply {
-            val total = TwidgetStore.currentStats(activity, account).let {
-                it.followersCount.takeIf { count -> it.followersKnown && count > 0 }
-            }
-            val percentage = TopFollowersProgress.percentage(state.scanned, total)
-            val progressTitle = percentage?.let {
-                activity.getString(R.string.top_followers_scanning_progress_title, it, state.pages + 1)
-            } ?: activity.getString(R.string.top_followers_scanning_page_title, state.pages + 1)
-            orientation = LinearLayout.VERTICAL
-            minimumHeight = dp(424)
-            background = rounded(cardColor, 28f)
-            clipToOutline = true
-            addView(header(progressTitle, account, openBrowserEnabled = false, stopEnabled = true),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)))
-            state.top.take(5).forEachIndexed { index, follower ->
-                addView(resultRow(index + 1, follower, divider = true),
-                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(76)))
-            }
-            repeat((5 - state.top.size).coerceAtLeast(0)) { offset ->
-                val index = state.top.size + offset
-                addView(scanningRow(index + 1), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(76)))
-            }
-            addView(ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
-                max = 10_000
-                isIndeterminate = total == null
-                progress = total?.let { ((state.scanned.toLong().coerceAtMost(it) * max) / it).toInt() } ?: 0
-                progressTintList = ColorStateList.valueOf(accentColor)
-                progressBackgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
-            }, 0, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(4)))
-            // Keep the total Figma height: the progress overlays the first four header pixels.
-            (getChildAt(1).layoutParams as LinearLayout.LayoutParams).height = dp(40)
         }
 
     private fun resultsCard(account: String, state: TopFollowersState): View {
@@ -169,7 +136,6 @@ internal class TopFollowersCardBinder(
         title: String,
         account: String,
         openBrowserEnabled: Boolean,
-        stopEnabled: Boolean = false,
     ): View {
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
@@ -185,64 +151,20 @@ internal class TopFollowersCardBinder(
                 contentDescription = "$title. ${activity.getString(R.string.top_followers_view_all)}"
                 setOnClickListener { openBrowse(account) }
             }
-            addView(label(title, 13f, secondaryColor, 700).apply { gravity = Gravity.CENTER_VERTICAL },
+            addView(ImageView(activity).apply {
+                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
+                imageTintList = ColorStateList.valueOf(secondaryColor)
+                contentDescription = null
+            }, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(10) })
+            addView(label(title, 14f, secondaryColor, 700).apply { gravity = Gravity.CENTER_VERTICAL },
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
             addView(ImageView(activity).apply {
-                setImageDrawable(AppCompatResources.getDrawable(
-                    activity,
-                    if (stopEnabled) {
-                        R.drawable.ic_dashboard_edit_close
-                    } else {
-                        OneUiIconR.drawable.ic_oui_keyboard_arrow_right
-                    },
-                ))
-                imageTintList = ColorStateList.valueOf(if (stopEnabled) primaryColor else secondaryColor)
-                val iconPadding = if (stopEnabled) 8 else 11
-                setPadding(dp(iconPadding), dp(iconPadding), dp(iconPadding), dp(iconPadding))
-                isClickable = stopEnabled
-                isFocusable = stopEnabled
-                if (stopEnabled) {
-                    background = RippleDrawable(
-                        ColorStateList.valueOf(rippleColor),
-                        null,
-                        rounded(cardColor, 20f),
-                    )
-                    contentDescription = activity.getString(R.string.top_followers_stop_scan)
-                    setOnClickListener { stopScan(account) }
-                } else {
-                    contentDescription = null
-                }
+                setImageDrawable(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_keyboard_arrow_right))
+                imageTintList = ColorStateList.valueOf(secondaryColor)
+                setPadding(dp(11), dp(11), dp(11), dp(11))
+                contentDescription = null
             }, LinearLayout.LayoutParams(dp(40), dp(40)))
         }
-    }
-
-    private fun scanningRow(rank: Int): View = FrameLayout(activity).apply {
-        addView(LinearLayout(activity).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), 0, dp(20), 0)
-            addView(label(rank.toString(), 24f, primaryColor, 200).apply { gravity = Gravity.CENTER },
-                LinearLayout.LayoutParams(dp(24), dp(40)))
-            addView(ImageView(activity).apply {
-                setImageResource(R.drawable.oneui_spinner)
-                setPadding(dp(4), dp(4), dp(4), dp(4))
-                OneUiSpinner.loop(this)
-                contentDescription = activity.getString(R.string.top_followers_scanning_title)
-            }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(10) })
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(View(activity).apply { background = rounded(skeletonColor, 12f) },
-                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(26)))
-                addView(LinearLayout(activity).apply {
-                    addView(View(activity).apply { background = rounded(skeletonColor, 12f) },
-                        LinearLayout.LayoutParams(0, dp(25), 0.78f))
-                    addView(View(activity), LinearLayout.LayoutParams(0, dp(25), 0.22f))
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(25)).apply { topMargin = dp(5) })
-            }, LinearLayout.LayoutParams(0, dp(56), 1f).apply { marginStart = dp(10) })
-            addView(communityIcon(primaryColor), LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginStart = dp(10) })
-            addView(View(activity).apply { background = rounded(skeletonColor, 12f) },
-                LinearLayout.LayoutParams(dp(53), dp(25)).apply { marginStart = dp(4) })
-        }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-        addDivider()
     }
 
     private fun resultRow(rank: Int, follower: TopFollower, divider: Boolean): View = FrameLayout(activity).apply {
@@ -276,13 +198,25 @@ internal class TopFollowersCardBinder(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(label(follower.name, 16f, primaryColor, 700).apply {
+                addView(label(follower.name, 20f, primaryColor, 700).apply {
+                    includeFontPadding = true
+                    gravity = Gravity.START
+                    textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                    textDirection = View.TEXT_DIRECTION_FIRST_STRONG
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(23)))
-                addView(label("@${follower.username}", 12f, secondaryColor, 400).apply {
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                addView(label("@${follower.username}", 14f, secondaryColor, 400).apply {
+                    includeFontPadding = true
+                    gravity = Gravity.START
+                    textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                    textDirection = View.TEXT_DIRECTION_LTR
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(17)))
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(10); marginEnd = dp(8) })
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    topMargin = dp(2)
+                })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(10); marginEnd = dp(8)
+            })
             addView(communityIcon(primaryColor), LinearLayout.LayoutParams(dp(18), dp(18)))
             addView(label(TwidgetStore.compactNumber(follower.followers), 12f, secondaryColor, 400).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL; maxLines = 1
@@ -299,27 +233,6 @@ internal class TopFollowersCardBinder(
         })
     }
 
-    private fun showStartDialog(account: String) {
-        val source = TopFollowersScanWorker.linkedApiScanSource(activity)
-        val dialogMode = selectTopFollowersScanDialogMode(source)
-        val builder = AlertDialog.Builder(activity)
-            .setTitle(R.string.top_followers_scan_title)
-            .setMessage(
-                when (dialogMode) {
-                    TopFollowersScanDialogMode.TWITTERAPIS -> R.string.top_followers_scan_message_personal
-                    TopFollowersScanDialogMode.X_API -> R.string.top_followers_scan_message_x_api
-                    TopFollowersScanDialogMode.UNAVAILABLE -> R.string.top_followers_scan_message_trial
-                },
-            )
-            // AppCompat lays buttons out neutral, negative, positive in LTR.
-            .setNeutralButton(R.string.cancel, null)
-            .setPositiveButton(R.string.top_followers_start) { _, _ -> startScan(account) }
-        if (shouldShowAddApiKeyAction(source)) {
-            builder.setNegativeButton(R.string.top_followers_add_api_key) { _, _ -> openApiKeySettings() }
-        }
-        builder.show()
-    }
-
     private fun requestBridgeScan(account: String) {
         if (!TwidgetStore.settings(activity).shareHistory) return
         requestNotificationPermission()
@@ -327,34 +240,9 @@ internal class TopFollowersCardBinder(
         Toast.makeText(activity, R.string.top_followers_bridge_scan_requested, Toast.LENGTH_LONG).show()
     }
 
-    private fun startScan(account: String) {
-        if (TopFollowersScanWorker.linkedApiScanSource(activity) == null) {
-            Toast.makeText(activity, R.string.top_followers_api_key_required, Toast.LENGTH_LONG).show()
-            openApiKeySettings()
-            return
-        }
-        when (TopFollowersScanWorker.enqueue(activity, account, restart = true)) {
-            TopFollowersScanStart.STARTED -> {
-                requestNotificationPermission()
-                onStateChanged()
-            }
-            TopFollowersScanStart.ALREADY_SCANNED_TODAY ->
-                Toast.makeText(activity, R.string.top_followers_daily_limit, Toast.LENGTH_LONG).show()
-            TopFollowersScanStart.NO_API_KEY -> {
-                Toast.makeText(activity, R.string.top_followers_api_key_required, Toast.LENGTH_LONG).show()
-                openApiKeySettings()
-            }
-        }
-    }
-
-    private fun stopScan(account: String) {
-        TopFollowersScanWorker.cancel(activity, account)
-        Toast.makeText(activity, R.string.top_followers_scan_stopped, Toast.LENGTH_SHORT).show()
-        onStateChanged()
-    }
-
-    private fun openApiKeySettings() {
-        activity.startActivity(Intent(activity, SettingsAdvancedActivity::class.java))
+    private fun openSharedHistorySettings() {
+        Toast.makeText(activity, R.string.top_followers_setup, Toast.LENGTH_LONG).show()
+        activity.startActivity(SettingsCategoryActivity.intent(activity, SettingsPage.DATA))
     }
 
     private fun openXProfile(username: String) {
@@ -406,28 +294,4 @@ internal class TopFollowersCardBinder(
     private val skeletonColor get() = activity.getColor(R.color.top_followers_skeleton)
     private val dividerColor get() = activity.getColor(R.color.oneui_divider)
     private val rippleColor get() = (primaryColor and 0x00FFFFFF) or 0x24000000
-}
-
-internal enum class TopFollowersScanDialogMode {
-    TWITTERAPIS,
-    X_API,
-    UNAVAILABLE,
-}
-
-internal fun selectTopFollowersScanDialogMode(
-    source: TopFollowersScanSource?,
-): TopFollowersScanDialogMode = when {
-    source == TopFollowersScanSource.TWITTERAPIS -> TopFollowersScanDialogMode.TWITTERAPIS
-    source == TopFollowersScanSource.X_API -> TopFollowersScanDialogMode.X_API
-    else -> TopFollowersScanDialogMode.UNAVAILABLE
-}
-
-internal fun shouldShowAddApiKeyAction(source: TopFollowersScanSource?): Boolean =
-    source == null
-
-internal object TopFollowersProgress {
-    fun percentage(scanned: Int, total: Long?): Int? {
-        if (total == null || total <= 0L) return null
-        return ((scanned.coerceAtLeast(0).toLong().coerceAtMost(total) * 100L) / total).toInt()
-    }
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <dev.oneuiproject.oneui.preference.HorizontalRadioPreference
+        android:key="settings_theme"
+        app:entries="@array/settings_theme_labels"
+        app:entriesImage="@array/settings_theme_images_wide"
+        app:entryValues="@array/settings_theme_values"
+        app:viewType="image" />
+    <SwitchPreferenceCompat android:key="settings_theme_system" android:title="@string/settings_system_default" />
+</PreferenceScreen>

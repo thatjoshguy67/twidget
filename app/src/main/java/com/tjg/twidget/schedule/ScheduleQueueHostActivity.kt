@@ -44,7 +44,6 @@ import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
@@ -53,7 +52,7 @@ import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.widget.RoundedLinearLayout
 import dev.oneuiproject.oneui.widget.RoundedNestedScrollView
 import dev.oneuiproject.oneui.widget.RoundedTabLayout
-import dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.text.DateFormat
 import java.time.DayOfWeek
 import java.time.Instant
@@ -73,7 +72,9 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     private lateinit var scheduleToolbar: ToolbarLayout
     private lateinit var content: LinearLayout
-    private lateinit var primaryButton: ScrollAwareFloatingActionButton
+    private lateinit var primaryButton: FloatingActionButton
+    private lateinit var queueChrome: ScheduleQueueChrome
+    private lateinit var feedback: com.tjg.twidget.ui.TwidgetSnackbar
     private lateinit var queueRoot: View
     private lateinit var queueTabs: RoundedTabLayout
     private lateinit var scroll: RoundedNestedScrollView
@@ -94,7 +95,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private var activeQueueMenu: PopupMenu? = null
     private var viewingTrash = false
     private val bottomNavigationAnchor = ViewTreeObserver.OnPreDrawListener {
-        if (::selectionBottomNav.isInitialized) {
+        if (::selectionBottomNav.isInitialized && !queueChrome.floating) {
             anchorBottomNavigation(selectionBottomNav)
             anchorBottomNavigation(trashBottomNav)
         }
@@ -103,6 +104,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        feedback = com.tjg.twidget.ui.TwidgetSnackbar(this)
         if (embedsScheduleQueue) return
         setContentView(R.layout.activity_schedule)
         attachScheduleQueue(
@@ -164,11 +166,11 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         queueTabs = findViewById(R.id.schedule_tabs)
         scroll = findViewById(R.id.schedule_scroll)
         refresh = findViewById<SwipeRefreshLayout>(R.id.schedule_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             setOnRefreshListener { syncBufferQueue(userInitiated = true) }
         }
         selectionBottomNav = findViewById(R.id.schedule_selection_bottom_nav)
         trashBottomNav = findViewById(R.id.schedule_trash_bottom_nav)
+        queueChrome = ScheduleQueueChrome(toolbar, root, primaryButton, queueTabs, selectionBottomNav, trashBottomNav, scroll)
         queueRoot.viewTreeObserver.addOnPreDrawListener(bottomNavigationAnchor)
         setupBottomNavigation()
         setupQueueViewSwitcher()
@@ -178,6 +180,10 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     protected fun updateScheduleBottomInsets(inset: Int) {
         if (!::primaryButton.isInitialized) return
         navigationBarInset = inset
+        if (queueChrome.floating) {
+            queueChrome.updateInsets(inset)
+            return
+        }
         primaryButton.updateBottomMarginForNavigationBar(scheduleDp(20), inset)
         selectionBottomNav.updateBottomMarginForNavigationBar(0, inset)
         trashBottomNav.updateBottomMarginForNavigationBar(0, inset)
@@ -205,6 +211,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         if (::queueRoot.isInitialized && queueRoot.viewTreeObserver.isAlive) {
             queueRoot.viewTreeObserver.removeOnPreDrawListener(bottomNavigationAnchor)
         }
+        if (::queueChrome.isInitialized) queueChrome.dispose()
         super.onDestroy()
     }
 
@@ -218,6 +225,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     protected fun hideEmbeddedScheduleQueue() {
         if (!::queueRoot.isInitialized) return
+        feedback.dismiss()
         if (queueSelectionMode) exitQueueSelection()
         queueRoot.visibility = View.GONE
     }
@@ -332,12 +340,12 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val posts = currentQueuePosts()
         val calendarMode = !viewingTrash && selectedQueueView == ScheduleQueueView.CALENDAR
         refresh.isEnabled = isBufferMode() && !viewingTrash && !calendarMode && !queueSelectionMode
-        queueTabs.visibility = if (viewingTrash) View.GONE else View.VISIBLE
+        setQueueSwitcherVisible(!viewingTrash)
         scroll.setPadding(
             scroll.paddingLeft,
             scroll.paddingTop,
             scroll.paddingRight,
-            if (calendarMode) 0 else if (viewingTrash) scheduleDp(88) else scheduleDp(104),
+            if (queueChrome.floating) queueChrome.contentBottomInset else if (calendarMode) 0 else if (viewingTrash) scheduleDp(88) else scheduleDp(104),
         )
         scroll.isVerticalScrollBarEnabled = !calendarMode
         scroll.overScrollMode = if (calendarMode) {
@@ -379,6 +387,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             return
         }
         syncing = true
+        if (userInitiated) feedback.dismiss()
         if (userInitiated) refresh.isRefreshing = true
         AppExecutors.execute(
             onRejected = {
@@ -397,20 +406,14 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 renderQueue()
                 if (userInitiated) {
                     if (result.isSuccess) {
-                        Toast.makeText(
-                            this,
-                            getString(R.string.schedule_sync_complete, result.imported, result.updated),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        showFeedback(getString(R.string.schedule_sync_complete, result.imported, result.updated))
                     } else {
-                        Toast.makeText(
-                            this,
+                        showFeedback(
                             getString(
                                 R.string.schedule_sync_failed,
                                 result.errors.firstOrNull() ?: getString(R.string.schedule_unknown_error),
                             ),
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        ) { syncBufferQueue(userInitiated = true) }
                     }
                 }
             }
@@ -445,6 +448,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 enabled = total > 0,
                 checked = total > 0 && selectedQueueIds.size == total,
             )
+            queueChrome.updateSelectionCount(selectedQueueIds.size)
         }
         selectionBottomNav.visibility = if (showSelection) View.VISIBLE else View.GONE
         trashBottomNav.visibility = if (showTrashBar) View.VISIBLE else View.GONE
@@ -470,6 +474,11 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         }
     }
 
+    private fun setQueueSwitcherVisible(visible: Boolean) {
+        queueTabs.visibility = if (visible && !queueChrome.floating) View.VISIBLE else View.GONE
+        queueChrome.setSwitcherVisible(visible)
+    }
+
     private fun setupQueueViewSwitcher() {
         queueTabs.removeAllTabs()
         queueTabs.addTab(
@@ -490,6 +499,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 exitQueueSelection()
                 selectedQueueView = next
                 selectedCalendarDate = null
+                if (queueChrome.floating) scheduleToolbar.setExpanded(false, false)
                 animateQueueModeChange(if (tab.position == 0) -1 else 1)
             }
 
@@ -535,7 +545,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             text = calendarMonth.format(DateTimeFormatter.ofPattern("MMMM", Locale.getDefault())).uppercase(Locale.getDefault())
             gravity = Gravity.CENTER
             textSize = 18f
-            typeface = TwidgetFonts.oneUiSans(context, 700)
+            typeface = TwidgetFonts.forApp(context, 700)
             setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
         }, LinearLayout.LayoutParams(0, scheduleDp(48), 1f))
         addView(actionButton("›") {
@@ -549,7 +559,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val firstDay = calendarMonth.atDay(1)
         val leadingDays = (firstDay.dayOfWeek.value - DayOfWeek.MONDAY.value + 7) % 7
         val rowCount = (leadingDays + calendarMonth.lengthOfMonth() + 6) / 7
-        val viewportHeight = scroll.height.takeIf { it > 0 }
+        val viewportHeight = (scroll.height - scroll.paddingBottom).takeIf { it > 0 }
             ?: (resources.displayMetrics.heightPixels - scheduleDp(220))
         val gridPadding = scheduleDp(16)
         val weekHeaderHeight = scheduleDp(28)
@@ -567,7 +577,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 text = day.getDisplayName(TextStyle.NARROW, Locale.getDefault())
                 gravity = Gravity.CENTER
                 textSize = 12f
-                typeface = TwidgetFonts.oneUiSans(context, 700)
+                typeface = TwidgetFonts.forApp(context, 700)
                 setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
             }, calendarCellParams(0, column, scheduleDp(28)))
         }
@@ -597,7 +607,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         addView(TextView(this@ScheduleQueueHostActivity).apply {
             text = date.dayOfMonth.toString()
             textSize = 14f
-            typeface = TwidgetFonts.oneUiSans(context, if (date == LocalDate.now()) 700 else 600)
+            typeface = TwidgetFonts.forApp(context, if (date == LocalDate.now()) 700 else 600)
             setTextColor(ContextCompat.getColor(
                 context,
                 if (date == LocalDate.now()) R.color.oneui_accent else R.color.oneui_text_primary,
@@ -733,7 +743,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
                 getString(R.string.schedule_media_post)
             } ?: getString(R.string.schedule_empty_post)
             textSize = 16f
-            typeface = TwidgetFonts.oneUiSans(context, 400)
+            typeface = TwidgetFonts.forApp(context, 400)
             setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
             maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
@@ -781,7 +791,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         addView(TextView(this@ScheduleQueueHostActivity).apply {
             text = queueCardTitle(post)
             textSize = 14f
-            typeface = TwidgetFonts.oneUiSans(context, 400)
+            typeface = TwidgetFonts.forApp(context, 400)
             setTextColor(ContextCompat.getColor(context, R.color.oneui_text_secondary))
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
@@ -899,6 +909,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun downloadPostMedia(post: ScheduledPost) {
         val items = post.thread.filter { it.media.isNotEmpty() }
         if (items.isEmpty()) return
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = { runOnUiThread { setBusy(false); toast(R.string.schedule_busy) } },
@@ -919,7 +930,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             }
             runOnUiThread {
                 setBusy(false)
-                if (!isFinishing && !isDestroyed) showExportOutcome(outcome)
+                if (!isFinishing && !isDestroyed) showExportOutcome(outcome) { downloadPostMedia(post) }
             }
         }
     }
@@ -1202,6 +1213,8 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
         val date = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
         if (locale.language == "de") {
             date.format(DateTimeFormatter.ofPattern("EEE, d. MMMM yyyy 'um' HH:mm", locale))
+        } else if (locale.language == "fr") {
+            date.format(DateTimeFormatter.ofPattern("EEE d MMMM yyyy 'à' HH:mm", locale))
         } else {
             val weekdayAndMonth = date.format(DateTimeFormatter.ofPattern("EEE, MMMM", locale))
             val time = date.format(DateTimeFormatter.ofPattern("h:mm a", locale))
@@ -1390,7 +1403,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     private fun showQueueMode() {
         queueRoot.visibility = View.VISIBLE
-        queueTabs.visibility = if (viewingTrash) View.GONE else View.VISIBLE
+        setQueueSwitcherVisible(!viewingTrash)
     }
 
     private fun runRemote(work: () -> ScheduleCoordinatorResult?) {
@@ -1431,7 +1444,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
 
     private fun renderChecklist(post: ScheduledPost) {
         showQueueMode()
-        queueTabs.visibility = View.GONE
+        setQueueSwitcherVisible(false)
         content.removeAllViews()
         content.addView(sectionTitle(getString(R.string.schedule_publish_checklist)))
         content.addView(actionButton(getString(R.string.schedule_back_to_queue)) { renderQueue() }.apply {
@@ -1525,6 +1538,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     }
 
     private fun downloadMedia(item: ScheduleThreadItem) {
+        feedback.dismiss()
         setBusy(true)
         AppExecutors.execute(
             onRejected = {
@@ -1538,12 +1552,12 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             runOnUiThread {
                 setBusy(false)
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                showExportOutcome(outcome)
+                showExportOutcome(outcome) { downloadMedia(item) }
             }
         }
     }
 
-    private fun showExportOutcome(outcome: ScheduleMediaExportOutcome) {
+    private fun showExportOutcome(outcome: ScheduleMediaExportOutcome, retry: () -> Unit) {
         val message = when (outcome.result) {
             ScheduleMediaExportResult.SAVED -> {
                 if (outcome.detail.isNullOrBlank()) {
@@ -1555,7 +1569,14 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
             ScheduleMediaExportResult.NOTHING_TO_SAVE -> getString(R.string.schedule_media_nothing_to_save)
             ScheduleMediaExportResult.FAILED -> outcome.detail ?: getString(R.string.schedule_media_save_failed)
         }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        // Retrying partial success would save already-downloaded files again.
+        showFeedback(message, retry.takeIf { outcome.result == ScheduleMediaExportResult.FAILED })
+    }
+
+    private fun showFeedback(message: CharSequence, retry: (() -> Unit)? = null) {
+        if (!::queueRoot.isInitialized || !queueRoot.isShown) return
+        feedback.show(message, queueChrome.snackbarAnchor,
+            actionText = retry?.let { getString(R.string.notices_retry) }, action = retry)
     }
 
     private fun completedItemIds(postId: String): Set<String> =
@@ -1636,7 +1657,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun sectionTitle(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 19f
-        typeface = TwidgetFonts.oneUiSans(context, 700)
+        typeface = TwidgetFonts.forApp(context, 700)
         setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
         setPadding(scheduleDp(24), scheduleDp(14), scheduleDp(24), scheduleDp(8))
     }
@@ -1644,7 +1665,7 @@ abstract class ScheduleQueueHostActivity : FoldablePopOverActivity() {
     private fun titleText(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 15f
-        typeface = TwidgetFonts.oneUiSans(context, 600)
+        typeface = TwidgetFonts.forApp(context, 600)
         setTextColor(ContextCompat.getColor(context, R.color.oneui_text_primary))
         maxLines = 4
     }

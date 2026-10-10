@@ -96,6 +96,23 @@ class BufferGraphQlCodecTest {
     }
 
     @Test
+    fun textOnlyCreatesAlwaysIncludeRequiredEmptyAssets() {
+        val post = ScheduledPost(
+            provider = ScheduleProvider.BUFFER,
+            accountUsername = "channel-123",
+            scheduledAt = 4_000_000_000_000L,
+            thread = listOf(ScheduleThreadItem(text = "Text only")),
+        )
+        for (draft in listOf(false, true)) {
+            val input = BufferGraphQlCodec.createPostInput(post, saveToDraft = draft)
+            assertEquals(0, input.getJSONArray("assets").length())
+            assertEquals(draft, input.getBoolean("saveToDraft"))
+        }
+        val thread = post.copy(thread = post.thread + ScheduleThreadItem(text = "Reply"))
+        assertEquals(0, BufferGraphQlCodec.createPostInput(thread, false).getJSONArray("assets").length())
+    }
+
+    @Test
     fun draftFlagIsPassedToBuffer() {
         val post = ScheduledPost(
             provider = ScheduleProvider.BUFFER,

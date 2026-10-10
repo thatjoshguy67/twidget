@@ -6,6 +6,7 @@
     <string name="widget_language_default">App-Standard</string>
     <string name="widget_language_de">Deutsch</string>
     <string name="widget_language_en">Englisch (English)</string>
+    <string name="widget_language_fr">Französisch (Français)</string>
     <string name="lockscreen_follower_1x1_label">Follower 1x1</string>
     <string name="lockscreen_follower_2x1_label">Follower 2x1</string>
     <string name="last_synced">Zuletzt aktualisiert: %1$s</string>
@@ -105,6 +106,7 @@
     <string name="language_system">Systemstandard</string>
     <string name="language_german">Deutsch</string>
     <string name="language_english">Englisch (English)</string>
+    <string name="language_french">Französisch (Français)</string>
     <string name="milestone_target">Follower-Ziel</string>
     <string name="milestone_target_hint">100 oder One Hundred</string>
     <string name="milestone_progress_percent">%1$d%%</string>
@@ -122,7 +124,10 @@
     <string name="daily_streak_keep_going">Tweete auf X um deinen Streak zu erhalten</string>
     <string name="daily_streak_last_active">Zul. aktiv %1$s</string>
     <string name="daily_streak_detail">Zählt originale Tweets auf X. Antworten, Reposts und Likes werden nicht gezählt.</string>
-    <string name="daily_streak_days">%1$d Tage</string>
+    <plurals name="daily_streak_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
     <string name="daily_streak_none">Noch kein Streak</string>
     <string name="per_range">%1$s / Bereich</string>
     <string name="per_day">%1$s / Tag</string>
@@ -135,7 +140,9 @@
     <string name="no_recent_gain">Kein Anstieg in letzter Zeit</string>
     <string name="history_notice">Der Verlauf wird einmal täglich erfasst. Wöchentliche Daten benötigen mindestens 7 Tage; längere Zeiträume füllen sich nach und nach, während Twidget weiter synchronisiert.</string>
     <string name="private_account_notice">Privater Account: X stellt nur begrenzte öffentliche Daten bereit. Einige Statistiken, Post-Analysen und Verläufe sind möglicherweise unvollständig oder nicht verfügbar.</string>
-    <string name="estimated_notice">Ausgegraute Balken sind Schätzungen aus einem begrenzten Verlauf. Ausgefüllte Balken enthalten echte Daten, die Twidget nach und nach vervollständigt.</string>
+    <string name="estimated_notice_title">Schätzungen im Diagramm</string>
+    <string name="estimated_notice">Ausgegraute Balken sind Schätzungen. Ausgefüllte Balken zeigen erfasste Daten.</string>
+    <string name="estimated_notice_dismiss">Verstanden</string>
     <string name="media_likes">Likes</string>
     <string name="open_settings">Einstellungen öffnen</string>
     <string name="refresh_stats">Daten aktualisieren</string>
@@ -211,7 +218,7 @@
     <string name="import_premium_title">Nur X Premium/Premium+ Abonnenten</string>
     <string name="import_premium_summary">Das Abrufen deiner Statistiken von X Analytics erfordert ein kostenpflichtiges X-Abo.</string>
     <string name="import_accuracy_title">Daten überprüfen</string>
-    <string name="import_accuracy_summary">Wir überprüfen deine Statistiken vor dem Import. Der Vorgang bricht ab, wenn die Statistiken ungenau sind.</string>
+    <string name="import_accuracy_summary">Wir vergleichen den Export mit dem gespeicherten Follower-Verlauf. Kleine Abweichungen durch unterschiedliche Aktualisierungszeiten sind erlaubt.</string>
     <string name="import_for_account">Daten für @%1$s importieren?</string>
     <string name="import_range">Bereich</string>
     <string name="import_detected_followers">Erkannte Follower-Zahl</string>
@@ -242,9 +249,23 @@
     <string name="notices_empty_summary">Zum Aktualisieren nach unten ziehen. Veröffentlichte GitHub-Releases erscheinen hier automatisch.</string>
     <string name="notices_retry">Erneut versuchen</string>
     <string name="not_imported">Nicht importiert</string>
-    <string name="import_failure_default">Die Datei konnte nicht verifiziert werden</string>
-    <string name="import_failure_range">Follower-Anzahl außerhalb des gültigen Bereichs</string>
+    <string name="import_failure_default">Wir konnten diesen Export nicht überprüfen.</string>
+    <string name="import_failure_range">Die Follower-Zahlen im Export und im gespeicherten Verlauf weichen zu stark voneinander ab.</string>
     <string name="import_stored_followers">Gespeicherte Follower-Zahl</string>
+    <string name="import_csv_followers">Follower-Zahl im Export</string>
+    <string name="import_calculated_followers">Aus dem Export berechnete Zahl</string>
+    <string name="import_failure_difference">Abweichung: %1$s Follower</string>
+    <string name="import_failure_comparison_day">Verglichene Zahlen vom %1$s</string>
+    <string name="import_failure_impossible">Die Follower-Änderungen in diesem Export würden eine negative Zahl ergeben.</string>
+    <string name="import_failure_refresh_help">X Analytics und gespeicherte Zahlen werden möglicherweise zu unterschiedlichen Zeiten aktualisiert. Aktualisiere dieses Konto und lade einen neuen Export herunter, der den heutigen Tag einschließt. Falls es weiterhin nicht klappt, warte und versuche es erneut.</string>
+    <string name="import_failure_old_export">Dieser Export enthält den heutigen Tag nicht.</string>
+    <string name="import_failure_invalid_rows">Im Export fehlen Tagesdaten oder sie sind ungültig.</string>
+    <string name="import_failure_connection">Wir konnten die Follower-Zahl nicht beim Server überprüfen.</string>
+    <string name="import_failure_connection_help">Prüfe deine Verbindung und versuche es in Kürze erneut.</string>
+    <string name="import_failure_history_help">Synchronisiere dieses Konto weiterhin, um einen täglichen Verlauf aufzubauen. Versuche es dann mit einem neuen Export für diese Tage erneut.</string>
+    <string name="import_failure_private_help">Verwende den lokalen Verlauf ohne Bridge, um Analytics für ein privates Konto zu importieren.</string>
+    <string name="import_failure_file_help">Wähle eine CSV-Datei der Kontoübersicht für dieses Konto aus X Analytics. Der Zeitraum muss den heutigen Tag einschließen.</string>
+    <string name="import_try_another_file">CSV wählen</string>
     <string name="import_no_browser">Kein Browser verfügbar.</string>
     <string name="import_action">Importieren</string>
     <string name="analytics_import_sync_first">Synchronisiere dieses Konto zuerst, damit Twidget den Import am aktuellen Follower-Stand ausrichten kann.</string>
@@ -255,7 +276,7 @@
     <string name="analytics_import_confirm_local">%2$d Tage lokaler Follower-Verlauf in @%1$s importieren?\n\nZeitraum: %3$s bis %4$s\nAktueller lokaler Stand: \%5$s Follower\n\nTwidget rekonstruiert die CSV aus täglichen Follows und Unfollows und gleicht jeden sich überschneidenden Tag mit vertrauenswürdigen lokalen Snapshots ab. Der Import wird verweigert, wenn der letzte Stand oder Trend zu stark abweicht. Es wird nichts hochgeladen.</string>
     <string name="analytics_import_checking_bridge">CSV wird mit Bridge-Verlauf abgeglichen…</string>
     <string name="analytics_import_busy">Twidget ist ausgelastet. Bitte versuche den Import später erneut.</string>
-    <string name="analytics_import_trend_mismatch">CSV-Trend stimmt nicht mit dem vertrauenswürdigen Follower-Verlauf überein.</string>
+    <string name="analytics_import_trend_mismatch">Die Follower-Änderungen stimmen nicht mit dem gespeicherten Verlauf überein.</string>
     <string name="analytics_import_not_enough_history">Nicht genug vertrauenswürdiger Verlauf, um diese CSV sicher zu überprüfen.</string>
     <string name="analytics_import_private">Private Accounts können nicht zum geteilten Verlauf beitragen.</string>
     <string name="analytics_import_complete_bridge">%1$d verifizierte fehlende Tage nach Prüfung von %2$d vertrauenswürdigen Snapshots hinzugefügt.</string>
@@ -275,7 +296,8 @@
     <string name="widget_logo_style">Logo-Style</string>
     <string name="widget_show_delta">Follower-Delta zeigen</string>
     <string name="widget_font">Schriftart</string>
-    <string name="clear_cache">Cache leeren</string>
+    <string name="widget_font_system">Systemstandard</string>
+    <string name="clear_cache">Zwischengespeicherte Daten löschen</string>
     <string name="about_twidget">Über Twidget</string>
     <string name="save">Speichern</string>
     <string name="cancel">Abbrechen</string>
@@ -288,11 +310,11 @@
     <string name="about_developer_section">Erstellt von</string>
     <string name="about_credits_section">Danke an</string>
     <string name="about_projects_section">Open-Source-Projekte</string>
-    <string name="about_tjg_summary">Hat die App erstellt. (und dabei viel zu viele Red Bulls konsumiert)</string>
+    <string name="about_tjg_summary">Hat Twidget erstellt und dabei viel zu viele Red Bulls konsumiert.</string>
     <string name="about_kingowen_summary">Mitwirkender, Motivator und Ideengeber.</string>
     <string name="about_fxtwitter_summary">Standard-Datenquelle. Analysedaten für: Öffentliche Profile, Status, Medien, aktuelle Posts</string>
-    <string name="about_oneui_summary">One UI-Oberflächenkomponenten. Die Magie hinter dem Design der App</string>
-    <string name="about_legal_section">Rechtliches \u0026 Lizenzen</string>
+    <string name="about_oneui_summary">Fork von Tribalfs - SESL 9.0</string>
+    <string name="about_legal_section">Langweiliges</string>
     <string name="about_privacy_policy_title">Datenschutzbestimmungen</string>
     <string name="about_privacy_policy_summary">Wie Twidget Daten verarbeitet, schützt und löscht</string>
     <string name="about_open_source_licenses_title">Open-Source-Lizenzen</string>
@@ -302,7 +324,7 @@
     <string name="about_repo_link">App-Repository</string>
     <string name="about_version">Version %1$s</string>
     <string name="app_info">App-Info</string>
-    <string name="update">Update</string>
+    <string name="update">Herunterladen</string>
     <string name="update_suggestion_title">Update verfügbar</string>
     <string name="update_suggestion_summary">Twidget Version %1$s ist verfügbar</string>
     <string name="update_to_version">Auf Version %1$s aktualisieren</string>
@@ -310,6 +332,31 @@
     <string name="update_channel_stable">Stable Releases</string>
     <string name="update_channel_beta">Beta Releases</string>
     <string name="update_channel_debug">Debug Builds</string>
+    <string name="update_download_started">Das Update wird heruntergeladen. Prüfe die Benachrichtigung für den Downloadstatus.</string>
+    <string name="update_download_started_without_notification">Das Update wird heruntergeladen. Lass diesen Bildschirm geöffnet, um es anschließend zu installieren.</string>
+    <string name="update_download_in_progress">Ein Update wird bereits heruntergeladen.</string>
+    <string name="update_download_notification_title">Twidget-Update</string>
+    <string name="update_downloading">Update wird heruntergeladen</string>
+    <string name="update_download_progress">Update wird heruntergeladen: %1$d%%</string>
+    <string name="update_download_complete">Download abgeschlossen · 100%</string>
+    <string name="update_download_paused">Download pausiert</string>
+    <string name="update_download_paused_progress">Download pausiert · %1$d%%</string>
+    <string name="update_pause">Pausieren</string>
+    <string name="update_resume">Fortsetzen</string>
+    <string name="update_stop">Stoppen</string>
+    <string name="update_download_notification_channel_name">Update-Downloadfortschritt</string>
+    <string name="update_download_notification_channel_description">Live-Status und Steuerung während ein Twidget-Update heruntergeladen wird</string>
+    <string name="twidget_update_debug">Twidget-Update Debug</string>
+    <string name="debug_version_spoofing">Versions-Spoofing</string>
+    <string name="debug_update_tools">Update-Werkzeuge</string>
+    <string name="debug_spoof_app_version_enabled">Vorgetäuschte App-Version verwenden</string>
+    <string name="debug_spoof_app_version_enabled_summary">Bei Aktivierung verwenden GitHub-Updateprüfungen die unten stehende statt der installierten Version</string>
+    <string name="debug_spoof_app_version">Installierte App-Version vortäuschen</string>
+    <string name="debug_spoof_app_version_summary">Wird nur bei der Prüfung von GitHub-Updates verwendet; leer lassen, um die echte Version zu nutzen</string>
+    <string name="debug_spoof_app_version_invalid">Gib eine Version wie 1.2.3 oder 1.2.3-beta.1 ein.</string>
+    <string name="debug_spoof_app_version_checking">GitHub-Updates werden jetzt geprüft.</string>
+    <string name="debug_test_update_download_notification">Update-Downloadbenachrichtigung testen</string>
+    <string name="debug_test_update_download_notification_summary">Simuliert einen Download mit Fortschritt sowie Pause- und Stopp-Steuerung</string>
     <string name="update_download_failed">Update konnte nicht heruntergeladen werden.</string>
     <string name="update_install_permission">Erlaube Twidget, Updates zu installieren, und kehre dann zurück, um fortzufahren.</string>
     <string name="update_invalid_apk">Das heruntergeladene Update ist kein gültiges Twidget-App-Paket.</string>
@@ -321,6 +368,8 @@
     <string name="update_install_now">Jetzt installieren</string>
     <string name="sync_failed">Aktualisierung fehlgeschlagen; gespeicherte Daten werden angezeigt.</string>
     <string name="onboarding_overview_title">Willkommen bei Twidget</string>
+    <string name="onboarding_welcome_terms">Mit der Nutzung von Twidget akzeptierst du die Twidget-Datenschutzerklärung sowie die Nutzungsbedingungen der jeweiligen Plattformen.</string>
+    <string name="onboarding_privacy_link">Twidget-Datenschutzerklärung</string>
     <string name="onboarding_done_title">Du bist startklar!</string>
     <string name="onboarding_done_summary">Statistiken werden täglich aktualisiert. Es kann bis zu einer Woche dauern, bis alle Daten angezeigt werden.</string>
     <string name="get_started">Jetzt starten</string>
@@ -367,7 +416,7 @@
     <string name="continue_button">Weiter</string>
     <string name="starting_twidget">Startet…</string>
     <string name="set">Festlegen</string>
-    <string name="debug_menu">Debug-Menü</string>
+    <string name="debug_menu">Debug</string>
     <string name="debug_menu_unlocked">Debug-Menü entsperrt</string>
     <string name="debug_menu_already_unlocked">Debug-Menü bereits entsperrt</string>
     <string name="debug_menu_countdown">%1$d Mal tippen, um das Debug-Menü zu entsperren</string>
@@ -385,7 +434,7 @@
     <string name="debug_palette_generated">Erstellte Farbrollen</string>
     <string name="debug_palette_resolved">Zusammensetzung der Ressourcen</string>
     <string name="debug_palette_requires_android_14">Eigene Paletten erfordern Android 14 oder neuer</string>
-    <string name="debug_palette_overlay_registered">Overlay registriert</string>
+    <string name="debug_palette_overlay_registered">Eigene Palette aktiv</string>
     <string name="debug_palette_overlay_not_registered">Vom System verwaltet</string>
     <string name="debug_palette_overlay_unsupported">Overlay nicht unterstützt</string>
     <string name="debug_palette_apply_failed">Farbpalette konnte nicht angewandt werden: %1$s</string>
@@ -425,7 +474,7 @@
     <string name="brief_debug_force_rebuild">Neuaufbau des Briefings erzwingen</string>
     <string name="brief_debug_force_rebuild_summary">Das gespeicherte tägliche Briefing ignorieren und jeden Kandidaten neu bewerten</string>
     <string name="brief_debug_rebuilt">Briefing neu erstellt</string>
-    <string name="brief_debug_full_report">Gesamter Engine-Bericht</string>
+    <string name="brief_debug_full_report">Gesamter Engine-Log</string>
     <string name="brief_debug_full_report_summary">Eingaben, Bewertungen, Reihenfolge und Auswahlergebnis prüfen oder kopieren</string>
     <string name="brief_debug_log_category">Letzter Engine-Log</string>
     <string name="brief_debug_log_title">Engine-Log</string>
@@ -446,6 +495,70 @@
     <string name="brief_debug_nano_refresh_summary">Gerätefeature und Modellstatus erneut abfragen</string>
     <string name="brief_debug_nano_test">Provider-Test ausführen</string>
     <string name="brief_debug_nano_test_summary">Briefing neu erstellen und die konfigurierte lokale/Cloud-Auswahl jetzt ausführen</string>
+    <string name="brief_debug_scenario_real">Echte Accountdaten</string>
+    <string name="brief_debug_scenario_post">Du erhältst Aufmerksamkeit</string>
+    <string name="brief_debug_scenario_worst_post">Ruhigster Tweet</string>
+    <string name="brief_debug_scenario_growth">Schnelles Wachstum</string>
+    <string name="brief_debug_scenario_slowdown">Wachstum verlangsamt sich</string>
+    <string name="brief_debug_scenario_milestone">Meilenstein erreicht</string>
+    <string name="brief_debug_scenario_top_follower">Neuer Top-Follower</string>
+    <string name="brief_debug_scenario_inactivity">Streak starten</string>
+    <string name="brief_debug_scenario_streak">Posting-Streak</string>
+    <string name="brief_debug_scenario_schedule_guide">Leitfaden für den Zeitplan</string>
+    <string name="brief_debug_scenario_post_follow_through">Geplanten Post weiterverfolgen</string>
+    <string name="brief_debug_scenario_posting_guide">Hinweis für den nächsten Post</string>
+    <string name="brief_debug_scenario_steady">Alles stabil</string>
+    <string name="brief_debug_card_post_title">Warum dieser Tweet funktioniert hat</string>
+    <string name="brief_debug_card_post_body">Er hat deutlich mehr Menschen erreicht als dein typischer Tweet diese Woche.</string>
+    <string name="brief_debug_card_worst_post_title">Was ihn gebremst haben könnte</string>
+    <string name="brief_debug_card_worst_post_body">Er hat weniger Menschen erreicht als dein typischer Tweet diese Woche.</string>
+    <string name="brief_debug_card_growth_title">Dein Publikum hebt ab</string>
+    <string name="brief_debug_card_growth_body">Du hast heute 84 Follower und in der letzten Woche 679 gewonnen.</string>
+    <string name="brief_debug_card_slowdown_title">Das Wachstum hat sich verlangsamt</string>
+    <string name="brief_debug_card_slowdown_body">Dein aktuelles Tempo liegt hinter den vorherigen Tagen. Ein neuer Post könnte es wieder ankurbeln.</string>
+    <string name="brief_debug_card_milestone_title">Meilenstein erreicht!</string>
+    <string name="brief_debug_card_milestone_body">Du hast %1$s Follower erreicht. Das verdient eine Ehrenrunde.</string>
+    <string name="brief_debug_card_top_follower_title">Ein neuer Top-Follower</string>
+    <string name="brief_debug_card_top_follower_body">\@JohnCena ist jetzt dein zweitbeliebtester Follower.</string>
+    <string name="brief_debug_card_inactivity_title">Starte einen Streak</string>
+    <string name="brief_debug_card_inactivity_body">Twidget hat seit mehr als drei Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen.</string>
+    <string name="brief_debug_card_streak_title">14 Streak-Tage</string>
+    <string name="brief_debug_card_streak_body">Tweete heute, um deinen 14-Tage-Rhythmus beizubehalten.</string>
+    <string name="brief_debug_card_schedule_guide_title">Plane deinen nächsten Tweet</string>
+    <string name="brief_debug_card_schedule_guide_body">Für die nächsten drei Tage ist nichts geplant. Reihe eine Idee ein, solange die Woche noch flexibel ist.</string>
+    <string name="brief_debug_card_post_follow_through_title">Bau auf deinem geplanten Tweet auf</string>
+    <string name="brief_debug_card_post_follow_through_body">Er hat deinen aktuellen Durchschnitt übertroffen. Öffne ihn, achte darauf, worauf die Leute reagiert haben, und plane eine sinnvolle Fortsetzung.</string>
+    <string name="brief_debug_card_source_buffer">Mit Buffer getweetet</string>
+    <string name="brief_debug_card_posting_guide_title">Probiere deinen nächsten Tweet am Abend</string>
+    <string name="brief_debug_card_posting_guide_body">Deine letzten Tweets am Abend liefen besser als in deinen anderen Zeitfenstern. Teste diesen Zeitpunkt noch einmal.</string>
+    <string name="brief_debug_card_steady_title">Alles sieht stabil aus</string>
+    <string name="brief_debug_card_steady_body">Bleib dran, und Twidget achtet auf die nächste bedeutende Veränderung.</string>
+    <string name="brief_debug_synthetic_provider_message">Synthetischer Debug-Zustand · keine KI-Anfrage wurde gestellt</string>
+    <string name="brief_debug_report_title">Twidget-Briefing: Engine-Log</string>
+    <string name="brief_debug_report_account">Konto: @%1$s</string>
+    <string name="brief_debug_report_generated">Erstellt: %1$s</string>
+    <string name="brief_debug_report_input_facts">EINGABEDATEN</string>
+    <string name="brief_debug_report_ranked_candidates">SORTIERTE KANDIDATEN</string>
+    <string name="brief_debug_report_selected">AUSGEWÄHLT</string>
+    <string name="brief_debug_report_omitted">AUSGELASSEN</string>
+    <string name="brief_debug_report_none">keine</string>
+    <string name="brief_debug_report_followers">Follower=%1$s</string>
+    <string name="brief_debug_report_following">Gefolgt=%1$s</string>
+    <string name="brief_debug_report_posts">Posts=%1$s</string>
+    <string name="brief_debug_report_followers_today">FollowerHeute=%1$s</string>
+    <string name="brief_debug_report_followers_week">FollowerWoche=%1$s</string>
+    <string name="brief_debug_report_history_samples">Verlaufsproben=%1$d</string>
+    <string name="brief_debug_report_analytics_cached_at">AnalyticsZwischengespeichertAm=%1$s</string>
+    <string name="brief_debug_report_standout_post_views">AufrufeHervorgehobenerPost=%1$s</string>
+    <string name="brief_debug_report_quiet_post_views">AufrufeRuhigsterPost=%1$s</string>
+    <string name="brief_debug_report_posting_streak">PostingStreak=%1$d</string>
+    <string name="brief_debug_report_original_activity_complete">EigeneAktivitaetVollstaendig=%1$b</string>
+    <string name="brief_debug_report_upcoming_tweets">AnstehendeTweets=%1$d</string>
+    <string name="brief_debug_report_follower_scan_completed_at">FollowerScanAbgeschlossenAm=%1$s</string>
+    <string name="brief_debug_report_followers_scanned">GescannteFollower=%1$d</string>
+    <string name="brief_debug_report_candidate">%1$d. Rang=%2$d Basis=%3$d Typ=%4$s %5$s ID=%6$s</string>
+    <string name="brief_debug_report_candidate_title">   %1$s</string>
+    <string name="brief_debug_report_candidate_body">   %1$s</string>
     <string name="schedule_title">Geplante Tweets</string>
     <string name="schedule_new">Neuer geplanter Tweet</string>
     <string name="schedule_queue_for">Planen · %1$s</string>
@@ -636,50 +749,26 @@
     <string name="top_followers">Deine Top-Follower</string>
     <string name="top_followers_question">Wer ist dein</string>
     <string name="top_followers_hero">Top-Follower?</string>
-    <string name="top_followers_start_scan">Scan starten</string>
     <string name="top_followers_find_with_bridge">Top-Follower finden</string>
     <string name="top_followers_bridge_scan_requested">Dein erstes Ranking wird vorbereitet. Twidget hält es täglich aktuell, solange der gemeinsame Verlauf aktiviert ist.</string>
     <string name="top_followers_results_title">Deine Top-Follower</string>
-    <string name="top_followers_scanning_title">Wird gescannt</string>
-    <string name="top_followers_scanning_progress_title">Wird gescannt · %1$d%% · Seite %2$d</string>
-    <string name="top_followers_scanning_page_title">Wird gescannt · Seite %1$d</string>
-    <string name="top_followers_refresh">Erneut scannen</string>
-    <string name="top_followers_stop_scan">Scan beenden</string>
-    <string name="top_followers_scan_stopped">Scan beendet. Du kannst ihn später fortsetzen.</string>
-    <string name="top_followers_add_api_key">API-Key hinzufügen</string>
-    <string name="top_followers_start">Starten</string>
-    <string name="top_followers_api_key_required">Vor dem Scan müssen in den erweiterten Einstellungen ein Twitter-API-Key oder X-API-Zugangsdaten hinterlegt werden.</string>
-    <string name="top_followers_daily_limit">Du hast dieses Konto heute bereits gescannt. Versuche es morgen noch einmal.</string>
     <string name="top_follower_accessibility">Nummer %1$d, \%2$s, um %3$s Uhr, mit \%4$s Followern. Öffnet das X-Profil.</string>
     <string name="top_follower_row">%1$d. @%2$s · %3$s Follower</string>
     <string name="top_followers_ready">Bereit, deine größten Follower zu finden</string>
-    <string name="top_followers_setup">Gemeinsamen Verlauf aktivieren oder API-Zugangsdaten hinzufügen</string>
+    <string name="top_followers_setup">Aktiviere den geteilten Verlauf unter Daten und Quellen, um deine Top-Follower zu finden.</string>
     <string name="top_followers_tap">Tippe, um deinen Top-Follower zu finden</string>
-    <string name="top_followers_scanning">%1$d Follower werden auf %2$d Seiten gescannt…</string>
-    <string name="top_followers_complete">%1$d Follower über %2$d kostenpflichtige Seiten gescannt</string>
-    <string name="top_followers_scan_title">Scan starten?</string>
-    <string name="top_followers_scan_message_trial">Ein persönlicher TwitterAPIs-Key oder kompatible offizielle X-API-Zugangsdaten führen diesen Scan lokal aus. Nutzer des gemeinsamen Verlaufs können die Bridge verwenden.</string>
-    <string name="top_followers_scan_message_shared">Twidget\'s Bridge greift, falls verfügbar, auf einen aktuellen, freigegebenen Scan zurück oder scannt das öffentliche Konto sicher auf dem Server. Erlaubt ist ein Scan pro Account und Tag.</string>
-    <string name="top_followers_scan_message_personal">Dieser Scan nutzt deinen eigenen TwitterAPIs-Key. Twidget hat kein Limit, jedoch gelten die Gebühren und Limits von TwitterAPIs.</string>
-    <string name="top_followers_scan_message_x_api">Dieser Scan nutzt deine offiziellen X-API-Zugangsdaten und kann kostenpflichtige API-Aufrufe verbrauchen.</string>
     <string name="scan">Scannen</string>
-    <string name="twitterapis_title">TwitterAPIs · Top-Follower</string>
+    <string name="twitterapis_title">TwitterAPIs · Profile und Posts</string>
     <string name="twitterapis_api_key">TwitterAPIs-API-Key</string>
-    <string name="twitterapis_explainer">Twidget bietet begrenzten Testzugang für die Top-Follower. Mit einem eigenen Schlüssel entfällt das tägliche App-Limit – inklusive optionaler Profil-Stats und 7-Tage-Post-Analysen (Cache: 6 Stunden). Dein Key wird lokal verschlüsselt und nur an TwitterAPIs übermittelt. Das Öffnen der Einstellungen kostet keinen API-Call.</string>
+    <string name="twitterapis_explainer">Füge deinen eigenen Schlüssel für optionale Profilstatistiken und begrenzte 7-Tage-Post-Analysen hinzu (Cache: 6 Stunden). Dein Schlüssel wird auf diesem Gerät verschlüsselt und nur an TwitterAPIs gesendet. Top-Follower nutzt die Bridge für den geteilten Verlauf. Das Öffnen der Einstellungen löst keinen kostenpflichtigen Testaufruf aus.</string>
     <string name="twitterapis_personal_key_active">Persönlicher Key aktiv · %1$s</string>
-    <string name="twitterapis_trial_key_active">Testzugangs-Key aktiv · Ein Scan pro Account täglich</string>
-    <string name="twitterapis_no_key_available">Kein Test-Key in dieser Version enthalten · Eigenen hinzufügen</string>
+    <string name="twitterapis_no_key_available">Füge deinen eigenen Schlüssel für Profilstatistiken und Post-Analysen hinzu</string>
     <string name="twitterapis_status">TwitterAPIs-Status</string>
     <string name="scan_again">Erneut scannen</string>
     <string name="compact_followers">%1$s Follower</string>
     <string name="post_card_waiting">Noch kein Ergebnis für @%1$s</string>
     <string name="top_followers_notifications">Top-Follower-Benachrichtigungen</string>
-    <string name="top_followers_notifications_description">Benachrichtigt bei neuen Top-Followern oder wenn ein API-Scan abgeschlossen wird</string>
-    <string name="top_followers_progress_notifications">Scan-Fortschritt</string>
-    <string name="top_followers_progress_notifications_description">Zeigt den Fortschritt während eines Top-Follower-Scans an</string>
-    <string name="top_followers_progress_title">Top-Follower für @%1$s scannen</string>
-    <string name="top_followers_notification_title">Top-Follower für @%1$s bereit</string>
-    <string name="top_followers_notification_leader">%1$s führt mit %2$s Followern</string>
+    <string name="top_followers_notifications_description">Benachrichtigt bei neuen Top-Followern</string>
     <string name="top_followers_new_high_ranking_title">Neuer Top-Follower bei @%1$s</string>
     <string name="top_followers_new_high_ranking_detail">@%1$s folgt dir jetzt und ist Platz %2$d deiner Top-Follower</string>
     <string name="top_followers_last_scan">Zul. gescannt: %1$s · %2$d Follower auf %3$d Seiten</string>
@@ -726,7 +815,7 @@
     <string name="brief_post_follow_through_explainer">Performance geplanter Tweets verknüpft einen gesendeten geplanten Tweet mit seinen Live-Ergebnissen. Wenn er deutlich besser oder schlechter als deine gewohnten Tweets abschneidet, hebt Dein Briefing hervor, was du eventuell für den nächsten übernehmen könntest.</string>
     <string name="brief_posting_guidance_explainer">Der Guide für den nächsten Tweet wandelt Muster aus deinen kürzlichen Tweets in einen praktischen Vorschlag um, was oder wann du als Nächstes posten solltest. Er erscheint erst, wenn Twidget genügend Daten hat, um den Vorschlag nützlich zu machen.</string>
     <string name="brief_categories_empty_body">Wähle in den Briefing-Einstellungen aus, welche Updates du sehen möchtest.</string>
-    <string name="brief_ai_studio_key">AI-Studio-API-Key </string>
+    <string name="brief_ai_studio_key">AI-Studio-API-Key</string>
     <string name="brief_api_key_required_title">Einrichtung von KI erforderlich</string>
     <string name="brief_api_key_required_body">Gemini Nano ist auf diesem Gerät nicht verfügbar. Füge einen Gemini API-Key von Google AI Studio hinzu.</string>
     <string name="brief_api_key_settings_body">Erstelle oder verwalte einen Gemini-API-Key in Google AI Studio und füge ihn unten ein.</string>
@@ -741,9 +830,9 @@
     <string name="brief_provider_auto_short">Automatisch</string>
     <string name="brief_settings_debug">Debug</string>
     <string name="brief_ai_disclaimer">Informationen zu KI</string>
-    <string name="brief_ai_disclaimer_body">KI-generierte Texte können unvollständig oder ungenau sein. Twidget beschränkt sie auf berechnete Account-Daten, du solltest wichtige Informationen jedoch trotzdem überprüfen.\n\n%1$s</string>
+    <string name="brief_ai_disclaimer_body">KI-generierte Texte können unvollständig oder ungenau sein. Twidget beschränkt sie auf berechnete Accountdaten, du solltest wichtige Informationen jedoch trotzdem überprüfen.\n\n%1$s</string>
     <string name="brief_enabled">Tägliches Briefing aktivieren</string>
-    <string name="brief_enabled_summary">Erstelle einen privaten täglichen Leitfaden und scanne deine Top-Follower einmal am Tag, sobald der Zugriff konfiguriert ist</string>
+    <string name="brief_enabled_summary">Erstelle einen privaten täglichen Leitfaden, einschließlich Follower-Rankings von der Bridge bei aktiviertem geteiltem Verlauf</string>
     <string name="brief_provider">AI-Provider</string>
     <string name="brief_provider_auto">Automatisch (Lokal, dann Cloud)</string>
     <string name="brief_provider_local">Lokal</string>
@@ -752,12 +841,13 @@
     <string name="brief_provider_local_summary">Nur Gemini Nano verwenden. Account-Stats bleiben lokal auf diesem Gerät.</string>
     <string name="brief_provider_cloud_summary">Gemini Cloud mit deinem eigenen API-Key nutzen</string>
     <string name="brief_cloud_key">Gemini-API-Key</string>
+    <string name="brief_cloud_privacy_summary">Beim Schreiben in der Cloud werden Brief-Zusammenfassungen und Karten mit öffentlichen Namen, Kontostatistiken, Zielen und Zusammenfassungen geplanter Aktivitäten an Google gesendet. Der automatische Modus kann die Cloud nutzen, wenn lokales Schreiben nicht verfügbar ist. Für Speicherung und Nutzung gelten die API-Bedingungen von Google. ML Kit erfasst außerdem Diagnose- und Nutzungsdaten. Wähle „Lokal“ oder entferne deinen Schlüssel, um künftiges Schreiben in der Cloud zu stoppen.</string>
     <string name="brief_cloud_key_summary">Dein Key wird nur an Googles Gemini-API übermittelt und ist sicher im Android Keystore verschlüsselt</string>
     <string name="brief_cloud_key_configured">Konfiguriert und verschlüsselt</string>
     <string name="brief_open">Dein Briefing öffnen</string>
     <string name="brief_followers">Follower</string>
     <string name="brief_top_followers">Top-Follower</string>
-    <string name="brief_top_followers_empty">Noch kein Follower-Ranking. Nutze „Top-Follower finden“ im Dashboard bei aktiviertem geteiltem Verlauf oder füge API-Zugangsdaten hinzu.</string>
+    <string name="brief_top_followers_empty">Noch kein Follower-Ranking. Aktiviere den geteilten Verlauf unter Daten und Quellen und nutze dann „Top-Follower finden“ im Dashboard.</string>
     <string name="brief_post_love">Dein letzter Post kam super an!</string>
     <string name="brief_weekly_growth">Du hast in der vergangenen Woche %1$s neue Follower dazugewonnen.</string>
     <string name="brief_weekly_decline">Du hast %1$s Follower in der vergangenen Woche verloren.</string>
@@ -788,6 +878,7 @@
     <string name="brief_goal_heading">Dein %1$s-Ziel</string>
     <string name="brief_goal_close_heading">Du bist kurz vor deinem %1$s-Ziel</string>
     <string name="brief_goal_reached_heading">Du hast dein %1$s-Ziel erreicht</string>
+    <string name="brief_goal_noun_verified_follower">verif.-Follower</string>
     <string name="brief_streak_heading">Dein Posting-Streak</string>
     <string name="back">Zurück</string>
     <string name="info">Informationen</string>
@@ -800,15 +891,15 @@
     <string name="brief_provider_note_template">Auf dem Gerät aus deinen Twidget-Daten erstellt</string>
     <string name="brief_provider_note_nano">Privat mit Gemini Nano auf diesem Gerät generiert</string>
     <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key geschrieben</string>
-    <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Brief nicht fertigstellen; Gemini Cloud mit deinem API-Key wurde verwendet</string>
+    <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Briefing nicht fertigstellen; Gemini Cloud mit deinem API-Key wurde verwendet</string>
     <string name="brief_provider_note_nano_downloadable">Gemini Nano wird unterstützt und kann heruntergeladen werden</string>
     <string name="brief_provider_note_nano_downloading">Gemini Nano wird noch heruntergeladen</string>
-    <string name="brief_provider_note_nano_failed">Gemini Nano ist verfügbar, konnte dieses Brief aber nicht fertigstellen</string>
+    <string name="brief_provider_note_nano_failed">Gemini Nano ist verfügbar, konnte dieses Briefing aber nicht fertigstellen</string>
     <string name="brief_provider_note_nano_unavailable">Gemini Nano ist auf diesem Gerät nicht verfügbar</string>
     <string name="brief_provider_note_cloud_needs_key">Füge in den Einstellungen einen Gemini-API-Key hinzu, um Cloud-Texte zu aktivieren</string>
-    <string name="brief_provider_note_auto_downloadable">Gemini Nano kann heruntergeladen werden; vorerst werden private Datenbanken verwendet</string>
-    <string name="brief_provider_note_auto_none">Kein KI-Anbieter ist bereit; private Datenbanken werden verwendet</string>
-    <string name="brief_provider_note_unreachable">KI war nicht erreichbar; private Datenbanken werden verwendet</string>
+    <string name="brief_provider_note_auto_downloadable">Gemini Nano kann heruntergeladen werden; vorerst werden lokal erstellte Texte verwendet</string>
+    <string name="brief_provider_note_auto_none">Kein KI-Anbieter ist bereit; lokal erstellte Texte werden verwendet</string>
+    <string name="brief_provider_note_unreachable">KI war nicht erreichbar; lokal erstellte Texte werden verwendet</string>
     <string name="brief_summary_title_moving_closer">Du kommst näher</string>
     <string name="brief_summary_title_momentum">Der Schwung nimmt zu</string>
     <string name="brief_summary_title_reset">Ein Moment zum Neustart</string>
@@ -825,7 +916,7 @@
         <item quantity="other">%1$d geplante Tweets stehen bereit.</item>
     </plurals>
     <string name="brief_summary_top_followers">Bei deinen Top-Followern gibt es eine bedeutende Veränderung.</string>
-    <string name="brief_summary_streak_restart">Zeit, deinen Posting-Rhythmus neu zu starten?</string>
+    <string name="brief_summary_streak_restart">Starte deinen Posting-Rhythmus neu.</string>
     <string name="brief_summary_streak_active">Dein Posting-Rhythmus ist aktiv.</string>
     <string name="brief_summary_schedule_step">In deinem Zeitplan wartet ein sinnvoller nächster Schritt.</string>
     <string name="brief_summary_follow_through">Ein kürzlich geplanter Tweet liefert eine Lektion für deinen nächsten Post.</string>
@@ -866,12 +957,27 @@
     <string name="brief_card_streak_start_ready">Ein Tweet ist jetzt bereit. Veröffentliche ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um einen neuen täglichen Rhythmus zu starten.</string>
     <string name="brief_card_streak_start_idle">Twidget hat seit mehr als drei Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen.</string>
-    <string name="brief_card_streak_title">%1$d-Tage-Posting-Streak</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="one">%1$d Streak-Tag</item>
+        <item quantity="other">%1$d Streak-Tage</item>
+    </plurals>
     <string name="brief_card_streak_kept_today">Du hast den Streak heute schon am Leben gehalten. Gute Arbeit.</string>
-    <string name="brief_card_streak_buffer">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tage-Rhythmus am Laufen.</string>
-    <string name="brief_card_streak_ready">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</string>
-    <string name="brief_card_streak_queued">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</string>
-    <string name="brief_card_streak_tweet_today">Tweete heute, um deinen %1$d-Tage-Rhythmus zu halten.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="one">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tag-Rhythmus am Laufen.</item>
+        <item quantity="other">Ein Tweet wird heute veröffentlicht und hält deinen %1$d-Tage-Rhythmus am Laufen.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="one">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Dein nächster Tweet ist jetzt bereit. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="one">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Du hast heute einen Tweet in der Warteschlange. Poste ihn, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="one">Tweete heute, um deinen %1$d-Tag-Rhythmus zu halten.</item>
+        <item quantity="other">Tweete heute, um deinen %1$d-Tage-Rhythmus zu halten.</item>
+    </plurals>
     <string name="brief_card_top_follower_new">Ein neuer Top-Follower</string>
     <string name="brief_card_top_follower_moved">Ein Follower ist aufgestiegen</string>
     <string name="brief_card_top_follower_title">Dein Top-Follower</string>
@@ -935,7 +1041,66 @@
     <string name="tweet_performance_strong_unexplained">Er lief insgesamt gut, ohne dass eine Kennzahl das Ergebnis klar erklärt.</string>
     <string name="tweet_performance_quiet_unexplained">Er war der ruhigste Tweet dieser Woche, aber keine einzelne Kennzahl erklärt das Ergebnis klar.</string>
     <string name="milestone_noun_follower">Follower</string>
-    <string name="milestone_noun_verified_follower">Verifizierte-Follower</string>
+    <string name="milestone_noun_verified_follower">verifizierte Follower</string>
     <string name="milestone_noun_engagement_rate">Engagement-Rate</string>
     <string name="milestone_noun_impression">Impressionen</string>
+    <string name="top_followers_enable_shared_history">Geteilten Verlauf aktivieren</string>
+    <string name="widget_style">Widget-Stil</string>
+    <string name="widget_style_one_ui">One UI</string>
+    <string name="widget_style_material">Material 3 Expressive</string>
+    <string name="brief_api_key_dialog_body">Erstelle und kopiere einen API-Key in Google AI Studio und füge ihn hier ein. Damit kann dein Briefing Zusammenfassungen verarbeiten. In der <annotation link="privacy">Datenschutzerklärung</annotation> erfährst du, wie diese Daten verwendet und geschützt werden.</string>
+    <string name="brief_api_key_studio_link">Hier tippen, um Google AI Studio zu öffnen</string>
+    <string name="brief_api_key_privacy_open_failed">Die Datenschutzerklärung konnte nicht geöffnet werden.</string>
+    <string name="widget_contained_footer">Nutzername hervorheben</string>
+    <string name="widget_contained_footer_summary">Nutzername auf größeren Material-Widgets mit einem Hintergrund anzeigen.</string>
+    <plurals name="dashboard_streak_days">
+        <item quantity="one">Tag</item>
+        <item quantity="other">Tage</item>
+    </plurals>
+    <string name="streak_card_steady">Stabile Serie</string>
+    <string name="streak_card_record">Neuer Serienrekord</string>
+    <string name="streak_card_save">Rette deine Serie</string>
+    <string name="streak_card_restart">Starte deine Serie neu</string>
+    <string name="settings_app_logo_style">Twitter/X-Logostil</string>
+    <string name="card_catalogue_hint">Tippe auf eine Kartenvorschau, um sie deinem Dashboard hinzuzufügen.</string>
+    <string name="card_group_metrics">Konto und Zielgruppe</string>
+    <string name="card_group_growth">Wachstum und Aktivität</string>
+    <string name="card_group_posts">Tweet-Analyse</string>
+    <string name="card_group_x">X-Analysen</string>
+    <string name="card_group_community">Briefing und Community</string>
+    <string name="card_catalogue_all_added">Alle hinzugefügt</string>
+    <string name="card_catalogue_half_width">Halbe Breite</string>
+    <string name="card_catalogue_full_width">Volle Breite</string>
+    <string name="card_catalogue_add_named">%1$s hinzufügen</string>
+    <string name="card_catalogue_added">%1$s zum Dashboard hinzugefügt</string>
+    <plurals name="card_catalogue_available">
+        <item quantity="one">%d Karte verfügbar</item>
+        <item quantity="other">%d Karten verfügbar</item>
+    </plurals>
+    <string name="debug_haptics_title">Haptik</string>
+    <string name="debug_haptics_actions">App-Effekte</string>
+    <string name="debug_haptics_unsupported">Auf diesem Gerät nicht unterstützt</string>
+    <string name="debug_haptics_hold">Ansteigendes Haltefeedback → Bearbeitungsimpuls</string>
+    <string name="debug_haptics_enter">Bearbeitungsmodus öffnen</string>
+    <string name="debug_haptics_exit">Bearbeitungsmodus verlassen</string>
+    <string name="debug_haptics_long_press">Langes Drücken</string>
+    <string name="debug_haptics_drag_pickup">Zum Ziehen aufnehmen</string>
+    <string name="debug_haptics_drag_hold">Sanfter Impuls beim Ziehen</string>
+    <string name="debug_haptics_selection">Auswahl- / Sortierimpuls</string>
+    <string name="debug_haptics_confirm">Bestätigung</string>
+    <string name="debug_haptics_reject">Ablehnung</string>
+    <string name="debug_haptics_refresh">Zum Aktualisieren ziehen</string>
+    <string name="debug_haptics_primitives">Einzelne Primitive</string>
+    <string name="debug_haptics_low_tick">Leichter Impuls</string>
+    <string name="debug_haptics_tick">Impuls</string>
+    <string name="debug_haptics_click">Klick</string>
+    <string name="debug_haptics_slow_rise">Langsamer Anstieg</string>
+    <string name="debug_haptics_quick_rise">Schneller Anstieg</string>
+    <string name="debug_haptics_quick_fall">Schneller Abfall</string>
+    <string name="debug_haptics_thud">Dumpfer Stoß</string>
+    <string name="debug_haptics_spin">Drehung</string>
+    <string name="debug_haptics_stop">Wiedergabe stoppen</string>
+    <string name="debug_haptics_force_waveforms">Wellenformen erzwingen</string>
+    <string name="debug_haptics_force_waveforms_summary">Wellenform-Annäherungen für primitive Effekte in der gesamten App verwenden. System-Aktionsfeedback bleibt unverändert.</string>
+    <string name="about_evowizz_summary">Kennt sich verdammt gut aus; ins Französische lokalisiert</string>
 </resources>

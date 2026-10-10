@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/oneui_bg"
+    android:focusableInTouchMode="true"
     app:expandable="true"
     app:expanded="false"
     app:handleInsets="false"
@@ -33,10 +34,10 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:fadeScrollbars="true"
-                android:paddingTop="4dp"
+                android:paddingTop="0dp"
                 android:paddingBottom="4dp"
                 android:scrollbarStyle="insideOverlay"
-                android:scrollbars="vertical" />
+                android:scrollbars="none" />
 
             <TextView
                 android:id="@+id/top_followers_browse_empty"
@@ -50,4 +51,19 @@
                 android:visibility="gone" />
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    <androidx.appcompat.widget.SearchView
+        android:id="@+id/top_followers_browse_search"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:maxWidth="@dimen/top_followers_search_compact_width"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        app:layout_location="root"
+        app:queryBackground="@drawable/sesl_textfield_search_light"
+        app:closeIcon="@drawable/sesl_ic_search_bottom_clear"
+        app:voiceIcon="@drawable/search_mic_icon"
+        app:queryHint="@string/top_followers_browser_search_hint"
+        app:seslIsBottomSearchView="true" />
 </dev.oneuiproject.oneui.layout.ToolbarLayout>

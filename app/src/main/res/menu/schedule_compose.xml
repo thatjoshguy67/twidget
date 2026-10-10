@@ -3,9 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:ignore="AppCompatResource">
-    <item
-        android:id="@+id/schedule_compose_save"
+    <item android:id="@id/schedule_compose_draft_button"
+        android:title="@string/schedule_compose_draft"
+        app:showAsAction="always|withText" />
+    <item android:id="@+id/schedule_compose_save"
         android:title="@string/schedule_compose_save"
-        app:actionLayout="@layout/action_schedule_compose_save"
         app:showAsAction="always|withText" />
 </menu>

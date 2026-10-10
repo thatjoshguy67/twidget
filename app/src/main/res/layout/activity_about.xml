@@ -29,6 +29,7 @@
         android:stateListAnimator="@null"
         app:elevation="0dp"
         app:liftOnScroll="false"
+        app:expanded="true"
         app:seslHeightProportion="0.5"
         app:seslUseCustomHeight="true">
 
@@ -79,7 +80,7 @@
 
                 <TextView
                     android:id="@+id/about_header_version"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:fontFamily="sec"
@@ -87,23 +88,26 @@
                     android:textColor="?android:textColorSecondary"
                     android:textSize="14sp" />
 
-                <FrameLayout
+                <LinearLayout
                     android:id="@+id/about_update_action"
                     android:layout_width="match_parent"
                     android:layout_height="72dp"
+                    android:gravity="center"
+                    android:orientation="horizontal"
                     android:clipChildren="false"
                     android:clipToPadding="false"
                     android:paddingTop="24dp"
                     android:visibility="invisible">
 
-                    <ImageView
+                    <com.tjg.twidget.ui.LoadingSpinner
                         android:id="@+id/about_update_spinner"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:layout_gravity="center"
                         android:contentDescription="@string/checking_for_updates"
                         android:elevation="2dp"
-                        android:src="@drawable/oneui_spinner"
+                        android:indeterminateDrawable="@drawable/oneui85_spinner"
+                        android:indeterminate="true"
                         android:visibility="gone" />
 
                     <androidx.appcompat.widget.AppCompatButton
@@ -119,7 +123,7 @@
                         android:textStyle="bold"
                         android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme"
                         android:visibility="gone" />
-                </FrameLayout>
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -138,8 +142,12 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <androidx.core.widget.NestedScrollView
+        <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
             android:id="@+id/about_scroll"
+            app:roundedCorners="all"
+            app:roundedCornerColor="@color/oneui_bg"
+            app:edgeInsetLeft="10dp"
+            app:edgeInsetRight="10dp"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/transparent"
@@ -155,58 +163,17 @@
                 android:paddingEnd="10dp"
                 android:paddingBottom="24dp">
 
-                <LinearLayout
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_compact_header"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="24dp"
-                    android:paddingTop="14dp"
-                    android:paddingEnd="24dp"
-                    android:paddingBottom="14dp">
-
-                    <androidx.appcompat.widget.AppCompatImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        app:srcCompat="@mipmap/ic_launcher" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="20dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="sec"
-                            android:text="@string/app_name"
-                            android:textColor="?android:textColorPrimary"
-                            android:textSize="18sp" />
-
-                        <TextView
-                            android:id="@+id/about_compact_version"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="sec"
-                            android:textColor="?android:textColorSecondary"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="sec"
-                android:lineSpacingExtra="3dp"
-                android:paddingStart="24dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="12dp"
-                android:text="@string/about_summary"
-                android:textColor="?android:textColorSecondary"
-                android:textSize="15sp" />
+                    android:clickable="false"
+                    android:focusable="false"
+                    app:icon="@mipmap/ic_launcher"
+                    app:iconSize="40dp"
+                    app:title="@string/app_name"
+                    app:drawableEnd="@drawable/ic_settings_github"
+                    app:showTopDivider="false" />
 
             <dev.oneuiproject.oneui.widget.Separator
                 android:layout_width="match_parent"
@@ -257,9 +224,22 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="true"
+                    app:fullWidthDivider="true"
                     app:summary="@string/about_aaron_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_aaron_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_evowizz_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:showTopDivider="true"
+                    app:fullWidthDivider="true"
+                    app:summary="@string/about_evowizz_summary"
+                    app:summaryMaxLines="4"
+                    app:title="@string/about_evowizz_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             <dev.oneuiproject.oneui.widget.Separator
@@ -279,8 +259,7 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="false"
-                    app:summary="@string/about_fxtwitter_summary"
-                    app:summaryMaxLines="4"
+                                        app:summaryMaxLines="4"
                     app:title="@string/about_fxtwitter_title" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
@@ -289,6 +268,7 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="true"
+                    app:fullWidthDivider="true"
                     app:summary="@string/about_oneui_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/oneui_project" />
@@ -311,8 +291,7 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="false"
-                    app:summary="@string/about_privacy_policy_summary"
-                    app:summaryMaxLines="3"
+                                        app:summaryMaxLines="3"
                     app:title="@string/about_privacy_policy_title" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
@@ -321,6 +300,7 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="true"
+                    app:fullWidthDivider="true"
                     app:summary="@string/about_open_source_licenses_summary"
                     app:summaryMaxLines="6"
                     app:title="@string/about_open_source_licenses_title" />
@@ -331,11 +311,12 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     app:showTopDivider="true"
+                    app:fullWidthDivider="true"
                     app:title="@string/about_legal_notice_title" />
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             </LinearLayout>
-        </androidx.core.widget.NestedScrollView>
+        </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <LinearLayout

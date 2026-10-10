@@ -37,7 +37,7 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 16
+    private const val ENGINE_VERSION = 17
 
     fun rebuild(context: Context, username: String, force: Boolean = false): BriefSnapshot {
         val clean = username.trim().trimStart('@')
@@ -375,7 +375,7 @@ object BriefEngine {
                 state,
                 progress,
                 target,
-                settings.metric.goalNoun(localized),
+                briefGoalNoun(settings.metric, localized),
             )
             val preciseBody = if (progress in 75..99) {
                 BriefGoalCopy.remainingBody(settings.metric, value, settings.target, strings)
@@ -442,15 +442,15 @@ object BriefEngine {
         return BriefCard(
             "streak",
             BriefCardType.STREAK,
-            strings.text(R.string.brief_card_streak_title, streak.streak),
+            strings.quantityText(R.plurals.brief_card_streak_title, streak.streak, streak.streak),
             when {
                 streak.activeToday -> strings.text(R.string.brief_card_streak_kept_today)
                 scheduledToday?.provider == ScheduleProvider.BUFFER && scheduledToday.status == ScheduleStatus.SCHEDULED ->
-                    strings.text(R.string.brief_card_streak_buffer, streak.streak)
+                    strings.quantityText(R.plurals.brief_card_streak_buffer, streak.streak, streak.streak)
                 scheduledToday?.provider == ScheduleProvider.LOCAL_REMINDER && scheduledToday.status == ScheduleStatus.NEEDS_ACTION ->
-                    strings.text(R.string.brief_card_streak_ready, streak.streak)
-                scheduledToday != null -> strings.text(R.string.brief_card_streak_queued, streak.streak)
-                else -> strings.text(R.string.brief_card_streak_tweet_today, streak.streak)
+                    strings.quantityText(R.plurals.brief_card_streak_ready, streak.streak, streak.streak)
+                scheduledToday != null -> strings.quantityText(R.plurals.brief_card_streak_queued, streak.streak, streak.streak)
+                else -> strings.quantityText(R.plurals.brief_card_streak_tweet_today, streak.streak, streak.streak)
             },
             BriefRankingPolicy.streak(streak.streak, streak.activeToday),
             rankSignals = BriefRankSignals(
@@ -581,6 +581,11 @@ object BriefEngine {
         } else {
             strings.number(target.toLong())
         }
+
+    private fun briefGoalNoun(metric: MilestoneMetric, context: Context): String = when (metric) {
+        MilestoneMetric.VERIFIED_FOLLOWERS -> context.getString(R.string.brief_goal_noun_verified_follower)
+        else -> metric.goalNoun(context)
+    }
 }
 
 internal object BriefGoalCopy {
@@ -608,7 +613,12 @@ internal object BriefGoalCopy {
         } else {
             strings.number(target.toLong())
         }
-        return strings.text(R.string.brief_goal_remaining_body, amount, targetLabel, strings.text(metric.goalNounRes))
+        val goalNoun = if (metric == MilestoneMetric.VERIFIED_FOLLOWERS) {
+            strings.text(R.string.brief_goal_noun_verified_follower)
+        } else {
+            strings.text(metric.goalNounRes)
+        }
+        return strings.text(R.string.brief_goal_remaining_body, amount, targetLabel, goalNoun)
     }
 
     private fun count(value: Double, pluralRes: Int, strings: BriefStrings): String {

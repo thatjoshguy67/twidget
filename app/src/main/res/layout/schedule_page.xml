@@ -49,6 +49,7 @@
     </LinearLayout>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
+        style="@style/TwidgetFloatingNavigation"
         android:id="@+id/schedule_selection_bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -59,6 +60,7 @@
         app:menu="@menu/schedule_selection" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
+        style="@style/TwidgetFloatingNavigation"
         android:id="@+id/schedule_trash_bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -68,7 +70,7 @@
         app:labelVisibilityMode="labeled"
         app:menu="@menu/schedule_trash_selection" />
 
-    <dev.oneuiproject.oneui.widget.ScrollAwareFloatingActionButton
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/schedule_primary_button"
         android:layout_width="70dp"
         android:layout_height="70dp"

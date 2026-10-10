@@ -3,8 +3,6 @@ package com.tjg.twidget.followers
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Instant
-import java.time.ZoneId
 import java.util.Locale
 
 data class TopFollower(
@@ -31,28 +29,6 @@ data class TopFollowersState(
     val completedAt: Long = 0L,
     val activeRunId: String = "",
 )
-
-enum class TopFollowersScanStart {
-    STARTED,
-    ALREADY_SCANNED_TODAY,
-    NO_API_KEY,
-}
-
-internal object TopFollowersScanPolicy {
-    fun localDay(timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): String =
-        Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate().toString()
-
-    fun canStart(lastStartedDay: String, timestamp: Long, zoneId: ZoneId = ZoneId.systemDefault()): Boolean =
-        lastStartedDay != localDay(timestamp, zoneId)
-
-    fun canStart(
-        lastStartedDay: String,
-        previousScanComplete: Boolean,
-        timestamp: Long,
-        zoneId: ZoneId = ZoneId.systemDefault(),
-        dailyLimitEnabled: Boolean = true,
-    ): Boolean = !dailyLimitEnabled || !previousScanComplete || canStart(lastStartedDay, timestamp, zoneId)
-}
 
 object TopFollowersStore {
     private const val PREFS = "twidget_top_followers"
@@ -123,58 +99,11 @@ object TopFollowersStore {
     }
 
     @Synchronized
-    fun tryStartScan(
-        context: Context,
-        username: String,
-        runId: String,
-        dailyLimitEnabled: Boolean = true,
-        now: Long = System.currentTimeMillis(),
-        zoneId: ZoneId = ZoneId.systemDefault(),
-    ): TopFollowersScanStart {
-        val previous = read(context, username)
-        if (!TopFollowersScanPolicy.canStart(
-                previous.lastStartedDay,
-                previous.complete,
-                now,
-                zoneId,
-                dailyLimitEnabled,
-            )
-        ) {
-            return TopFollowersScanStart.ALREADY_SCANNED_TODAY
-        }
-        if (previous.lastStartedDay == TopFollowersScanPolicy.localDay(now, zoneId) && !previous.complete) {
-            write(context, username, previous.copy(scanning = true, error = "", activeRunId = runId))
-            return TopFollowersScanStart.STARTED
-        }
-        write(
-            context,
-            username,
-            TopFollowersState(
-                scanning = true,
-                startedAt = now,
-                lastStartedDay = TopFollowersScanPolicy.localDay(now, zoneId),
-                activeRunId = runId,
-            ),
-        )
+    fun clear(context: Context, username: String) {
+        prefs(context).edit().remove(key(username)).apply()
         TopFollowersArchiveStore.clear(context, username)
-        return TopFollowersScanStart.STARTED
-    }
-
-    @Synchronized
-    fun isRunCurrent(context: Context, username: String, runId: String): Boolean =
-        runId.isNotBlank() && read(context, username).activeRunId == runId
-
-    @Synchronized
-    fun writeForRun(
-        context: Context,
-        username: String,
-        runId: String,
-        state: TopFollowersState,
-        finished: Boolean = false,
-    ): Boolean {
-        if (!isRunCurrent(context, username, runId)) return false
-        write(context, username, state.copy(activeRunId = if (finished) "" else runId))
-        return true
+        androidx.work.WorkManager.getInstance(context.applicationContext)
+            .cancelUniqueWork("twidget-top-followers-bridge-${key(username)}")
     }
 
     @Synchronized
@@ -182,6 +111,16 @@ object TopFollowersStore {
         val stopped = read(context, username).copy(scanning = false, error = "", activeRunId = "")
         write(context, username, stopped)
         return stopped
+    }
+
+    /** Preserve completed rankings, but discard state belonging to removed on-device scans. */
+    fun clearLocalScanState(context: Context) {
+        prefs(context).all.keys.forEach { username ->
+            val previous = read(context, username)
+            if (previous.scanning || previous.activeRunId.isNotBlank() || previous.cursor.isNotBlank()) {
+                write(context, username, previous.copy(scanning = false, activeRunId = "", cursor = "", error = ""))
+            }
+        }
     }
 
     private fun key(username: String) = username.trim().trimStart('@').lowercase(Locale.US)

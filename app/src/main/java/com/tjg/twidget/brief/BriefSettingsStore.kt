@@ -7,6 +7,7 @@ object BriefSettingsStore {
     private const val PREFS = "twidget_brief_settings"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+    private const val KEY_SETTINGS_VIEWED = "settings_viewed"
     private const val KEY_PROVIDER = "provider"
     private const val KEY_CONTENT_PREFIX = "content_"
     private const val KEY_CONTENT_REGENERATION_PENDING = "content_regeneration_pending"
@@ -23,6 +24,16 @@ object BriefSettingsStore {
     fun setOnboardingComplete(context: Context, complete: Boolean) {
         prefs(context).edit().putBoolean(KEY_ONBOARDING_COMPLETE, complete).apply()
     }
+
+    fun settingsViewed(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_SETTINGS_VIEWED, false)
+
+    fun markSettingsViewed(context: Context) {
+        prefs(context).edit().putBoolean(KEY_SETTINGS_VIEWED, true).apply()
+    }
+
+    fun showSettingsBadge(context: Context): Boolean =
+        !onboardingComplete(context) || !settingsViewed(context)
 
     fun provider(context: Context): BriefProviderMode =
         BriefProviderMode.fromStorageId(prefs(context).getString(KEY_PROVIDER, null))

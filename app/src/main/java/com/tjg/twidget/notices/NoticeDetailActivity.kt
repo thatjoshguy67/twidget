@@ -28,15 +28,12 @@ class NoticeDetailActivity : FoldablePopOverActivity() {
         val root = findViewById<FrameLayout>(R.id.notice_detail_root)
         val scroll = findViewById<RoundedNestedScrollView>(R.id.notice_detail_scroll)
         val back = findViewById<FrameLayout>(R.id.notice_detail_back)
-        back.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        NoticeReaderChrome.install(back) { onBackPressedDispatcher.onBackPressed() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val safe = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
-            back.layoutParams = (back.layoutParams as FrameLayout.LayoutParams).apply {
-                marginStart = safe.left + dp(18)
-                topMargin = safe.top + dp(18)
-            }
+            NoticeReaderChrome.updateInsets(back, safe.left, safe.top, safe.right)
             scroll.setPadding(safe.left, 0, safe.right, safe.bottom)
             insets
         }

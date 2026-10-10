@@ -11,6 +11,9 @@ the Git repository.
   `~/.config/twidget/github.properties` with owner-only permissions.
 - GitHub Actions stores the base64-encoded release keystore, signing passwords,
   and package-registry credentials as encrypted repository secrets.
+- GitHub Actions stores the Play publisher service account JSON as the encrypted
+  repository secret `PLAY_SERVICE_ACCOUNT_JSON`. It is used only by the Play
+  publishing job, never by debug or pull-request builds.
 - Railway stores the server-only Top Followers provider credential as the
   sealed `TWITTERAPIS_API_KEY` service variable. It is never injected into an
   APK or GitHub Actions build.
@@ -42,10 +45,120 @@ printf "%s" "$TWITTERAPIS_API_KEY" | railway variable set TWITTERAPIS_API_KEY --
 
 For local bridge development, set `TWITTERAPIS_API_KEY` only in the bridge
 process environment. Android builds deliberately contain no included provider
-credential; users who do not opt into shared history need their own provider
-credentials for Top Followers scans.
+credential. Top Followers always uses the bridge and requires shared-history
+consent. Personal provider credentials are only used for profiles and post
+analytics. Both distributions omit foreground-service permissions and migrate
+away from any previously queued device-side follower scans.
 
 ## Stable release checklist
+
+### Distribution flavors
+
+`github` retains the APK updater. `play` delegates updates to Google Play and
+omits the sideload permission, file provider and reminder receiver. Both use
+`com.tjg.twidget` and the same version codes. To preserve upgrades for existing
+installs, configure Play App Signing with the existing app signing identity;
+the upload key alone does not determine the certificate delivered to devices.
+
+Use JDK 25 or newer for all commands below; the SESL9 dependencies contain
+Java 24 bytecode. Set `JAVA_HOME` to that JDK (CI uses JDK 25).
+
+Build a signed Play release locally with:
+
+```bash
+./gradlew testPlayReleaseUnitTest assemblePlayRelease bundlePlayRelease lintPlayRelease
+python3 scripts/verify-play-bundle.py app/build/outputs/bundle/playRelease/app-play-release.aab
+```
+
+CI provides these downloads in each run's **Artifacts** section:
+
+| Workflow | GitHub distribution | Play distribution |
+| --- | --- | --- |
+| Debug Build + Play Build (pushes to main/staging) | Existing production-signed debug APK/AAB and rolling GitHub release | Unsigned validation AAB in `twidget-play-validation-unsigned`; do not upload |
+| Pre-release | Signed beta APK/AAB on the GitHub pre-release | Signed beta APK/AAB in `twidget-play-<version>-beta.<number>` |
+| Release | Signed release APK/AAB on the GitHub release | Signed release APK/AAB in `twidget-play-<version>` |
+
+The Play APK can be installed directly for testing; upload the Play AAB to
+Play Console manually until automatic publishing is enabled below. The signed
+APK and AAB must have matching certificates, and
+stable/beta workflows also verify that Play matches the GitHub distribution.
+Play artifacts stay separate from GitHub release assets because older GitHub
+updaters may select any attached APK.
+
+Routine Play Build runs (pushes, pull requests, and manual runs without a beta
+number) produce only an unsigned validation AAB. Use the Pre-release or Release
+workflow's versioned Play artifact for Play Console uploads. Do not upload a
+GitHub-flavor AAB or a debuggable build to Google Play.
+
+For a signed rebuild of an existing beta, dispatch **Play Build** with
+`beta_number` and `highest_play_code`, using a reviewed ref containing the fixes.
+The beta tag must exist, and the built version code must exceed the supplied
+highest code before CI uploads the signed files. The artifact and both filenames
+include the beta version and code; its run summary identifies the upload AAB.
+This recovery path does not move the published beta tag or replace GitHub APKs.
+
+A permanent offset of 100 was added to the semantic-version code allocation
+after code `100300099` (the 1.3.0 stable slot) was uploaded during beta testing.
+The corrected beta.2 uses `100300181`, beta.3 will use `100300182`, and stable
+1.3.0 will use `100300199`. Retain the offset for future versions: 1.3.1 beta.1
+uses `100300280`, preserving upgrades. Both distributions keep the same code
+allocation. Never upload an unreleased stable build as a beta.
+
+### Automatic Google Play publishing
+
+GitHub debug releases remain unchanged and are never submitted to Play. Once
+enabled, **Pre-release** publishes its GitHub pre-release, then submits the same
+version's signed Play AAB to open testing (API track `beta`). **Release** publishes
+its GitHub release, then submits its signed Play AAB to `production` at 100%.
+The Play build comes from the same commit as the corresponding GitHub build;
+the separate distribution flavors retain their existing updater behavior.
+Closed testing remains a manual option for initial setup or private tests.
+
+Complete the one-time setup before enabling publishing:
+
+1. Finish the initial Play Console setup, manual bundle upload, Play App Signing,
+   required testing, and access to open testing and production.
+2. Enable the Google Play Android Developer API in a Google Cloud project and
+   create a service account. Invite its email in Play Console **Users and
+   permissions**, with access to Twidget and permissions to view app information,
+   release to testing tracks, and release to production. See Google's
+   [service account setup](https://developers.google.com/android-publisher/getting_started#service-account).
+3. Store its JSON key contents in the GitHub repository secret
+   `PLAY_SERVICE_ACCOUNT_JSON`. Keep the key outside the repository.
+4. Leave **managed publishing off** for automatic availability after approval.
+   If it is enabled, approved changes must be published through Play Console.
+5. Set the GitHub repository variable `PLAY_PUBLISHING_ENABLED` to `true`.
+   An unset variable keeps the existing GitHub-only publishing process.
+
+Before each beta or stable release, add
+`docs/play-console/<version>-release-notes.txt` (for example,
+`1.4.0-beta.1-release-notes.txt`). Use the existing Play Console format with
+`<en-GB>`, `<de-DE>`, and any other translated language blocks. Each language
+must contain 1–500 Unicode characters. These are concise, localized versions
+of the GitHub changelog, which can be longer. When publishing is enabled, CI
+validates the notes before building or publishing the GitHub release.
+
+The shared **Publish to Google Play** workflow downloads the signed artifact
+from the current run and submits it for review. Its summary confirms submission,
+not approval or availability. Google review and publishing settings determine
+when testers or users receive it; see
+[Google's publishing controls](https://support.google.com/googleplay/android-developer/answer/9859654).
+Release runs and Play edits are serialized to avoid conflicting versions/edits.
+Do not edit the app in Play Console while an automated submission is running.
+
+If the Play job fails, the GitHub release and signed workflow artifact remain
+available. Fix credentials or Play Console prerequisites, then **Re-run failed
+jobs** to retry just publishing. If Play already accepted the version code
+(including an interrupted submission), inspect Play Console and finish the
+release using that existing bundle rather than uploading the same code again.
+Do not rerun all jobs or change an existing published tag for Play recovery.
+If Google requires explicit review submission, use **Send for review** in Play
+Console; CI does not silently fall back to a draft or skip review.
+
+To pause automatic submissions, unset `PLAY_PUBLISHING_ENABLED` or set it to
+`false`. This does not withdraw versions already submitted to Play.
+
+### Publishing
 
 1. Ensure `main` is clean, current with `origin/main`, and green in GitHub
    Actions.
@@ -108,8 +221,7 @@ checked-in debug certificate so pull-request code never receives production
 signing credentials. To build an interchangeable debug APK locally, use:
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
-  ./gradlew assembleDebug -PsignDebugWithRelease=true
+./gradlew assembleGithubDebug -PsignDebugWithRelease=true
 ```
 
 This keeps the `-debug.N` version name but makes the APK signature compatible
@@ -117,10 +229,10 @@ with beta and stable builds. It is a debuggable production-signed artifact and
 must not be published or shared.
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
-  ./gradlew testDebugUnitTest assembleDebug lintDebug \
-  bundleDebug testReleaseUnitTest assembleRelease bundleRelease lintVitalRelease \
-  testBetaUnitTest assembleBeta bundleBeta lintVitalBeta
+./gradlew testGithubDebugUnitTest assembleGithubDebug lintGithubDebug \
+  bundleGithubDebug testGithubReleaseUnitTest assembleGithubRelease bundleGithubRelease lintVitalGithubRelease \
+  testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintVitalGithubBeta \
+  testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta
 
 cd bridge
 npm ci
@@ -131,6 +243,16 @@ npm audit --omit=dev
 
 Release and Pre-release workflows run the bridge checks automatically before
 building the Android APK and AAB. The local checklist above mirrors both jobs.
+
+Keep unit tests enabled for every build type in `gradle.properties`: AGP 9's
+default only creates them for the instrumentation-tested build type (`debug`).
+The beta and release workflows need their own variant tests, including the Play
+updater boundary checks. Minified builds also enforce that the unused SESL8
+immersive-scroll helper is discarded; do not remove that R8 guard when changing
+the One UI wrapper or SESL dependencies. The scoped rule makes the old wrapper's
+activation API a no-op in optimized builds. On wrapper upgrades, also review
+new uses of that API: the discard check cannot detect a newly intended call
+that the rule would silently disable.
 
 Before making the repository public, scan the complete Git history—not merely
 the working tree—for credentials and sensitive signing files. If a real secret

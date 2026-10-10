@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Diamond. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M12.2397 17.4316C12.1687 17.6696 11.8317 17.6696 11.7607 17.4316L9.7607 10.7446H14.2397L12.2397 17.4316ZM20.7637 8.75356L18.0187 5.49356C17.5427 4.92856 16.8407 4.60156 16.0997 4.60156H7.8987C7.1597 4.60156 6.4577 4.92856 5.9807 5.49356L3.2357 8.75356C2.9337 9.11356 2.9207 9.63256 3.2037 10.0066L10.4617 18.6786C11.2627 19.6376 12.7367 19.6376 13.5387 18.6786L20.7967 10.0066C21.0797 9.63256 21.0657 9.11356 20.7637 8.75356Z" android:fillColor="?android:attr/textColorPrimary" android:fillType="evenOdd" />
+</vector>

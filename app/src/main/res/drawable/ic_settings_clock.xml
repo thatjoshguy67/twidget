@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: TimeOutline. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M12 7.5957V11.3657C12 11.6457 12.227 11.8737 12.507 11.8737H15.576M20.5 12C20.5 7.305 16.695 3.5 12 3.5C7.306 3.5 3.5 7.305 3.5 12C3.5 16.695 7.306 20.5 12 20.5C16.695 20.5 20.5 16.695 20.5 12Z" android:fillColor="#00000000" android:strokeColor="?android:attr/textColorPrimary" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

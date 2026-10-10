@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_data_sources">Données et sources</string>
+    <string name="settings_your_brief">Ton Brief</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_scheduled_tweets">Tweets programmés</string>
+    <string name="settings_main_account">Compte principal</string>
+    <string name="settings_other_accounts">Autres comptes</string>
+    <string name="settings_alternate_sources">Gérer les sources alternatives</string>
+    <string name="settings_self_hosted_bridge">Bridge Twidget auto-hébergé</string>
+    <string name="settings_widget_defaults">Paramètres par défaut des widgets</string>
+    <string name="settings_system_default">Par défaut du système</string>
+    <string name="settings_analytics_import">Importation des statistiques X</string>
+    <string name="settings_import_pending">En attente</string>
+    <string name="settings_imported">Importé</string>
+    <string name="settings_connected">Connecté</string>
+    <string name="settings_enable_dummy">Activer le profil fictif</string>
+    <string name="settings_android_api">API Android %1$d</string>
+    <string name="settings_last_error">Dernière erreur : %1$s</string>
+    <string name="settings_palette_seed">Couleur source</string>
+    <string name="settings_palette_primary_light">Primaire · clair</string>
+    <string name="settings_palette_primary_dark">Primaire · sombre</string>
+    <string name="settings_palette_control_light">Contrôle · clair</string>
+    <string name="settings_palette_control_dark">Contrôle · sombre</string>
+    <string name="settings_palette_token">%1$s : %2$s</string>
+    <string name="settings_demo_name">Démo Twidget</string>
+    <string name="settings_brief_description">%1$s\n\n%2$s</string>
+    <string name="settings_update_channel">Canal de mise à jour</string>
+    <string name="settings_app_font">Police de l\'application</string>
+    <string name="settings_app_font_default">Par défaut (One UI Sans)</string>
+    <string name="settings_font_tip_title">Astuce pour les polices</string>
+    <string name="settings_font_tip_summary">Utilise SamFonts pour changer la police système de One UI, puis choisis Par défaut du système dans Police de l\'application.</string>
+    <string name="settings_font_tip_link">Obtenir SamFonts</string>
+</resources>

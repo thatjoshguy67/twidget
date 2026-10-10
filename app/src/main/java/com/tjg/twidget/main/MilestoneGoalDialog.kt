@@ -1,5 +1,6 @@
 package com.tjg.twidget.main
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -16,6 +17,7 @@ import kotlin.math.ceil
 import kotlin.math.pow
 
 internal object MilestoneGoalDialog {
+    @SuppressLint("RestrictedApi") // See the interval compatibility note below.
     fun show(
         activity: AppCompatActivity,
         username: String,
@@ -40,6 +42,9 @@ internal object MilestoneGoalDialog {
             wrapSelectorWheel = false
             setFormatter { value -> formatPickerValue(metric, value) }
             wheelStep(metric, current).takeIf { it > 1 }?.let { step ->
+                // SESL9 restricts this setter, but its public setCustomInterval rejects
+                // our 1..999,999,999 bounds. Retain the wheel-only step while allowing
+                // arbitrary exact targets through text entry (including existing goals).
                 setCustomIntervalValue(step)
                 applyWheelCustomInterval(true)
             }

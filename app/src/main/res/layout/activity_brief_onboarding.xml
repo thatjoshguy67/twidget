@@ -1,9 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/brief_onboarding_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/brief_onboarding_background">
+
+    <!-- Scroll within the space below the persistent Back action. -->
+    <ScrollView
+        android:id="@+id/brief_onboarding_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="64dp"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <!-- Centre short content and allow long text to scroll. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:paddingHorizontal="28dp"
+            android:paddingBottom="24dp">
+
+            <!-- Continue's elevation extends past this content group's bottom edge. -->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:layout_gravity="center_horizontal">
+
+                <LinearLayout
+                    android:id="@+id/brief_onboarding_copy"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintWidth_max="354dp">
+
+                    <TextView
+                        android:id="@+id/brief_onboarding_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sec"
+                        android:includeFontPadding="false"
+                        android:textColor="@color/oneui_text_primary"
+                        android:textSize="36sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:fontFamily="sec"
+                        android:includeFontPadding="false"
+                        android:lineSpacingExtra="1dp"
+                        android:text="@string/brief_onboarding_body"
+                        android:textColor="@color/oneui_text_primary"
+                        android:textSize="14sp" />
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/brief_onboarding_continue"
+                    android:layout_width="0dp"
+                    app:layout_constraintWidth_max="268dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/brief_onboarding_copy"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="60dp"
+                    android:padding="12dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="28dp"
+                    android:background="@drawable/brief_onboarding_button_bg"
+                    android:clickable="true"
+                    android:elevation="8dp"
+                    android:focusable="true"
+                    android:fontFamily="sec"
+                    android:gravity="center"
+                    android:text="@string/brief_onboarding_continue"
+                    android:textColor="@color/oneui_text_primary"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+    </ScrollView>
 
     <ImageButton
         android:id="@+id/brief_onboarding_back"
@@ -16,49 +102,4 @@
         android:contentDescription="@string/back"
         android:padding="13dp"
         android:scaleType="centerInside" />
-
-    <LinearLayout
-        android:layout_width="354dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center_horizontal"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/brief_onboarding_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="sec"
-            android:includeFontPadding="false"
-            android:textColor="@color/oneui_text_primary"
-            android:textSize="36sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:fontFamily="sec"
-            android:includeFontPadding="false"
-            android:lineSpacingExtra="1dp"
-            android:text="@string/brief_onboarding_body"
-            android:textColor="@color/oneui_text_primary"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/brief_onboarding_continue"
-            android:layout_width="268dp"
-            android:layout_height="60dp"
-            android:layout_marginTop="68dp"
-            android:background="@drawable/brief_onboarding_button_bg"
-            android:clickable="true"
-            android:elevation="8dp"
-            android:focusable="true"
-            android:fontFamily="sec"
-            android:gravity="center"
-            android:text="@string/brief_onboarding_continue"
-            android:textColor="@color/oneui_text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-    </LinearLayout>
 </FrameLayout>

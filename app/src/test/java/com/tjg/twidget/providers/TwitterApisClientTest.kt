@@ -9,19 +9,6 @@ import org.junit.Test
 
 class TwitterApisClientTest {
     @Test
-    fun personalKeyEnablesDirectTopFollowersAccess() {
-        val access = TwitterApisClient.selectTopFollowersAccess(" personal ")
-
-        assertEquals("personal", access?.apiKey)
-        assertEquals(TwitterApisAccessSource.PERSONAL, access?.source)
-    }
-
-    @Test
-    fun noProviderCredentialIsEmbeddedInTheApp() {
-        assertEquals(null, TwitterApisClient.selectTopFollowersAccess(""))
-    }
-
-    @Test
     fun parsesProfileMetrics() {
         val profile = TwitterApisClient.parseProfile(
             """{"data":{"username":"person","name":"Person","followers_count":9000,"following_count":25,"tweet_count":300,"favourites_count":40,"profile_image_url":"https://pbs.twimg.com/a_normal.jpg","is_blue_verified":true,"protected":false}}""",
@@ -49,55 +36,6 @@ class TwitterApisClientTest {
         assertEquals(77L, profile.followersCount)
         assertEquals(8L, profile.followingsCount)
         assertTrue(profile.isPrivate == true)
-    }
-
-    @Test
-    fun parsesFollowerPageAndCursor() {
-        val page = TwitterApisClient.parsePage(
-            """{
-              "users": [{
-                "id": "42",
-                "username": "famous",
-                "name": "Famous Person",
-                "followers_count": 1234567,
-                "following_count": 12,
-                "is_blue_verified": true,
-                "following": true,
-                "profile_image_url": "https://pbs.twimg.com/profile_images/42/avatar_normal.jpg"
-              }],
-              "next_cursor": "cursor-value"
-            }""",
-        )
-
-        assertEquals("cursor-value", page.nextCursor)
-        assertEquals(1, page.users.size)
-        assertEquals("famous", page.users.single().username)
-        assertEquals(1_234_567L, page.users.single().followers)
-        assertTrue(page.users.single().verified)
-        assertEquals(true, page.users.single().mutual)
-        assertTrue(page.users.single().avatarUrl.contains("_400x400."))
-    }
-
-    @Test
-    fun parseMutualReturnsNullWhenFieldMissing() {
-        val mutual = TwitterApisClient.parseMutual(org.json.JSONObject("""{"username":"x"}"""))
-        assertEquals(null, mutual)
-    }
-
-    @Test
-    fun emptyUsersIsReliableCompletionSignal() {
-        val page = TwitterApisClient.parsePage("""{"users":[],"next_cursor":"still-present"}""")
-        assertTrue(page.users.isEmpty())
-        assertEquals("still-present", page.nextCursor)
-    }
-
-    @Test
-    fun followerAvatarAcceptsHttpsAliasAndNormalizesCdnUrl() {
-        val page = TwitterApisClient.parsePage(
-            """{"users":[{"id":"1","username":"avatar","name":"Avatar","profile_image_url_https":"//pbs.twimg.com/profile_images/1/photo_normal.jpg"}],"next_cursor":""}""",
-        )
-
-        assertEquals("https://pbs.twimg.com/profile_images/1/photo_400x400.jpg", page.users.single().avatarUrl)
     }
 
     @Test

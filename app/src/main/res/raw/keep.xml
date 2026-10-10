@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keeps the Samsung theme metadata, which the manifest names only as plain text. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@xml/meta_998_sesl_app" />

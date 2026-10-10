@@ -1,26 +1,27 @@
 # Twidget Privacy Policy
 
 **Effective date:** 26 July 2026
-**Last updated:** 6 August 2026
+**Last updated:** 19 September 2026
 
 This Privacy Policy explains how **Twidget** (`com.tjg.twidget`) accesses,
 uses, stores, transmits, and deletes information. Twidget is developed and
 published by **That Josh Guy**.
 
 Twidget is an independent app for viewing public X/Twitter account statistics,
-displaying widgets, importing account analytics, finding top followers, and
+displaying widgets, importing account analytics, finding top followers, generating an optional Your Brief summary, and
 optionally preparing or scheduling posts. It is not affiliated with X Corp.,
 Buffer, Cloudinary, Google, Samsung, or the other services named below.
 
 ## Summary
 
 - Twidget does not sell personal data.
-- Twidget contains no advertising, behavioural tracking, third-party analytics,
-  or crash-reporting SDK.
+- Twidget contains no advertising or cross-service behavioural tracking.
+  Google's ML Kit SDK collects diagnostic and usage information as described
+  below; the app does not include a separate crash-reporting service.
 - Most app data is stored only on the device. Android cloud backup and
   device-to-device transfer are disabled for Twidget's private data.
-- Network features send information only to the service needed to perform the
-  feature selected by the user.
+- Network features contact the relevant service provider. Optional Gemini Cloud
+  writing sends Brief content to Google; ML Kit also sends SDK diagnostics.
 - Contributing public account history to the Twidget bridge is optional and is
   off by default.
 - Twidget does not create a Twidget user account. Users may optionally connect
@@ -37,14 +38,16 @@ Twidget may store the following in app-private storage:
   post counts, likes, verification status, and protected-account status;
 - local history samples and cached recent-post analytics;
 - imported X Analytics movements and metrics;
-- Top Followers scan results and resumable scan progress;
+- cached Top Followers rankings and follower lists;
+- Your Brief preferences, generated summaries and cards, goals, and streaks;
 - locally created post drafts, reminders, publishing state, and references to
   media explicitly selected through Android's system picker;
 - optional self-hosted bridge settings and local diagnostic logs enabled
   through the hidden debug menu.
 
 Optional official X API credentials, self-hosted bridge tokens, cached bearer
-tokens, Buffer OAuth tokens, and a user-supplied TwitterAPIs key are protected
+tokens, Buffer OAuth tokens, a user-supplied TwitterAPIs key, and a Gemini API
+key are protected
 with Android Keystore-backed encryption.
 
 Local data remains until it is replaced, removed using the relevant app
@@ -86,7 +89,10 @@ maintainer-operated Twidget bridge may store:
 - the latest completed Top Followers scan for that public account, including
   the public names, usernames, account IDs, follower counts, verification
   state, avatar URLs, mutual-follow state when the provider supplies it, and
-  scan metadata for the public accounts in the follower list.
+  scan metadata for the public accounts in the follower list; and
+- the current Hall of Fame post and scan progress, including public post text,
+  links, media URLs and alt text, engagement metrics, timestamps, and author
+  details. The bridge stores this in the shared account metadata.
 
 This information is pooled so participating Twidget users can receive genuine
 historical samples or reuse a completed public ranking. Ordinary direct
@@ -101,24 +107,26 @@ request limits, registration limits, and scheduled-job locks.
 The selected CSV file is opened and parsed on the device. Twidget does not
 upload the original file or its file name. When a bridge-backed import is
 active, Twidget sends the tracked username and parsed dates and follow/unfollow
-movements to the configured bridge for validation. Other imported analytics
-metrics remain on the device.
+movements to the configured bridge for validation. The original CSV and other imported metrics are not sent to the bridge.
+Derived facts included in Your Brief may be sent to Gemini Cloud if enabled,
+as described below.
 
 ### Top Followers and post analytics providers
 
-When shared history is enabled and no personal provider key is selected, a Top
-Followers request sends the selected public username to the Twidget bridge.
-The bridge reuses a recent completed scan when available or sends the username
-to TwitterAPIs using a server-held, rate-limited provider key. Completed lists
-are retained for up to 30 days by default and can be viewed by other opted-in
-Twidget installs tracking that public handle.
+Top Followers requires shared history to be enabled. Requests send the selected
+public username to the Twidget bridge. The bridge reuses a recent completed
+scan when available or sends the username to TwitterAPIs using a server-held,
+rate-limited provider key. Completed lists are retained for up to 30 days by
+default and can be viewed by other opted-in Twidget installs tracking that
+public handle. Twidget does not run Top Followers scans on the device. Turning
+off shared history stops new bridge requests; previously cached rankings can
+still be viewed on the device.
 
-When shared history is disabled, or when the user chooses a personal
-TwitterAPIs key or compatible official X API credentials, the scan runs from
-the device instead. Personal provider keys remain encrypted on the device and
-are not sent through the Twidget bridge. When TwitterAPIs is selected as the
-profile or post-analytics provider, the username is also sent for those
-requests.
+Personal TwitterAPIs keys and official X API credentials remain available for
+optional profile requests, and a personal TwitterAPIs key can also be used for
+post analytics. These requests send the username directly to the selected
+provider. Personal provider keys remain encrypted on the device and are not
+sent through the Twidget bridge.
 
 ### Buffer scheduling and Cloudinary media
 
@@ -152,10 +160,48 @@ configuration, they control deletion and retention in that account.
 
 Local-reminder drafts and attachments are not uploaded to Buffer or Cloudinary.
 
+### Your Brief, Gemini Nano, and Gemini Cloud
+
+Your Brief is optional and is off until enabled. Twidget builds a factual
+summary and cards from the selected account's statistics, history, public post
+performance, Top Followers, goals, streaks, and scheduling state. It stores the
+result on the device and may ask an AI model to rewrite that copy.
+
+On supported devices, Gemini Nano performs this rewriting on the device through
+Google's ML Kit and Android AICore. Brief prompt content is not sent to Gemini
+Cloud in Local mode. This does not turn off the SDK diagnostics described below
+or network requests used to retrieve account data.
+
+Cloud mode requires a Gemini API key supplied by the user. Twidget sends the
+Brief summary and card titles and bodies, card identifiers and priorities, and
+language instructions directly to Google's Gemini API over HTTPS. This can
+include public names or handles, account metrics, goal and streak information,
+and summaries of scheduling activity. It does not upload the original analytics
+CSV, attachments, or the full local draft database. The API key is sent only to
+Google for these requests and is encrypted in app-private storage. Requests do
+not pass through the Twidget bridge.
+
+Auto mode prefers on-device rewriting and can fall back to Gemini Cloud when a
+key is configured. Selecting Local mode, removing the Gemini key, or disabling
+Your Brief stops future cloud rewriting. Removing a key does not delete prior
+requests held by Google.
+
+Google's treatment of prompts, responses and service logs depends on the API
+account, region and service terms. Unpaid-service content may be used for product
+improvement and reviewed by people where Google's terms permit; paid-service
+content is not used for product improvement but may be retained for abuse
+prevention. Review the [Gemini API terms](https://ai.google.dev/gemini-api/terms)
+and [Google Privacy Policy](https://policies.google.com/privacy) before enabling
+cloud writing. Do not include sensitive information in content sent to unpaid
+services. Requests to exercise rights over Google-controlled information should
+be directed to Google.
+
 ### Updates, images, and external links
 
-- The About screen checks the GitHub Releases API for Twidget updates. Update
-  downloads come from a matching GitHub release asset.
+- GitHub-distributed builds check GitHub for updates and download APKs from
+  matching release assets. Google Play builds use Google Play for app updates
+  and do not offer APK downloads or installation. Both distributions may fetch
+  release notes from GitHub when the Notices screen is opened.
 - Profile and post images may be downloaded from URLs returned by a provider
   or from Unavatar and cached on the device.
 - Links deliberately opened by the user are handled by the selected browser or
@@ -172,13 +218,22 @@ to infer the user's location.
 The Android app's hidden debug log is disabled by default, stored only on the
 device, and never uploaded automatically.
 
+Google's ML Kit GenAI SDK also sends device and app information, identifiers,
+performance measurements, feature events and errors, input/output sizes, API
+configuration and configured languages to Google for SDK diagnostics and usage
+analytics. These are SDK operational records, not the on-device Brief prompt
+text. SDK checks can occur when opening Brief setup or settings, before a Brief
+is generated; there is no separate in-app switch for SDK telemetry. See
+[Google's ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
+
 ## How information is used
 
 Information is used only to:
 
 - provide dashboards, widgets, history, post insights, provider access,
-  scheduling, media upload, and update features requested by the user;
+  scheduling, media upload, Your Brief, and distribution-specific update features;
 - authenticate requests to services the user has configured;
+- support Google SDK diagnostics and usage analytics as described above;
 - maintain optional shared public history and reusable public rankings;
 - validate imported history and protect data accuracy;
 - cache results, apply provider limits, diagnose faults, secure the bridge, and
@@ -197,7 +252,8 @@ Information may be processed by the following categories of recipient:
 - Buffer, when the user connects Buffer or explicitly uses remote
   draft/scheduling features;
 - Cloudinary, when the user attaches media to a Buffer post;
-- GitHub, for release checks and downloads;
+- Google, for optional Gemini Cloud processing and ML Kit SDK operations;
+- GitHub, for release notes and, in GitHub builds, update checks and downloads;
 - Unavatar and image hosts, when the app retrieves an image; and
 - infrastructure providers used to host the maintainer-operated bridge and its
   storage.
@@ -226,6 +282,9 @@ Twidget bridge.
   configured sample-retention and inactive-account rules. The operator may
   retain history until a deletion request when automatic limits are not
   configured. A public account that becomes private is removed from the pool.
+  Hall of Fame post data is retained in account metadata until replaced or the
+  account is deleted; it has no separate post-expiry timer. Turning off sharing
+  or removing an account locally does not delete its shared bridge records.
 - **Bridge caches and request limits:** retained only for their configured
   cache or rate-limit window. Hosting-platform logs may follow the hosting
   provider's operational retention settings.
@@ -234,6 +293,10 @@ Twidget bridge.
 - **Cloudinary media:** retained by the configured Cloudinary account until
   deleted by that account's operator. It is not automatically deleted when a
   Twidget draft or Buffer post is removed.
+
+Google controls retention of Gemini service records and ML Kit diagnostics
+under its applicable terms and policies. Clearing Twidget data or uninstalling
+the app removes its local copies, but does not erase records held by Google.
 
 Limited records may be retained when reasonably necessary to comply with law,
 resolve disputes, prevent abuse, or enforce applicable agreements.
@@ -246,6 +309,8 @@ Users can:
 - turn shared-history contribution on or off in Settings;
 - choose a different data provider or a self-hosted bridge;
 - use local reminders instead of Buffer;
+- disable Your Brief, select Local writing, or remove a Gemini API key to stop
+  future cloud rewriting;
 - disconnect Buffer and remove its local OAuth tokens;
 - remove a tracked account and its local history;
 - clear cached app data through Android; and

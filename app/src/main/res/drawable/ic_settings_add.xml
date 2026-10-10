@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glyph from @thatjoshguy/oneui-icons: Add. Geometry unchanged. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M20.375 11.25H12.75V3.625C12.75 3.211 12.414 2.875 12 2.875C11.586 2.875 11.25 3.211 11.25 3.625V11.25H3.625C3.211 11.25 2.875 11.586 2.875 12C2.875 12.414 3.211 12.75 3.625 12.75H11.25V20.375C11.25 20.789 11.586 21.125 12 21.125C12.414 21.125 12.75 20.789 12.75 20.375V12.75H20.375C20.789 12.75 21.125 12.414 21.125 12C21.125 11.586 20.789 11.25 20.375 11.25Z" android:fillColor="?android:attr/textColorPrimary" />
+</vector>

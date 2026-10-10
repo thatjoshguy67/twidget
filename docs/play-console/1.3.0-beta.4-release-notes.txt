@@ -1,0 +1,19 @@
+<en-GB>
+New in Beta 4
+• Smoother dashboard editing, reliable card reordering and drag autoscroll.
+• New grouped card picker: hold a preview to drag it onto your dashboard.
+• Refined haptics with automatic waveform fallback.
+• Faster widget resizing and improved typography and settings previews.
+• Better tweet-image sizing and multi-photo scrolling in Your Brief.
+• Fixes for tablet toolbars, dark-mode shadows and app fonts.
+</en-GB>
+
+<de-DE>
+Neu in Beta 4
+• Flüssigere Dashboard-Bearbeitung, zuverlässigeres Sortieren und automatisches Scrollen beim Ziehen.
+• Neue Kartenauswahl: Vorschau gedrückt halten und ins Dashboard ziehen.
+• Verbesserte Haptik mit automatischem Wellenform-Fallback.
+• Schnellere Widget-Größenanpassung und bessere Typografie.
+• Bessere Bildgrößen und mehrere Tweet-Fotos zum Scrollen im Briefing.
+• Korrekturen für Tablet-Symbolleisten, Schatten im Dunkelmodus und App-Schriften.
+</de-DE>

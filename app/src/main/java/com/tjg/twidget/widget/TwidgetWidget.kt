@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
@@ -92,11 +91,15 @@ open class TwidgetWidget : AppWidgetProvider() {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
                 val responsiveBitmapBytes = mutableMapOf<SizeF, Long>()
                 var totalBitmapBytes = 0L
+                val bitmapBudget = remoteViewsBitmapBudget(context, REMOTE_VIEWS_BITMAP_BUDGET_BYTES)
+                // WidgetArtworkRenderer draws large layouts at least 120dp per side, so count that size.
+                val minArtworkPx = dp(context, 120)
 
                 fun addResponsiveView(key: SizeF, width: Int, height: Int, responsiveMode: Int) {
-                    val bitmapBytes = dp(context, width).toLong() * dp(context, height).toLong() * 4L
+                    val bitmapBytes = dp(context, width).coerceAtLeast(minArtworkPx).toLong() *
+                        dp(context, height).coerceAtLeast(minArtworkPx).toLong() * 4L * widgetArtworkVariants(widgetSettings)
                     val replacedBytes = responsiveBitmapBytes[key] ?: 0L
-                    if (totalBitmapBytes - replacedBytes + bitmapBytes > REMOTE_VIEWS_BITMAP_BUDGET_BYTES) return
+                    if (totalBitmapBytes - replacedBytes + bitmapBytes > bitmapBudget) return
                     responsiveViews[key] = createRemoteViews(
                         context = context,
                         appWidgetId = appWidgetId,
@@ -113,15 +116,9 @@ open class TwidgetWidget : AppWidgetProvider() {
                     responsiveBitmapBytes[key] = bitmapBytes
                 }
 
-                // Exact launcher allocations take priority over fallback buckets.
-                // This prevents fitCenter from introducing horizontal gutters
-                // when an OEM's cells have an unusual aspect ratio, while the
-                // fallback entries remain available for an immediate layout
-                // switch during resize before the options callback arrives.
-                // Add exact sizes first: large bitmaps can exhaust the
-                // RemoteViews bitmap budget, and dropping the current exact
-                // allocation leaves Pixel Launcher stretching a smaller
-                // fallback inside a large card.
+                // Exact-size and breakpoint layouts must not compete in one map:
+                // during resize a breakpoint can win with the wrong artwork aspect
+                // ratio, causing gutters and a second jump when the new render arrives.
                 widgetSizes(options)
                     .sortedBy { size ->
                         kotlin.math.abs(size.width - artworkWidth) +
@@ -137,7 +134,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                             responsiveMode = layoutModeForAosp(width, height),
                         )
                     }
-                responsiveSpecs().forEach { spec ->
+                if (responsiveViews.isEmpty()) responsiveSpecs().forEach { spec ->
                     val key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())
                     if (!responsiveViews.containsKey(key)) {
                         addResponsiveView(
@@ -163,10 +160,11 @@ open class TwidgetWidget : AppWidgetProvider() {
                     drawArtworkBackground = !TwidgetFonts.hasSystemOneUiSans,
                 )
             }
+            if (!widgetSizeOptionsMatch(options, appWidgetManager.getAppWidgetOptions(appWidgetId))) return
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
 
-        private fun createRemoteViews(
+        internal fun createRemoteViews(
             context: Context,
             appWidgetId: Int,
             width: Int,
@@ -182,18 +180,19 @@ open class TwidgetWidget : AppWidgetProvider() {
             // own `sec` family—so every size renders its text as artwork.
             return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
-                val base = if (dark) 16 else 255
-                val backgroundColor = Color.argb(widgetSettings.tintAlpha, base, base, base)
+                val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
+                // RemoteViews may reuse the old view when the style changes.
+                setInt(android.R.id.background, "setBackgroundResource",
+                    if (widgetSettings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    else if (mode == LAYOUT_MODE_COMPACT_2X1 || mode == LAYOUT_MODE_COMPACT_STRIP)
+                        R.drawable.widget_one_ui_pill_surface
+                    else R.drawable.widget_preview_glass_bg)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
                     // with a rectangular ColorDrawable. One UI uses this
                     // drawable as the glass/blur surface; replacing it made the
                     // milestone widget translucent but left the wallpaper sharp.
-                    setColorStateList(
-                        android.R.id.background,
-                        "setBackgroundTintList",
-                        ColorStateList.valueOf(backgroundColor),
-                    )
+                    setWidgetBackgroundTint(context, widgetSettings)
                 } else {
                     setInt(
                         android.R.id.background,
@@ -205,8 +204,10 @@ open class TwidgetWidget : AppWidgetProvider() {
                 // keeps the VISIBLE state a tap-refresh partial update set, so
                 // relying on the layout's gone default leaves it stuck spinning.
                 setViewVisibility(R.id.widget_loading, View.GONE)
-                setImageViewBitmap(
-                    R.id.widget_artwork,
+                // Every host, including Samsung, must fit both light/dark images in one update.
+                val artworkBudget = remoteViewsBitmapBudget(context, REMOTE_VIEWS_BITMAP_BUDGET_BYTES) /
+                    widgetArtworkVariants(widgetSettings)
+                setWidgetArtwork(R.id.widget_artwork, widgetSettings) { artworkDark ->
                     WidgetArtworkRenderer.render(
                         context = context,
                         widthPx = dp(context, width),
@@ -214,11 +215,12 @@ open class TwidgetWidget : AppWidgetProvider() {
                         stats = stats,
                         settings = widgetSettings,
                         mode = mode,
-                        dark = dark,
+                        dark = artworkDark,
                         delta = delta,
                         drawBackground = drawArtworkBackground,
-                    ),
-                )
+                        bitmapBudgetBytes = artworkBudget,
+                    )
+                }
                 setOnClickPendingIntent(android.R.id.background, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
             }
         }
@@ -338,13 +340,7 @@ open class TwidgetWidget : AppWidgetProvider() {
         }
 
         private fun isDark(context: Context, settings: TwidgetWidgetSettings): Boolean =
-            when (settings.colorMode) {
-                TwidgetStore.COLOR_MODE_DARK -> true
-                TwidgetStore.COLOR_MODE_SYSTEM ->
-                    context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-                TwidgetStore.COLOR_MODE_LIGHT -> false
-                else -> Color.red(settings.tintColor) < 128
-            }
+            widgetUsesDarkTheme(settings.colorMode)
 
         private fun fullNumber(value: Long, locale: Locale = Locale.US): String =
             java.text.NumberFormat.getIntegerInstance(locale).format(value)
@@ -363,7 +359,11 @@ open class TwidgetWidget : AppWidgetProvider() {
 
         fun followersInWords(value: Long, locale: Locale = Locale.ENGLISH): String {
             if (value < 0L) return fullNumber(value, locale)
-            return if (locale.language == "de") germanNumberWords(value) else numberWords(value)
+            return when (locale.language) {
+                "de" -> germanNumberWords(value)
+                "fr" -> frenchNumberWords(value)
+                else -> numberWords(value)
+            }
         }
 
         private fun numberWords(value: Long): String {
@@ -488,6 +488,79 @@ open class TwidgetWidget : AppWidgetProvider() {
                 }
             }
         }
+
+        private fun frenchNumberWords(value: Long): String {
+            if (value == 0L) return "Zéro"
+            if (value < 1_000L) return frenchHundreds(value.toInt(), beforeMille = false)
+            val scales = listOf(
+                1_000_000_000_000_000_000L to ("Trillion" to "Trillions"),
+                1_000_000_000_000_000L to ("Billiard" to "Billiards"),
+                1_000_000_000_000L to ("Billion" to "Billions"),
+                1_000_000_000L to ("Milliard" to "Milliards"),
+                1_000_000L to ("Million" to "Millions"),
+                1_000L to ("Mille" to "Mille"),
+            )
+            val (scale, names) = scales.first { value >= it.first }
+            val leading = value / scale
+            val remainder = value % scale
+            return buildString {
+                // "Mille" stands alone for one thousand; the larger scales are nouns.
+                if (scale == 1_000L && leading == 1L) {
+                    append(names.first)
+                } else {
+                    append(if (leading < 1_000L) frenchHundreds(leading.toInt(), beforeMille = scale == 1_000L) else frenchNumberWords(leading))
+                    append(' ')
+                    append(if (leading == 1L) names.first else names.second)
+                }
+                if (remainder > 0) {
+                    append(' ')
+                    append(frenchNumberWords(remainder))
+                }
+            }
+        }
+
+        // Spaced like the German words so the word-art widget can wrap each token.
+        // "Cents" and "Vingts" drop their plural s when followed by a number or "Mille".
+        private fun frenchHundreds(value: Int, beforeMille: Boolean): String {
+            val hundred = value / 100
+            val remainder = value % 100
+            return listOfNotNull(
+                when {
+                    hundred == 0 -> null
+                    hundred == 1 -> "Cent"
+                    remainder == 0 && !beforeMille -> "${frenchUnits[hundred]} Cents"
+                    else -> "${frenchUnits[hundred]} Cent"
+                },
+                if (remainder > 0) frenchTens(remainder, beforeMille) else null,
+            ).joinToString(" ")
+        }
+
+        private fun frenchTens(value: Int, beforeMille: Boolean): String {
+            val ten = value / 10
+            val one = value % 10
+            return when {
+                value < 17 -> frenchUnits[value]
+                value < 20 -> "Dix ${frenchUnits[one]}"
+                value == 80 -> if (beforeMille) "Quatre Vingt" else "Quatre Vingts"
+                ten == 7 || ten == 9 -> {
+                    val base = if (ten == 7) "Soixante" else "Quatre Vingt"
+                    if (value == 71) "$base et Onze" else "$base ${frenchTens(value - ten * 10 + 10, beforeMille)}"
+                }
+                ten == 8 -> "Quatre Vingt ${frenchUnits[one]}"
+                one == 0 -> frenchTensNames[ten]
+                one == 1 -> "${frenchTensNames[ten]} et Un"
+                else -> "${frenchTensNames[ten]} ${frenchUnits[one]}"
+            }
+        }
+
+        private val frenchUnits = arrayOf(
+            "", "Un", "Deux", "Trois", "Quatre", "Cinq", "Six", "Sept", "Huit", "Neuf",
+            "Dix", "Onze", "Douze", "Treize", "Quatorze", "Quinze", "Seize",
+        )
+
+        private val frenchTensNames = arrayOf(
+            "", "", "Vingt", "Trente", "Quarante", "Cinquante", "Soixante",
+        )
     }
 }
 

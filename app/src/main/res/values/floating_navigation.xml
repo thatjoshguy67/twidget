@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TwidgetFloatingNavigation" parent="Widget.Design.Light.BottomNavigationView.Floating.IconText">
+        <item name="android:background">@drawable/sesl_bottom_navigation_floating_background_light</item>
+        <item name="backgroundTint">@color/schedule_navigation_surface</item>
+        <item name="seslBottomBarApplyBlur">true</item>
+        <item name="android:elevation">6dp</item>
+    </style>
+    <color name="schedule_navigation_checked">#1F000000</color>
+    <color name="schedule_navigation_surface">#F6F6F6</color>
+</resources>

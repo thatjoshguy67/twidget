@@ -1,7 +1,6 @@
 package com.tjg.twidget.analytics
 
 import android.content.Intent
-import android.graphics.drawable.AnimatedVectorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.text.SpannableString
@@ -11,8 +10,8 @@ import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.View
 import android.view.animation.DecelerateInterpolator
-import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -25,7 +24,6 @@ import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.EdgeToEdgeActivity
-import com.tjg.twidget.ui.OneUiSpinner
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
@@ -75,7 +73,6 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
 
     override fun onDestroy() {
         asyncGeneration++
-        (findViewById<ImageView>(R.id.import_spinner)?.drawable as? AnimatedVectorDrawable)?.stop()
         super.onDestroy()
     }
 
@@ -128,14 +125,16 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
         }
         findViewById<AppCompatButton>(R.id.import_primary_button).setOnClickListener {
             when (step) {
-                STEP_INTRO -> csvPicker.launch(arrayOf("text/csv", "text/*", "application/csv", "application/vnd.ms-excel"))
+                STEP_INTRO, STEP_FAILURE -> csvPicker.launch(arrayOf("text/csv", "text/*", "application/csv", "application/vnd.ms-excel"))
                 STEP_CONFIRM -> startImport()
-                STEP_SUCCESS, STEP_FAILURE -> finish()
+                STEP_SUCCESS -> finish()
             }
         }
     }
 
     private fun readCsv(uri: Uri) {
+        parsedImport = null
+        stats = TwidgetStore.currentStats(this, username)
         val result = runCatching {
             contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
                 XAnalyticsCsvImporter.parse(reader, stats.followersCount)
@@ -206,23 +205,55 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
         val bridge = error as? BridgeImportException
         val local = error as? AnalyticsValidationException
         val csv = error as? AnalyticsCsvException
-        val code = bridge?.code ?: local?.code.orEmpty()
+        val code = bridge?.code ?: local?.code ?: csv?.code.orEmpty()
         val expected = bridge?.expectedFollowers ?: local?.expectedFollowers ?: csv?.cachedFollowers
             ?: stats.followersCount.takeIf { stats.followersKnown }
         val detected = bridge?.detectedFollowers ?: local?.detectedFollowers ?: csv?.detectedFollowers
         findViewById<TextView>(R.id.import_failure_reason).text = when (code) {
-            "analytics_follower_mismatch", "analytics_trend_mismatch" -> getString(R.string.import_failure_range)
+            "analytics_follower_mismatch" -> getString(R.string.import_failure_range)
+            "analytics_trend_mismatch" -> getString(R.string.analytics_import_trend_mismatch)
+            "analytics_impossible_followers" -> getString(R.string.import_failure_impossible)
             "insufficient_trusted_history" -> getString(R.string.analytics_import_not_enough_history)
             "private_account_not_pooled" -> getString(R.string.analytics_import_private)
-            else -> error.message?.takeIf { it.isNotBlank() } ?: getString(R.string.import_failure_default)
+            "analytics_export_not_current" -> getString(R.string.import_failure_old_export)
+            "analytics_date_gap", "invalid_analytics_rows" -> getString(R.string.import_failure_invalid_rows)
+            "current_followers_unavailable", "profile_fetch_failed", "pool_http_error" -> getString(R.string.import_failure_connection)
+            else -> if (bridge != null || error !is IllegalArgumentException) {
+                getString(R.string.import_failure_default)
+            } else {
+                error.message?.takeIf { it.isNotBlank() } ?: getString(R.string.import_failure_default)
+            }
         }
-        findViewById<View>(R.id.import_failure_counts).visibility = View.VISIBLE
+        findViewById<TextView>(R.id.import_failure_help).text = getString(when (code) {
+            "analytics_follower_mismatch", "analytics_trend_mismatch", "analytics_impossible_followers" -> R.string.import_failure_refresh_help
+            "insufficient_trusted_history" -> R.string.import_failure_history_help
+            "private_account_not_pooled" -> R.string.import_failure_private_help
+            "current_followers_unavailable", "profile_fetch_failed", "pool_http_error" -> R.string.import_failure_connection_help
+            else -> R.string.import_failure_file_help
+        })
+        val showCounts = code in setOf("analytics_follower_mismatch", "analytics_trend_mismatch") &&
+            expected != null && detected != null && expected >= 0 && detected >= 0
+        findViewById<View>(R.id.import_failure_counts).visibility = if (showCounts) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.import_failure_date).apply {
+            val day = bridge?.comparisonDay ?: local?.comparisonDay
+            visibility = if (day != null) View.VISIBLE else View.GONE
+            text = day?.let {
+                getString(R.string.import_failure_comparison_day, runCatching { formatDate(LocalDate.parse(it)) }.getOrDefault(it))
+            }.orEmpty()
+        }
+        findViewById<TextView>(R.id.import_failure_detected_label).setText(
+            if (code == "analytics_trend_mismatch") R.string.import_calculated_followers else R.string.import_csv_followers,
+        )
         findViewById<TextView>(R.id.import_stored_value).text = expected
             ?.let(::formatCount)
             ?: getString(R.string.import_followers_not_cached)
         findViewById<TextView>(R.id.import_failure_detected_value).text = detected
             ?.let(::formatCount)
             ?: getString(R.string.import_followers_not_detected)
+        findViewById<TextView>(R.id.import_failure_difference).text = if (showCounts) {
+            getString(R.string.import_failure_difference, formatCount(kotlin.math.abs(expected!! - detected!!)))
+        } else ""
+        findViewById<ScrollView>(R.id.import_step_failure).scrollTo(0, 0)
         renderStep(STEP_FAILURE)
     }
 
@@ -244,12 +275,6 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
             }
         )
         configureButtons()
-        if (step == STEP_LOADING) {
-            findViewById<ImageView>(R.id.import_spinner).apply {
-                setImageResource(R.drawable.oneui_spinner)
-                OneUiSpinner.loop(this)
-            }
-        }
         if (animate) steps[step]?.let { id ->
             findViewById<View>(id).apply {
                 alpha = 0f
@@ -279,7 +304,16 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
                 secondary.text = getString(R.string.cancel)
                 setSingleButtonMargins(secondary)
             }
-            STEP_SUCCESS, STEP_FAILURE -> {
+            STEP_FAILURE -> {
+                secondary.visibility = View.VISIBLE
+                secondary.text = getString(R.string.done)
+                primary.visibility = View.VISIBLE
+                primary.text = getString(R.string.import_try_another_file)
+                primary.setTextColor(getColor(android.R.color.white))
+                primary.setBackgroundResource(R.drawable.import_primary_button_bg)
+                setTwoButtonMargins(secondary, primary)
+            }
+            STEP_SUCCESS -> {
                 secondary.visibility = View.GONE
                 primary.visibility = View.VISIBLE
                 primary.text = getString(R.string.continue_button)

@@ -2,6 +2,7 @@ package com.tjg.twidget.settings
 
 import android.os.Bundle
 import com.tjg.twidget.R
+import com.tjg.twidget.brief.BriefSettingsStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 
@@ -9,6 +10,7 @@ class BriefSettingsActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_preference_screen)
+        BriefSettingsStore.markSettingsViewed(this)
         applyEdgeToEdgeInsets(findViewById(R.id.preference_toolbar_layout))
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
             setTitle(getString(R.string.brief_settings_title))

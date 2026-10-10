@@ -1,12 +1,12 @@
 package com.tjg.twidget.followers
 
-import android.content.BroadcastReceiver
-import android.content.Context
+import android.app.SearchManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.Menu
@@ -16,22 +16,22 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SearchView
-import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import androidx.core.widget.TextViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import androidx.transition.ChangeBounds
+import androidx.transition.TransitionManager
 import com.tjg.twidget.R
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
-import com.tjg.twidget.ui.OneUiSpinner
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.R as OneUiIconR
 
@@ -44,16 +44,16 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     private lateinit var listView: RecyclerView
     private lateinit var refreshView: SwipeRefreshLayout
     private lateinit var toolbarLayout: ToolbarLayout
+    private lateinit var searchView: SearchView
     private var refreshItem: MenuItem? = null
     private var refreshGeneration = 0
     private var refreshing = false
-    private var waitingForScan = false
-    private var scanShowOutcome = false
-    private val scanUpdateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val updated = intent?.getStringExtra(TopFollowersScanWorker.EXTRA_USERNAME).orEmpty()
-            if (!updated.equals(username, ignoreCase = true) || !waitingForScan) return
-            handleScanUpdate()
+    private val voiceSearch = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let {
+                searchView.setQuery(it, false)
+                searchView.clearFocus()
+            }
         }
     }
 
@@ -68,12 +68,10 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
         toolbarLayout = findViewById(R.id.top_followers_browse_root)
         toolbarLayout.setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
-        applyEdgeToEdgeInsets(toolbarLayout)
 
         emptyView = findViewById(R.id.top_followers_browse_empty)
         listView = findViewById(R.id.top_followers_browse_list)
         refreshView = findViewById<SwipeRefreshLayout>(R.id.top_followers_browse_refresh).apply {
-            OneUiSpinner.attachToSwipeRefresh(this)
             isEnabled = canRefresh()
             setOnChildScrollUpCallback { _, _ ->
                 listView.visibility == View.VISIBLE && listView.canScrollVertically(-1)
@@ -85,13 +83,113 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             initialPrefetchItemCount = 0
         }
         listView.adapter = adapter
-        listView.seslSetScrollbarVerticalPadding(dp(26), dp(26))
+        listView.seslSetFastScrollerEnabled(true)
+        com.tjg.twidget.ui.SeslFastScrollerTypography.applyTo(listView)
         listView.seslSetGoToTopEnabled(true)
-        listView.background = GradientDrawable().apply {
+        listView.seslSetOnGoToTopClickListener { recycler ->
+            (recycler.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(0, 0)
+            toolbarLayout.setExpanded(false, false)
+            recycler.seslHideGoToTop()
+            true
+        }
+        var surfaceHeight = 0
+        listView.background = object : GradientDrawable() {
+            override fun draw(canvas: android.graphics.Canvas) {
+                setBounds(0, 0, listView.width, surfaceHeight)
+                super.draw(canvas)
+            }
+        }.apply {
             cornerRadius = dp(28).toFloat()
             setColor(getColor(R.color.oneui_card_bg))
         }
+        listView.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: android.graphics.Outline) {
+                outline.setRoundRect(0, 0, view.width, surfaceHeight, dp(28).toFloat())
+            }
+        }
         listView.clipToOutline = true
+
+        searchView = findViewById(R.id.top_followers_browse_search)
+        searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
+        searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).setOnClickListener {
+            try {
+                voiceSearch.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.top_followers_browser_search))
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                })
+            } catch (_: ActivityNotFoundException) {
+                // A recognizer can be removed after SESL checks its availability.
+                searchView.requestFocus()
+            }
+        }
+        searchView.setOnQueryTextFocusChangeListener { _, _ -> updateSearchWidth() }
+        query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
+        searchView.setQuery(query, false)
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(value: String?): Boolean {
+                updateQuery(value)
+                searchView.clearFocus()
+                return true
+            }
+
+            override fun onQueryTextChange(value: String?): Boolean {
+                updateQuery(value)
+                return true
+            }
+        })
+        updateSearchWidth()
+        // Float search over the full-height list.
+        applyEdgeToEdgeInsets(toolbarLayout) { navigationInset ->
+            searchView.updateBottomMarginForNavigationBar(0, navigationInset)
+            updateSearchWidth()
+        }
+
+        // AppBarLayout's scrolling child can extend below the window while the
+        // header is expanded. Use the actual overlap, not just the bar's height.
+        val listPosition = IntArray(2)
+        val searchPosition = IntArray(2)
+        val toolbarPosition = IntArray(2)
+        var scrollbarTop = -1
+        var scrollbarBottom = -1
+        listView.viewTreeObserver.addOnPreDrawListener {
+            listView.getLocationInWindow(listPosition)
+            searchView.getLocationInWindow(searchPosition)
+            toolbarLayout.toolbar.getLocationInWindow(toolbarPosition)
+            val firstVisible = (listView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+            adapter.currentList.getOrNull(firstVisible)?.let {
+                com.tjg.twidget.ui.SeslFastScrollerTypography.setPreviewRank(listView, it.rank)
+            }
+            val trackTop = (toolbarPosition[1] + toolbarLayout.toolbar.height - listPosition[1])
+                .coerceAtLeast(0)
+            val trackBottom = (listPosition[1] + listView.height - searchPosition[1]).coerceAtLeast(0)
+            val goToTopPadding = trackBottom + dp(8)
+            if (listView.seslGetGoToTopBottomPadding() != goToTopPadding) {
+                listView.seslSetGoToTopBottomPadding(goToTopPadding)
+            }
+            // Scroll clearance belongs to the viewport, not the rounded card surface.
+            val clearance = trackBottom + dp(12)
+            if (listView.paddingBottom != clearance) {
+                listView.setPadding(listView.paddingLeft, listView.paddingTop, listView.paddingRight, clearance)
+            }
+            val lastRow = listView.findViewHolderForAdapterPosition(adapter.itemCount - 1)?.itemView
+            val targetSurfaceHeight = (lastRow?.let { it.bottom + dp(4) } ?: listView.height)
+                .coerceIn(0, listView.height)
+            if (surfaceHeight != targetSurfaceHeight) {
+                surfaceHeight = targetSurfaceHeight
+                listView.invalidateOutline()
+                listView.invalidate()
+            }
+            // SESL already applies floating-toolbar offsets and list padding.
+            val additionalTop = trackTop - listView.paddingTop - listView.seslGetScrollBarTopOffset()
+            val additionalBottom = trackBottom - listView.paddingBottom - listView.seslGetScrollBarBottomOffset()
+            if (additionalTop != scrollbarTop || additionalBottom != scrollbarBottom) {
+                scrollbarTop = additionalTop
+                scrollbarBottom = additionalBottom
+                listView.seslSetFastScrollerAdditionalPadding(additionalTop, additionalBottom)
+            }
+            true
+        }
 
         allFollowers = TopFollowersArchiveStore.readAll(this, username)
         render()
@@ -119,56 +217,13 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                     true
                 }
             }
-        menu
-            .add(Menu.NONE, View.generateViewId(), Menu.NONE, R.string.top_followers_browser_search)
-            .apply {
-                setIcon(OneUiIconR.drawable.ic_oui_search)
-                setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
-                setOnMenuItemClickListener {
-                    toolbarLayout.startSearchMode(
-                        object : ToolbarLayout.SearchModeListener {
-                            override fun onSearchModeToggle(searchView: SearchView, isActive: Boolean) {
-                                if (isActive) {
-                                    searchView.queryHint = getString(R.string.top_followers_browser_search_hint)
-                                } else {
-                                    query = ""
-                                    render()
-                                }
-                            }
 
-                            override fun onQueryTextSubmit(submittedQuery: String?): Boolean {
-                                updateQuery(submittedQuery)
-                                return true
-                            }
-
-                            override fun onQueryTextChange(newText: String?): Boolean {
-                                updateQuery(newText)
-                                return true
-                            }
-                        },
-                        ToolbarLayout.SearchModeOnBackBehavior.CLEAR_DISMISS,
-                        true,
-                    )
-                    true
-                }
-            }
         return true
     }
 
-    override fun onStart() {
-        super.onStart()
-        ContextCompat.registerReceiver(
-            this,
-            scanUpdateReceiver,
-            IntentFilter(TopFollowersScanWorker.ACTION_UPDATED),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
-        if (waitingForScan) handleScanUpdate()
-    }
-
-    override fun onStop() {
-        runCatching { unregisterReceiver(scanUpdateReceiver) }
-        super.onStop()
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_QUERY, query)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
@@ -177,7 +232,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     }
 
     private fun refreshMode(): TopFollowersBrowserRefreshMode = selectTopFollowersBrowserRefreshMode(
-        linkedApiAvailable = TopFollowersScanWorker.linkedApiScanSource(this) != null,
         shareHistory = TwidgetStore.settings(this).shareHistory,
     )
 
@@ -186,48 +240,8 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     private fun refreshFollowers(showOutcome: Boolean) {
         if (refreshing) return
         when (refreshMode()) {
-            TopFollowersBrowserRefreshMode.LINKED_API_RESCAN -> confirmLinkedApiRescan(showOutcome)
             TopFollowersBrowserRefreshMode.BRIDGE_DOWNLOAD -> refreshArchive(showOutcome)
             TopFollowersBrowserRefreshMode.UNAVAILABLE -> refreshView.isRefreshing = false
-        }
-    }
-
-    private fun confirmLinkedApiRescan(showOutcome: Boolean) {
-        refreshView.isRefreshing = false
-        AlertDialog.Builder(this)
-            .setTitle(R.string.top_followers_browser_rescan_title)
-            .setMessage(R.string.top_followers_browser_rescan_message)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.top_followers_start) { _, _ -> startLinkedApiRescan(showOutcome) }
-            .show()
-    }
-
-    private fun startLinkedApiRescan(showOutcome: Boolean) {
-        beginRefresh()
-        waitingForScan = true
-        scanShowOutcome = showOutcome
-        when (TopFollowersScanWorker.enqueueLinkedApiRefresh(this, username)) {
-            TopFollowersScanStart.STARTED -> if (showOutcome) {
-                Toast.makeText(this, R.string.top_followers_browser_rescan_started, Toast.LENGTH_SHORT).show()
-            }
-            TopFollowersScanStart.ALREADY_SCANNED_TODAY,
-            TopFollowersScanStart.NO_API_KEY -> {
-                waitingForScan = false
-                finishArchiveRefresh(refreshGeneration, null, showOutcome)
-            }
-        }
-    }
-
-    private fun handleScanUpdate() {
-        val state = TopFollowersStore.read(this, username)
-        when {
-            state.complete && !state.scanning && state.activeRunId.isBlank() -> {
-                val followers = TopFollowersArchiveStore.readAll(this, username)
-                    .takeIf { it.isNotEmpty() }
-                finishArchiveRefresh(refreshGeneration, followers, scanShowOutcome)
-            }
-            state.error.isNotBlank() && !state.scanning ->
-                finishArchiveRefresh(refreshGeneration, null, scanShowOutcome)
         }
     }
 
@@ -256,7 +270,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
     private fun beginRefresh() {
         refreshing = true
-        waitingForScan = false
         refreshItem?.isEnabled = false
         refreshView.isRefreshing = true
         refreshGeneration += 1
@@ -269,7 +282,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     ) {
         if (generation != refreshGeneration || isFinishing || isDestroyed) return
         refreshing = false
-        waitingForScan = false
         refreshItem?.isEnabled = true
         refreshView.isRefreshing = false
         if (followers != null) {
@@ -302,10 +314,27 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         listView.visibility = if (empty) View.GONE else View.VISIBLE
     }
 
+    private fun updateSearchWidth() {
+        val keyboardActive = androidx.core.view.ViewCompat.getRootWindowInsets(toolbarLayout)
+            ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true
+        searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected = keyboardActive
+        val width = resources.getDimensionPixelSize(if (keyboardActive) {
+            androidx.appcompat.R.dimen.sesl_search_view_preferred_width
+        } else {
+            R.dimen.top_followers_search_compact_width
+        })
+        if (searchView.maxWidth == width) return
+        if (searchView.isLaidOut) {
+            TransitionManager.beginDelayedTransition(searchView.parent as ViewGroup, ChangeBounds())
+        }
+        searchView.maxWidth = width
+    }
+
     private fun updateQuery(value: String?) {
         val nextQuery = value.orEmpty()
         if (query == nextQuery) return
         query = nextQuery
+        updateSearchWidth()
         render()
     }
 
@@ -317,7 +346,17 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
     private class FollowerAdapter(
         private val onClick: (TopFollower) -> Unit,
-    ) : ListAdapter<RankedTopFollower, FollowerAdapter.Holder>(DIFF) {
+    ) : ListAdapter<RankedTopFollower, FollowerAdapter.Holder>(DIFF), android.widget.SectionIndexer {
+        private val checkpoints get() = followerCheckpointPositions(itemCount)
+
+        override fun getSections(): Array<String> = checkpoints.map { currentList[it].rank.toString() }.toTypedArray()
+
+        override fun getPositionForSection(sectionIndex: Int): Int =
+            checkpoints.let { if (it.isEmpty()) 0 else it[sectionIndex.coerceIn(it.indices)] }
+
+        override fun getSectionForPosition(position: Int): Int =
+            checkpoints.indexOfLast { it <= position }.coerceAtLeast(0)
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_top_follower_row, parent, false)
@@ -360,10 +399,13 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 // RecyclerView rows are inflated after the activity's initial font pass.
                 // Apply the app typeface before first draw so recycled/new rows never
                 // fall back to Roboto while waiting for another global layout.
-                rank.typeface = TwidgetFonts.oneUiSans(itemView.context, 200)
-                name.typeface = TwidgetFonts.oneUiSans(itemView.context, 700)
-                handle.typeface = TwidgetFonts.oneUiSans(itemView.context, 400)
-                count.typeface = TwidgetFonts.oneUiSans(itemView.context, 400)
+                rank.typeface = TwidgetFonts.forApp(itemView.context, 200)
+                name.typeface = TwidgetFonts.forApp(itemView.context, 700)
+                handle.typeface = TwidgetFonts.forApp(itemView.context, 400)
+                count.typeface = TwidgetFonts.forApp(itemView.context, 400)
+                TwidgetFonts.setRole(name, TwidgetFonts.Role.LABEL)
+                TwidgetFonts.setRole(handle, TwidgetFonts.Role.SUMMARY)
+                TwidgetFonts.setRole(count, TwidgetFonts.Role.SUMMARY)
                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                     rank,
                     12,
@@ -441,6 +483,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     }
 
     companion object {
+        private const val STATE_QUERY = "top_followers_query"
         const val EXTRA_USERNAME = "username"
     }
 }
@@ -455,16 +498,13 @@ internal object TopFollowersBrowserRefreshPolicy {
 }
 
 internal enum class TopFollowersBrowserRefreshMode {
-    LINKED_API_RESCAN,
     BRIDGE_DOWNLOAD,
     UNAVAILABLE,
 }
 
 internal fun selectTopFollowersBrowserRefreshMode(
-    linkedApiAvailable: Boolean,
     shareHistory: Boolean,
 ): TopFollowersBrowserRefreshMode = when {
-    linkedApiAvailable -> TopFollowersBrowserRefreshMode.LINKED_API_RESCAN
     shareHistory -> TopFollowersBrowserRefreshMode.BRIDGE_DOWNLOAD
     else -> TopFollowersBrowserRefreshMode.UNAVAILABLE
 }

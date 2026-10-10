@@ -62,7 +62,7 @@
                         android:contentDescription="@null"
                         android:src="@drawable/onboarding_twidget_mark" />
 
-                    <TextView
+                    <com.tjg.twidget.main.OnboardingTitleAnimationView
                         android:id="@+id/overview_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -70,7 +70,7 @@
                         android:gravity="center"
                         android:includeFontPadding="false"
                         android:text="@string/onboarding_overview_title"
-                        android:textColor="?android:textColorPrimary"
+                        android:textColor="@color/oneui_text_primary"
                         android:textSize="32sp"
                         android:textStyle="bold" />
 

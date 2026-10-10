@@ -218,7 +218,7 @@
     <string name="import_premium_title">Nur X Premium/Premium+ Abonnenten</string>
     <string name="import_premium_summary">Das Abrufen deiner Statistiken von X Analytics erfordert ein kostenpflichtiges X-Abo.</string>
     <string name="import_accuracy_title">Daten überprüfen</string>
-    <string name="import_accuracy_summary">Wir vergleichen den Export mit dem gespeicherten Follower-Verlauf. Kleine Abweichungen durch unterschiedliche Aktualisierungszeiten sind erlaubt.</string>
+    <string name="import_accuracy_summary">Vergleicht den Export mit dem gespeicherten Follower-Verlauf. Geringe zeitbedingte Abweichungen sind erlaubt.</string>
     <string name="import_for_account">Daten für @%1$s importieren?</string>
     <string name="import_range">Bereich</string>
     <string name="import_detected_followers">Erkannte Follower-Zahl</string>

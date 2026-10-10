@@ -349,6 +349,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         if (step == STEP_DONE) showDoneProfileAvatar()
         if (step == STEP_PERMISSIONS) renderPermissionState()
         settleBackground(animate)
+        if (step == STEP_OVERVIEW) startOverviewTitleAnimation()
         if (animate) {
             if (step == STEP_OVERVIEW || step == STEP_DONE) {
                 TwidgetHaptics.quickRise(findViewById(R.id.onboarding_root))
@@ -359,6 +360,17 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             val duration = if (step == STEP_DONE) 640L else 320L
             steps[step]?.let { animateStepIn(findViewById(it), rise, duration) }
             animateButtonsIn()
+        }
+    }
+
+    private fun startOverviewTitleAnimation() {
+        findViewById<OnboardingTitleAnimationView>(R.id.overview_title).apply {
+            prepare()
+            post {
+                if (step == STEP_OVERVIEW && !this@OnboardingActivity.isFinishing && !this@OnboardingActivity.isDestroyed) {
+                    play()
+                }
+            }
         }
     }
 

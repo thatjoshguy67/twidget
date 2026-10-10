@@ -1041,7 +1041,7 @@
     <string name="tweet_performance_strong_unexplained">Er lief insgesamt gut, ohne dass eine Kennzahl das Ergebnis klar erklärt.</string>
     <string name="tweet_performance_quiet_unexplained">Er war der ruhigste Tweet dieser Woche, aber keine einzelne Kennzahl erklärt das Ergebnis klar.</string>
     <string name="milestone_noun_follower">Follower</string>
-    <string name="milestone_noun_verified_follower">Verifizierte-Follower</string>
+    <string name="milestone_noun_verified_follower">verifizierte Follower</string>
     <string name="milestone_noun_engagement_rate">Engagement-Rate</string>
     <string name="milestone_noun_impression">Impressionen</string>
     <string name="top_followers_enable_shared_history">Geteilten Verlauf aktivieren</string>

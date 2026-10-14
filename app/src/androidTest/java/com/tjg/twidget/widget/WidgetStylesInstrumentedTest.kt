@@ -30,7 +30,7 @@ class WidgetStylesInstrumentedTest {
             WidgetStyle.ONE_UI to false, WidgetStyle.ONE_UI to true).withIndex()) {
             val (style, dark) = pair
             val settings = TwidgetWidgetSettings(80, 0, TwidgetStore.LOGO_TWITTER, TwidgetStore.TAP_REFRESH,
-                "thatjoshguy69", "system", style.defaultFont, false, "en", style)
+                "thatjoshguy", "system", style.defaultFont, false, "en", style)
             val colors = WidgetColors.resolve(context, settings, dark)
             if (style == WidgetStyle.MATERIAL) {
                 assertEquals(255, Color.alpha(colors.background))
@@ -43,7 +43,7 @@ class WidgetStylesInstrumentedTest {
             sizes.forEach { (w, h) ->
                 val mode = if (h <= 110) { if (w < 230) TwidgetWidget.LAYOUT_MODE_COMPACT_2X1 else TwidgetWidget.LAYOUT_MODE_COMPACT_STRIP }
                     else if (w < 230) TwidgetWidget.LAYOUT_MODE_COMPACT_SQUARE else TwidgetWidget.LAYOUT_MODE_LARGE
-                val art = WidgetArtworkRenderer.render(context, px(w), px(h), ProfileStats("Test", "thatjoshguy69", 7671, 0, 0, 0),
+                val art = WidgetArtworkRenderer.render(context, px(w), px(h), ProfileStats("Test", "thatjoshguy", 7671, 0, 0, 0),
                     settings, mode, dark, drawBackground = true)
                 canvas.drawBitmap(art, px(x).toFloat(), px(y).toFloat(), null)
                 art.recycle()

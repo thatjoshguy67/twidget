@@ -16,7 +16,7 @@ npm run dev
 
 ```bash
 curl http://localhost:8787/health
-curl http://localhost:8787/user/thatjoshguy69
+curl http://localhost:8787/user/thatjoshguy
 npm test
 ```
 

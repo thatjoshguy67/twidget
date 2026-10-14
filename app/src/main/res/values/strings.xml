@@ -70,7 +70,7 @@
     <string name="account_handle" translatable="false">\@%1$s</string>
     <string name="preview_follower_count">7,671</string>
     <string name="preview_follower_delta" translatable="false">+21</string>
-    <string name="preview_account_handle" translatable="false">\@thatjoshguy69</string>
+    <string name="preview_account_handle" translatable="false">\@thatjoshguy</string>
     <string name="preview_followers_large">Seven Thousand, Six\nHundred and Seventy\nOne Followers</string>
     <string name="preview_followers_square">Seven Thousand,\nSix Hundred and\nSeventy One\nFollowers</string>
     <string name="tweet_metrics">%1$s views · %2$s replies · %3$s likes</string>
@@ -153,7 +153,7 @@
     <string name="open_settings">Open settings</string>
     <string name="refresh_stats">Refresh stats</string>
     <string name="profile_username">Profile username</string>
-    <string name="profile_username_hint" translatable="false">thatjoshguy69</string>
+    <string name="profile_username_hint" translatable="false">thatjoshguy</string>
     <string name="data_source">Data source</string>
     <string name="analytics">Analytics</string>
     <string name="refresh">Refresh</string>

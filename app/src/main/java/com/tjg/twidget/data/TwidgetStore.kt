@@ -1177,7 +1177,7 @@ object TwidgetStore {
 
     private fun demoStats(): ProfileStats = ProfileStats(
         fullName = "That Josh Guy",
-        userName = "thatjoshguy69",
+        userName = "thatjoshguy",
         followersCount = 7_671,
         followingsCount = 321,
         statusesCount = 2_104,

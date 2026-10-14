@@ -8,29 +8,29 @@ import org.junit.Test
 class ScheduleQueuePolicyTest {
     @Test
     fun localQueueOnlyIncludesDefaultAccountLocalDrafts() {
-        val defaultLocal = post(ScheduleProvider.LOCAL_REMINDER, "thatjoshguy69", "thatjoshguy69")
+        val defaultLocal = post(ScheduleProvider.LOCAL_REMINDER, "thatjoshguy", "thatjoshguy")
         val otherLocal = post(ScheduleProvider.LOCAL_REMINDER, "kingowenfyi", "kingowenfyi")
-        val bufferPost = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+        val bufferPost = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
 
-        assertTrue(ScheduleQueuePolicy.includes(defaultLocal, ScheduleProvider.LOCAL_REMINDER, "@thatjoshguy69", null))
-        assertFalse(ScheduleQueuePolicy.includes(otherLocal, ScheduleProvider.LOCAL_REMINDER, "thatjoshguy69", null))
-        assertFalse(ScheduleQueuePolicy.includes(bufferPost, ScheduleProvider.LOCAL_REMINDER, "thatjoshguy69", null))
+        assertTrue(ScheduleQueuePolicy.includes(defaultLocal, ScheduleProvider.LOCAL_REMINDER, "@thatjoshguy", null))
+        assertFalse(ScheduleQueuePolicy.includes(otherLocal, ScheduleProvider.LOCAL_REMINDER, "thatjoshguy", null))
+        assertFalse(ScheduleQueuePolicy.includes(bufferPost, ScheduleProvider.LOCAL_REMINDER, "thatjoshguy", null))
     }
 
     @Test
     fun bufferQueueUsesTheMappedBufferChannel() {
-        val selectedChannel = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
-        val otherChannel = post(ScheduleProvider.BUFFER, "thatjoshguy69", "other-channel")
-        val localPost = post(ScheduleProvider.LOCAL_REMINDER, "thatjoshguy69", "thatjoshguy69")
+        val selectedChannel = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
+        val otherChannel = post(ScheduleProvider.BUFFER, "thatjoshguy", "other-channel")
+        val localPost = post(ScheduleProvider.LOCAL_REMINDER, "thatjoshguy", "thatjoshguy")
 
-        assertTrue(ScheduleQueuePolicy.includes(selectedChannel, ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel"))
-        assertFalse(ScheduleQueuePolicy.includes(otherChannel, ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel"))
-        assertFalse(ScheduleQueuePolicy.includes(localPost, ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel"))
+        assertTrue(ScheduleQueuePolicy.includes(selectedChannel, ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel"))
+        assertFalse(ScheduleQueuePolicy.includes(otherChannel, ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel"))
+        assertFalse(ScheduleQueuePolicy.includes(localPost, ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel"))
     }
 
     @Test
     fun publishedNotificationOnlyFiresOnScheduledBufferTransition() {
-        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
             .copy(status = ScheduleStatus.SCHEDULED)
         val draft = scheduled.copy(status = ScheduleStatus.DRAFT)
         val local = scheduled.copy(provider = ScheduleProvider.LOCAL_REMINDER)
@@ -43,7 +43,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun failedNotificationOnlyFiresOnScheduledBufferTransition() {
-        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
             .copy(status = ScheduleStatus.SCHEDULED)
         val alreadyFailed = scheduled.copy(status = ScheduleStatus.NEEDS_ACTION)
         val awaitingConfirmation = scheduled.copy(status = ScheduleStatus.AWAITING_CONFIRMATION)
@@ -59,7 +59,7 @@ class ScheduleQueuePolicyTest {
     @Test
     fun cardMediaKeepsTheFirstFourAttachmentsAcrossAThread() {
         val media = (1..6).map { PublicUrlMedia("https://example.com/$it.jpg") }
-        val post = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
+        val post = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel").copy(
             thread = listOf(
                 ScheduleThreadItem(text = "First", media = media.take(2)),
                 ScheduleThreadItem(text = "Second", media = media.drop(2)),
@@ -71,7 +71,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun queueOrdersAttentionThenUpcomingThenDraftsThenCompletedPosts() {
-        val base = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+        val base = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
         val posts = listOf(
             base.copy(id = "old-published", status = ScheduleStatus.PUBLISHED, publishedAt = 10L),
             base.copy(id = "draft", status = ScheduleStatus.DRAFT, updatedAt = 40L),
@@ -90,7 +90,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun overdueBufferScheduleWaitsForConfirmation() {
-        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
+        val scheduled = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel").copy(
             status = ScheduleStatus.SCHEDULED,
             scheduledAt = 1_000L,
             remotePostId = "remote-post",
@@ -108,7 +108,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun fallbackDoesNotHideExplicitBufferPublishError() {
-        val needsAction = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
+        val needsAction = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel").copy(
             status = ScheduleStatus.NEEDS_ACTION,
             scheduledAt = 1_000L,
             remotePostId = "remote-post",
@@ -120,7 +120,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun rejectedDeleteDoesNotProvePublication() {
-        val failedDelete = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel").copy(
+        val failedDelete = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel").copy(
             status = ScheduleStatus.FAILED,
             scheduledAt = 1_000L,
             remotePostId = "remote-post",
@@ -135,7 +135,7 @@ class ScheduleQueuePolicyTest {
 
     @Test
     fun completedBufferPostsAreDeletedLocally() {
-        val base = post(ScheduleProvider.BUFFER, "thatjoshguy69", "buffer-channel")
+        val base = post(ScheduleProvider.BUFFER, "thatjoshguy", "buffer-channel")
             .copy(remotePostId = "remote-post")
 
         assertTrue(BufferScheduleFallbackPolicy.requiresRemoteCancellation(base.copy(status = ScheduleStatus.DRAFT)))

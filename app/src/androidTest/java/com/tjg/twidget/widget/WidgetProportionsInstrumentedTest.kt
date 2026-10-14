@@ -46,7 +46,7 @@ class WidgetProportionsInstrumentedTest {
                     var x = 12
                     sizes.forEach { (w, h) ->
                         val mode = TwidgetWidget.layoutModeForAosp(w, h)
-                        val stats = ProfileStats("Test", "thatjoshguy69", count, 0, 0, 0)
+                        val stats = ProfileStats("Test", "thatjoshguy", count, 0, 0, 0)
                         val bitmap = WidgetArtworkRenderer.render(context, w, h, stats, settings, mode,
                             dark, if (row == 0) 15 else -3, drawBackground = true)
                         canvas.drawBitmap(bitmap, x.toFloat(), (12 + row * 200).toFloat(), null)
@@ -75,7 +75,7 @@ class WidgetProportionsInstrumentedTest {
             for (font in listOf(TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.FONT_GOOGLE_SANS_FLEX, TwidgetStore.FONT_SYSTEM)) {
                 val settings = WidgetPreviews.settings(style).copy(fontFamily = font,
                     language = "en", containedFooter = true, logo = TwidgetStore.LOGO_TWITTER)
-                val stats = ProfileStats("Test", "thatjoshguy69", 7795, 0, 0, 0)
+                val stats = ProfileStats("Test", "thatjoshguy", 7795, 0, 0, 0)
                 val sheet = Bitmap.createBitmap(728, 304, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(sheet).apply { drawColor(Color.DKGRAY) }
                 val inkHeights = listOf(176, 280).mapIndexed { index, height ->
@@ -142,7 +142,7 @@ class WidgetProportionsInstrumentedTest {
                 val settings = WidgetPreviews.settings(style).copy(fontFamily = TwidgetStore.FONT_ONE_UI_SANS,
                     language = "en", containedFooter = contained, showDelta = true)
                 val bitmap = WidgetArtworkRenderer.render(context, 352 * scale, height * scale,
-                    ProfileStats("Test", "thatjoshguy69", 7795, 0, 0, 0), settings,
+                    ProfileStats("Test", "thatjoshguy", 7795, 0, 0, 0), settings,
                     TwidgetWidget.LAYOUT_MODE_LARGE, true, 7)
                 val footerTop = (height - 12 - if (style == WidgetStyle.MATERIAL && contained) 20 else 14) * scale
                 val ink = android.graphics.Rect()
@@ -169,7 +169,7 @@ class WidgetProportionsInstrumentedTest {
                 logo = TwidgetStore.LOGO_TWITTER, showDelta = false)
             for ((w, h) in listOf(162 to 176, 352 to 76)) {
                 var reference: Pair<Int, Int>? = null
-                for (handle in listOf("a", "thatjoshguy69", "abcdefghijklmno")) {
+                for (handle in listOf("a", "thatjoshguy", "abcdefghijklmno")) {
                     val bitmap = WidgetArtworkRenderer.render(context, w, h,
                         ProfileStats("Test", handle, 7671, 0, 0, 0), settings,
                         TwidgetWidget.layoutModeForAosp(w, h), false)

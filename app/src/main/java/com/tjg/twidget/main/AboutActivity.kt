@@ -762,7 +762,7 @@ class AboutActivity : FoldablePopOverActivity() {
         private const val DEBUG_UNLOCK_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_TAPS = 7
         private const val HEADER_ICON_EASTER_EGG_URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        private const val TJG_X_USERNAME = "thatjoshguy69"
+        private const val TJG_X_USERNAME = "thatjoshguy"
         private const val KINGOWEN_X_USERNAME = "KingOwenFYI"
         private const val AARON_X_USERNAME = "aaronthetechie"
         private const val EVOWIZZ_X_USERNAME = "evowizz"

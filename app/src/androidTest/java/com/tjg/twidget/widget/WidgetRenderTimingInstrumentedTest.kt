@@ -49,7 +49,7 @@ class WidgetRenderTimingInstrumentedTest {
                 repeat(4) { sample ->
                     val start = SystemClock.elapsedRealtimeNanos()
                     val bitmap = WidgetArtworkRenderer.render(context, (width * density).toInt(), (height * density).toInt(),
-                        ProfileStats("Test", "thatjoshguy69", 7783, 0, 0, 0), settings,
+                        ProfileStats("Test", "thatjoshguy", 7783, 0, 0, 0), settings,
                         TwidgetWidget.LAYOUT_MODE_LARGE, true, drawBackground = true)
                     timings += (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000
                     if (sample == 0) File(context.cacheDir, "render-$label-$font-$width-$height.png").outputStream().use {

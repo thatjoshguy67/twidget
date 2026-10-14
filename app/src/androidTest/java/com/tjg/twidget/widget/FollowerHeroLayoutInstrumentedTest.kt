@@ -161,7 +161,7 @@ class FollowerHeroLayoutInstrumentedTest {
                     language = "en", showDelta = true, containedFooter = row % 2 == 0,
                     logo = TwidgetStore.LOGO_TWITTER)
                 val bitmap = WidgetArtworkRenderer.render(context, example.first, 176,
-                    ProfileStats("Test", "thatjoshguy69", example.second, 0, 0, 0), settings,
+                    ProfileStats("Test", "thatjoshguy", example.second, 0, 0, 0), settings,
                     TwidgetWidget.LAYOUT_MODE_LARGE, false, if (row % 2 == 0) 21 else -3, drawBackground = true)
                 canvas.drawBitmap(bitmap, column * 368f + 8, row * 204f + 32, null)
                 bitmap.recycle()

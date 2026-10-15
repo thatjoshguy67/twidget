@@ -90,8 +90,6 @@ is reused by someone else.
 
 - Thanks to [aaronthetechie1](https://github.com/aaronthetechie1) for the
   animations, onboarding changes, and German follower-widget wording.
-- Thanks to [SadLinusGuy0](https://github.com/SadLinusGuy0) for widget settings,
-  dashboard improvements, account-handle migration, optimisations, and fixes.
 
 [1.3.1-beta.1]: https://github.com/thatjoshguy67/twidget/compare/twidget-v1.3.0...twidget-v1.3.1-beta.1
 

@@ -328,6 +328,7 @@
     <string name="app_info">Informations sur l\'application</string>
     <string name="update">Mettre à jour</string>
     <string name="update_suggestion_title">Mise à jour disponible</string>
+    <string name="update_suggestion_close">Fermer la suggestion de mise à jour</string>
     <string name="update_suggestion_summary">La version %1$s de Twidget est disponible</string>
     <string name="update_to_version">Mettre à jour vers la version %1$s</string>
     <string name="checking_for_updates">Recherche de mises à jour</string>

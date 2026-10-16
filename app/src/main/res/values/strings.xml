@@ -347,6 +347,7 @@
     <string name="app_info">App info</string>
     <string name="update">Update</string>
     <string name="update_suggestion_title">Update available</string>
+    <string name="update_suggestion_close">Dismiss update suggestion</string>
     <string name="update_suggestion_summary">Twidget version %1$s is available</string>
     <string name="update_to_version">Update to version %1$s</string>
     <string name="checking_for_updates">Checking for updates</string>

@@ -353,7 +353,7 @@
     <string name="debug_version_spoofing">Usurpation de version</string>
     <string name="debug_update_tools">Outils de mise à jour</string>
     <string name="debug_spoof_app_version_enabled">Utiliser une version d\'app usurpée</string>
-    <string name="debug_spoof_app_version_enabled_summary">Si activé, la recherche de mises à jour sur GitHub utilise la version ci-dessous au lieu de la version installée</string>
+    <string name="debug_spoof_app_version_enabled_summary">Appuyez pour saisir la version à utiliser</string>
     <string name="debug_spoof_app_version">Usurper la version installée</string>
     <string name="debug_spoof_app_version_summary">Utilisée uniquement pour la recherche de mises à jour sur GitHub. Laisse vide pour utiliser la vraie version</string>
     <string name="debug_spoof_app_version_invalid">Saisis une version comme 1.2.3 ou 1.2.3-beta.1.</string>

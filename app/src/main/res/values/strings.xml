@@ -372,7 +372,7 @@
     <string name="debug_version_spoofing">Version spoofing</string>
     <string name="debug_update_tools">Update tools</string>
     <string name="debug_spoof_app_version_enabled">Use spoofed app version</string>
-    <string name="debug_spoof_app_version_enabled_summary">When enabled, GitHub update checks use the version below instead of the installed version</string>
+    <string name="debug_spoof_app_version_enabled_summary">Tap to enter the version to use</string>
     <string name="debug_spoof_app_version">Spoof installed app version</string>
     <string name="debug_spoof_app_version_summary">Uses this version only when checking GitHub updates; leave empty to use the real version</string>
     <string name="debug_spoof_app_version_invalid">Enter a version such as 1.2.3 or 1.2.3-beta.1.</string>

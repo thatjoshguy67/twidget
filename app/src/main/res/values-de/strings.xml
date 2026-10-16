@@ -232,7 +232,7 @@
     <string name="analytics_overview">Übersicht</string>
     <string name="analytics_trend">Trend</string>
     <string name="analytics_all_metrics">Alle importierten Statistiken</string>
-    <string name="notices_title">Hinweise</string>
+    <string name="notices_title">Versionshinweise</string>
     <string name="notices_load_failed">Versionshinweise konnten nicht aktualisiert werden.</string>
     <string name="notices_showing_cache">Zuletzt geladene Hinweise werden angezeigt.</string>
     <string name="notices_beta">Beta</string>
@@ -350,7 +350,7 @@
     <string name="debug_version_spoofing">Versions-Spoofing</string>
     <string name="debug_update_tools">Update-Werkzeuge</string>
     <string name="debug_spoof_app_version_enabled">Vorgetäuschte App-Version verwenden</string>
-    <string name="debug_spoof_app_version_enabled_summary">Bei Aktivierung verwenden GitHub-Updateprüfungen die unten stehende statt der installierten Version</string>
+    <string name="debug_spoof_app_version_enabled_summary">Antippen, um die zu verwendende Version einzugeben</string>
     <string name="debug_spoof_app_version">Installierte App-Version vortäuschen</string>
     <string name="debug_spoof_app_version_summary">Wird nur bei der Prüfung von GitHub-Updates verwendet; leer lassen, um die echte Version zu nutzen</string>
     <string name="debug_spoof_app_version_invalid">Gib eine Version wie 1.2.3 oder 1.2.3-beta.1 ein.</string>

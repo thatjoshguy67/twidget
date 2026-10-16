@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.Shader
 import android.os.Build
+import android.text.Layout
 import android.util.AttributeSet
 import android.view.animation.PathInterpolator
 import androidx.appcompat.widget.AppCompatTextView
@@ -36,6 +37,10 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
 
     fun prepareNowBriefTitleMotion() {
         prepareMotion(TITLE_PROFILE)
+    }
+
+    fun prepareNowBriefOnboardingTitleMotion() {
+        prepareMotion(ONBOARDING_TITLE_PROFILE)
     }
 
     private fun prepareMotion(motionProfile: MotionProfile) {
@@ -97,14 +102,26 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
         startMotion(startDelayMs)
     }
 
-    fun startNowBriefTitleMotion(startDelayMs: Long) {
-        startMotion(startDelayMs)
+    fun startNowBriefTitleMotion(
+        startDelayMs: Long,
+        onEnd: (() -> Unit)? = null,
+        onBeforeEnd: (() -> Unit)? = null,
+        beforeEndLeadMs: Long = 0L,
+    ) {
+        startMotion(startDelayMs, onEnd, onBeforeEnd, beforeEndLeadMs)
     }
 
-    private fun startMotion(startDelayMs: Long) {
+    private fun startMotion(
+        startDelayMs: Long,
+        onEnd: (() -> Unit)? = null,
+        onBeforeEnd: (() -> Unit)? = null,
+        beforeEndLeadMs: Long = 0L,
+    ) {
         animator?.cancel()
         if (spans.isEmpty() || !ValueAnimator.areAnimatorsEnabled()) {
             clearMotion()
+            onBeforeEnd?.invoke()
+            onEnd?.invoke()
             return
         }
         val characterRevealDuration = spans.maxOf { it.startDelayMs } + profile.characterDurationMs
@@ -122,6 +139,11 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             textRevealStart + textRevealDuration,
             shaderFlowDuration,
         )
+        var beforeEndStarted = false
+        val beforeEndRunnable = Runnable {
+            beforeEndStarted = true
+            onBeforeEnd?.invoke()
+        }
         animator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = totalDuration
             startDelay = startDelayMs
@@ -155,17 +177,27 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
 
                 override fun onAnimationCancel(animation: android.animation.Animator) {
                     cancelled = true
+                    removeCallbacks(beforeEndRunnable)
                 }
 
                 override fun onAnimationEnd(animation: android.animation.Animator) {
+                    removeCallbacks(beforeEndRunnable)
                     if (!cancelled) {
+                        if (!beforeEndStarted) onBeforeEnd?.invoke()
                         renderMotion = false
                         restoreMotionLayer()
                         invalidate()
+                        onEnd?.invoke()
                     }
                 }
             })
             start()
+        }
+        if (onBeforeEnd != null) {
+            postDelayed(
+                beforeEndRunnable,
+                startDelayMs + (totalDuration - beforeEndLeadMs).coerceAtLeast(0L),
+            )
         }
     }
 
@@ -210,25 +242,35 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             (extendedPaddingTop - scrollY).toFloat(),
         )
         val savedColor = paint.color
+        val savedShader = paint.shader
         // TextView normally resolves its ColorStateList in onDraw. Custom motion
         // bypasses that path, so resolve it here too (including dark/disabled states).
         val textColor = currentTextColor
         paint.color = textColor
         val motionShader = spans.firstOrNull()?.colorShader(textColor)
         try {
-            spans.forEach { span ->
-                val line = currentLayout.getLineForOffset(span.start)
-                span.drawGlyph(
-                    canvas,
-                    currentText,
-                    currentLayout.getPrimaryHorizontal(span.start),
-                    currentLayout.getLineBaseline(line),
-                    paint,
-                    motionShader,
-                )
+            if (spans.all { it.isFullyVisible() }) {
+                paint.shader = motionShader
+                currentLayout.draw(canvas)
+            } else {
+                spans.forEach { span ->
+                    val line = currentLayout.getLineForOffset(span.start)
+                    span.drawGlyph(
+                        canvas,
+                        currentText,
+                        currentLayout.getPrimaryHorizontal(span.start),
+                        currentLayout.getLineBaseline(line),
+                        currentLayout.getLineStart(line),
+                        currentLayout.getLineEnd(line),
+                        currentLayout.getParagraphDirection(line) == Layout.DIR_RIGHT_TO_LEFT,
+                        paint,
+                        motionShader,
+                    )
+                }
             }
         } finally {
             paint.color = savedColor
+            paint.shader = savedShader
             canvas.restoreToCount(save)
         }
     }
@@ -266,11 +308,16 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             progress = 1f
         }
 
+        fun isFullyVisible(): Boolean = progress >= 1f
+
         fun drawGlyph(
             canvas: Canvas,
             text: CharSequence,
             x: Float,
             y: Int,
+            contextStart: Int,
+            contextEnd: Int,
+            isRtl: Boolean,
             paint: Paint,
             motionShader: Shader?,
         ) {
@@ -286,7 +333,17 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             paint.shader = motionShader ?: savedShader
             paint.maskFilter = motionMaskFilter
             paint.alpha = (savedAlpha * progress).roundToInt()
-            canvas.drawText(text, start, end, x, y.toFloat(), paint)
+            canvas.drawTextRun(
+                text,
+                start,
+                end,
+                contextStart,
+                contextEnd,
+                x,
+                y.toFloat(),
+                isRtl,
+                paint,
+            )
             canvas.restore()
             paint.alpha = savedAlpha
             paint.maskFilter = savedMaskFilter
@@ -364,6 +421,16 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             shaderFlowDurationMs = 1020L,
             textRevealLeadInMs = 600L,
             textRevealDurationMs = 4000L,
+        )
+        val ONBOARDING_TITLE_PROFILE = MotionProfile(
+            characterDurationMs = 280L,
+            characterIntervalMs = 24L,
+            maxBlurDp = 7f,
+            startScale = 0.85f,
+            colors = intArrayOf(0xFFB8EEFF.toInt(), 0xFF78CFFF.toInt(), 0xFF3F93FF.toInt(), 0xFFB8EEFF.toInt()),
+            shaderFlowDurationMs = 500L,
+            textRevealLeadInMs = 300L,
+            textRevealDurationMs = 1500L,
         )
         val APPEAR_INTERPOLATOR = PathInterpolator(0.33f, 1f, 0.68f, 1f)
         val SHADER_INTERPOLATOR = PathInterpolator(0.61f, 1f, 0.88f, 1f)

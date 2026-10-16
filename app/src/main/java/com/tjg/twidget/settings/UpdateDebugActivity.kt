@@ -2,10 +2,12 @@ package com.tjg.twidget.settings
 
 import android.os.Bundle
 import android.text.InputType
+import android.widget.EditText
 import android.widget.Toast
-import androidx.preference.EditTextPreference
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
+import androidx.preference.SeslSwitchPreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
@@ -56,43 +58,23 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
             title = getString(R.string.debug_version_spoofing)
             isIconSpaceReserved = false
         })
-        screen.addPreference(SwitchPreferenceCompat(context).apply {
+        screen.addPreference(SeslSwitchPreferenceScreen(context).apply {
             isVisible = BuildVars.IN_APP_UPDATES
+            layoutResource = androidx.preference.R.layout.sesl_preference_switch_screen
             key = "debug_spoof_app_version_enabled"
             title = getString(R.string.debug_spoof_app_version_enabled)
             summary = getString(R.string.debug_spoof_app_version_enabled_summary)
             isChecked = spoofEnabled
-            isEnabled = spoofedVersion.isNotBlank()
             setOnPreferenceChangeListener { _, value ->
                 val enabled = value as Boolean
                 TwidgetStore.setSpoofedAppVersionEnabled(context, enabled)
-                requestCheck()
+                if (spoofedVersion.isNotBlank()) requestCheck()
                 listView.post { if (isAdded) buildScreen() }
                 true
             }
-        })
-        screen.addPreference(EditTextPreference(context).apply {
-            isVisible = BuildVars.IN_APP_UPDATES
-            key = "debug_spoof_app_version"
-            title = getString(R.string.debug_spoof_app_version)
-            summary = getString(R.string.debug_spoof_app_version_summary)
-            text = spoofedVersion
-            setOnBindEditTextListener {
-                it.inputType = InputType.TYPE_CLASS_TEXT
-                it.setSelectAllOnFocus(true)
-            }
-            setOnPreferenceChangeListener { _, value ->
-                val version = (value as String).trim()
-                if (version.isNotEmpty() && AppVersion.parse(version) == null) {
-                    Toast.makeText(context, R.string.debug_spoof_app_version_invalid, Toast.LENGTH_LONG).show()
-                    false
-                } else {
-                    TwidgetStore.setSpoofedAppVersion(context, version.ifBlank { null })
-                    if (version.isBlank()) TwidgetStore.setSpoofedAppVersionEnabled(context, false)
-                    if (TwidgetStore.spoofedAppVersionEnabled(context)) requestCheck()
-                    listView.post { if (isAdded) buildScreen() }
-                    true
-                }
+            setOnPreferenceClickListener {
+                showSpoofedVersionDialog()
+                true
             }
         })
         screen.addPreference(PreferenceCategory(context).apply {
@@ -129,5 +111,34 @@ class UpdateDebugPreferenceFragment : InsetPreferenceFragment() {
         UpdateNotificationHelper.resetNotificationHistory(context)
         UpdateCheckWorker.checkNow(context)
         Toast.makeText(context, R.string.debug_spoof_app_version_checking, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showSpoofedVersionDialog() {
+        val context = requireContext()
+        val padding = (24 * resources.displayMetrics.density).toInt()
+        val input = EditText(context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            setText(TwidgetStore.spoofedAppVersion(context).orEmpty())
+            setSelection(text.length)
+            setSelectAllOnFocus(true)
+            setPadding(padding, padding / 3, padding, padding / 3)
+        }
+        AlertDialog.Builder(context)
+            .setTitle(R.string.debug_spoof_app_version)
+            .setMessage(R.string.debug_spoof_app_version_summary)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val version = input.text.toString().trim()
+                if (version.isNotEmpty() && AppVersion.parse(version) == null) {
+                    Toast.makeText(context, R.string.debug_spoof_app_version_invalid, Toast.LENGTH_LONG).show()
+                } else {
+                    TwidgetStore.setSpoofedAppVersion(context, version.ifBlank { null })
+                    if (version.isBlank()) TwidgetStore.setSpoofedAppVersionEnabled(context, false)
+                    if (TwidgetStore.spoofedAppVersionEnabled(context)) requestCheck()
+                    buildScreen()
+                }
+            }
+            .show()
     }
 }

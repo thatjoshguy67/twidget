@@ -57,5 +57,6 @@
     <color name="brief_onboarding_top">#01233F</color>
     <color name="brief_onboarding_bottom">#000000</color>
     <color name="brief_onboarding_button">#CC17171A</color>
+    <color name="brief_onboarding_guiding_light">#E6FFFFFF</color>
     <color name="card_catalogue_preview_bg">#353538</color>
 </resources>

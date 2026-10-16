@@ -12,7 +12,6 @@ import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.startSettingsSubActivity
 import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
 import dev.oneuiproject.oneui.preference.LayoutPreference
-import dev.oneuiproject.oneui.preference.SuggestionCardPreference
 import dev.oneuiproject.oneui.widget.CardItemView
 
 class SettingsPreferenceFragment : InsetPreferenceFragment() {
@@ -28,17 +27,6 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
         val context = requireContext()
         val screen = preferenceManager.createPreferenceScreen(context)
         val settings = TwidgetStore.settings(context)
-        TwidgetStore.updateSuggestionVersion(context)?.let { version ->
-            screen.addPreference(SuggestionCardPreference(context).apply {
-                key = "update_suggestion"
-                title = getString(R.string.update_suggestion_title)
-                summary = getString(R.string.update_suggestion_summary, version)
-                setActionButtonText(getString(R.string.update))
-                setActionButtonOnClickListener { open(AboutActivity::class.java) }
-                setOnClosedClickedListener { TwidgetStore.dismissUpdateSuggestion(context) }
-            })
-            screen.addPreference(InsetPreferenceCategory(context))
-        }
         val stats = TwidgetStore.currentStats(context, settings.username)
         val profile = CardItemView(context).apply {
             minimumHeight = resources.getDimensionPixelSize(R.dimen.settings_account_min_height)
@@ -124,4 +112,5 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
     private fun open(activity: Class<out android.app.Activity>) {
         requireActivity().startSettingsSubActivity(Intent(requireContext(), activity))
     }
+
 }

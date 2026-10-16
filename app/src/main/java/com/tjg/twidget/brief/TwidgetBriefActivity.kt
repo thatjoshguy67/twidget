@@ -1,6 +1,8 @@
 package com.tjg.twidget.brief
 
 import android.animation.ArgbEvaluator
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
@@ -1188,24 +1190,18 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun startPreparedBriefEntrance() {
         findViewById<View>(R.id.brief_scroll).post {
             if (isFinishing || isDestroyed) return@post
-            val interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
                 .startNowBriefTitleMotion(TITLE_DELAY_MS)
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body)
                 .startNowBriefMotion(COPY_DELAY_MS)
-            entranceSections.forEachIndexed { index, section ->
-                startEntranceView(
-                    section,
-                    CARD_DELAY_MS + minOf(index, MAX_STAGGERED_CARD_INDEX) * CARD_STAGGER_MS,
-                    CARD_DURATION_MS,
-                    interpolator,
-                )
+            entranceSections.forEach { section ->
+                startNowBriefCardEntrance(section, CARD_DELAY_MS)
             }
             startEntranceView(
                 findViewById(R.id.brief_footer),
                 FOOTER_DELAY_MS,
                 COPY_DURATION_MS,
-                interpolator,
+                PathInterpolator(0.2f, 0f, 0f, 1f),
             )
         }
     }
@@ -1229,6 +1225,21 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             .setDuration(duration)
             .setInterpolator(interpolator)
             .start()
+    }
+
+    private fun startNowBriefCardEntrance(view: View, delay: Long) {
+        val alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 1f).apply {
+            duration = NOW_BRIEF_CARD_ALPHA_DURATION_MS
+        }
+        val translation = ObjectAnimator.ofFloat(view, View.TRANSLATION_Y, 0f).apply {
+            duration = NOW_BRIEF_CARD_TRANSLATE_DURATION_MS
+            interpolator = PathInterpolator(0.22f, 0.25f, 0f, 1f)
+        }
+        AnimatorSet().apply {
+            startDelay = delay
+            playTogether(alpha, translation)
+            start()
+        }
     }
 
     private fun sectionLabel(value: String) = primaryText(value, 14f).apply {
@@ -1266,15 +1277,14 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     companion object {
         private const val MASONRY_COLUMN_GAP_DP = 20
         private const val COPY_LIFT_DP = 12
-        private const val CARD_LIFT_DP = 18
+        private const val CARD_LIFT_DP = 15
         private const val TITLE_DELAY_MS = 0L
         private const val COPY_DELAY_MS = 220L
         private const val CARD_DELAY_MS = 190L
-        private const val CARD_STAGGER_MS = 58L
         private const val FOOTER_DELAY_MS = 420L
         private const val COPY_DURATION_MS = 400L
-        private const val CARD_DURATION_MS = 440L
-        private const val MAX_STAGGERED_CARD_INDEX = 7
+        private const val NOW_BRIEF_CARD_ALPHA_DURATION_MS = 950L
+        private const val NOW_BRIEF_CARD_TRANSLATE_DURATION_MS = 500L
         private const val BACKGROUND_TRANSITION_DURATION_MS = 560L
         const val EXTRA_USERNAME = "username"
         private const val EXTRA_DEBUG_SCENARIO = "brief_debug_scenario"

@@ -72,7 +72,7 @@
                     android:includeFontPadding="false"
                     android:textColor="@color/oneui_text_primary"
                     android:textSize="36sp"
-                    android:textStyle="bold" />
+                    android:textStyle="normal" />
 
                 <com.tjg.twidget.brief.NowBriefSubtitleMotionView
                     android:id="@+id/brief_summary_body"

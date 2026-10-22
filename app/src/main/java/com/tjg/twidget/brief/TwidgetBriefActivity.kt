@@ -64,6 +64,7 @@ import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.CardValueTextView
 import com.tjg.twidget.ui.MetricChartView
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
@@ -372,6 +373,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         scroll.seslSetFadingEdgeEnabled(false)
         val tint = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
         BriefPageChrome.compact(findViewById(R.id.brief_root)) { onBackPressedDispatcher.onBackPressed() }
+        findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title).typeface =
+            TwidgetFonts.forApp(this, 700)
+        findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).typeface =
+            TwidgetFonts.forApp(this, 400)
         findViewById<TextView>(R.id.brief_footer_account).text = "@$username"
         findViewById<View>(R.id.brief_provider_required_action).setOnClickListener {
             showRequiredApiKeyDialog()

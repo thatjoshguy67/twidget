@@ -123,7 +123,7 @@
                     android:id="@+id/brief_footer_info"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/brief_footer_action_button"
                     android:contentDescription="@string/brief_ai_disclaimer"
                     android:padding="13dp"
                     android:scaleType="centerInside" />
@@ -132,7 +132,7 @@
                     android:id="@+id/brief_footer_settings"
                     android:layout_width="50dp"
                     android:layout_height="50dp"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:background="@drawable/brief_footer_action_button"
                     android:contentDescription="@string/brief_settings_title"
                     android:padding="13dp"
                     android:scaleType="centerInside" />

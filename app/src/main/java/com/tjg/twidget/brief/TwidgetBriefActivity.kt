@@ -603,7 +603,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             }
             snapshot.cards.forEach { card -> add(cardSection(card, analytics) to 20) }
         }.mapIndexed { index, (section, topMargin) ->
-            section to if (index == 0) 16 else topMargin
+            section to if (index == 0) 24 else topMargin
         }
         entranceSections = sections.map { it.first }
         if (columns == 1) {

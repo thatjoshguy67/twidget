@@ -78,12 +78,11 @@
                     android:id="@+id/brief_summary_body"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="4dp"
                     android:fontFamily="sec"
                     android:includeFontPadding="false"
-                    android:lineSpacingExtra="1dp"
                     android:textColor="@color/oneui_text_primary"
-                    android:textSize="14sp" />
+                    android:textSize="18sp" />
             </LinearLayout>
 
             <include layout="@layout/view_brief_refresh_state" />

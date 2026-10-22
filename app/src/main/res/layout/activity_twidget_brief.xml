@@ -59,7 +59,7 @@
                 android:id="@+id/brief_summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="29dp"
                 android:orientation="vertical"
                 android:paddingStart="19dp"
                 android:paddingEnd="19dp">

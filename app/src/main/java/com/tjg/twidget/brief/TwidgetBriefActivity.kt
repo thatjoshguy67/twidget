@@ -374,7 +374,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val tint = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
         BriefPageChrome.compact(findViewById(R.id.brief_root)) { onBackPressedDispatcher.onBackPressed() }
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title).typeface =
-            TwidgetFonts.forApp(this, 700)
+            TwidgetFonts.forApp(this, 600)
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).typeface =
             TwidgetFonts.forApp(this, 400)
         findViewById<TextView>(R.id.brief_footer_account).text = "@$username"

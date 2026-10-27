@@ -9,7 +9,7 @@
     <string name="coach_reply_action">Diese Antwort analysieren</string>
     <string name="coach_more_drafts">Weitere Entwürfe</string>
     <string name="coach_more_posts">Weitere Tweets und Antworten</string>
-    <string name="coach_media_draft">Ein Beitrag mit Medien und ohne einleitenden Text</string>
+    <string name="coach_media_draft">Ein Tweet mit Medien und ohne einleitenden Text</string>
     <string name="coach_reply_choice">Antwort · %1$s</string>
     <string name="coach_post_choice">Tweet · %1$s</string>
     <string name="coach_draft_report">Vor dem Posten</string>
@@ -70,11 +70,11 @@
     <string name="coach_paragraph_step">Beginne mit der Kernaussage und verschiebe ergänzende Details in einen zweiten Absatz.</string>
     <string name="coach_post_counts_without_views">Mit %2$s Stunden wurden %1$s öffentliche Interaktionen erfasst. Gemeint sind Likes, Antworten, Retweets und zitierte Tweets. Die Aufrufzahl ist unbekannt.</string>
     <string name="coach_unknown_views_limit">Der Anbieter hat keine Aufrufzahl geliefert. Ausspielung und Reaktionen je Aufruf können nicht verglichen werden.</string>
-    <string name="coach_ai_local_note">Gemini Nano analysiert diesen Beitrag und ausgewählten Verlauf auf deinem Gerät. Die Vorschläge sind KI-Hypothesen, keine belegten Ursachen.</string>
-    <string name="coach_ai_cloud_note">Cloud-Feedback sendet diesen Beitrag, Entwurfstext, angehängte Bilder oder Videovorschauen und ausgewählten öffentlichen Verlauf mit deinem gespeicherten Gemini-API-Schlüssel an Google.</string>
+    <string name="coach_ai_local_note">Gemini Nano analysiert diesen Tweet und ausgewählten Verlauf auf deinem Gerät. Die Vorschläge sind KI-Hypothesen, keine belegten Ursachen.</string>
+    <string name="coach_ai_cloud_note">Cloud-Feedback sendet diesen Tweet, Entwurfstext, angehängte Bilder oder Videovorschauen und ausgewählten öffentlichen Verlauf mit deinem gespeicherten Gemini-API-Schlüssel an Google.</string>
     <string name="coach_ai_generate">KI-Vorschläge erhalten</string>
     <string name="coach_ai_generate_cloud">Vorschläge mit Cloud-KI erhalten</string>
-    <string name="coach_ai_thinking">Dein Beitrag und sein Kontext werden analysiert…</string>
+    <string name="coach_ai_thinking">Dein Tweet und sein Kontext werden analysiert…</string>
     <string name="coach_ai_failed">Das KI-Feedback konnte nicht abgeschlossen werden. Versuche es erneut oder prüfe die KI-Einstellungen von Dein Briefing. Die gemessenen Daten bleiben sichtbar.</string>
     <string name="coach_ai_stale">Dieser Entwurf wurde geändert. Schließe diese Ansicht und öffne sie erneut, um Feedback zum aktuellen Text zu erhalten.</string>
     <string name="coach_ai_local_result">Mit Gemini Nano auf diesem Gerät erstellt. Die Erklärungen sind Möglichkeiten zum Testen.</string>
@@ -83,11 +83,11 @@
     <string name="coach_ai_rewrite">Vorgeschlagene Neufassung</string>
     <string name="coach_ai_fill_in">Neufassung — fehlende Angaben ergänzen</string>
     <string name="coach_ai_basis">Verwendete Belege</string>
-    <string name="coach_ai_wording_basis">Die Formulierung in diesem Beitrag. Sie allein belegt keinen Einfluss auf die Leistung.</string>
+    <string name="coach_ai_wording_basis">Die Formulierung in diesem Tweet. Sie allein belegt keinen Einfluss auf die Leistung.</string>
     <string name="coach_ai_source_counts">%1$s Aufrufe · %2$s öffentliche Interaktionen · mit %3$s Stunden erfasst</string>
     <string name="coach_ai_unknown">Unbekannt</string>
     <string name="coach_ai_question">Hilfreicher Kontext</string>
-    <string name="coach_ai_auto_note">Auto nutzt zuerst Gemini Nano. Bei Bedarf werden dieser Beitrag, Entwurfstext, angehängte Bilder oder Videovorschauen und ausgewählter öffentlicher Verlauf mit deinem gespeicherten Gemini-Schlüssel an Google gesendet.</string>
+    <string name="coach_ai_auto_note">Auto nutzt zuerst Gemini Nano. Bei Bedarf werden dieser Tweet, Entwurfstext, angehängte Bilder oder Videovorschauen und ausgewählter öffentlicher Verlauf mit deinem gespeicherten Gemini-Schlüssel an Google gesendet.</string>
     <string name="coach_ai_media">Medienkontext</string>
     <string name="coach_ai_media_image">Anhang %1$d (Eintrag %2$d): Bild im KI-Kontext enthalten.</string>
     <string name="coach_ai_media_video">Anhang %1$d (Eintrag %2$d): Videovorschau oder Einzelbild enthalten. Bewegung und Ton wurden nicht geprüft.</string>

@@ -864,6 +864,9 @@
     <string name="brief_widget_label">Tu Resumen</string>
     <string name="brief_widget_description">Un mensaje cambiante basado en tu actividad de cuenta más reciente</string>
     <string name="brief_widget_empty_title">Tu resumen se está preparando</string>
+    <string name="brief_loading_status_analyzing">Analizando tus publicaciones recientes&#8230;</string>
+    <string name="brief_loading_status_insights">Buscando tus conclusiones más útiles&#8230;</string>
+    <string name="brief_loading_status_preparing">Preparando tu Brief personalizado&#8230;</string>
     <string name="brief_widget_empty_body">Abre Tu Resumen para configurarlo.</string>
     <string name="brief_preview_title">Captando atención</string>
     <string name="brief_preview_body">Tu última publicación está llegando a más gente. Estás en racha.</string>

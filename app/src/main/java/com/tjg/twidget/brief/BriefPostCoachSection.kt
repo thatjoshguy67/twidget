@@ -43,14 +43,14 @@ internal object BriefPostCoachSection {
         val previews = visible.map { post ->
             val target = BriefReviewTarget(username, postUrl = post.url)
             preview(BriefReviewPreviewCopy.description(post, null, strings), BriefReviewTweetCard.create(activity, username, post = post, compact = true,
-                actions = listOf(BriefReviewAction(R.string.review_view) { openReview(target) }))).also { section ->
+                actions = listOf(BriefReviewAction(R.string.review_view) { openReview(target) }), stackCompactActions = true)).also { section ->
                 descriptions += post to (section.getChildAt(0) as TextView)
             }
         } + drafts.take(2).map { draft ->
             val target = BriefReviewTarget(username, draftId = draft.id)
             preview(activity.getString(R.string.review_intro_draft), BriefReviewTweetCard.create(activity, username, draft = draft, compact = true,
                 actions = listOf(BriefReviewAction(R.string.coach_edit_draft, false) { editDraft(draft) },
-                    BriefReviewAction(R.string.review_view) { openReview(target) }),
+                    BriefReviewAction(R.string.review_view) { openReview(target) }), stackCompactActions = true,
                 onClick = { openReview(target) }))
         }
         val libraryCard = BriefReviewLibraryCard.create(activity) {

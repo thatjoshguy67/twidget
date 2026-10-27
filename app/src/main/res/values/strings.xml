@@ -899,6 +899,9 @@
     <string name="brief_widget_label">Your Brief</string>
     <string name="brief_widget_description">A changing message based on your latest account activity</string>
     <string name="brief_widget_empty_title">Your brief is getting ready</string>
+    <string name="brief_loading_status_analyzing">Your recent posts are being analysed&#8230;</string>
+    <string name="brief_loading_status_insights">Finding your most useful insights&#8230;</string>
+    <string name="brief_loading_status_preparing">Preparing your personal Brief&#8230;</string>
     <string name="brief_widget_empty_body">Open Your Brief to set it up.</string>
     <string name="brief_preview_title">Getting attention</string>
     <string name="brief_preview_body">Your latest post is reaching more people. You’re on a roll.</string>

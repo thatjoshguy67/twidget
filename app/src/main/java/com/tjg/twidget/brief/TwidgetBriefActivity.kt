@@ -2,6 +2,8 @@ package com.tjg.twidget.brief
 
 import android.view.ViewGroup
 import android.animation.ArgbEvaluator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
@@ -86,6 +88,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var checkContentOnResume = false
     private var entranceSections: List<View> = emptyList()
     private var backgroundAnimator: ValueAnimator? = null
+    private var loadingStatusIndex = 0
+    private var loadingStatusRunnable: Runnable? = null
+    private val loadingStatusAppearInterpolator = PathInterpolator(0.22f, 0f, 0.18f, 1f)
+    private val loadingStatusDisappearInterpolator = PathInterpolator(0.42f, 0f, 1f, 1f)
     private var providerSetupRequired = false
     private var apiKeyPromptShown = false
     private var apiKeyDialog: AlertDialog? = null
@@ -170,10 +176,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     private fun showLaunchShell() {
         findViewById<View>(R.id.brief_scroll).visibility = View.GONE
+        findViewById<View>(R.id.brief_loading_container).visibility = View.GONE
         findViewById<LottieAnimationView>(R.id.brief_loading).apply {
-            visibility = View.GONE
             cancelAnimation()
         }
+        stopLoadingStatusRotation()
         findViewById<ImageButton>(R.id.brief_footer_info).isEnabled = false
         findViewById<ImageButton>(R.id.brief_footer_settings).isEnabled = false
     }
@@ -333,6 +340,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         apiKeyDialog = null
         backgroundAnimator?.cancel()
         backgroundAnimator = null
+        stopLoadingStatusRotation()
         super.onDestroy()
     }
 
@@ -347,14 +355,71 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     private fun setLoading(loading: Boolean) {
         val remembered = visiblePresentation != null
-        findViewById<View>(R.id.brief_scroll).visibility =
-            if (!loading && (remembered || !providerSetupRequired)) View.VISIBLE else View.GONE
+        val showBrief = !loading && (remembered || !providerSetupRequired)
+        val scroll = findViewById<View>(R.id.brief_scroll)
+        val loadingContainer = findViewById<View>(R.id.brief_loading_container)
+        val loadingAnimation = findViewById<LottieAnimationView>(R.id.brief_loading)
         findViewById<View>(R.id.brief_provider_required).visibility =
             if (!remembered && !loading && providerSetupRequired) View.VISIBLE else View.GONE
-        findViewById<LottieAnimationView>(R.id.brief_loading).apply {
-            val active = loading
-            visibility = if (active) View.VISIBLE else View.GONE
-            if (active && ValueAnimator.areAnimatorsEnabled()) playAnimation() else { cancelAnimation(); progress = 0.5f }
+        if (loading) {
+            scroll.animate().cancel()
+            scroll.alpha = 1f
+            scroll.translationY = 0f
+            scroll.visibility = View.GONE
+            loadingContainer.animate().cancel()
+            loadingContainer.alpha = 1f
+            loadingContainer.translationY = 0f
+            loadingContainer.visibility = View.VISIBLE
+            loadingAnimation.animate().cancel()
+            loadingAnimation.alpha = 1f
+            if (ValueAnimator.areAnimatorsEnabled()) loadingAnimation.playAnimation() else {
+                loadingAnimation.cancelAnimation()
+                loadingAnimation.progress = 0.5f
+            }
+            startLoadingStatusRotation()
+        } else if (showBrief && loadingContainer.visibility == View.VISIBLE && ValueAnimator.areAnimatorsEnabled()) {
+            val offset = 12f * resources.displayMetrics.density
+            val loadingStatus = findViewById<TextView>(R.id.brief_loading_status)
+            scroll.visibility = View.VISIBLE
+            scroll.alpha = 0f
+            scroll.translationY = offset
+            stopLoadingStatusRotation(resetView = false)
+            loadingStatus.animate()
+                .alpha(0f)
+                .setDuration(300L)
+                .setInterpolator(loadingStatusDisappearInterpolator)
+                .start()
+            loadingAnimation.cancelAnimation()
+            loadingAnimation.animate()
+                .alpha(0f)
+                .setDuration(300L)
+                .setInterpolator(loadingStatusDisappearInterpolator)
+                .start()
+            loadingContainer.animate()
+                .alpha(0f)
+                .translationY(-offset)
+                .setStartDelay(140L)
+                .setDuration(320L)
+                .setInterpolator(loadingStatusDisappearInterpolator)
+                .withEndAction {
+                    loadingContainer.visibility = View.GONE
+                    loadingContainer.alpha = 1f
+                    loadingContainer.translationY = 0f
+                    loadingAnimation.alpha = 1f
+                }
+                .start()
+            scroll.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(140L)
+                .setDuration(380L)
+                .setInterpolator(loadingStatusAppearInterpolator)
+                .start()
+        } else {
+            scroll.visibility = if (showBrief) View.VISIBLE else View.GONE
+            loadingContainer.visibility = View.GONE
+            loadingAnimation.cancelAnimation()
+            stopLoadingStatusRotation()
         }
         findViewById<View>(R.id.brief_refresh_state).visibility =
             if (remembered && !loading && providerSetupRequired) View.VISIBLE else View.GONE
@@ -367,6 +432,78 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val contentEnabled = !loading && (remembered || !providerSetupRequired)
         findViewById<ImageButton>(R.id.brief_footer_info).isEnabled = contentEnabled
         findViewById<ImageButton>(R.id.brief_footer_settings).isEnabled = contentEnabled
+    }
+
+    private fun startLoadingStatusRotation() {
+        if (loadingStatusRunnable != null) return
+        val statusView = findViewById<TextView>(R.id.brief_loading_status)
+        val offset = 10f * resources.displayMetrics.density
+        val messageIds = intArrayOf(
+            R.string.brief_loading_status_analyzing,
+            R.string.brief_loading_status_insights,
+            R.string.brief_loading_status_preparing,
+        )
+        loadingStatusIndex = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                if (loadingStatusRunnable !== this) return
+                val currentRunnable = this
+                val message = getString(messageIds[loadingStatusIndex % messageIds.size])
+                loadingStatusIndex += 1
+                statusView.animate().cancel()
+                if (ValueAnimator.areAnimatorsEnabled() && statusView.alpha > 0f) {
+                    val fadeOut = ObjectAnimator.ofFloat(statusView, View.ALPHA, statusView.alpha, 0f).apply {
+                        duration = 170L
+                        interpolator = loadingStatusAppearInterpolator
+                    }
+                    val moveOut = ObjectAnimator.ofFloat(
+                        statusView,
+                        View.TRANSLATION_Y,
+                        statusView.translationY,
+                        -offset,
+                    ).apply {
+                        duration = 280L
+                        interpolator = loadingStatusDisappearInterpolator
+                    }
+                    AnimatorSet().apply {
+                        playTogether(fadeOut, moveOut)
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                if (loadingStatusRunnable !== currentRunnable) return
+                                statusView.text = message
+                                statusView.alpha = 0f
+                                statusView.translationY = offset
+                                statusView.animate()
+                                    .alpha(1f)
+                                    .translationY(0f)
+                                    .setDuration(420L)
+                                    .setInterpolator(loadingStatusAppearInterpolator)
+                                    .start()
+                            }
+                        })
+                        start()
+                    }
+                } else {
+                    statusView.text = message
+                    statusView.alpha = 1f
+                    statusView.translationY = 0f
+                }
+                statusView.postDelayed(this, 2_400L)
+            }
+        }
+        loadingStatusRunnable = runnable
+        runnable.run()
+    }
+
+    private fun stopLoadingStatusRotation(resetView: Boolean = true) {
+        val statusView = findViewById<TextView>(R.id.brief_loading_status)
+        loadingStatusRunnable?.let(statusView::removeCallbacks)
+        loadingStatusRunnable = null
+        statusView.animate().cancel()
+        if (resetView) {
+            statusView.alpha = 0f
+            statusView.translationY = 0f
+        }
     }
 
     private fun bindChrome() {
@@ -490,7 +627,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefPostCoach.reviewablePosts(AnalyticsClient.cached(this, username), username, System.currentTimeMillis())
                 .any { it.url == post.url }
         val actions = if (eligible) listOf(BriefReviewAction(R.string.review_view) { openReview(post) }) else emptyList()
-        return BriefReviewTweetCard.create(this, username, post = post, compact = true, actions = actions, sourceAttribution = sourceAttribution)
+        return BriefReviewTweetCard.create(this, username, post = post, compact = true, actions = actions,
+            sourceAttribution = sourceAttribution, stackCompactActions = true)
     }
 
     private fun openReview(post: PostSummary) = startRightSidePopOverActivity(
@@ -737,7 +875,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 })
             }
         }
-        return BriefReviewTweetCard.create(this, username, draft = post, compact = true, actions = actions)
+        return BriefReviewTweetCard.create(this, username, draft = post, compact = true, actions = actions,
+            stackCompactActions = true)
     }
 
     private fun scheduleDate(timestamp: Long): String = if (timestamp > 0L) {

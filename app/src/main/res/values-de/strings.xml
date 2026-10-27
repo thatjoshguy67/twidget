@@ -241,7 +241,7 @@
     <string name="notices_upcoming">Demnächst</string>
     <string name="notices_upcoming_summary">Vorschau auf die nächste Version. Änderungen vorbehalten.</string>
     <string name="notices_no_details">Es wurden keine zusätzlichen Release-Details veröffentlicht.</string>
-    <string name="notices_view_on_github">Vollständige Version auf GitHub ansehen</string>
+    <string name="notices_view_on_github">Alle Änderungen auf GitHub ansehen</string>
     <string name="notices_view_changelog">Changelog ansehen</string>
     <string name="notices_changelog_title">Changelog</string>
     <string name="notices_check_for_update">Auf Updates überprüfen</string>
@@ -392,14 +392,14 @@
     <string name="onboarding_profile_title">Nutzernamen eingeben</string>
     <string name="onboarding_profile_summary">Keine Sorge, du kannst später weitere hinzufügen</string>
     <string name="onboarding_scheduling_title">Wähle die Art zu Posten</string>
-    <string name="onboarding_scheduling_summary">Verbinde Buffer, um Entwürfe und geplante Beiträge zu synchronisieren und automatisch zu veröffentlichen – oder behalte alles lokal und poste selbst auf X.</string>
+    <string name="onboarding_scheduling_summary">Verbinde Buffer, um Entwürfe und geplante Tweets zu synchronisieren und automatisch zu veröffentlichen – oder behalte alles lokal und poste selbst auf X.</string>
     <string name="onboarding_connect_buffer">Buffer verbinden</string>
     <string name="onboarding_run_locally">Lokal erinnern</string>
     <string name="onboarding_buffer_no_x_account">Verbinde zuerst einen X-Channel in Buffer.</string>
     <string name="onboarding_choose_buffer_account">Wähle deinen Standard-X-Channel</string>
     <string name="connect">Verbinden</string>
     <string name="onboarding_tip_stats_title">Live Follower-Stats</string>
-    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Konten, Beiträge und Likes für jedes öffentliche X-Profil.</string>
+    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Konten, Tweets und Likes für jedes öffentliche X-Profil.</string>
     <string name="onboarding_tip_widgets_title">Start- und Sperrbildschirm-Widgets</string>
     <string name="onboarding_tip_widgets_summary">Übersichtliche One-UI-Widgets mit Optionen für Blur, Tönung und Schriftarten.</string>
     <string name="onboarding_tip_accounts_title">Mehrere Accounts</string>
@@ -693,7 +693,7 @@
     <string name="schedule_sync_failed">Buffer konnte nicht synchr. werden: %1$s</string>
     <string name="schedule_error_title">Planung konnte nicht aktualisiert werden</string>
     <string name="schedule_publish_checklist">Checkliste veröffentlichen</string>
-    <string name="schedule_checklist_summary">Öffne X mit deinem Entwurf und vervollständige alle %1$d Thread-Beiträge.</string>
+    <string name="schedule_checklist_summary">Öffne X mit deinem Entwurf und vervollständige alle %1$d Tweets im Thread.</string>
     <string name="schedule_back_to_queue">Zurück in die Warteschlange</string>
     <string name="schedule_media_only">Nur Medien</string>
     <string name="schedule_copy_text">Text kopieren</string>
@@ -714,7 +714,7 @@
     <string name="schedule_invalid_media">Teilen von gespeicherten Medien nicht möglich.</string>
     <string name="schedule_handoff_failed">Dieses Element konnte nicht übergeben werden.</string>
     <string name="schedule_empty_title">Kein Tweet geplant</string>
-    <string name="schedule_empty_summary">Erstelle einen Entwurf oder plane einen Beitrag, um ihn hier zu sehen.</string>
+    <string name="schedule_empty_summary">Erstelle einen Entwurf oder plane einen Tweet, um ihn hier zu sehen.</string>
     <string name="schedule_no_media">Keine Medien</string>
     <string name="schedule_local_media">Lokale Medien</string>
     <string name="schedule_media_summary">%1$d Medien · %2$s</string>
@@ -861,6 +861,9 @@
     <string name="brief_widget_label">Dein Briefing</string>
     <string name="brief_widget_description">Eine persönliche Nachricht, die sich dynamisch an deine aktuellen Aktivitäten anpasst</string>
     <string name="brief_widget_empty_title">Dein Briefing wird vorbereitet</string>
+    <string name="brief_loading_status_analyzing">Deine aktuellen Tweets werden ausgewertet&#8230;</string>
+    <string name="brief_loading_status_insights">Die wichtigsten Einblicke werden zusammengestellt&#8230;</string>
+    <string name="brief_loading_status_preparing">Dein persönliches Briefing wird vorbereitet&#8230;</string>
     <string name="brief_widget_empty_body">Öffne Dein Briefing, um es einzurichten.</string>
     <string name="brief_preview_title">Du erhältst Aufmerksamkeit</string>
     <string name="brief_preview_body">Dein letzter Post bekommt immer mehr Reichweite. Du bist auf einem guten Weg.</string>
@@ -892,8 +895,8 @@
         <item quantity="other">%1$s Follower</item>
     </plurals>
     <string name="brief_provider_note_template">Modellerstellung ausstehend</string>
-    <string name="brief_provider_note_nano">Privat mit Gemini Nano auf diesem Gerät generiert</string>
-    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key geschrieben</string>
+    <string name="brief_provider_note_nano">Lokal mit Gemini Nano auf diesem Gerät erstellt</string>
+    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key erstellt</string>
     <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Briefing nicht fertigstellen; Gemini Cloud mit deinem API-Key wurde verwendet</string>
     <string name="brief_provider_note_nano_downloadable">Gemini Nano wird unterstützt und kann heruntergeladen werden</string>
     <string name="brief_provider_note_nano_downloading">Gemini Nano wird noch heruntergeladen</string>
@@ -1015,7 +1018,7 @@
     <string name="brief_guide_source_buffer">Mit Buffer getweetet</string>
     <string name="brief_guide_source_twidget">Mit Twidget geplant</string>
     <string name="brief_guide_follow_up_title">Knüpf an, solange es frisch ist</string>
-    <string name="brief_guide_follow_up_body">Ein aktueller Tweet hat den Median deiner anderen Tweets mit ähnlichem Alter übertroffen. Ergänze ein nützliches Update oder beantworte eine Antwort.</string>
+    <string name="brief_guide_follow_up_body">Ein aktueller Tweet hat den Median deiner anderen Tweets mit ähnlichem Alter übertroffen. Ergänze ein nützliches Update oder beantworte einen Kommentar.</string>
     <string name="brief_guide_window_title">Probiere deinen nächsten Tweet am %1$s</string>
     <string name="brief_guide_window_body">Unter aktuellen Tweets mit ähnlichem Alter hatten deine Tweets am %1$s einen höheren Median der Aufrufe. Teste dieses Zeitfenster noch einmal als Experiment.</string>
     <string name="brief_window_morning">Vormittag</string>
@@ -1035,7 +1038,7 @@
     <string name="tweet_performance_strong_retweets">Er hat mehr Retweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_strong_replies">Er hat mehr Antworten erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_engagements">Er hat weniger Engagements erzielt als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
-    <string name="tweet_performance_quiet_views">Er hat weniger Aufrufe erzielt als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
+    <string name="tweet_performance_quiet_views">Du hast bei diesem Tweet weniger Aufrufe als bei deinen anderen aktuellen Tweets mit gleichem Alter erhalten.</string>
     <string name="tweet_performance_quiet_likes">Er hat weniger Likes bekommen als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_quotes">Er hat weniger Zitat-Tweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_retweets">Er hat weniger Retweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
@@ -1132,7 +1135,7 @@
     <string name="brief_saved_summary_info">Dein letzter erfolgreicher Brief vom %1$s bleibt sichtbar, während ein neuer erstellt wird.</string>
 
     <!-- Brief and tweet-review debug tools. -->
-    <string name="debug_brief_home">Dein Brief debuggen</string>
+    <string name="debug_brief_home">Dein Briefing-Debug</string>
     <string name="debug_brief_ai">KI-Debugging</string>
     <string name="debug_brief_ranking">Kartenrangfolge</string>
     <string name="debug_ui_state">Oberflächenstatus</string>

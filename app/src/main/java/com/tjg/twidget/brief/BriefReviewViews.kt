@@ -78,8 +78,9 @@ internal object BriefReviewViews {
             }
             setOnClickListener { click() }
         }
-    fun actions(context: Context, actions: List<BriefReviewAction>, compact: Boolean = false) =
-        (if (compact) BriefTweetActions(context) else LinearLayout(context)).apply {
+    fun actions(context: Context, actions: List<BriefReviewAction>, compact: Boolean = false,
+                stackCompactActions: Boolean = false) =
+        (if (compact) BriefTweetActions(context, stackCompactActions) else LinearLayout(context)).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
         if (compact) {
@@ -104,7 +105,9 @@ internal object BriefReviewViews {
             }, LinearLayout.LayoutParams(
                 if (actions.size > 1 && !compact) 0 else ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, if (actions.size > 1 && !compact) 1f else 0f).apply {
-                if (index > 0) marginStart = dp(context, if (compact) 20 else 10)
+                if (index > 0 && !(compact && stackCompactActions)) {
+                    marginStart = dp(context, if (compact) 20 else 10)
+                }
             })
         }
     }
@@ -114,7 +117,7 @@ internal data class BriefReviewAction(val label: Int, val primary: Boolean = tru
     val icon: Int = 0, val click: () -> Unit)
 
 /** Keep tweet buttons centred at their natural width; stack when labels need more room. */
-private class BriefTweetActions(context: Context) : LinearLayout(context) {
+private class BriefTweetActions(context: Context, private val stackActions: Boolean) : LinearLayout(context) {
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val naturalWidth = (0 until childCount).sumOf { index ->
             getChildAt(index).apply {
@@ -122,13 +125,15 @@ private class BriefTweetActions(context: Context) : LinearLayout(context) {
                     MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
             }.measuredWidth
         } + BriefReviewViews.dp(context, 20) * (childCount - 1).coerceAtLeast(0)
-        val stacked = MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED &&
-            naturalWidth > MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
+        val stacked = stackActions || (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED &&
+            naturalWidth > MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight)
         orientation = if (stacked) VERTICAL else HORIZONTAL
         for (index in 0 until childCount) {
             (getChildAt(index).layoutParams as LayoutParams).apply {
                 marginStart = if (!stacked && index > 0) BriefReviewViews.dp(context, 20) else 0
+                marginEnd = 0
                 topMargin = if (stacked && index > 0) BriefReviewViews.dp(context, 8) else 0
+                gravity = if (stacked) Gravity.CENTER_HORIZONTAL else Gravity.NO_GRAVITY
             }
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
@@ -140,7 +145,8 @@ internal object BriefReviewTweetCard {
     fun create(context: Context, username: String, post: PostSummary? = null, draft: ScheduledPost? = null,
         rewrite: String? = null, rewriteEntry: Int = 0, compact: Boolean = false,
         actions: List<BriefReviewAction> = emptyList(), onClick: (() -> Unit)? = null,
-        sourceAttribution: String = "", reviewPreview: Boolean = false, openOnCardTap: Boolean = false): View {
+        sourceAttribution: String = "", reviewPreview: Boolean = false, openOnCardTap: Boolean = false,
+        stackCompactActions: Boolean = false): View {
         require((post == null) != (draft == null))
         val stats = TwidgetStore.currentStats(context, username)
         val ai = rewrite != null
@@ -205,7 +211,7 @@ internal object BriefReviewTweetCard {
                 val overlaidActions = if (quoted == null) cardActions else emptyList()
                 result.addView(mediaWithActions(context,
                     TweetMediaView.create(context, post.media, mediaHeight).also { routeMediaTaps(it, result) },
-                    overlaidActions), mediaParams(context, overlaidActions.isNotEmpty()))
+                    overlaidActions, stackCompactActions), mediaParams(context, overlaidActions.isNotEmpty()))
             }
             quoted?.let { source ->
                 result.addView(quotedCard(context, source, reviewPreview || compact), BriefReviewViews.params(context, 10))
@@ -220,12 +226,13 @@ internal object BriefReviewTweetCard {
             entry.media.firstOrNull()?.let { media ->
                 val view = draftMedia(context, media, mediaHeight)
                 val overlaidActions = if (index == entries.lastIndex) cardActions else emptyList()
-                result.addView(mediaWithActions(context, view, overlaidActions), mediaParams(context, overlaidActions.isNotEmpty()))
+                result.addView(mediaWithActions(context, view, overlaidActions, stackCompactActions), mediaParams(context, overlaidActions.isNotEmpty()))
             }
         }
         val lastHasMedia = if (post != null) post.media.isNotEmpty() && quoted == null else entries.lastOrNull()?.value?.media?.isNotEmpty() == true
         if (lastHasMedia && cardActions.isNotEmpty()) result.setPadding(result.paddingLeft, result.paddingTop, result.paddingRight, 0)
-        if (!lastHasMedia && cardActions.isNotEmpty()) result.addView(BriefReviewViews.actions(context, cardActions, compact = true).apply {
+        if (!lastHasMedia && cardActions.isNotEmpty()) result.addView(BriefReviewViews.actions(context, cardActions,
+            compact = true, stackCompactActions = stackCompactActions).apply {
             if (quoted != null) setPadding(0, BriefReviewViews.dp(context, 5), 0, BriefReviewViews.dp(context, 5))
         }, BriefReviewViews.params(context, if (quoted != null) 10 else 14))
         if (quoted != null && post?.media?.isNotEmpty() == true && cardActions.isNotEmpty()) result.setPadding(
@@ -360,7 +367,8 @@ internal object BriefReviewTweetCard {
         }
     }
 
-    private fun mediaWithActions(context: Context, media: View, actions: List<BriefReviewAction>): View {
+    private fun mediaWithActions(context: Context, media: View, actions: List<BriefReviewAction>,
+                                 stackCompactActions: Boolean): View {
         if (actions.isEmpty()) return media
         return FrameLayout(context).apply {
             clipChildren = false
@@ -370,7 +378,8 @@ internal object BriefReviewTweetCard {
                 marginEnd = marginStart
                 bottomMargin = marginStart
             })
-            addView(BriefReviewViews.actions(context, actions, compact = true).apply {
+            addView(BriefReviewViews.actions(context, actions, compact = true,
+                stackCompactActions = stackCompactActions).apply {
                 background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                     intArrayOf(Color.TRANSPARENT, context.getColor(R.color.brief_review_media_fade_bottom)))
                 setPadding(BriefReviewViews.dp(context, 14), BriefReviewViews.dp(context, 26), BriefReviewViews.dp(context, 14), BriefReviewViews.dp(context, 25))

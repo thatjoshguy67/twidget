@@ -200,7 +200,7 @@ internal class WidgetSettingsCard(
             smallLockArtwork.setPadding((5 * scale).toInt(), (5 * scale).toInt(),
                 (5 * scale).toInt(), (5 * scale).toInt())
             place(date, 66, 133, 260, 28)
-            place(clock, 56, 161, 280, 80)
+            place(clock, 56, 147, 280, 80)
             place(artwork, 105, 235, 113, 50)
             place(smallLockArtwork, 229, 235, 57, 50)
             place(actions, 133, 315, 126, 52)

@@ -865,6 +865,9 @@
     <string name="brief_widget_label">Ton Brief</string>
     <string name="brief_widget_description">Un message qui évolue selon l\'activité récente de ton compte</string>
     <string name="brief_widget_empty_title">Ton Brief se prépare</string>
+    <string name="brief_loading_status_analyzing">Analyse de tes posts récents&#8230;</string>
+    <string name="brief_loading_status_insights">Recherche de tes insights les plus utiles&#8230;</string>
+    <string name="brief_loading_status_preparing">Préparation de ton Brief personnalisé&#8230;</string>
     <string name="brief_widget_empty_body">Ouvre le Brief pour le configurer.</string>
     <string name="brief_preview_title">Tu attires l\'attention</string>
     <string name="brief_preview_body">Ton dernier post touche plus de monde. Tu es sur une bonne lancée.</string>

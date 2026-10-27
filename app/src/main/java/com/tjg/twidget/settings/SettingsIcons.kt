@@ -31,6 +31,7 @@ internal object SettingsIcons {
                 BitmapFactory.decodeResource(context.resources, R.drawable.settings_about_twidget))
                 .apply { isCircular = true }
         }
+        val widgets = iconRes == R.drawable.settings_icon_widgets
         val drawable = context.getDrawable(
             if (about) R.drawable.settings_icon_about_palette else iconRes
         )!!.mutate()
@@ -40,6 +41,8 @@ internal object SettingsIcons {
             val foreground = if (ColorUtils.calculateContrast(Color.WHITE, accent) >=
                 ColorUtils.calculateContrast(Color.BLACK, accent)) Color.WHITE else Color.BLACK
             layers.getDrawable(1).setTint(foreground)
+        } else if (widgets) {
+            (drawable as LayerDrawable).getDrawable(1).setTint(Color.WHITE)
         }
         return drawable
     }

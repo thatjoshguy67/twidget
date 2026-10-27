@@ -865,6 +865,9 @@
     <string name="brief_widget_label">El teu resum</string>
     <string name="brief_widget_description">Un missatge canviant basat en la teva activitat de compte més recent</string>
     <string name="brief_widget_empty_title">El teu resum s\'està preparant</string>
+    <string name="brief_loading_status_analyzing">S\'estan analitzant les teves publicacions recents&#8230;</string>
+    <string name="brief_loading_status_insights">S\'estan cercant les teves conclusions més útils&#8230;</string>
+    <string name="brief_loading_status_preparing">S\'està preparant el teu Brief personalitzat&#8230;</string>
     <string name="brief_widget_empty_body">Obre El teu resum per configurar-lo.</string>
     <string name="brief_preview_title">Captant atenció</string>
     <string name="brief_preview_body">La teva última publicació està arribant a més gent. Estàs en ratxa.</string>

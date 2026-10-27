@@ -36,7 +36,7 @@
     <string name="milestone_goal_decelerating_alt">Dein %1$s-%2$s-Ziel ist noch in Reichweite</string>
     <string name="milestone_goal_halfway">Mehr als die Hälfte zu deinem %1$s-%2$s-Ziel</string>
     <string name="milestone_goal_almost">Kurz vor deinem %1$s-%2$s-Ziel</string>
-    <string name="milestone_goal_reached_body">Du hast dein %1$s-%2$s-Ziel erreicht</string>
+    <string name="milestone_goal_reached_body">Du hast dein Ziel von %1$s %2$s erreicht</string>
     <string name="milestone_title_getting_started">Los geht’s</string>
     <string name="milestone_title_keep_going">Weiter so</string>
     <string name="milestone_title_on_your_way">Auf dem Weg</string>

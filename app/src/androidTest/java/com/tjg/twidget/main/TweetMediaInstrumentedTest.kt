@@ -62,4 +62,32 @@ class TweetMediaInstrumentedTest {
             assertTrue(TweetMediaView.create(instrumentation.targetContext, media.take(1)) is MediaAspectImageView)
         }
     }
+    @Test fun fourPhotosRemainScrollableWhenTheyArriveOneAtATime() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            val strip = TweetMediaView.create(instrumentation.targetContext,
+                (1..4).map { PostMedia("photo", "", "Photo $it", 2048, 1536) }) as HorizontalScrollView
+            val row = strip.getChildAt(0) as LinearLayout
+            val bitmap = Bitmap.createBitmap(40, 30, Bitmap.Config.ARGB_8888)
+            fun layout() {
+                strip.measure(View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                strip.layout(0, 0, strip.measuredWidth, strip.measuredHeight)
+            }
+            for (index in 0 until row.childCount) row.getChildAt(index).visibility = View.VISIBLE
+            layout()
+            for (index in 0 until row.childCount) {
+                (row.getChildAt(index) as ImageView).setImageBitmap(bitmap)
+                layout()
+                for (loaded in 0..index) assertTrue("Loaded photo $loaded retains its width after photo $index arrives",
+                    row.getChildAt(loaded).width >= row.getChildAt(loaded).height)
+            }
+            assertTrue("All four photos extend beyond the viewport", row.width > strip.width * 3)
+            strip.scrollTo(row.width, 0)
+            assertTrue("The last photo is reachable", strip.scrollX > 0)
+            for (index in 0 until row.childCount) (row.getChildAt(index) as ImageView).setImageDrawable(null)
+            bitmap.recycle()
+        }
+    }
+
 }

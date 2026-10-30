@@ -54,3 +54,23 @@ content command hit a Parcel protocol mismatch, and the guest namespace retry
 failed loading com/oplus/media/OplusBitmapChecker. No UMS/launcher configuration
 was changed to bypass authorization. Picker visibility and actual blur remain
 unverified and need a device UI check.
+
+### Follow-up after re-adding the widget
+
+Launcher logs identify the placed Followers component as an ordinary AppWidget
+with cardType=-1. Re-adding it and choosing ColorOS does not select this RPK.
+A read-only copy of UMS's card_configs database contained 44 RpkLocalCardConfig
+records and 1062 CardConfig records, with zero Twidget rows in either table.
+Reinstalling the APK while UMS was running triggered package scanning; afterwards
+both tables still had zero Twidget entries. This confirms absence from that
+catalogue, not the precise reason for exclusion.
+
+ColorOsAdmissionInstrumentedTest passed on the connected phone: the app's own
+provider accepted a valid native-card request and returned success. Its direct
+OCS query returned IllegalArgumentException rather than an authorization result.
+Consequently authorization denial is not established by this test. The test
+reports diagnostic status through instrumentation without dumping follower data
+or credentials, and does not change UMS permissions or configuration.
+
+No visible native blur has been verified. The native catalogue/discovery and
+admission path still needs resolving before a native rendering test is possible.

@@ -5,14 +5,15 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Outline
+import android.os.Parcel
+import android.widget.RemoteViews
 import android.graphics.Rect
-import android.text.TextPaint
-import android.text.Spanned
-import android.text.style.StyleSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import android.widget.ImageView
+import android.graphics.RectF
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tjg.twidget.R
@@ -44,14 +45,12 @@ class ColorOsProbeSurfaceInstrumentedTest {
             assertEquals(0, surface.childCount)
             assertSame(root, surface.parent)
             assertSame(root, foreground.parent)
-            assertTrue(root.clipToOutline)
+            assertFalse("Let the launcher outline its own blur and contour-glow surface", root.clipToOutline)
             val outline = Outline()
             root.background.getOutline(outline)
             assertTrue(outline.canClip())
             assertNull(root.findViewById<View>(R.id.widget_artwork))
-            val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
-            assertTrue(hero.childCount > 4)
-            assertTrue((0 until hero.childCount).all { hero.getChildAt(it) is TextView })
+            assertNotNull(root.findViewById<ImageView>(R.id.coloros_native_hero).drawable)
         }
     }
 
@@ -67,10 +66,15 @@ class ColorOsProbeSurfaceInstrumentedTest {
                 val themed = context.createConfigurationContext(config)
                 val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS).copy(showDelta = true)
                 val tap = PendingIntent.getActivity(context, 777, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-                for ((w, h) in sizes) {
+                for (followers in listOf(7934L, Long.MAX_VALUE)) for ((w, h) in sizes) {
                     val views = ColorOsNativeFollowerViews.create(themed, w, h, settings,
-                        ProfileStats("Probe", "averylongaccountname", Long.MAX_VALUE, 1, 1, 1), 999999999, tap)
-                    val root = views.apply(themed, FrameLayout(themed)) as ViewGroup
+                        ProfileStats("Probe", "averylongaccountname", followers, 1, 1, 1), 999999999, tap)
+                    val parcel = Parcel.obtain()
+                    views.writeToParcel(parcel, 0)
+                    parcel.setDataPosition(0)
+                    val delivered = RemoteViews.CREATOR.createFromParcel(parcel)
+                    parcel.recycle()
+                    val root = delivered.apply(themed, FrameLayout(themed)) as ViewGroup
                     val density = themed.resources.displayMetrics.density
                     val width = (w * density).toInt()
                     val height = (h * density).toInt()
@@ -96,26 +100,43 @@ class ColorOsProbeSurfaceInstrumentedTest {
                         assertTrue("text height=${count.layout.height} box=${count.height}", count.layout.height <= count.height + 1)
                         assertEquals(if (dark) Color.WHITE else 0xFF18202A.toInt(), count.currentTextColor)
                     } else {
-                        val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
-                        assertTrue(hero.childCount > 0)
-                        for (i in 0 until hero.childCount) {
-                            val word = hero.getChildAt(i) as TextView
-                            val paint = TextPaint(word.paint)
-                            val text = word.text as Spanned
-                            text.getSpans(0, text.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
-                            assertTrue("native line $text: width=${word.layout.getLineWidth(0)} available=${word.width - word.paddingLeft - word.paddingRight}",
-                                word.layout.getLineWidth(0) <= word.width - word.paddingLeft - word.paddingRight + 1)
-                            val ink = Rect()
-                            paint.getTextBounds(text.toString(), 0, text.length, ink)
-                            ink.offset(word.left + word.paddingLeft, word.top + word.baseline)
-                            assertTrue("word=$text ink=$ink hero=${hero.width}x${hero.height}",
-                                ink.left >= -2 && ink.top >= -2 && ink.right <= hero.width + 2 && ink.bottom <= hero.height + 2)
-                        }
+                        assertCountImageFits(root)
                     }
                     assertEquals(View.GONE, root.findViewById<View>(R.id.widget_loading).visibility)
                 }
             }
         }
+    }
+
+    @Test fun deliveredParagraphFitsInLauncherTheme() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val launcher = context.createPackageContext("com.android.launcher", 0)
+            val host = android.view.ContextThemeWrapper(launcher, launcher.applicationInfo.theme)
+            val views = ColorOsNativeFollowerViews.create(context, 330, 157,
+                WidgetPreviews.settings(WidgetStyle.COLOR_OS), ProfileStats("Probe", "probe", 7934, 1, 1, 1), 7, null)
+            val parcel = Parcel.obtain()
+            views.writeToParcel(parcel, 0)
+            parcel.setDataPosition(0)
+            val delivered = RemoteViews.CREATOR.createFromParcel(parcel)
+            parcel.recycle()
+            val root = delivered.apply(host, FrameLayout(host))
+            val density = host.resources.displayMetrics.density
+            val w = (330 * density).toInt()
+            val h = (157 * density).toInt()
+            root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, w, h)
+            assertCountImageFits(root)
+        }
+    }
+
+    private fun assertCountImageFits(root: View) {
+        val hero = root.findViewById<ImageView>(R.id.coloros_native_hero)
+        val bounds = RectF(hero.drawable.bounds)
+        hero.imageMatrix.mapRect(bounds)
+        assertTrue("paragraph=$bounds viewport=${hero.width}x${hero.height}",
+            bounds.left >= -1 && bounds.top >= -1 && bounds.right <= hero.width + 1 && bounds.bottom <= hero.height + 1)
+        assertTrue(bounds.width() > 0 && bounds.height() > 0)
     }
 
     @Test fun compactCountShrinksInsteadOfEllipsizingWhenSpaceDecreases() {
@@ -139,29 +160,34 @@ class ColorOsProbeSurfaceInstrumentedTest {
         }
     }
 
-    @Test fun nativeWordsRetainTheSharedSystemFontFitterSizeAndEmphasis() {
+    @Test fun paragraphFitsWhenActualHostSizeChangesWithoutNewRemoteViews() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS).copy(showDelta = true)
-            val stats = ProfileStats("Probe", "probe", 7935, 1, 1, 1)
-            val tap = PendingIntent.getActivity(context, 778, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-            val root = ColorOsNativeFollowerViews.create(context, 330, 157, settings, stats, 8, tap)
+            val root = ColorOsNativeFollowerViews.create(context, 348, 157,
+                WidgetPreviews.settings(WidgetStyle.COLOR_OS), ProfileStats("Probe", "probe", 7934, 1, 1, 1), 7, null)
                 .apply(context, FrameLayout(context))
-            val tokens = TwidgetWidget.followersInWords(7935).split(" ")
-            val expected = ColorOsSystemHero.fit(context, settings, tokens + "Followers" + "+8", tokens.size, 330, 157)
-                .lines.flatten()
-            val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
-            assertEquals(expected.size, hero.childCount)
-            expected.forEachIndexed { i, run ->
-                val word = hero.getChildAt(i) as TextView
-                assertEquals(run.text, word.text.toString())
-                assertEquals(run.paint.textSize, word.textSize, 0.01f)
-                val paint = TextPaint(word.paint)
-                val text = word.text as Spanned
-                text.getSpans(0, text.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
-                assertEquals(run.paint.typeface.weight, paint.typeface.weight)
-                assertEquals(run.paint.isFakeBoldText, paint.isFakeBoldText)
-                assertEquals(run.advance, paint.measureText(word.text.toString()), 1f)
+            for ((width, height) in listOf(348 to 157, 162 to 176, 120 to 121, 348 to 104, 176 to 352)) {
+                val density = context.resources.displayMetrics.density
+                val w = (width * density).toInt()
+                val h = (height * density).toInt()
+                root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                root.layout(0, 0, w, h)
+                assertCountImageFits(root)
             }
+        }
+    }
+
+    @Test fun countArtworkHasTransparentBackgroundAndThemeAwareInk() {
+        for (dark in listOf(false, true)) {
+            val bitmap = ColorOsSystemHero.render(context, WidgetPreviews.settings(WidgetStyle.COLOR_OS),
+                listOf("Seven", "Thousand,", "Nine", "Hundred", "and", "Thirty", "Four", "Followers", "+7"),
+                7, 7, 348, 157, dark)
+            val pixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            assertTrue(pixels.any { Color.alpha(it) == 0 })
+            val primary = if (dark) Color.WHITE else 0xFF18202A.toInt()
+            assertTrue("Count ink must follow night mode", pixels.any { it == primary })
+            bitmap.recycle()
         }
     }
 

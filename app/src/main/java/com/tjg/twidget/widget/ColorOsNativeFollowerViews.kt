@@ -12,13 +12,13 @@ import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 
-/** Native foreground for the debug blur probe; no text bitmaps or synthetic resize variants. */
+/** Native blur surface and footer with a scalable count layer for the debug probe. */
 internal object ColorOsNativeFollowerViews {
-    fun layout(height: Int) = if (height <= 100) R.layout.widget_coloros_host_blur_compact else R.layout.widget_coloros_host_blur
+    fun layout(height: Int) = if (height <= 110) R.layout.widget_coloros_host_blur_compact else R.layout.widget_coloros_host_blur_paragraph
 
     fun create(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
         stats: ProfileStats, delta: Long, onTap: PendingIntent?): RemoteViews {
-        val compact = height <= 100
+        val compact = height <= 110
         val localized = AppLocales.wrap(context, settings.language)
         val locale = AppLocales.resolve(settings.language)
         val number = AppLocales.integer(stats.followersCount, locale)

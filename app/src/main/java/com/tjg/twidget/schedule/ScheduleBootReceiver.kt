@@ -25,6 +25,9 @@ class ScheduleBootReceiver : BroadcastReceiver() {
                 // unique work names make both calls idempotent.
                 RefreshWorker.schedule(context)
                 if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    // Re-publish layouts after upgrades instead of leaving the host's
+                    // cached RemoteViews in place until the next scheduled refresh.
+                    com.tjg.twidget.widget.TwidgetWidget.updateAll(context)
                     com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(context)
                     com.tjg.twidget.data.TwidgetStore.accounts(context).forEach { username ->
                         if (com.tjg.twidget.banger.BangerScanWorker.isScanning(context, username)) {

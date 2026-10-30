@@ -95,7 +95,7 @@ open class TwidgetWidget : AppWidgetProvider() {
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
 
-            // Native TextViews measure against the live host frame. No bitmap-size map to race resize previews.
+            // The count layer scales against the live host frame, independently of the blur and footer.
             if (hostSurface) {
                 val views = ColorOsNativeFollowerViews.create(context, artworkWidth, artworkHeight,
                     widgetSettings, stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))

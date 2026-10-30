@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Match the shared fitter: position by advances and handle glyph overhang explicitly. -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/coloros_native_word"
-    android:layout_width="wrap_content" android:layout_height="wrap_content"
-    android:fontFamily="sans-serif" android:textFontWeight="400" android:includeFontPadding="false"
-    android:useBoundsForWidth="false" android:shiftDrawingOffsetForStartOverhang="false"
-    android:letterSpacing="0" android:singleLine="true" android:gravity="top" android:importantForAccessibility="no" />

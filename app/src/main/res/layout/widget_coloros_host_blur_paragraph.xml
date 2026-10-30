@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/widget_coloros_content_outline" android:clipToOutline="true"
+    android:background="@drawable/widget_coloros_content_outline" android:clipToOutline="false"
     android:clipChildren="true" android:clipToPadding="true">
+    <!-- The launcher owns the surface outline and contour glow. Do not mask it with a second corner radius. -->
     <!-- Background only: launcher effects must not encompass the foreground. -->
     <FrameLayout android:id="@+id/coloros_blur_target" android:layout_width="match_parent"
         android:layout_height="match_parent" android:tag="OplusBlurBg"
         android:background="@drawable/widget_color_os_surface" />
     <LinearLayout android:id="@+id/coloros_native_content" android:layout_width="match_parent"
         android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:clipChildren="true">
-        <FrameLayout android:id="@+id/coloros_native_hero" android:layout_width="match_parent"
-            android:layout_height="0dp" android:layout_weight="1" android:clipChildren="true" />
+        <!-- Scale the entire transparent count paragraph against the live host bounds. -->
+        <ImageView android:id="@+id/coloros_native_hero" android:layout_width="match_parent"
+            android:layout_height="0dp" android:layout_weight="1" android:scaleType="fitStart"
+            android:contentDescription="@null" android:importantForAccessibility="no" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="14dp" android:layout_marginTop="8dp" android:orientation="horizontal" android:gravity="center_vertical">
             <ImageView android:id="@+id/coloros_native_logo" android:layout_width="12dp" android:layout_height="12dp" android:contentDescription="@null" />
             <TextView android:id="@+id/coloros_native_account" android:layout_width="0dp" android:layout_height="match_parent"

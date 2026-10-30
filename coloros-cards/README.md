@@ -102,7 +102,7 @@ logs, resizing and style changes. A translucent fill alone is not a pass. If the
 class-name check has changed in this live launcher or material is unavailable,
 the test may still fall back without blur.
 
-### Probe bounds fix
+### Previous bitmap bounds fix (superseded by native foreground)
 
 After the user confirmed native blur engaged, the artwork was found to be a
 sibling of the tagged surface. The launcher clips the tagged view to its native
@@ -117,3 +117,30 @@ The updated debug APK was installed. Unit checks and four device tests passed;
 measurement tests cover compact, wide, square and tall sizes and ensure the
 image frame and fitted bitmap stay inside the padded surface. They do not replace
 a visual check of the launcher across fold/resize transitions.
+
+
+### Current probe: native foreground
+
+The screen recording showed bitmap scale/reflow jumps during host resizing.
+The ColorOS probe now renders count, caption, delta and account with native
+TextViews and a resource logo. Text auto-sizes within measured view bounds;
+compact cards use a numerical count, taller cards keep the written count.
+Long content ellipsizes at minimum text size and retains a full accessibility
+label. The system font is used; the custom artwork-font control is hidden only
+for this probe's ColorOS style.
+
+The tagged blur view is now background-only. It and the foreground share a
+rounded, clipped parent, preventing blur effects from encompassing text while
+keeping content within one bounded frame. Layout uses ordinary live measurement,
+not a bitmap per responsive breakpoint. Root click actions, selected account,
+logo, delta preference and loading indicator are retained. Very narrow compact
+cards omit the visible delta to give the count room; accessibility retains it.
+One UI, Material and normal AppWidget component identities are unchanged.
+
+The build/unit suite passed. Three instrumentation tests passed on the connected
+phone: native/blur effect separation, text/footer bounds with long counts and
+1.0/1.5 font scales across multiple sizes and themes, and ordinary-style bitmap
+renderer isolation. The updated APK is installed. This removes the app-side
+bitmap scaling mechanism; the launcher's own non-seamless foldable transition
+can still temporarily soften a resize preview. A new visual resize check remains
+necessary before claiming every transition issue is resolved.

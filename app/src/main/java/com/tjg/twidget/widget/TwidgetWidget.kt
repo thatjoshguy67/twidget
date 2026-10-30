@@ -95,6 +95,15 @@ open class TwidgetWidget : AppWidgetProvider() {
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
 
+            // Native TextViews measure against the live host frame. No bitmap-size map to race resize previews.
+            if (hostSurface) {
+                val views = ColorOsNativeFollowerViews.create(context, artworkWidth, artworkHeight,
+                    widgetSettings, stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
+                if (widgetSizeOptionsMatch(options, appWidgetManager.getAppWidgetOptions(appWidgetId)))
+                    appWidgetManager.updateAppWidget(appWidgetId, views)
+                return
+            }
+
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !oneUiSizing) {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
                 val responsiveBitmapBytes = mutableMapOf<SizeF, Long>()
@@ -142,16 +151,6 @@ open class TwidgetWidget : AppWidgetProvider() {
                             responsiveMode = layoutModeForAosp(width, height),
                         )
                     }
-                if (responsiveViews.isEmpty() && hostSurface) {
-                    com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.fallbackSizes(
-                        minWidth, minHeight,
-                        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth),
-                        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
-                    ).forEach { (width, height) ->
-                        addResponsiveView(SizeF(width.toFloat(), height.toFloat()), width, height,
-                            layoutModeForAosp(width, height))
-                    }
-                }
                 if (responsiveViews.isEmpty()) responsiveSpecs().forEach { spec ->
                     val key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())
                     if (!responsiveViews.containsKey(key)) {
@@ -194,15 +193,11 @@ open class TwidgetWidget : AppWidgetProvider() {
             delta: Long,
             drawArtworkBackground: Boolean,
         ): RemoteViews {
-            // Launchers can replace RemoteViews font families—even Samsung's
-            // own `sec` family—so every size renders its text as artwork.
+            // Existing styles retain their artwork renderer; the isolated ColorOS probe uses native text.
             val hostSurface = usesColorOsProbeSurface(context, appWidgetId, widgetSettings)
-            val contentWidth = if (hostSurface) (width - 16).coerceAtLeast(1) else width
-            val contentHeight = if (hostSurface) (height - 16).coerceAtLeast(1) else height
-            val contentMode = if (hostSurface) layoutModeForAosp(contentWidth, contentHeight) else mode
-            val layout = if (hostSurface) R.layout.widget_coloros_host_blur
-                else layoutResource(mode, renderAsArtwork = true)
-            return RemoteViews(context.packageName, layout).apply {
+            if (hostSurface) return ColorOsNativeFollowerViews.create(context, width, height, widgetSettings,
+                stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
+            return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
                 val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
                 // RemoteViews may reuse the old view when the style changes.
@@ -215,8 +210,6 @@ open class TwidgetWidget : AppWidgetProvider() {
                 if (widgetSettings.style == WidgetStyle.COLOR_OS) {
                     // The probe delegates its child surface to ColorOS; ordinary widgets bake a fallback.
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
-                    if (hostSurface && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                        setWidgetBackgroundTint(context, widgetSettings, R.id.coloros_blur_target)
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
                     // with a rectangular ColorDrawable. One UI uses this
@@ -240,14 +233,14 @@ open class TwidgetWidget : AppWidgetProvider() {
                 setWidgetArtwork(R.id.widget_artwork, widgetSettings) { artworkDark ->
                     WidgetArtworkRenderer.render(
                         context = context,
-                        widthPx = dp(context, contentWidth),
-                        heightPx = dp(context, contentHeight),
+                        widthPx = dp(context, width),
+                        heightPx = dp(context, height),
                         stats = stats,
                         settings = widgetSettings,
-                        mode = contentMode,
+                        mode = mode,
                         dark = artworkDark,
                         delta = delta,
-                        drawBackground = !hostSurface && (drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS),
+                        drawBackground = drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS,
                         bitmapBudgetBytes = artworkBudget,
                     )
                 }
@@ -302,7 +295,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                 )
             }
             if (usesColorOsProbeSurface(context, appWidgetId, TwidgetStore.widgetSettings(context, appWidgetId)))
-                return R.layout.widget_coloros_host_blur
+                return ColorOsNativeFollowerViews.layout(if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight))
             return layoutResource(mode, renderAsArtwork = true)
         }
 

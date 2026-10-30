@@ -1,20 +1,22 @@
 package com.tjg.twidget.widget.coloros
 
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.RectF
-import android.os.Bundle
-import android.widget.ImageView
-import android.view.ViewGroup
-import android.view.LayoutInflater
+import android.graphics.Outline
+import android.graphics.Rect
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tjg.twidget.R
 import com.tjg.twidget.data.ProfileStats
+import com.tjg.twidget.main.MainActivity
+import com.tjg.twidget.widget.ColorOsNativeFollowerViews
 import com.tjg.twidget.widget.TwidgetWidget
-import com.tjg.twidget.widget.WidgetArtworkRenderer
 import com.tjg.twidget.widget.WidgetPreviews
 import com.tjg.twidget.widget.WidgetStyle
 import org.junit.Assert.*
@@ -25,69 +27,82 @@ import org.junit.runner.RunWith
 class ColorOsProbeSurfaceInstrumentedTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-    @Test fun onlyTheProbeHierarchyContainsTheTaggedSurface() {
-        val inflater = LayoutInflater.from(context)
-        val probe = inflater.inflate(R.layout.widget_coloros_host_blur, null)
-        assertEquals("OplusBlurBg", probe.findViewById<View>(R.id.coloros_blur_target).tag)
-        for (layout in listOf(R.layout.widget_blur, R.layout.widget_compact_square)) {
-            val ordinary = inflater.inflate(layout, null)
-            assertNull(ordinary.findViewWithTag<View>("OplusBlurBg"))
+    @Test fun nativeForegroundAndBlurHaveSeparateEffectScopesAndSharedBounds() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val tap = PendingIntent.getActivity(context, 776,
+                Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+            val root = ColorOsNativeFollowerViews.create(context, 330, 157,
+                WidgetPreviews.settings(WidgetStyle.COLOR_OS), ProfileStats("Probe", "probe", 7935, 1, 1, 1), 8, tap)
+                .apply(context, FrameLayout(context)) as ViewGroup
+            val surface = root.findViewById<ViewGroup>(R.id.coloros_blur_target)
+            val foreground = root.findViewById<View>(R.id.coloros_native_content)
+            assertEquals("OplusBlurBg", surface.tag)
+            assertEquals(0, surface.childCount)
+            assertSame(root, surface.parent)
+            assertSame(root, foreground.parent)
+            assertTrue(root.clipToOutline)
+            val outline = Outline()
+            root.background.getOutline(outline)
+            assertTrue(outline.canClip())
+            assertNull(root.findViewById<View>(R.id.widget_artwork))
+            assertTrue(root.findViewById<TextView>(R.id.coloros_native_count).autoSizeTextType != TextView.AUTO_SIZE_TEXT_TYPE_NONE)
         }
     }
 
-    @Test fun contentAndSpinnerStayInsideTheLauncherOwnedSurfaceAtEverySize() {
+    @Test fun nativeTextAndFooterFitResizedCardsWithLargeCountsAndFontScales() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            val root = LayoutInflater.from(context).inflate(R.layout.widget_coloros_host_blur, null)
-            val surface = root.findViewById<ViewGroup>(R.id.coloros_blur_target)
-            val art = root.findViewById<ImageView>(R.id.widget_artwork)
-            assertSame(surface, art.parent)
-            assertSame(surface, root.findViewById<View>(R.id.widget_loading).parent)
-            assertTrue(surface.clipChildren)
-            assertTrue(surface.clipToPadding)
-            for ((w, h) in listOf(110 to 40, 162 to 176, 352 to 76, 352 to 176, 176 to 352)) {
-                val density = context.resources.displayMetrics.density
-                val width = (w * density).toInt()
-                val height = (h * density).toInt()
-                root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
-                root.layout(0, 0, width, height)
-                assertTrue(art.left >= surface.paddingLeft)
-                assertTrue(art.top >= surface.paddingTop)
-                assertTrue(art.right <= surface.width - surface.paddingRight)
-                assertTrue(art.bottom <= surface.height - surface.paddingBottom)
-                val bitmap = WidgetArtworkRenderer.render(context, width, height,
-                    ProfileStats("Probe", "probe", 12345, 1, 1, 1), WidgetPreviews.settings(WidgetStyle.COLOR_OS),
-                    TwidgetWidget.layoutModeForAosp(w, h), false, drawBackground = false)
-                art.setImageBitmap(bitmap)
-                val bounds = RectF(art.drawable.bounds)
-                art.imageMatrix.mapRect(bounds)
-                assertTrue(bounds.left >= -1f && bounds.top >= -1f)
-                assertTrue(bounds.right <= art.width + 1f && bounds.bottom <= art.height + 1f)
-                art.setImageDrawable(null)
-                bitmap.recycle()
+            val sizes = listOf(110 to 40, 162 to 176, 330 to 157, 352 to 76, 352 to 176, 176 to 352, 120 to 121)
+            for (fontScale in listOf(1f, 1.5f)) for (dark in listOf(false, true)) {
+                val config = Configuration(context.resources.configuration).apply {
+                    this.fontScale = fontScale
+                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                        if (dark) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+                }
+                val themed = context.createConfigurationContext(config)
+                val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS).copy(showDelta = true)
+                val tap = PendingIntent.getActivity(context, 777, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+                for ((w, h) in sizes) {
+                    val views = ColorOsNativeFollowerViews.create(themed, w, h, settings,
+                        ProfileStats("Probe", "averylongaccountname", Long.MAX_VALUE, 1, 1, 1), 999999999, tap)
+                    val root = views.apply(themed, FrameLayout(themed)) as ViewGroup
+                    val density = themed.resources.displayMetrics.density
+                    val width = (w * density).toInt()
+                    val height = (h * density).toInt()
+                    root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                    root.layout(0, 0, width, height)
+                    val surface = root.findViewById<View>(R.id.coloros_blur_target)
+                    assertEquals(width, surface.width)
+                    assertEquals(height, surface.height)
+                    for (id in listOf(R.id.coloros_native_count, R.id.coloros_native_label, R.id.coloros_native_delta,
+                        R.id.coloros_native_account, R.id.coloros_native_logo)) {
+                        val child = root.findViewById<View>(id)
+                        if (child.visibility == View.GONE) continue
+                        val rect = Rect(0, 0, child.width, child.height)
+                        root.offsetDescendantRectToMyCoords(child, rect)
+                        assertTrue("$w x $h font=$fontScale rect=$rect", rect.left >= 0 && rect.top >= 0 && rect.right <= width && rect.bottom <= height)
+                    }
+                    val count = root.findViewById<TextView>(R.id.coloros_native_count)
+                    assertTrue(count.text.isNotEmpty())
+                    assertTrue("text height=${count.layout.height} box=${count.height}", count.layout.height <= count.height + 1)
+                    assertEquals(if (dark) Color.WHITE else 0xFF18202A.toInt(), count.currentTextColor)
+                    assertEquals(View.GONE, root.findViewById<View>(R.id.widget_loading).visibility)
+                }
             }
         }
     }
 
-    @Test fun reportRealProbeHostSizes() {
-        val manager = AppWidgetManager.getInstance(context)
-        manager.getAppWidgetIds(ComponentName(context, ColorOsWidgetBlurProbe.PROVIDER)).forEach { id ->
-            InstrumentationRegistry.getInstrumentation().sendStatus(0, Bundle().apply {
-                val options = manager.getAppWidgetOptions(id)
-                putString("probe_allocation", "id=$id min=${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)}x${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)} max=${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)}x${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)} oneUiFlag=${com.tjg.twidget.ui.TwidgetFonts.hasSystemOneUiSans}")
-            })
-        }
-    }
-
-    @Test fun foregroundDoesNotPaintOverTheHostBlurSurface() {
-        val stats = ProfileStats("Probe", "probe", 12345, 1, 1, 1)
-        val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS)
-        for (dark in listOf(false, true)) {
-            val bitmap = WidgetArtworkRenderer.render(context, 360, 210, stats, settings,
-                TwidgetWidget.LAYOUT_MODE_LARGE, dark, drawBackground = false)
-            assertEquals(0, Color.alpha(bitmap.getPixel(0, 0)))
-            assertEquals(0, Color.alpha(bitmap.getPixel(bitmap.width / 2, 2)))
-            bitmap.recycle()
+    @Test fun ordinaryStylesKeepTheirOriginalBitmapRendererWithoutBlurTags() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val stats = ProfileStats("Probe", "probe", 7935, 1, 1, 1)
+            for (style in WidgetStyle.entries) {
+                val views = TwidgetWidget.createRemoteViews(context, -1, 330, 157, TwidgetWidget.LAYOUT_MODE_LARGE,
+                    WidgetPreviews.settings(style), "probe", stats, 8, true)
+                val root = views.apply(context, FrameLayout(context))
+                assertNotNull(root.findViewById<View>(R.id.widget_artwork))
+                assertNull(root.findViewWithTag<View>("OplusBlurBg"))
+                assertNull(root.findViewById<View>(R.id.coloros_native_count))
+            }
         }
     }
 }

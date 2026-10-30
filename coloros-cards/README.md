@@ -101,3 +101,19 @@ One UI/Material, and move/change the wallpaper behind it. Check launcher blur
 logs, resizing and style changes. A translucent fill alone is not a pass. If the
 class-name check has changed in this live launcher or material is unavailable,
 the test may still fall back without blur.
+
+### Probe bounds fix
+
+After the user confirmed native blur engaged, the artwork was found to be a
+sibling of the tagged surface. The launcher clips the tagged view to its native
+rounded outline, leaving sibling content outside that outline. Artwork and
+spinner now live inside the tagged surface with an 8dp inset and child clipping.
+Artwork sizing accounts for that inset. Only the active ColorOS probe uses the
+reported responsive allocations even when the port advertises Samsung framework
+fields. When exact sizes are absent, fallback sizes use the reported portrait/
+landscape allocations instead of synthetic larger breakpoint dimensions.
+
+The updated debug APK was installed. Unit checks and four device tests passed;
+measurement tests cover compact, wide, square and tall sizes and ensure the
+image frame and fitted bitmap stay inside the padded surface. They do not replace
+a visual check of the launcher across fold/resize transitions.

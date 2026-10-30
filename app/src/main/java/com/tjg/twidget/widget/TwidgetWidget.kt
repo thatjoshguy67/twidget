@@ -71,29 +71,31 @@ open class TwidgetWidget : AppWidgetProvider() {
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 360)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 260)
+            val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
+            val hostSurface = usesColorOsProbeSurface(context, appWidgetId, widgetSettings)
+            val oneUiSizing = TwidgetFonts.hasSystemOneUiSans && !hostSurface
             // AOSP launchers use minWidth/maxHeight for the portrait allocation
             // and maxWidth/minHeight for landscape. Rendering minWidth/minHeight
             // unconditionally creates a landscape-shaped bitmap that Pixel
             // Launcher stretches vertically. Keep Samsung's established sizing
             // path unchanged because One UI supplies its own span metadata and
             // hosts the RemoteViews blur implementation.
-            val artworkWidth = if (!TwidgetFonts.hasSystemOneUiSans &&
+            val artworkWidth = if (!oneUiSizing &&
                 context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             ) options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth) else minWidth
-            val artworkHeight = if (!TwidgetFonts.hasSystemOneUiSans &&
+            val artworkHeight = if (!oneUiSizing &&
                 context.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
             ) options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight) else minHeight
-            val mode = if (TwidgetFonts.hasSystemOneUiSans) {
+            val mode = if (oneUiSizing) {
                 layoutMode(options)
             } else {
                 layoutModeForAosp(artworkWidth, artworkHeight)
             }
-            val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
 
-            val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
+            val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !oneUiSizing) {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()
                 val responsiveBitmapBytes = mutableMapOf<SizeF, Long>()
                 var totalBitmapBytes = 0L
@@ -140,6 +142,16 @@ open class TwidgetWidget : AppWidgetProvider() {
                             responsiveMode = layoutModeForAosp(width, height),
                         )
                     }
+                if (responsiveViews.isEmpty() && hostSurface) {
+                    com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.fallbackSizes(
+                        minWidth, minHeight,
+                        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minWidth),
+                        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
+                    ).forEach { (width, height) ->
+                        addResponsiveView(SizeF(width.toFloat(), height.toFloat()), width, height,
+                            layoutModeForAosp(width, height))
+                    }
+                }
                 if (responsiveViews.isEmpty()) responsiveSpecs().forEach { spec ->
                     val key = SizeF(spec.minWidth.toFloat(), spec.minHeight.toFloat())
                     if (!responsiveViews.containsKey(key)) {
@@ -185,6 +197,9 @@ open class TwidgetWidget : AppWidgetProvider() {
             // Launchers can replace RemoteViews font families—even Samsung's
             // own `sec` family—so every size renders its text as artwork.
             val hostSurface = usesColorOsProbeSurface(context, appWidgetId, widgetSettings)
+            val contentWidth = if (hostSurface) (width - 16).coerceAtLeast(1) else width
+            val contentHeight = if (hostSurface) (height - 16).coerceAtLeast(1) else height
+            val contentMode = if (hostSurface) layoutModeForAosp(contentWidth, contentHeight) else mode
             val layout = if (hostSurface) R.layout.widget_coloros_host_blur
                 else layoutResource(mode, renderAsArtwork = true)
             return RemoteViews(context.packageName, layout).apply {
@@ -225,11 +240,11 @@ open class TwidgetWidget : AppWidgetProvider() {
                 setWidgetArtwork(R.id.widget_artwork, widgetSettings) { artworkDark ->
                     WidgetArtworkRenderer.render(
                         context = context,
-                        widthPx = dp(context, width),
-                        heightPx = dp(context, height),
+                        widthPx = dp(context, contentWidth),
+                        heightPx = dp(context, contentHeight),
                         stats = stats,
                         settings = widgetSettings,
-                        mode = mode,
+                        mode = contentMode,
                         dark = artworkDark,
                         delta = delta,
                         drawBackground = !hostSurface && (drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS),

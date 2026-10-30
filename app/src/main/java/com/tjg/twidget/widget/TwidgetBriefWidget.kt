@@ -128,7 +128,9 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                     else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (settings.style == WidgetStyle.COLOR_OS) {
+                    setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setWidgetBackgroundTint(context, settings)
                 } else {
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
@@ -145,7 +147,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         dark = artworkDark,
                         fontFamily = settings.fontFamily,
                         style = settings.style,
-                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
+                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || settings.style == WidgetStyle.COLOR_OS)
+                            WidgetColors.resolve(context, settings, artworkDark).background else null,
                         bitmapBudgetBytes = artworkBudget,
                     )
                 }

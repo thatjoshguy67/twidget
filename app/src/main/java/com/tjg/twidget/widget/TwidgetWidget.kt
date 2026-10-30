@@ -189,7 +189,10 @@ open class TwidgetWidget : AppWidgetProvider() {
                     else if (mode == LAYOUT_MODE_COMPACT_2X1 || mode == LAYOUT_MODE_COMPACT_STRIP)
                         R.drawable.widget_one_ui_pill_surface
                     else R.drawable.widget_preview_glass_bg)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (widgetSettings.style == WidgetStyle.COLOR_OS) {
+                    // ColorOS can clear the root surface; bake this fallback into the artwork once.
+                    setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
                     // with a rectangular ColorDrawable. One UI uses this
                     // drawable as the glass/blur surface; replacing it made the
@@ -219,7 +222,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                         mode = mode,
                         dark = artworkDark,
                         delta = delta,
-                        drawBackground = drawArtworkBackground,
+                        drawBackground = drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS,
                         bitmapBudgetBytes = artworkBudget,
                     )
                 }

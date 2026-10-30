@@ -28,14 +28,16 @@ internal object ColorOsNativeFollowerViews {
         val change = if (settings.showDelta && delta != 0L) TwidgetStore.signedNumber(delta, locale) else ""
         val visibleChange = change.isNotEmpty() && (!compact || width >= 180)
         return RemoteViews(context.packageName, layout(height)).apply {
-            setTextViewText(R.id.coloros_native_count, count)
-            if (!compact) {
-                val minimumLineHeight = 8f * context.resources.configuration.fontScale * 1.5f
-                setInt(R.id.coloros_native_count, "setMaxLines", ((height - 64) / minimumLineHeight).toInt().coerceIn(1, 5))
+            if (compact) {
+                setTextViewText(R.id.coloros_native_count, count)
+                setTextViewText(R.id.coloros_native_label, noun)
+                setTextViewText(R.id.coloros_native_delta, change)
+                setViewVisibility(R.id.coloros_native_delta, if (visibleChange) View.VISIBLE else View.GONE)
+            } else {
+                val tokens = count.split(Regex("\\s+")).filter { it.isNotBlank() }
+                ColorOsSystemHero.bind(this, context, settings, tokens + noun + listOfNotNull(change.takeIf { it.isNotEmpty() }),
+                    tokens.size, delta, width, height)
             }
-            setTextViewText(R.id.coloros_native_label, noun)
-            setTextViewText(R.id.coloros_native_delta, change)
-            setViewVisibility(R.id.coloros_native_delta, if (visibleChange) View.VISIBLE else View.GONE)
             setTextViewText(R.id.coloros_native_account, "@${stats.userName}")
             setImageViewResource(R.id.coloros_native_logo,
                 if (settings.logo == TwidgetStore.LOGO_TWITTER) R.drawable.ic_logo_twitter else R.drawable.ic_logo_x)
@@ -50,10 +52,12 @@ internal object ColorOsNativeFollowerViews {
                     setColorStateList(id, "setTextColor", ColorStateList.valueOf(pick(false)), ColorStateList.valueOf(pick(true)))
                 } else setTextColor(id, pick(dark))
             }
-            textColor(R.id.coloros_native_count) { colors(it).primary }
-            textColor(R.id.coloros_native_label) { colors(it).secondary }
+            if (compact) {
+                textColor(R.id.coloros_native_count) { colors(it).primary }
+                textColor(R.id.coloros_native_label) { colors(it).secondary }
+                textColor(R.id.coloros_native_delta) { colors(it).deltaColor(delta, it) }
+            }
             textColor(R.id.coloros_native_account) { colors(it).secondary }
-            textColor(R.id.coloros_native_delta) { colors(it).deltaColor(delta, it) }
             if (Build.VERSION.SDK_INT >= 31) {
                 setWidgetBackgroundTint(context, settings, R.id.coloros_blur_target)
                 if (systemTheme) setColorStateList(R.id.coloros_native_logo, "setImageTintList",

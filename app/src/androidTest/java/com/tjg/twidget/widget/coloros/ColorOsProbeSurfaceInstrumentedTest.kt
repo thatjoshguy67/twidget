@@ -6,6 +6,9 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Rect
+import android.text.TextPaint
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -16,6 +19,7 @@ import com.tjg.twidget.R
 import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.widget.ColorOsNativeFollowerViews
+import com.tjg.twidget.widget.ColorOsSystemHero
 import com.tjg.twidget.widget.TwidgetWidget
 import com.tjg.twidget.widget.WidgetPreviews
 import com.tjg.twidget.widget.WidgetStyle
@@ -45,7 +49,9 @@ class ColorOsProbeSurfaceInstrumentedTest {
             root.background.getOutline(outline)
             assertTrue(outline.canClip())
             assertNull(root.findViewById<View>(R.id.widget_artwork))
-            assertTrue(root.findViewById<TextView>(R.id.coloros_native_count).autoSizeTextType != TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+            val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
+            assertTrue(hero.childCount > 4)
+            assertTrue((0 until hero.childCount).all { hero.getChildAt(it) is TextView })
         }
     }
 
@@ -76,18 +82,58 @@ class ColorOsProbeSurfaceInstrumentedTest {
                     assertEquals(height, surface.height)
                     for (id in listOf(R.id.coloros_native_count, R.id.coloros_native_label, R.id.coloros_native_delta,
                         R.id.coloros_native_account, R.id.coloros_native_logo)) {
-                        val child = root.findViewById<View>(id)
+                        val child = root.findViewById<View>(id) ?: continue
                         if (child.visibility == View.GONE) continue
                         val rect = Rect(0, 0, child.width, child.height)
                         root.offsetDescendantRectToMyCoords(child, rect)
                         assertTrue("$w x $h font=$fontScale rect=$rect", rect.left >= 0 && rect.top >= 0 && rect.right <= width && rect.bottom <= height)
                     }
                     val count = root.findViewById<TextView>(R.id.coloros_native_count)
-                    assertTrue(count.text.isNotEmpty())
-                    assertTrue("text height=${count.layout.height} box=${count.height}", count.layout.height <= count.height + 1)
-                    assertEquals(if (dark) Color.WHITE else 0xFF18202A.toInt(), count.currentTextColor)
+                    if (count != null) {
+                        assertTrue(count.text.isNotEmpty())
+                        assertTrue("text height=${count.layout.height} box=${count.height}", count.layout.height <= count.height + 1)
+                        assertEquals(if (dark) Color.WHITE else 0xFF18202A.toInt(), count.currentTextColor)
+                    } else {
+                        val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
+                        assertTrue(hero.childCount > 0)
+                        for (i in 0 until hero.childCount) {
+                            val word = hero.getChildAt(i) as TextView
+                            val paint = TextPaint(word.paint)
+                            val text = word.text as Spanned
+                            text.getSpans(0, text.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
+                            val ink = Rect()
+                            paint.getTextBounds(text.toString(), 0, text.length, ink)
+                            ink.offset(word.left + word.paddingLeft, word.top + word.baseline)
+                            assertTrue("word=$text ink=$ink hero=${hero.width}x${hero.height}",
+                                ink.left >= -2 && ink.top >= -2 && ink.right <= hero.width + 2 && ink.bottom <= hero.height + 2)
+                        }
+                    }
                     assertEquals(View.GONE, root.findViewById<View>(R.id.widget_loading).visibility)
                 }
+            }
+        }
+    }
+
+    @Test fun nativeWordsRetainTheSharedSystemFontFitterSizeAndEmphasis() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS).copy(showDelta = true)
+            val stats = ProfileStats("Probe", "probe", 7935, 1, 1, 1)
+            val tap = PendingIntent.getActivity(context, 778, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+            val root = ColorOsNativeFollowerViews.create(context, 330, 157, settings, stats, 8, tap)
+                .apply(context, FrameLayout(context))
+            val tokens = TwidgetWidget.followersInWords(7935).split(" ")
+            val expected = ColorOsSystemHero.fit(context, settings, tokens + "Followers" + "+8", tokens.size, 330, 157)
+                .lines.flatten()
+            val hero = root.findViewById<ViewGroup>(R.id.coloros_native_hero)
+            assertEquals(expected.size, hero.childCount)
+            expected.forEachIndexed { i, run ->
+                val word = hero.getChildAt(i) as TextView
+                assertEquals(run.text, word.text.toString())
+                assertEquals(run.paint.textSize, word.textSize, 0.01f)
+                val paint = TextPaint(word.paint)
+                val styled = word.text as Spanned
+                styled.getSpans(0, styled.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
+                assertEquals(run.paint.typeface.weight, paint.typeface.weight)
             }
         }
     }

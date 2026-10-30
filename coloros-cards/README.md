@@ -144,3 +144,14 @@ renderer isolation. The updated APK is installed. This removes the app-side
 bitmap scaling mechanism; the launcher's own non-seamless foldable transition
 can still temporarily soften a resize preview. A new visual resize check remains
 necessary before claiming every transition issue is resolved.
+
+### Shared system-font hero and Clock comparison
+
+The latest recording confirmed that native views alone do not provide Clock's
+launcher-side resize controller. See docs/coloros-clock-behaviour-comparison.md.
+The tall foreground now consumes the original followerHero/FollowerHeroLayout
+fit results and emits native word TextViews with the exact fitted sizes and
+system-font weights, including supporting noun/delta in the same paragraph.
+Four targeted device tests passed, including actual typeface-weight parity with
+the shared fitter. The updated APK is installed. This restores typography while
+retaining the background-only blur layer; it does not claim Clock animation parity.

@@ -269,7 +269,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.widget_style_indicator).apply {
             visibility = if (isLockWidget) View.GONE else View.VISIBLE
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
-            setOnClickListener { pager.setCurrentItem(1 - pager.currentItem, true) }
+            setOnClickListener { pager.setCurrentItem((pager.currentItem + 1) % styles.size, true) }
         }
     }
 
@@ -419,7 +419,11 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         }
 
     private fun styleLabel(style: WidgetStyle) = getString(
-        if (style == WidgetStyle.MATERIAL) R.string.widget_style_material else R.string.widget_style_one_ui,
+        when (style) {
+            WidgetStyle.MATERIAL -> R.string.widget_style_material
+            WidgetStyle.COLOR_OS -> R.string.widget_style_color_os
+            WidgetStyle.ONE_UI -> R.string.widget_style_one_ui
+        },
     )
 
     private fun render() {
@@ -455,7 +459,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         }
 
         findViewById<TextView>(R.id.widget_style_indicator).apply {
-            text = "${styleLabel(widgetStyle)}\n${if (widgetStyle == WidgetStyle.ONE_UI) "●  ○" else "○  ●"}"
+            text = "${styleLabel(widgetStyle)}\n${(if (isLockWidget) listOf(WidgetStyle.ONE_UI) else WidgetStyle.entries).joinToString("  ") { if (it == widgetStyle) "●" else "○" }}"
             contentDescription = "${getString(R.string.widget_style)}: ${styleLabel(widgetStyle)}"
         }
         previewPages.forEachIndexed { index, page ->
@@ -677,7 +681,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         val mode = if (oneUi && !options.isEmpty) TwidgetWidget.layoutMode(options)
             else TwidgetWidget.layoutModeForAosp(width, height)
         return HomePreviewSpec(mode, width, height,
-            if (style == WidgetStyle.MATERIAL || height > 110) 26f else height / 2f)
+            if (style == WidgetStyle.COLOR_OS) 24f else if (style == WidgetStyle.MATERIAL || height > 110) 26f else height / 2f)
     }
 
     private fun previewScale(widthDp: Int): Float = minOf(1f,

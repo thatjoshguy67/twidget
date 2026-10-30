@@ -10,9 +10,13 @@ import com.tjg.twidget.ui.TwidgetFonts
 
 /** A widget's appearance is independent of its host launcher and the app theme. */
 enum class WidgetStyle(val storedValue: String) {
-    ONE_UI("one_ui"), MATERIAL("material");
+    ONE_UI("one_ui"), MATERIAL("material"), COLOR_OS("color_os");
 
-    val defaultFont: String get() = if (this == MATERIAL) TwidgetStore.FONT_GOOGLE_SANS_FLEX else TwidgetStore.FONT_ONE_UI_SANS
+    val defaultFont: String get() = when (this) {
+        MATERIAL -> TwidgetStore.FONT_GOOGLE_SANS_FLEX
+        COLOR_OS -> TwidgetStore.FONT_SYSTEM
+        ONE_UI -> TwidgetStore.FONT_ONE_UI_SANS
+    }
 
     companion object {
         fun resolve(value: String?, oneUi: Boolean = TwidgetFonts.hasSystemOneUiSans): WidgetStyle =
@@ -52,6 +56,11 @@ internal data class WidgetColors(val background: Int, val primary: Int, val seco
 
     companion object {
         fun resolve(context: Context, style: WidgetStyle, dark: Boolean, alpha: Int = 205): WidgetColors {
+            if (style == WidgetStyle.COLOR_OS) {
+                // An honest translucent fallback; native host blur is a separate card API.
+                return if (dark) WidgetColors(Color.argb(alpha, 30, 32, 36), Color.WHITE, 0xFFBFC3CA.toInt())
+                else WidgetColors(Color.argb(alpha, 245, 247, 250), 0xFF18202A.toInt(), 0xFF58616D.toInt())
+            }
             if (style == WidgetStyle.ONE_UI) {
                 val base = if (dark) 16 else 255
                 val primary = if (dark) Color.WHITE else Color.BLACK

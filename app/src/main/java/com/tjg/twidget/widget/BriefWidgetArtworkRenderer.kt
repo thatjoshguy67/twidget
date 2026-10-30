@@ -100,7 +100,7 @@ internal object BriefWidgetArtworkRenderer {
         val density = context.resources.displayMetrics.density
         val (bitmap, canvas) = widgetArtworkSurface(width, height, bitmapBudgetBytes)
         background?.let { color ->
-            val radius = dp(context, if (style == WidgetStyle.MATERIAL || height / density > 110f) 26f else height / density / 2f)
+            val radius = dp(context, if (style == WidgetStyle.COLOR_OS) 24f else if (style == WidgetStyle.MATERIAL || height / density > 110f) 26f else height / density / 2f)
             canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius,
                 Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
         }
@@ -120,7 +120,7 @@ internal object BriefWidgetArtworkRenderer {
         val widgetLayout = layout(width / density, height / density)
         val colors = WidgetColors.resolve(context, style, dark)
         val primary = colors.primary
-        val secondary = if (style == WidgetStyle.MATERIAL) colors.secondary else primary
+        val secondary = if (style != WidgetStyle.ONE_UI) colors.secondary else primary
 
         when (widgetLayout) {
             Layout.COMPACT_STRIP -> drawCenteredTitle(

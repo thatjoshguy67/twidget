@@ -98,6 +98,7 @@ object LockScreenFollowerViews {
     }
 
     fun updateAll(context: Context) {
+        com.tjg.twidget.widget.coloros.ColorOsLockCardProvider.notifyChanged(context)
         val manager = AppWidgetManager.getInstance(context)
         manager.getAppWidgetIds(android.content.ComponentName(context, com.tjg.twidget.LockScreenFollowerSmallWidget::class.java))
             .takeIf { it.isNotEmpty() }

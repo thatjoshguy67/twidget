@@ -1,0 +1,25 @@
+{
+  "package": "com.tjg.twidget.coloroscards",
+  "name": "Twidget",
+  "versionName": "0.1.0",
+  "versionCode": 1,
+  "minPlatformVersion": 1224,
+  "router": {
+    "widgets": {
+      "cards/compact": {
+        "component": "Compact",
+        "type": "lite",
+        "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
+        "providerPackage": "__APPLICATION_ID__",
+        "forceInspirationTheme": true
+      },
+      "cards/wide": {
+        "component": "Wide",
+        "type": "lite",
+        "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
+        "providerPackage": "__APPLICATION_ID__",
+        "forceInspirationTheme": true
+      }
+    }
+  }
+}

@@ -243,7 +243,8 @@ object WidgetArtworkRenderer {
         settings: TwidgetWidgetSettings,
         dark: Boolean,
     ) {
-        val radius = if (settings.style == WidgetStyle.ONE_UI && height / context.resources.displayMetrics.density <= 110f)
+        val radius = if (settings.style == WidgetStyle.COLOR_OS) dp(context, 24).toFloat()
+        else if (settings.style == WidgetStyle.ONE_UI && height / context.resources.displayMetrics.density <= 110f)
             height / 2f else dp(context, 26).toFloat()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = WidgetColors.resolve(context, settings, dark).background

@@ -123,7 +123,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card,
             ).apply {
                 setInt(android.R.id.background, "setBackgroundResource",
-                    if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    if (settings.style == WidgetStyle.COLOR_OS) R.drawable.widget_color_os_surface
+                    else if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
                     else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.

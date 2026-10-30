@@ -1088,6 +1088,7 @@
     <string name="milestone_noun_impression">impression</string>
     <string name="top_followers_enable_shared_history">Enable shared history</string>
     <string name="widget_style">Widget style</string>
+    <string name="widget_style_color_os" translatable="false">ColorOS</string>
     <string name="widget_style_one_ui">One UI</string>
     <string name="widget_style_material">Material 3 Expressive</string>
     <string name="brief_api_key_dialog_body">Create and copy an API key in Google AI Studio, then paste it here. This key enables cloud tweet and draft reviews, and cloud summaries when selected for Your Brief. Read the <annotation link="privacy">Privacy Policy</annotation> for information on how this data is used and secured.</string>

@@ -10,6 +10,9 @@ class WidgetStyleTest {
         assertEquals(WidgetStyle.ONE_UI, WidgetStyle.resolve("one_ui", false))
         assertEquals(WidgetStyle.MATERIAL, WidgetStyle.resolve("material", true))
         assertEquals(WidgetStyle.MATERIAL, WidgetStyle.resolve("unknown", false))
+        assertEquals(WidgetStyle.COLOR_OS, WidgetStyle.resolve("color_os", true))
+        assertEquals(WidgetStyle.COLOR_OS, WidgetStyle.resolve("color_os", false))
+        assertEquals(com.tjg.twidget.data.TwidgetStore.FONT_SYSTEM, WidgetStyle.COLOR_OS.defaultFont)
     }
 
     @Test fun bodyEmphasisPreservesRanksAndLocalizedQuantities() {

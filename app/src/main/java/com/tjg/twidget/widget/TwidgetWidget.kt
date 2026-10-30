@@ -184,7 +184,8 @@ open class TwidgetWidget : AppWidgetProvider() {
                 val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
                 // RemoteViews may reuse the old view when the style changes.
                 setInt(android.R.id.background, "setBackgroundResource",
-                    if (widgetSettings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    if (widgetSettings.style == WidgetStyle.COLOR_OS) R.drawable.widget_color_os_surface
+                    else if (widgetSettings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
                     else if (mode == LAYOUT_MODE_COMPACT_2X1 || mode == LAYOUT_MODE_COMPACT_STRIP)
                         R.drawable.widget_one_ui_pill_surface
                     else R.drawable.widget_preview_glass_bg)

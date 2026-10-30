@@ -49,6 +49,7 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
             TwidgetWidget.updateAll(context)
             TwidgetBriefWidget.updateAll(context)
             LockScreenFollowerServiceBoxReceiver.refresh(context)
+            colorosNotify(context)
         }
         return if (anySuccess) Result.success() else Result.retry()
     }
@@ -62,7 +63,8 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
             com.tjg.twidget.LockScreenFollowerSmallWidget::class.java,
             com.tjg.twidget.LockScreenFollowerWideWidget::class.java,
         ).flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
-        val accounts = TwidgetStore.accounts(context) +
+        val accounts = listOf(TwidgetStore.widgetSettings(context, kind = WidgetKind.LOCK_SCREEN).accountUsername) +
+            TwidgetStore.accounts(context) +
             widgetIds.map { TwidgetStore.widgetSettings(context, it).accountUsername } +
             TwidgetStore.settings(context).username
         return accounts
@@ -112,3 +114,6 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
             .build()
     }
 }
+
+private fun colorosNotify(context: Context) =
+    com.tjg.twidget.widget.coloros.ColorOsLockCardProvider.notifyChanged(context)

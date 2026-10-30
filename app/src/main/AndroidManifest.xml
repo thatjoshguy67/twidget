@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <queries>
+        <package android:name="com.android.systemui" />
+        <package android:name="com.oplus.keyguard.style.widgets" />
+        <package android:name="com.nearme.instant.card" />
+        <package android:name="com.nearme.instant.platform" />
         <intent>
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
@@ -388,5 +392,10 @@
                 android:value="com.tjg.twidget.widget.WidgetConfigActivity" />
         </receiver>
 
+        <!-- Data transport only. UMS discovery is enabled only after RPK compilation/admission. -->
+        <provider
+            android:name=".widget.coloros.ColorOsLockCardProvider"
+            android:authorities="${applicationId}.coloros.lockcards"
+            android:exported="true" />
     </application>
 </manifest>

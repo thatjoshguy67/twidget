@@ -1,0 +1,16 @@
+<template>
+  <div class="card" accessibilitylabel="{{description}}">
+    <text class="logo">{{logoText}}</text>
+    <div class="values">
+      <text class="count">{{count}}</text>
+      <text class="delta">{{delta}}</text>
+    </div>
+  </div>
+</template>
+<style>
+  .card { width: 100%; height: 100%; flex-direction: row; align-items: center; justify-content: space-between; background-color: transparent; }
+  .logo { font-size: 22px; color: #ffffff; }
+  .values { flex-direction: column; align-items: flex-end; }
+  .count { font-size: 19px; font-weight: bold; color: #ffffff; }
+  .delta { font-size: 13px; color: #ffffff; }
+</style>

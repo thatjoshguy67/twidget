@@ -59,6 +59,10 @@ open class TwidgetWidget : AppWidgetProvider() {
                 com.tjg.twidget.TwidgetWidget::class.java,
             ).flatMap { provider ->
                 manager.getAppWidgetIds(ComponentName(context, provider)).asIterable()
+            }.let { standardIds ->
+                standardIds + if (com.tjg.twidget.BuildConfig.DEBUG)
+                    manager.getAppWidgetIds(ComponentName(context, com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER)).toList()
+                else emptyList()
             }.forEach { updateWidget(context, manager, it) }
             LockScreenFollowerViews.updateAll(context)
         }
@@ -180,7 +184,10 @@ open class TwidgetWidget : AppWidgetProvider() {
         ): RemoteViews {
             // Launchers can replace RemoteViews font families—even Samsung's
             // own `sec` family—so every size renders its text as artwork.
-            return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
+            val hostSurface = usesColorOsProbeSurface(context, appWidgetId, widgetSettings)
+            val layout = if (hostSurface) R.layout.widget_coloros_host_blur
+                else layoutResource(mode, renderAsArtwork = true)
+            return RemoteViews(context.packageName, layout).apply {
                 val dark = isDark(context, widgetSettings)
                 val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
                 // RemoteViews may reuse the old view when the style changes.
@@ -191,8 +198,10 @@ open class TwidgetWidget : AppWidgetProvider() {
                         R.drawable.widget_one_ui_pill_surface
                     else R.drawable.widget_preview_glass_bg)
                 if (widgetSettings.style == WidgetStyle.COLOR_OS) {
-                    // ColorOS can clear the root surface; bake this fallback into the artwork once.
+                    // The probe delegates its child surface to ColorOS; ordinary widgets bake a fallback.
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
+                    if (hostSurface && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                        setWidgetBackgroundTint(context, widgetSettings, R.id.coloros_blur_target)
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     // Tint the existing rounded shape instead of replacing it
                     // with a rectangular ColorDrawable. One UI uses this
@@ -223,7 +232,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                         mode = mode,
                         dark = artworkDark,
                         delta = delta,
-                        drawBackground = drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS,
+                        drawBackground = !hostSurface && (drawArtworkBackground || widgetSettings.style == WidgetStyle.COLOR_OS),
                         bitmapBudgetBytes = artworkBudget,
                     )
                 }
@@ -277,8 +286,17 @@ open class TwidgetWidget : AppWidgetProvider() {
                     if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
                 )
             }
+            if (usesColorOsProbeSurface(context, appWidgetId, TwidgetStore.widgetSettings(context, appWidgetId)))
+                return R.layout.widget_coloros_host_blur
             return layoutResource(mode, renderAsArtwork = true)
         }
+
+        private fun usesColorOsProbeSurface(context: Context, id: Int, settings: TwidgetWidgetSettings): Boolean =
+            com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.usesHostSurface(
+                com.tjg.twidget.BuildConfig.DEBUG,
+                AppWidgetManager.getInstance(context).getAppWidgetInfo(id)?.provider?.className,
+                settings.style,
+            )
 
         fun layoutMode(minWidth: Int, minHeight: Int): Int = when {
             minHeight <= 100 && minWidth <= 170 -> LAYOUT_MODE_COMPACT_2X1

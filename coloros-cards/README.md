@@ -74,3 +74,30 @@ or credentials, and does not change UMS permissions or configuration.
 
 No visible native blur has been verified. The native catalogue/discovery and
 admission path still needs resolving before a native rendering test is possible.
+
+## Ordinary AppWidget allowlist probe
+
+Debug builds now expose **Twidget ColorOS Blur Test**, a disposable Followers
+provider owned by com.tjg.twidget.debug. Its fully qualified receiver class is
+com.heytap.quicksearchbox.ui.appwidgets.DesktopSearchWidgetProvider to exercise
+the launcher's class-name allowlist. This does not install/replace Quick Search,
+rename existing Twidget providers, or modify launcher/system files.
+
+The test defaults to ColorOS when first configured. Only this provider, in a
+debug build, with ColorOS selected uses widget_coloros_host_blur and a child
+FrameLayout tagged OplusBlurBg. Its foreground bitmap has no baked background.
+One UI and Material switch back to ordinary untagged layouts; normal Followers
+and Brief providers remain controls. Existing widgets do not migrate to the probe.
+Refresh, pinned-account sync and the loading-spinner layout include the probe.
+
+Build/unit checks passed, including exhaustive debug/provider/style guard cases.
+Two instrumentation tests passed on the connected phone: the tagged surface is
+exclusive to the probe layout and foreground artwork is transparent at the
+surface boundaries in light/dark modes. Android registers the receiver under
+Twidget Debug. These tests do not prove the launcher's blur actually engages.
+
+To complete the experiment, add the exact test entry, compare ColorOS against
+One UI/Material, and move/change the wallpaper behind it. Check launcher blur
+logs, resizing and style changes. A translucent fill alone is not a pass. If the
+class-name check has changed in this live launcher or material is unavailable,
+the test may still fall back without blur.

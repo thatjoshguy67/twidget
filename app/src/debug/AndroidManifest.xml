@@ -12,5 +12,13 @@
             <meta-data android:name="twidget_coloros_compact" android:resource="@xml/coloros_card_compact" />
             <meta-data android:name="twidget_coloros_wide" android:resource="@xml/coloros_card_wide" />
         </provider>
+        <!-- App-only allowlist probe; the package remains Twidget Debug. -->
+        <receiver
+            android:name="com.heytap.quicksearchbox.ui.appwidgets.DesktopSearchWidgetProvider"
+            android:exported="true"
+            android:label="@string/coloros_blur_probe_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_provider_blur" />
+        </receiver>
     </application>
 </manifest>

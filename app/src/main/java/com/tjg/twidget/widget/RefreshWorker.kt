@@ -65,7 +65,9 @@ class RefreshWorker(context: Context, params: WorkerParameters) : Worker(context
         ).flatMap { manager.getAppWidgetIds(ComponentName(context, it)).toList() }
         val accounts = listOf(TwidgetStore.widgetSettings(context, kind = WidgetKind.LOCK_SCREEN).accountUsername) +
             TwidgetStore.accounts(context) +
-            widgetIds.map { TwidgetStore.widgetSettings(context, it).accountUsername } +
+            (widgetIds + if (com.tjg.twidget.BuildConfig.DEBUG)
+                manager.getAppWidgetIds(ComponentName(context, com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER)).toList()
+            else emptyList()).map { TwidgetStore.widgetSettings(context, it).accountUsername } +
             TwidgetStore.settings(context).username
         return accounts
             .map { it.trim().trimStart('@') }

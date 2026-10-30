@@ -135,7 +135,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         tapAction = settings.tapAction
         accountUsername = settings.accountUsername
         colorMode = settings.colorMode
-        widgetStyle = settings.style
+        widgetStyle = if (com.tjg.twidget.BuildConfig.DEBUG &&
+            providerClass == com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER &&
+            !getSharedPreferences(TwidgetStore.PREFS, MODE_PRIVATE).contains("widget_style_$appWidgetId"))
+            WidgetStyle.COLOR_OS else settings.style
         fontFamily = settings.fontFamily
         showDelta = settings.showDelta
         containedFooter = savedInstanceState?.getBoolean("contained_footer", settings.containedFooter) ?: settings.containedFooter

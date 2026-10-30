@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent">
+
+    <!-- The launcher owns just this surface. Foreground artwork must stay transparent. -->
+    <FrameLayout
+        android:id="@+id/coloros_blur_target"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:tag="OplusBlurBg"
+        android:background="@drawable/widget_color_os_surface" />
+
+    <ImageView
+        android:id="@+id/widget_artwork"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter" />
+
+    <ProgressBar
+        android:id="@+id/widget_loading"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/oneui85_spinner"
+        android:visibility="gone" />
+</FrameLayout>

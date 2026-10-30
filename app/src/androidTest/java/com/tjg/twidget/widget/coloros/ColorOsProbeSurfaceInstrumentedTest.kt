@@ -91,6 +91,8 @@ class ColorOsProbeSurfaceInstrumentedTest {
                     val count = root.findViewById<TextView>(R.id.coloros_native_count)
                     if (count != null) {
                         assertTrue(count.text.isNotEmpty())
+                        assertEquals("complete count at $w x $h scale=$fontScale", 0, count.layout.getEllipsisCount(0))
+                        assertTrue("count line at $w x $h scale=$fontScale", count.layout.getLineWidth(0) <= count.width - count.paddingLeft - count.paddingRight + 1)
                         assertTrue("text height=${count.layout.height} box=${count.height}", count.layout.height <= count.height + 1)
                         assertEquals(if (dark) Color.WHITE else 0xFF18202A.toInt(), count.currentTextColor)
                     } else {
@@ -101,6 +103,8 @@ class ColorOsProbeSurfaceInstrumentedTest {
                             val paint = TextPaint(word.paint)
                             val text = word.text as Spanned
                             text.getSpans(0, text.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
+                            assertTrue("native line $text: width=${word.layout.getLineWidth(0)} available=${word.width - word.paddingLeft - word.paddingRight}",
+                                word.layout.getLineWidth(0) <= word.width - word.paddingLeft - word.paddingRight + 1)
                             val ink = Rect()
                             paint.getTextBounds(text.toString(), 0, text.length, ink)
                             ink.offset(word.left + word.paddingLeft, word.top + word.baseline)
@@ -111,6 +115,27 @@ class ColorOsProbeSurfaceInstrumentedTest {
                     assertEquals(View.GONE, root.findViewById<View>(R.id.widget_loading).visibility)
                 }
             }
+        }
+    }
+
+    @Test fun compactCountShrinksInsteadOfEllipsizingWhenSpaceDecreases() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val sizes = listOf(352, 110).map { width ->
+                val root = ColorOsNativeFollowerViews.create(context, width, 76,
+                    WidgetPreviews.settings(WidgetStyle.COLOR_OS).copy(showDelta = false),
+                    ProfileStats("Probe", "probe", Long.MAX_VALUE, 1, 1, 1), 0, null)
+                    .apply(context, FrameLayout(context))
+                val density = context.resources.displayMetrics.density
+                val w = (width * density).toInt()
+                val h = (76 * density).toInt()
+                root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+                root.layout(0, 0, w, h)
+                val count = root.findViewById<TextView>(R.id.coloros_native_count)
+                assertEquals(0, count.layout.getEllipsisCount(0))
+                count.textSize
+            }
+            assertTrue("The narrower card must shrink its count", sizes[1] < sizes[0])
         }
     }
 
@@ -131,9 +156,11 @@ class ColorOsProbeSurfaceInstrumentedTest {
                 assertEquals(run.text, word.text.toString())
                 assertEquals(run.paint.textSize, word.textSize, 0.01f)
                 val paint = TextPaint(word.paint)
-                val styled = word.text as Spanned
-                styled.getSpans(0, styled.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
+                val text = word.text as Spanned
+                text.getSpans(0, text.length, StyleSpan::class.java).forEach { it.updateMeasureState(paint) }
                 assertEquals(run.paint.typeface.weight, paint.typeface.weight)
+                assertEquals(run.paint.isFakeBoldText, paint.isFakeBoldText)
+                assertEquals(run.advance, paint.measureText(word.text.toString()), 1f)
             }
         }
     }

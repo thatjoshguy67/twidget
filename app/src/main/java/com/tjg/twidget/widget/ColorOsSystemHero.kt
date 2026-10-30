@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Build
+import android.text.TextPaint
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.StyleSpan
@@ -14,8 +15,12 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.data.TwidgetWidgetSettings
 import kotlin.math.ceil
 
-/** Uses the existing hero fitter verbatim, with native word views instead of a flattened bitmap. */
+/** Shares the hero fitting and emphasis rules, measuring native TextView span advances. */
 internal object ColorOsSystemHero {
+    private fun weightSpan(weight: Int) = if (Build.VERSION.SDK_INT >= 33)
+        StyleSpan(Typeface.BOLD, weight - 700)
+    else StyleSpan(if (weight >= 600) Typeface.BOLD else Typeface.NORMAL)
+
     fun fit(context: Context, settings: TwidgetWidgetSettings, words: List<String>, countWords: Int,
         width: Int, height: Int): FollowerHeroLayout.Layout {
         val density = context.resources.displayMetrics.density
@@ -23,7 +28,13 @@ internal object ColorOsSystemHero {
         val availableHeight = ((height - 46) * density).coerceAtLeast(2f)
         val colors = WidgetColors.resolve(context, settings, false)
         return WidgetArtworkRenderer.followerHero(context, settings.copy(fontFamily = TwidgetStore.FONT_SYSTEM),
-            words, countWords, colors.primary, colors.secondary, colors.primary)
+            words, countWords, colors.primary, colors.secondary, colors.primary) { paint, weight ->
+                // Android synthesizes bold for adjusted StyleSpans below weight 600.
+                // Include it in fitting, rather than sizing boxes from unstyled glyphs.
+                val native = TextPaint(paint).apply { typeface = Typeface.create("sans-serif", Typeface.NORMAL) }
+                weightSpan(weight).updateMeasureState(native)
+                paint.set(native)
+            }
             .fit(availableWidth, availableHeight, (if (width - 24 < 230) 4f else 6f) * density, 4f * density)
     }
 
@@ -41,8 +52,7 @@ internal object ColorOsSystemHero {
                 val word = RemoteViews(context.packageName, R.layout.widget_coloros_native_word)
                 val text = SpannableString(run.text).apply {
                     val weight = if (Build.VERSION.SDK_INT >= 28) run.paint.typeface.weight else if (run.paint.isFakeBoldText) 700 else 400
-                    val span = if (Build.VERSION.SDK_INT >= 33) StyleSpan(Typeface.BOLD, weight - 700)
-                        else StyleSpan(if (weight >= 600) Typeface.BOLD else Typeface.NORMAL)
+                    val span = weightSpan(weight)
                     setSpan(span, 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
                 word.setTextViewText(R.id.coloros_native_word, text)

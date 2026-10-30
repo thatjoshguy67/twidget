@@ -13,10 +13,10 @@
         <TextView android:id="@+id/coloros_native_count" android:layout_width="0dp" android:layout_height="match_parent"
             android:layout_weight="1" android:layout_marginStart="8dp" android:gravity="center_vertical" android:fontFamily="sans-serif" android:textFontWeight="700"
             android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"
-            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="8sp" android:autoSizeMaxTextSize="26sp"
-            android:autoSizeStepGranularity="1sp" android:textColor="#FFFFFF" />
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="1sp" android:autoSizeMaxTextSize="26sp"
+            android:autoSizeStepGranularity="1px" android:textColor="#FFFFFF" />
         <TextView android:id="@+id/coloros_native_delta" android:layout_width="wrap_content" android:layout_height="match_parent"
-            android:maxWidth="80dp" android:layout_marginStart="6dp" android:gravity="center_vertical" android:fontFamily="sans-serif" android:textFontWeight="500" android:textSize="26sp" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="6sp" android:autoSizeMaxTextSize="26sp" android:autoSizeStepGranularity="1sp"
+            android:maxWidth="80dp" android:layout_marginStart="6dp" android:gravity="center_vertical" android:fontFamily="sans-serif" android:textFontWeight="500" android:textSize="26sp" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="1sp" android:autoSizeMaxTextSize="26sp" android:autoSizeStepGranularity="1px"
             android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" />
         <TextView android:id="@+id/coloros_native_label" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
         <TextView android:id="@+id/coloros_native_account" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />

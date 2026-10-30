@@ -99,6 +99,7 @@ object WidgetArtworkRenderer {
         primary: Int,
         secondary: Int,
         deltaColor: Int,
+        configurePaint: ((Paint, Int) -> Unit)? = null,
     ): FollowerHeroLayout {
         val flex = settings.fontFamily == TwidgetStore.FONT_GOOGLE_SANS_FLEX
         val natural = textPaint(context, settings, primary, bold = false).apply { textSize = 100f }
@@ -133,6 +134,7 @@ object WidgetArtworkRenderer {
                 applyWidgetTypeface(context, settings.fontFamily, weight, axisWidth,
                     googleRoundness = if (index > countWordCount) 100 else 0,
                     googleSlant = if (!supporting && words[index].endsWith(',')) -10 else 0)
+                configurePaint?.invoke(this, weight)
             }
         }
     }

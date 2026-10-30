@@ -2,7 +2,7 @@
   "package": "com.tjg.twidget.coloroscards",
   "name": "Twidget",
   "versionName": "0.1.0",
-  "versionCode": 1,
+  "versionCode": 2,
   "minPlatformVersion": 1224,
   "router": {
     "widgets": {
@@ -11,15 +11,43 @@
         "type": "lite",
         "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
         "providerPackage": "__APPLICATION_ID__",
-        "forceInspirationTheme": true
+        "forceInspirationTheme": true,
+        "path": "/cards/compact",
+        "minCardPlatformVersion": 1070
       },
       "cards/wide": {
         "component": "Wide",
         "type": "lite",
         "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
         "providerPackage": "__APPLICATION_ID__",
+        "forceInspirationTheme": true,
+        "path": "/cards/wide",
+        "minCardPlatformVersion": 1070
+      },
+      "cards/followers": {
+        "component": "Followers",
+        "type": "lite",
+        "path": "/cards/followers",
+        "minCardPlatformVersion": 1070,
+        "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
+        "providerPackage": "__APPLICATION_ID__",
+        "forceInspirationTheme": true
+      },
+      "cards/brief": {
+        "component": "Brief",
+        "type": "lite",
+        "path": "/cards/brief",
+        "minCardPlatformVersion": 1070,
+        "providerUri": "content://__APPLICATION_ID__.coloros.lockcards",
+        "providerPackage": "__APPLICATION_ID__",
         "forceInspirationTheme": true
       }
     }
-  }
+  },
+  "icon": "/icon.png",
+  "config": {
+    "designWidth": 360,
+    "logLevel": "debug"
+  },
+  "minCardPlatformVersion": 1070
 }

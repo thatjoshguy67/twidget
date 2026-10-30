@@ -53,6 +53,7 @@ open class TwidgetWidget : AppWidgetProvider() {
         private const val REMOTE_VIEWS_BITMAP_BUDGET_BYTES = 12_000_000L
 
         fun updateAll(context: Context) {
+            com.tjg.twidget.widget.coloros.ColorOsLockCardProvider.notifyChanged(context)
             val manager = AppWidgetManager.getInstance(context)
             listOf(
                 com.tjg.twidget.TwidgetWidget::class.java,

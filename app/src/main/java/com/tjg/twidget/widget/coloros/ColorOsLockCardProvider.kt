@@ -29,7 +29,9 @@ class ColorOsLockCardProvider : ContentProvider() {
         // Defaults intentionally match the existing One UI lock widgets in this first version.
         return when (method) {
             "onCardCreate", "onCardUpdate", "onCardSubscribe" -> response(0, "success").apply {
-                putString("data", presentation(ctx, path == WIDE).toString())
+                val data = if (path == "/cards/brief") briefPresentation(ctx)
+                    else presentation(ctx, path == WIDE, path == "/cards/followers")
+                putString("data", data.toString())
             }
             "onCardEvent" -> response(-1, "Use the template's configuration route")
             else -> response(0, "success")
@@ -57,10 +59,10 @@ class ColorOsLockCardProvider : ContentProvider() {
         const val RPK_PACKAGE = "com.tjg.twidget.coloroscards"
         const val COMPACT = "/cards/compact"
         const val WIDE = "/cards/wide"
-        private val HOSTS = setOf("com.android.systemui", "com.oplus.keyguard.style.widgets", "com.nearme.instant.card", "com.nearme.instant.platform")
+        private val HOSTS = setOf("com.android.launcher", "com.android.systemui", "com.oplus.keyguard.style.widgets", "com.nearme.instant.card", "com.nearme.instant.platform")
 
-        internal fun presentation(context: Context, wide: Boolean): JSONObject {
-            val settings = TwidgetStore.widgetSettings(context, kind = WidgetKind.LOCK_SCREEN)
+        internal fun presentation(context: Context, wide: Boolean, home: Boolean = false): JSONObject {
+            val settings = TwidgetStore.widgetSettings(context, kind = if (home) WidgetKind.FOLLOWERS else WidgetKind.LOCK_SCREEN)
             val account = settings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
             val stats = TwidgetStore.currentStats(context, account)
             val delta = TwidgetStore.followersDelta(context, account)
@@ -79,6 +81,18 @@ class ColorOsLockCardProvider : ContentProvider() {
                 put("wide", wide)
                 put("description", "$count $label $detail".trim())
                 // AOD and host colours are template/host state, never inferred from screen power here.
+            }
+        }
+
+        private fun briefPresentation(context: Context): JSONObject {
+            val account = TwidgetStore.settings(context).username
+            val settings = TwidgetStore.widgetSettings(context, kind = WidgetKind.BRIEF)
+            val strings = com.tjg.twidget.brief.BriefStrings.from(context, settings.language)
+            val summary = com.tjg.twidget.brief.BriefStore.presentation(context, account, strings = strings)
+            return JSONObject().apply {
+                put("schemaVersion", 1)
+                put("title", summary?.title.orEmpty())
+                put("body", summary?.body.orEmpty())
             }
         }
 

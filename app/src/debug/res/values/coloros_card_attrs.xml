@@ -1,0 +1,17 @@
+<resources>
+    <attr name="groupId" format="string" />
+    <attr name="groupTitle" format="reference" />
+    <attr name="groupImage" format="reference" />
+    <attr name="previewImage" format="reference" />
+    <attr name="distributeType" format="integer" />
+    <attr name="protocol" format="integer" />
+    <attr name="minEngineVersion" format="integer" />
+    <attr name="oplus_card_name" format="reference" />
+    <attr name="oplus_card_desc" format="reference" />
+    <attr name="oplus_card_path" format="string" />
+    <attr name="oplus_card_size" format="string" />
+    <attr name="oplus_card_type" format="integer" />
+    <attr name="oplus_card_displayArea" format="integer" />
+    <attr name="oplus_card_reservedFlag" format="integer" />
+    <attr name="oplus_card_version" format="integer" />
+</resources>

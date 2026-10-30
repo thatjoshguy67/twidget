@@ -39,6 +39,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         private const val BITMAP_BUDGET = 8_000_000L
 
         fun updateAll(context: Context) {
+            com.tjg.twidget.widget.coloros.ColorOsLockCardProvider.notifyChanged(context)
             val manager = AppWidgetManager.getInstance(context)
             manager.getAppWidgetIds(ComponentName(context, TwidgetBriefWidget::class.java))
                 .forEach { updateWidget(context, manager, it) }

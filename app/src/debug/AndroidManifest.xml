@@ -4,5 +4,13 @@
         <activity android:name="com.tjg.twidget.brief.BriefCoachTestActivity"
             android:exported="false" android:excludeFromRecents="true"
             android:theme="@style/Theme.Twidget" />
+        <provider android:name=".widget.coloros.ColorOsLockCardProvider">
+            <intent-filter><action android:name="pantanal.card.action.RPKCARD_UPDATE" /></intent-filter>
+            <meta-data android:name="pantanal.card.provider.array" android:resource="@array/coloros_card_metadata" />
+            <meta-data android:name="twidget_coloros_followers" android:resource="@xml/coloros_card_followers" />
+            <meta-data android:name="twidget_coloros_brief" android:resource="@xml/coloros_card_brief" />
+            <meta-data android:name="twidget_coloros_compact" android:resource="@xml/coloros_card_compact" />
+            <meta-data android:name="twidget_coloros_wide" android:resource="@xml/coloros_card_wide" />
+        </provider>
     </application>
 </manifest>

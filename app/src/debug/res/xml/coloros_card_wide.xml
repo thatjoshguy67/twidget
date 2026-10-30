@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Experimental local identifiers, not OPPO-assigned production IDs. -->
+<card-provider xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:groupId="1974100"
+    app:groupTitle="@string/app_name"
+    app:groupImage="@mipmap/ic_launcher"
+    app:previewImage="@mipmap/ic_launcher"
+    app:distributeType="2"
+    app:protocol="1"
+    app:minEngineVersion="1070"
+    app:oplus_card_name="@string/lockscreen_follower_2x1_label"
+    app:oplus_card_desc="@string/widget_style_color_os"
+    app:oplus_card_path="hap://widget/com.tjg.twidget.coloroscards/cards/wide?__RPK_PATH__=android://com.tjg.twidget.debug/assets/coloros-cards.rpk&amp;__LOC_VER__=2&amp;__LOAD_STRATEGY__=0"
+    app:oplus_card_size="5"
+    app:oplus_card_type="1974104"
+    app:oplus_card_displayArea="64"
+    app:oplus_card_reservedFlag="0"
+    app:oplus_card_version="2" />

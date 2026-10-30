@@ -1,0 +1,7 @@
+{
+  "name": "twidget-coloros-cards",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": { "build:debug": "node scripts/build-debug.mjs" },
+  "devDependencies": { "hap-toolkit": "2.1.1" }
+}

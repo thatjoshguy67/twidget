@@ -38,6 +38,7 @@ object BriefStore {
                 ?.takeIf { it.matches(strings, content) } ?: remembered
             presentation?.let { encoded.put("lastPresentation", encodePresentation(it)) }
             prefs(context).edit().putString(key(snapshot.username), encoded.toString()).apply()
+            com.tjg.twidget.widget.coloros.ColorOsLockCardProvider.notifyChanged(context)
             if (presentation != null && presentation != readPresentation(previous)) {
                 context.sendBroadcast(android.content.Intent(ACTION_PRESENTATION_UPDATED).setPackage(context.packageName)
                     .putExtra(EXTRA_USERNAME, account))

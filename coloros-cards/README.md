@@ -1,49 +1,56 @@
-# Experimental ColorOS lock cards
+# Experimental ColorOS native cards
 
-These are template sources, not a compiled or enrolled native card. The Android
-APK includes ColorOsLockCardProvider at `${applicationId}.coloros.lockcards`.
-No UMS discovery metadata is advertised yet, because doing so without a valid
-compiled RPK URL would publish broken entries in the device catalogue.
+The debug APK now embeds a compiled, development-signed RPK at
+assets/coloros-cards.rpk and advertises four UMS RPK card entries:
+Followers, Your Brief, compact lock and wide lock. The registration and RPK
+exist only in the debug source set, with provisional local test identifiers.
+These identifiers are not OPPO-assigned production identifiers.
 
-The compact/wide templates mirror the existing One UI content arrangement and
-use the same app-side lock settings, account and formatted follower data. This
-first pass uses shared lock defaults rather than separate native-instance
-configuration. It does not change or replace the Samsung widgets.
+## Blur isolation
 
-Before native device testing:
+Only the new native home templates request `backdrop-filter: host-blur` and
+`theme-background-color: uxCardColorBackground`, with semantic text colours.
+One UI and Material RemoteViews rendering is unchanged. The ordinary ColorOS
+AppWidget style still uses its baked translucent fallback; selecting it does
+not convert an installed AppWidget into an Instant Card. Add the native entries
+from the ColorOS card picker to test the host API, if UMS admits them.
 
-1. Obtain the compatible OPPO/lite compiler and CARD_CLIENT admission route.
-2. Substitute __APPLICATION_ID__ in the manifest for the chosen APK variant
-   (Github debug currently uses com.tjg.twidget.debug). Compile .ux into the
-   engine's .template.json format and package/sign the RPK using that toolchain.
-3. Supply a supported RPK resource URL and assigned card identifiers in the
-   pantanal.card.provider registration, with lock entrance bit 64 and confirmed
-   size/distribution values. Do not copy system card type identifiers.
-4. Confirm actual caller identity. Provider accepts its own UID or named host
-   packages signed with the device platform certificate. It does not trust
-   request Bundle host/sha256 fields. OEM builds using different engine signing
-   require reviewed certificate pins; do not weaken this to package-name checks.
-5. Validate template data binding, host colours, material and AOD. Static white
-   template foreground is only a starting point, not verified live colour/AOD
-   adaptation. forceInspirationTheme requests host material; no fake blur is
-   rendered by Twidget. Finish host-mediated tap-to-configure routing and actual
-   vector logo assets before treating native lock functionality as complete.
+The compiler warns about OEM-specific CSS, but retains it. Both the build script
+and check-package.py inspect compiled output and refuse a package missing the
+host-blur properties. This proves packaging, not runtime blur. The host must
+supply its blur interface, enable material and accept the card.
 
-Data uses create/update/subscribe responses (code=0, data=JSON) and notifications
-at provider/RPK/path. No credentials, general queries or file access are exposed.
-The provider rejects unknown package/path/method/oversized instance input. It
-serves cached data and does not launch activities from Binder callbacks.
+## Rebuild
 
-The ColorOS home style is available now for ordinary Followers and Your Brief
-AppWidgets. Its translucent 24dp surface is a fallback appearance, not a claim
-that ColorOS grants ordinary AppWidgets native backdrop blur. Existing launcher
-blur restrictions still apply; native home-card enrollment is not included.
+Run npm install in this directory (hap-toolkit pinned to 2.1.1), then
+`npm run build:debug` and `python3 scripts/check-package.py`. Build the Android
+GithubDebug variant afterwards. The script uses an isolated temporary project,
+the toolkit's development signing certificate and the debug APK application ID.
+It never starts a server, connects to a device or installs an app. Do not ship
+this RPK or the provisional catalogue IDs as a production integration.
 
-## Validation for this initial branch
+## Data and limitations
 
-`./gradlew :app:assembleGithubDebug :app:testGithubDebugUnitTest` passes (512
-unit tests). No APK installation or device interaction was performed. Protocol
-unit tests cover accepted compact/wide opaque instance IDs, malformed or missing
-identity, cross-card requests, unsupported commands and teardown validation.
-Caller certificate enforcement and native template behavior require a device
-integration test; the unit suite does not establish these.
+The provider supports the engine's APK-backed lite lifecycle protocol, validates
+package/path/instance input, and restricts Binder callers to the app UID or
+named, platform-signed hosts. It does not trust host/sha256 request fields.
+Followers reads shared Followers defaults; Brief uses existing cached Brief
+presentation. Lock cards retain shared One UI lock settings and their initial
+compact/wide source layouts. No credentials or arbitrary file access are exposed.
+Updates notify card observers after cache, refresh or widget-settings changes.
+
+Separate native-instance configuration, vector logo assets, authenticated
+click routing and live colour/AOD validation are still incomplete. The lock
+source templates have not been changed to request the new desktop host blur.
+These prototype templates do not yet reproduce every bitmap detail of the
+existing Android widgets.
+
+## Device result
+
+The GithubDebug APK built and installed successfully, and Android's package
+resolver lists the RPKCARD_UPDATE provider. That does not establish UMS admission.
+A read-only catalogue query could not run in the guest environment: the host
+content command hit a Parcel protocol mismatch, and the guest namespace retry
+failed loading com/oplus/media/OplusBitmapChecker. No UMS/launcher configuration
+was changed to bypass authorization. Picker visibility and actual blur remain
+unverified and need a device UI check.

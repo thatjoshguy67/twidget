@@ -27,6 +27,7 @@ import com.tjg.twidget.widget.WidgetStyle
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class ColorOsProbeSurfaceInstrumentedTest {
@@ -191,6 +192,61 @@ class ColorOsProbeSurfaceInstrumentedTest {
         }
     }
 
+    @Test fun explicitProbeBoundsSurviveInstalledColorOsMeasurementAndReapply() {
+        // Exercise the OEM's actual rule, not an imitation of its arithmetic.
+        val launcher = runCatching { context.createPackageContext("com.android.launcher",
+            android.content.Context.CONTEXT_INCLUDE_CODE or android.content.Context.CONTEXT_IGNORE_SECURITY) }.getOrNull()
+        org.junit.Assume.assumeNotNull(launcher)
+        val ruleClass = launcher!!.classLoader.loadClass("com.android.launcher3.widget.measure.AllMatchParentMeasureAlignSpecRule")
+        // R8 can remove this stateless rule's constructor while retaining its method.
+        val unsafeClass = Class.forName("sun.misc.Unsafe")
+        val field = unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }
+        val rule = unsafeClass.getMethod("allocateInstance", Class::class.java).invoke(field.get(null), ruleClass)
+        val measure = ruleClass.getMethod("measure", View::class.java, Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType, Float::class.javaPrimitiveType, android.graphics.Point::class.java)
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val parent = FrameLayout(context)
+            val settings = WidgetPreviews.settings(WidgetStyle.COLOR_OS)
+            val stats = ProfileStats("Probe", "probe", 7936, 1, 1, 1)
+            val density = context.resources.displayMetrics.density
+            var root: View? = null
+            // Include compact/tall transitions, the 3x2 case, and a larger tall card.
+            for ((w, h) in listOf(260 to 148, 348 to 254, 110 to 76, 348 to 157)) {
+                val remote = ColorOsNativeFollowerViews.create(context, w, h, settings, stats, -1, null)
+                val parcel = Parcel.obtain()
+                remote.writeToParcel(parcel, 0)
+                parcel.setDataPosition(0)
+                val delivered = RemoteViews.CREATOR.createFromParcel(parcel)
+                parcel.recycle()
+                val current = root
+                val next = if (current != null && current.tag == ColorOsNativeFollowerViews.layout(h)) {
+                    delivered.reapply(context, current)
+                    current
+                } else delivered.apply(context, parent)
+                next.tag = ColorOsNativeFollowerViews.layout(h)
+                root = next
+                val width = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, w.toFloat(), context.resources.displayMetrics).roundToInt()
+                val height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, h.toFloat(), context.resources.displayMetrics).roundToInt()
+                // A larger canonical measurement must not enlarge the bounded root.
+                measure.invoke(rule, next, width, height, 1.5f, android.graphics.Point(3, 2))
+                next.layout(0, 0, next.measuredWidth, next.measuredHeight)
+                assertEquals("width at $w x $h", width, next.measuredWidth)
+                assertEquals("height at $w x $h", height, next.measuredHeight)
+                assertEquals(width, next.findViewById<View>(R.id.coloros_blur_target).width)
+                assertEquals(height, next.findViewById<View>(R.id.coloros_blur_target).height)
+                if (h > 110) assertCountImageFits(next)
+            }
+            // Control: the unchanged match-parent arrangement reproduces the bug.
+            val control = FrameLayout(context).apply {
+                id = android.R.id.background
+                layoutParams = FrameLayout.LayoutParams(-1, -1)
+            }
+            measure.invoke(rule, control, (260 * density).toInt(), (148 * density).toInt(), 1.5f, android.graphics.Point(3, 2))
+            assertTrue(control.measuredWidth > (260 * density).toInt())
+            assertTrue(control.measuredHeight > (148 * density).toInt())
+        }
+    }
+
     @Test fun ordinaryStylesKeepTheirOriginalBitmapRendererWithoutBlurTags() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val stats = ProfileStats("Probe", "probe", 7935, 1, 1, 1)
@@ -201,6 +257,8 @@ class ColorOsProbeSurfaceInstrumentedTest {
                 assertNotNull(root.findViewById<View>(R.id.widget_artwork))
                 assertNull(root.findViewWithTag<View>("OplusBlurBg"))
                 assertNull(root.findViewById<View>(R.id.coloros_native_count))
+                assertEquals("Ordinary provider root width for $style", ViewGroup.LayoutParams.MATCH_PARENT, root.layoutParams.width)
+                assertEquals("Ordinary provider root height for $style", ViewGroup.LayoutParams.MATCH_PARENT, root.layoutParams.height)
             }
         }
     }

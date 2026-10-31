@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Build
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import com.tjg.twidget.R
@@ -28,6 +29,14 @@ internal object ColorOsNativeFollowerViews {
         val change = if (settings.showDelta && delta != 0L) TwidgetStore.signedNumber(delta, locale) else ""
         val visibleChange = change.isNotEmpty() && (!compact || width >= 180)
         return RemoteViews(context.packageName, layout(height)).apply {
+            if (Build.VERSION.SDK_INT >= 31) {
+                // The ColorOS optimiser enlarges match-parent roots before layout,
+                // but blur-allowlisted providers skip its compensating scale-down.
+                // Explicit host dimensions bypass that measurement multiplier.
+                // This renderer is exclusive to the ColorOS probe and its preview.
+                setViewLayoutWidth(android.R.id.background, width.coerceAtLeast(1).toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+                setViewLayoutHeight(android.R.id.background, height.coerceAtLeast(1).toFloat(), TypedValue.COMPLEX_UNIT_DIP)
+            }
             if (compact) {
                 setTextViewText(R.id.coloros_native_count, count)
                 setTextViewText(R.id.coloros_native_label, noun)

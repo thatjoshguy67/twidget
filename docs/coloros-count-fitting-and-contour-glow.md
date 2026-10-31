@@ -62,3 +62,26 @@ compact count shrinking, and scaling an already-applied paragraph through
 mismatched host sizes. This does not prove visual parity with Clock's dedicated
 launcher implementation, nor does it prove the contour glow's appearance in a
 new launcher recording. Those require checking the resulting launcher state.
+
+## 31 October: bound the ColorOS root before OEM measurement
+
+The installed launcher 17.3.12 measurement rule was invoked in a controlled
+on-device audit. A match-parent root given a 683x389 area measured 823x469;
+an explicitly sized root remained 683x389. The optimiser's canonical-height
+measurement and the blur allowlist's skipped scale-down explain the whole-card
+oversizing, including cropped text, footer and native edge shape.
+
+`ColorOsNativeFollowerViews.create` now sets explicit root dimensions through
+RemoteViews layout actions on Android 12+. Its child blur surface, scalable
+paragraph and footer still size relative to that root. Those actions survive
+serialization and reapplication when widget options change. The renderer is
+selected only for the debug ColorOS probe with the ColorOS style; ordinary
+providers and other styles retain their existing sizing and artwork paths.
+No One UI or Pixel sizing logic, layouts, shared fitter, or artwork renderer is
+changed by this correction.
+
+The regression test executes the installed OEM rule on serialized probe views,
+checks compact/tall transitions and same-layout reapplication, and retains an
+unbounded control that must reproduce oversizing. Ordinary-provider tests also
+assert that their root layout parameters remain match-parent. Fresh launcher
+screenshots are still required to verify visual behavior through real drags.

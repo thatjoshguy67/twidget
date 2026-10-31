@@ -46,6 +46,12 @@ does not request native blur or contour glow. Existing non-ColorOS style paths
 are unchanged. ColorOS becomes the default widget style on its vendor framework;
 explicit stored style choices continue to win.
 
+The ColorOS profile is offered only when the vendor framework is present
+(`OplusBuild` or `OppoBuild`), covering ColorOS-related forks independently of
+the physical phone brand. Other skins expose only One UI and Material styles.
+A stored ColorOS selection restored onto an unsupported skin resolves to that
+skin's default style, without deleting the stored preference.
+
 Resize and theme-artwork helpers are shared only within these ColorOS adapters.
 Followers' day/night count bitmap pair is reused across variants. Brief and
 other-style artwork use a 5 MB base budget plus at most three 1 MB compact

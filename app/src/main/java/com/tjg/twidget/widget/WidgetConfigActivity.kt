@@ -55,6 +55,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var editingDefaults = false
     private val previewPages = mutableListOf<FrameLayout>()
     private val accountRadios = mutableListOf<Pair<String, RadioButton>>()
+    private val selectableStyles get() = if (isLockWidget) listOf(WidgetStyle.ONE_UI) else WidgetStyle.supportedStyles()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -243,7 +244,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     private fun installStylePager() {
         val pager = findViewById<ViewPager>(R.id.widget_style_pager)
-        val styles = if (isLockWidget) listOf(WidgetStyle.ONE_UI) else WidgetStyle.entries
+        val styles = selectableStyles
         previewPages.clear()
         styles.forEachIndexed { index, _ ->
             previewPages.add(FrameLayout(this).apply {
@@ -469,12 +470,12 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         }
 
         findViewById<TextView>(R.id.widget_style_indicator).apply {
-            text = "${styleLabel(widgetStyle)}\n${(if (isLockWidget) listOf(WidgetStyle.ONE_UI) else WidgetStyle.entries).joinToString("  ") { if (it == widgetStyle) "●" else "○" }}"
+            text = "${styleLabel(widgetStyle)}\n${selectableStyles.joinToString("  ") { if (it == widgetStyle) "●" else "○" }}"
             contentDescription = "${getString(R.string.widget_style)}: ${styleLabel(widgetStyle)}"
         }
         previewPages.forEachIndexed { index, page ->
             renderPreview(page.getChildAt(0) as FrameLayout,
-                if (isLockWidget) widgetStyle else WidgetStyle.entries[index])
+                if (isLockWidget) widgetStyle else selectableStyles[index])
         }
     }
 

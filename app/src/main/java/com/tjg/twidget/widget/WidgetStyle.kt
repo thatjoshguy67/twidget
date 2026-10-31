@@ -19,9 +19,13 @@ enum class WidgetStyle(val storedValue: String) {
     }
 
     companion object {
+        fun supportedStyles(colorOs: Boolean = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.isColorOs): List<WidgetStyle> =
+            entries.filter { it != COLOR_OS || colorOs }
+
         fun resolve(value: String?, oneUi: Boolean = TwidgetFonts.hasSystemOneUiSans,
             colorOs: Boolean = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.isColorOs): WidgetStyle =
-            entries.firstOrNull { it.storedValue == value } ?: if (colorOs) COLOR_OS else if (oneUi) ONE_UI else MATERIAL
+            supportedStyles(colorOs).firstOrNull { it.storedValue == value }
+                ?: if (colorOs) COLOR_OS else if (oneUi) ONE_UI else MATERIAL
     }
 }
 

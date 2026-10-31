@@ -538,7 +538,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             }
             val native = ColorOsFollowersViews.create(this, spec.widthDp, spec.heightDp, previewSettings,
                 TwidgetStore.currentStats(this, selectedAccount), TwidgetStore.followersDelta(this, selectedAccount), null, nativeBlur = isColorOsNativeFollowers)
-                .apply(this, preview)
+                // The activity's AppCompat inflater substitutes ImageView subclasses
+                // whose overrides are not RemoteViews-callable. Inflate like a widget
+                // host, without the activity's Factory2, so preview actions stay valid.
+                .apply(applicationContext, preview)
             native.scaleX = scale
             native.scaleY = scale
             preview.addView(native, FrameLayout.LayoutParams(dp(spec.widthDp), dp(spec.heightDp), Gravity.CENTER))

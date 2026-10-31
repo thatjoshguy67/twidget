@@ -22,6 +22,25 @@ class ColorOsStandardWidgetsInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 
+    @Test fun followersConfigurationOpensWithColorOsRemoteViewsPreview() {
+        org.junit.Assume.assumeTrue(ColorOsWidgetSupport.available)
+        val activity = instrumentation.startActivitySync(android.content.Intent(context,
+            com.tjg.twidget.widget.WidgetConfigActivity::class.java)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(com.tjg.twidget.widget.WidgetConfigActivity.EXTRA_DEFAULT_KIND, "FOLLOWERS"))
+        try {
+            instrumentation.runOnMainSync {
+                val root = activity.findViewById<ViewGroup>(R.id.widget_config_root)
+                fun descendants(view: View): List<View> = listOf(view) +
+                    if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) }
+                    else emptyList()
+                val widgetImages = descendants(root).filter { it.id == R.id.coloros_native_hero }
+                assertTrue("Configuration must render the ColorOS preview", widgetImages.isNotEmpty())
+                widgetImages.forEach { assertEquals(ImageView::class.java, it.javaClass) }
+            }
+        } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
+
     @Test fun defaultManifestRetainsNormalEntriesAndHidesTheColorOsAdapter() {
         val packageManager = context.packageManager
         fun features(component: ComponentName): Int {

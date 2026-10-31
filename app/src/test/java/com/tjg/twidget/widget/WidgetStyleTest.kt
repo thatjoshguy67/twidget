@@ -4,6 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WidgetStyleTest {
+    @org.junit.Test fun platformDefaultsPreserveOneUiAndPixelAndRespectExplicitStyles() {
+        org.junit.Assert.assertEquals(WidgetStyle.ONE_UI, WidgetStyle.resolve(null, oneUi = true, colorOs = false))
+        org.junit.Assert.assertEquals(WidgetStyle.MATERIAL, WidgetStyle.resolve(null, oneUi = false, colorOs = false))
+        org.junit.Assert.assertEquals(WidgetStyle.COLOR_OS, WidgetStyle.resolve(null, oneUi = false, colorOs = true))
+        for (style in WidgetStyle.entries) for (oneUi in listOf(false, true)) for (colorOs in listOf(false, true))
+            org.junit.Assert.assertEquals(style, WidgetStyle.resolve(style.storedValue, oneUi, colorOs))
+    }
+
     @Test fun defaultsFollowTheRomButAnExplicitChoiceWins() {
         assertEquals(WidgetStyle.ONE_UI, WidgetStyle.resolve(null, true))
         assertEquals(WidgetStyle.MATERIAL, WidgetStyle.resolve(null, false))

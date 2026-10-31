@@ -327,7 +327,7 @@ class ColorOsProbeSurfaceInstrumentedTest {
     @Test fun ordinaryStylesKeepTheirOriginalBitmapRendererWithoutBlurTags() {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             val stats = ProfileStats("Probe", "probe", 7935, 1, 1, 1)
-            for (style in WidgetStyle.entries) {
+            for (style in WidgetStyle.entries.filter { it != WidgetStyle.COLOR_OS }) {
                 val views = TwidgetWidget.createRemoteViews(context, -1, 330, 157, TwidgetWidget.LAYOUT_MODE_LARGE,
                     WidgetPreviews.settings(style), "probe", stats, 8, true)
                 val root = views.apply(context, FrameLayout(context))

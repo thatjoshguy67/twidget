@@ -124,3 +124,11 @@ Ordinary One UI and Pixel rendering/sizing paths remain unchanged.
 Debug builds for this work are local. Instrumentation verifies the controlled
 host lifecycle, not the appearance of the complete launcher during a real drag;
 a fresh launcher recording remains the visual verification step.
+
+
+## Standard widget integration
+
+The prototype has since been promoted into the normal ColourOS Followers entry,
+with Your Brief retaining its separate provider and fallback surface. See
+[coloros-home-widget-integration.md](coloros-home-widget-integration.md) for
+picker metadata, preserved placements, platform gating and current rendering.

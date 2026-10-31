@@ -28,6 +28,8 @@ class ScheduleBootReceiver : BroadcastReceiver() {
                     // Re-publish layouts after upgrades instead of leaving the host's
                     // cached RemoteViews in place until the next scheduled refresh.
                     com.tjg.twidget.widget.TwidgetWidget.updateAll(context)
+                    if (com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available)
+                        com.tjg.twidget.widget.TwidgetBriefWidget.updateAll(context)
                     com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(context)
                     com.tjg.twidget.data.TwidgetStore.accounts(context).forEach { username ->
                         if (com.tjg.twidget.banger.BangerScanWorker.isScanning(context, username)) {

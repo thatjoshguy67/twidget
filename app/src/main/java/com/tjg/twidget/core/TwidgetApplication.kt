@@ -29,6 +29,7 @@ class TwidgetApplication : Application(), Configuration.Provider {
         AppExecutors.execute {
             com.tjg.twidget.bridge.PrimaryProfileReporter.enqueue(this)
             runCatching { com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(this) }
+            com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.reconcilePicker(this)
             com.tjg.twidget.widget.WidgetPreviews.publish(this)
         }
         if (AppPaletteManager.consumePendingWidgetRefresh(this)) {

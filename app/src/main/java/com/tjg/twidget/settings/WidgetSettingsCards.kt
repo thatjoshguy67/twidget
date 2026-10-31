@@ -40,8 +40,8 @@ internal object WidgetSettingsCards {
                 },
                 add = {
                     val manager = AppWidgetManager.getInstance(context)
-                    val provider = ComponentName(context, if (kind == WidgetKind.BRIEF)
-                        TwidgetBriefWidget::class.java else com.tjg.twidget.TwidgetWidget::class.java)
+                    val provider = if (kind == WidgetKind.BRIEF) ComponentName(context, TwidgetBriefWidget::class.java)
+                    else com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.followersProvider(context)
                     if (!manager.isRequestPinAppWidgetSupported ||
                         !manager.requestPinAppWidget(provider, null, null)) {
                         Toast.makeText(context, R.string.add_widget_not_supported, Toast.LENGTH_LONG).show()

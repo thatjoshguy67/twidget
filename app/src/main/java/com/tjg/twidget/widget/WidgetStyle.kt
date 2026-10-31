@@ -19,8 +19,9 @@ enum class WidgetStyle(val storedValue: String) {
     }
 
     companion object {
-        fun resolve(value: String?, oneUi: Boolean = TwidgetFonts.hasSystemOneUiSans): WidgetStyle =
-            entries.firstOrNull { it.storedValue == value } ?: if (oneUi) ONE_UI else MATERIAL
+        fun resolve(value: String?, oneUi: Boolean = TwidgetFonts.hasSystemOneUiSans,
+            colorOs: Boolean = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.isColorOs): WidgetStyle =
+            entries.firstOrNull { it.storedValue == value } ?: if (colorOs) COLOR_OS else if (oneUi) ONE_UI else MATERIAL
     }
 }
 

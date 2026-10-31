@@ -50,7 +50,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var isLockWidget = false
     private var isLockWide = false
     private var isBriefWidget = false
-    private var isColorOsBlurProbe = false
+    private var isColorOsNativeFollowers = false
     private var widgetKind = WidgetKind.FOLLOWERS
     private var editingDefaults = false
     private val previewPages = mutableListOf<FrameLayout>()
@@ -68,7 +68,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         isLockWide = intent?.getBooleanExtra(EXTRA_LOCKSCREEN_WIDE, false) == true
         val providerClass = AppWidgetManager.getInstance(this)
             .getAppWidgetInfo(appWidgetId)?.provider?.className.orEmpty()
-        isColorOsBlurProbe = com.tjg.twidget.BuildConfig.DEBUG &&
+        isColorOsNativeFollowers = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available &&
             providerClass == com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER
         val requestedKind = intent?.getStringExtra(EXTRA_DEFAULT_KIND)
         editingDefaults = requestedKind != null || appWidgetId <= 0
@@ -138,7 +138,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         tapAction = settings.tapAction
         accountUsername = settings.accountUsername
         colorMode = settings.colorMode
-        widgetStyle = if (com.tjg.twidget.BuildConfig.DEBUG &&
+        widgetStyle = if (com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available &&
             providerClass == com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER &&
             !getSharedPreferences(TwidgetStore.PREFS, MODE_PRIVATE).contains("widget_style_$appWidgetId"))
             WidgetStyle.COLOR_OS else settings.style
@@ -443,7 +443,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.opacity_block).visibility =
             if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
         findViewById<View>(R.id.font_row).visibility =
-            if (isColorOsBlurProbe && widgetStyle == WidgetStyle.COLOR_OS) View.GONE else View.VISIBLE
+            if (isColorOsNativeFollowers && widgetStyle == WidgetStyle.COLOR_OS) View.GONE else View.VISIBLE
         findViewById<CardItemView>(R.id.font_row).showTopDivider = findViewById<View>(R.id.opacity_block).visibility == View.VISIBLE
         findViewById<CardItemView>(R.id.language_row).showTopDivider = !isLockWidget
         findViewById<CardItemView>(R.id.logo_row).showTopDivider = true
@@ -528,7 +528,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             return
         }
 
-        if (isColorOsBlurProbe && style == WidgetStyle.COLOR_OS) {
+        if (com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available && style == WidgetStyle.COLOR_OS) {
             val spec = homePreviewSpec(style)
             val scale = previewScale(spec.widthDp)
             preview.background = null
@@ -536,8 +536,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                 width = (dp(spec.widthDp) * scale).toInt()
                 height = (dp(spec.heightDp) * scale).toInt()
             }
-            val native = ColorOsNativeFollowerViews.create(this, spec.widthDp, spec.heightDp, previewSettings,
-                TwidgetStore.currentStats(this, selectedAccount), TwidgetStore.followersDelta(this, selectedAccount), null)
+            val native = ColorOsFollowersViews.create(this, spec.widthDp, spec.heightDp, previewSettings,
+                TwidgetStore.currentStats(this, selectedAccount), TwidgetStore.followersDelta(this, selectedAccount), null, nativeBlur = isColorOsNativeFollowers)
                 .apply(this, preview)
             native.scaleX = scale
             native.scaleY = scale
@@ -698,11 +698,11 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private fun homePreviewSpec(style: WidgetStyle = widgetStyle): HomePreviewSpec {
         val options = if (appWidgetId > 0) AppWidgetManager.getInstance(this).getAppWidgetOptions(appWidgetId) else Bundle()
         val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val oneUi = com.tjg.twidget.ui.TwidgetFonts.hasSystemOneUiSans && !(isColorOsBlurProbe && style == WidgetStyle.COLOR_OS)
+        val oneUi = com.tjg.twidget.ui.TwidgetFonts.hasSystemOneUiSans && !(isColorOsNativeFollowers && style == WidgetStyle.COLOR_OS)
         val width = options.getInt(if (!oneUi && landscape) AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH
             else AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, if (isBriefWidget || editingDefaults) 352 else 162).coerceAtLeast(100)
         val height = options.getInt(if (!oneUi && !landscape) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT
-            else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 176).coerceAtLeast(if (isColorOsBlurProbe && style == WidgetStyle.COLOR_OS) 1 else 56)
+            else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 176).coerceAtLeast(if (isColorOsNativeFollowers && style == WidgetStyle.COLOR_OS) 1 else 56)
         val mode = if (oneUi && !options.isEmpty) TwidgetWidget.layoutMode(options)
             else TwidgetWidget.layoutModeForAosp(width, height)
         return HomePreviewSpec(mode, width, height,

@@ -28,7 +28,8 @@ internal object WidgetPreviews {
         for (brief in listOf(false, true)) {
             val key = if (brief) "brief" else "followers"
             if (prefs.getString(key, null) == fingerprint) continue
-            val provider = ComponentName(context, if (brief) TwidgetBriefWidget::class.java else com.tjg.twidget.TwidgetWidget::class.java)
+            val provider = if (brief) ComponentName(context, TwidgetBriefWidget::class.java)
+            else com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.followersProvider(context)
             // Android rate-limits preview publication. Keep the XML fallback until a later launch can retry.
             val accepted = runCatching {
                 manager.setWidgetPreview(provider, AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN,

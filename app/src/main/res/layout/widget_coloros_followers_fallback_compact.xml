@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_coloros_content_outline" android:clipToOutline="true"
+    android:clipChildren="true" android:clipToPadding="true">
+    <!-- Ordinary provider: rounded fallback surface, no launcher blur registration. -->
+    <!-- Background only: launcher effects must not encompass the foreground. -->
+    <FrameLayout android:id="@+id/coloros_blur_target" android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_color_os_surface" />
+    <LinearLayout android:id="@+id/coloros_native_content" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:padding="10dp">
+        <ImageView android:id="@+id/coloros_native_logo" android:layout_width="16dp" android:layout_height="16dp" android:contentDescription="@null" />
+        <TextView android:id="@+id/coloros_native_count" android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:layout_marginStart="8dp" android:gravity="center_vertical" android:fontFamily="sans-serif" android:textFontWeight="700"
+            android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"
+            android:autoSizeTextType="uniform" android:autoSizeMinTextSize="1sp" android:autoSizeMaxTextSize="26sp"
+            android:autoSizeStepGranularity="1px" android:textColor="#FFFFFF" />
+        <TextView android:id="@+id/coloros_native_delta" android:layout_width="wrap_content" android:layout_height="match_parent"
+            android:maxWidth="80dp" android:layout_marginStart="6dp" android:gravity="center_vertical" android:fontFamily="sans-serif" android:textFontWeight="500" android:textSize="26sp" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="1sp" android:autoSizeMaxTextSize="26sp" android:autoSizeStepGranularity="1px"
+            android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" />
+        <TextView android:id="@+id/coloros_native_label" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+        <TextView android:id="@+id/coloros_native_account" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+    </LinearLayout>
+    <ProgressBar android:id="@+id/widget_loading" android:layout_width="30dp" android:layout_height="30dp"
+        android:layout_gravity="center" android:indeterminate="true" android:indeterminateDrawable="@drawable/oneui85_spinner"
+        android:visibility="gone" />
+</FrameLayout>

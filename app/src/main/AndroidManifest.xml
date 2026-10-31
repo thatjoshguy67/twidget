@@ -311,6 +311,16 @@
             <meta-data
                 android:name="android.appwidget.provider.semConfigureActivity"
                 android:value="com.tjg.twidget.widget.WidgetConfigActivity" />
+            <meta-data android:name="com.tjg.twidget.coloros.hidden_provider"
+                android:resource="@xml/widget_provider_followers_hidden" />
+        </receiver>
+
+        <!-- Hidden by default. ColorOS promotes this as the normal Followers entry. -->
+        <receiver android:name="com.heytap.quicksearchbox.ui.appwidgets.DesktopSearchWidgetProvider"
+            android:enabled="@bool/coloros_followers_adapter_supported" android:exported="true" android:label="@string/widget_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_provider_followers_hidden" />
+            <meta-data android:name="com.tjg.twidget.coloros.visible_provider" android:resource="@xml/widget_provider_blur" />
         </receiver>
 
         <receiver

@@ -481,7 +481,7 @@ class MainActivity : ScheduleQueueHostActivity() {
             return
         }
         appWidgetManager.requestPinAppWidget(
-            ComponentName(this, com.tjg.twidget.TwidgetWidget::class.java),
+            com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.followersProvider(this),
             null,
             null
         )

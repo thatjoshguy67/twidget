@@ -60,7 +60,10 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight)
             } else minHeight
 
-            val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
+            val settings = TwidgetStore.widgetSettings(context, id)
+            val views = if (com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available && settings.style == WidgetStyle.COLOR_OS) {
+                ColorOsBriefViews.createResponsive(context, id, width, height, account, snapshot, settings)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
                 responsiveViews(context, id, options, width, height, account, snapshot)
             } else {
                 createViews(context, id, width, height, account, snapshot)
@@ -114,6 +117,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         ): RemoteViews {
             val oneRow = height <= 110
             val settings = TwidgetStore.widgetSettings(context, id)
+            if (com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available && settings.style == WidgetStyle.COLOR_OS)
+                return ColorOsBriefViews.create(context, id, width, height, account, snapshot, settings)
             val localizedContext = com.tjg.twidget.core.AppLocales.wrap(context, settings.language)
             val strings = BriefStrings.from(context, settings.language)
             val summary = BriefStore.presentation(context, account, snapshot, strings)?.summary()

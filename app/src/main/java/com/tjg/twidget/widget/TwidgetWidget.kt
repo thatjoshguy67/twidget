@@ -60,9 +60,8 @@ open class TwidgetWidget : AppWidgetProvider() {
             ).flatMap { provider ->
                 manager.getAppWidgetIds(ComponentName(context, provider)).asIterable()
             }.let { standardIds ->
-                standardIds + if (com.tjg.twidget.BuildConfig.DEBUG)
-                    manager.getAppWidgetIds(ComponentName(context, com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER)).toList()
-                else emptyList()
+                standardIds + manager.getAppWidgetIds(ComponentName(context,
+                    com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER)).toList()
             }.forEach { updateWidget(context, manager, it) }
             LockScreenFollowerViews.updateAll(context)
         }
@@ -96,9 +95,9 @@ open class TwidgetWidget : AppWidgetProvider() {
             val delta = TwidgetStore.followersDelta(context, account)
 
             // The count layer scales against the live host frame, independently of the blur and footer.
-            if (hostSurface) {
-                val views = ColorOsNativeFollowerViews.createResponsive(context, artworkWidth, artworkHeight,
-                    widgetSettings, stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
+            if (usesColorOsAdapter(context, appWidgetId, widgetSettings)) {
+                val views = ColorOsFollowersViews.createResponsive(context, artworkWidth, artworkHeight,
+                    widgetSettings, stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account), hostSurface)
                 if (widgetSizeOptionsMatch(options, appWidgetManager.getAppWidgetOptions(appWidgetId)))
                     appWidgetManager.updateAppWidget(appWidgetId, views)
                 return
@@ -195,8 +194,9 @@ open class TwidgetWidget : AppWidgetProvider() {
         ): RemoteViews {
             // Existing styles retain their artwork renderer; the isolated ColorOS probe uses native text.
             val hostSurface = usesColorOsProbeSurface(context, appWidgetId, widgetSettings)
-            if (hostSurface) return ColorOsNativeFollowerViews.create(context, width, height, widgetSettings,
-                stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
+            if (usesColorOsAdapter(context, appWidgetId, widgetSettings))
+                return ColorOsFollowersViews.create(context, width, height, widgetSettings,
+                    stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account), hostSurface)
             return RemoteViews(context.packageName, layoutResource(mode, renderAsArtwork = true)).apply {
                 val dark = isDark(context, widgetSettings)
                 val backgroundColor = WidgetColors.resolve(context, widgetSettings, dark).background
@@ -294,14 +294,24 @@ open class TwidgetWidget : AppWidgetProvider() {
                     if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
                 )
             }
-            if (usesColorOsProbeSurface(context, appWidgetId, TwidgetStore.widgetSettings(context, appWidgetId)))
-                return ColorOsNativeFollowerViews.layout(if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight))
+            val settings = TwidgetStore.widgetSettings(context, appWidgetId)
+            if (usesColorOsAdapter(context, appWidgetId, settings)) {
+                if (settings.style != WidgetStyle.COLOR_OS) return R.layout.widget_coloros_bitmap_surface
+                return ColorOsNativeFollowerViews.layout(
+                    if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
+                    usesColorOsProbeSurface(context, appWidgetId, settings))
+            }
             return layoutResource(mode, renderAsArtwork = true)
         }
 
+        private fun usesColorOsAdapter(context: Context, id: Int, settings: TwidgetWidgetSettings): Boolean =
+            com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available &&
+                (settings.style == WidgetStyle.COLOR_OS || AppWidgetManager.getInstance(context)
+                    .getAppWidgetInfo(id)?.provider?.className == com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.PROVIDER)
+
         private fun usesColorOsProbeSurface(context: Context, id: Int, settings: TwidgetWidgetSettings): Boolean =
             com.tjg.twidget.widget.coloros.ColorOsWidgetBlurProbe.usesHostSurface(
-                com.tjg.twidget.BuildConfig.DEBUG,
+                com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available,
                 AppWidgetManager.getInstance(context).getAppWidgetInfo(id)?.provider?.className,
                 settings.style,
             )

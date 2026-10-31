@@ -1,0 +1,4 @@
+<resources>
+    <!-- Older Android versions cannot hide an AppWidget provider from the picker. -->
+    <bool name="coloros_followers_adapter_supported">false</bool>
+</resources>

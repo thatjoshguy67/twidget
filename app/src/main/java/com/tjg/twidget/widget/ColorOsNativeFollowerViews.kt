@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Build
 import android.util.TypedValue
+import android.util.SizeF
+import kotlin.math.floor
 import android.view.View
 import android.widget.RemoteViews
 import com.tjg.twidget.R
@@ -15,7 +17,39 @@ import com.tjg.twidget.data.TwidgetWidgetSettings
 
 /** Native blur surface and footer with a scalable count layer for the debug probe. */
 internal object ColorOsNativeFollowerViews {
-    fun layout(height: Int) = if (height <= 110) R.layout.widget_coloros_host_blur_compact else R.layout.widget_coloros_host_blur_paragraph
+    fun layout(height: Int) = if (height <= 110) R.layout.widget_coloros_host_blur_compact else R.layout.widget_coloros_host_blur_paragraph_live
+
+    /** The framework selects these against its live viewport, not ColorOS's virtual size options. */
+    fun createResponsive(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
+        stats: ProfileStats, delta: Long, onTap: PendingIntent?): RemoteViews {
+        val base = create(context, width, height, settings, stats, delta, onTap)
+        if (Build.VERSION.SDK_INT < 31) return base
+        val variants = linkedMapOf<SizeF, RemoteViews>()
+        val density = context.resources.displayMetrics.density
+        fun add(key: SizeF, source: RemoteViews) {
+            val view = RemoteViews(source)
+            // Framework size matching allows rounding slack of almost 2dp. Leave
+            // that slack outside the card, and round down to keep it inside pixels.
+            val w = floor((key.width - 2f).coerceAtLeast(0f) * density)
+            val h = floor((key.height - 2f).coerceAtLeast(0f) * density)
+            view.setViewLayoutWidth(android.R.id.background, w, TypedValue.COMPLEX_UNIT_PX)
+            view.setViewLayoutHeight(android.R.id.background, h, TypedValue.COMPLEX_UNIT_PX)
+            variants[key] = view
+        }
+        // Never let RemoteViews fall back to a larger-than-viewport layout while
+        // the provider is catching up with a resize or orientation change.
+        variants[SizeF(1f, 1f)] = RemoteViews(context.packageName, R.layout.widget_coloros_resize_empty)
+        for (scale in listOf(.25f, .4f, .55f, .7f, .8f, .825f, .85f, .875f, .9f, .925f, .95f, 1f)) {
+            add(SizeF((width * scale).coerceAtLeast(3f), (height * scale).coerceAtLeast(3f)), base)
+        }
+        // One-row variants also work before a tall card's provider callback arrives.
+        val narrow = width.coerceAtMost(110).coerceAtLeast(3)
+        add(SizeF(narrow.toFloat(), 40f), create(context, narrow, 40, settings, stats, delta, onTap))
+        for (w in setOf(width.coerceAtMost(148).coerceAtLeast(3), width.coerceAtLeast(3))) {
+            add(SizeF(w.toFloat(), 76f), create(context, w, 76, settings, stats, delta, onTap))
+        }
+        return RemoteViews(variants)
+    }
 
     fun create(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
         stats: ProfileStats, delta: Long, onTap: PendingIntent?): RemoteViews {

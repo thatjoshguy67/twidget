@@ -1,6 +1,10 @@
 package com.tjg.twidget.widget.coloros
 
 import android.app.PendingIntent
+import android.appwidget.AppWidgetHostView
+import android.appwidget.AppWidgetManager
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
@@ -132,7 +136,8 @@ class ColorOsProbeSurfaceInstrumentedTest {
     }
 
     private fun assertCountImageFits(root: View) {
-        val hero = root.findViewById<ImageView>(R.id.coloros_native_hero)
+        val night = root.findViewById<ImageView>(R.id.coloros_native_hero_night)
+        val hero = if (night?.visibility == View.VISIBLE) night else root.findViewById<ImageView>(R.id.coloros_native_hero)
         val bounds = RectF(hero.drawable.bounds)
         hero.imageMatrix.mapRect(bounds)
         assertTrue("paragraph=$bounds viewport=${hero.width}x${hero.height}",
@@ -244,6 +249,78 @@ class ColorOsProbeSurfaceInstrumentedTest {
             measure.invoke(rule, control, (260 * density).toInt(), (148 * density).toInt(), 1.5f, android.graphics.Point(3, 2))
             assertTrue(control.measuredWidth > (260 * density).toInt())
             assertTrue(control.measuredHeight > (148 * density).toInt())
+        }
+    }
+
+    @Test fun liveHostChoosesBoundedViewsDuringResizeWithClippingDisabledAndAfterRelease() {
+        val launcher = runCatching { context.createPackageContext("com.android.launcher",
+            android.content.Context.CONTEXT_INCLUDE_CODE or android.content.Context.CONTEXT_IGNORE_SECURITY) }.getOrNull()
+        org.junit.Assume.assumeNotNull(launcher)
+        val cls = launcher!!.classLoader.loadClass("com.android.launcher3.widget.measure.AllMatchParentMeasureAlignSpecRule")
+        val unsafeClass = Class.forName("sun.misc.Unsafe")
+        val field = unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }
+        val rule = unsafeClass.getMethod("allocateInstance", Class::class.java).invoke(field.get(null), cls)
+        val measure = cls.getMethod("measure", View::class.java, Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType, Float::class.javaPrimitiveType, android.graphics.Point::class.java)
+        val info = AppWidgetManager.getInstance(context).installedProviders.first { it.provider.packageName == context.packageName }
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            val host = object : AppWidgetHostView(context) {
+                override fun measureChildWithMargins(child: View, w: Int, widthUsed: Int, h: Int, heightUsed: Int) {
+                    measure.invoke(rule, child, View.MeasureSpec.getSize(w), View.MeasureSpec.getSize(h),
+                        1.3f, android.graphics.Point(3, 2))
+                }
+            }
+            host.setAppWidget(-1, info)
+            host.setPadding(0, 0, 0, 0)
+            val source = ColorOsNativeFollowerViews.createResponsive(context, 315, 179,
+                WidgetPreviews.settings(WidgetStyle.COLOR_OS), ProfileStats("Probe", "probe", 7936, 1, 1, 1), -1, null)
+            val parcel = Parcel.obtain()
+            source.writeToParcel(parcel, 0)
+            parcel.setDataPosition(0)
+            val delivered = RemoteViews.CREATOR.createFromParcel(parcel)
+            parcel.recycle()
+            host.updateAppWidget(delivered)
+            val bitmaps = java.util.IdentityHashMap<Bitmap, Boolean>()
+            val density = context.resources.displayMetrics.density
+            // Keep the same publication while the physical viewport changes. This
+            // includes the virtual-canvas/visible-frame mismatch missed previously.
+            for (clip in listOf(false, true)) {
+                host.clipChildren = clip
+                host.clipToPadding = clip
+                for ((w, h) in listOf(260 to 148, 235 to 147, 148 to 148, 348 to 76, 110 to 40, 348 to 254, 260 to 148)) {
+                    val width = (w * density).roundToInt()
+                    val height = (h * density).roundToInt()
+                    host.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                    host.layout(0, 0, width, height)
+                    val card = host.getChildAt(0)
+                    assertTrue("visible card at $w x $h", card.visibility == View.VISIBLE && card.width > 0 && card.height > 0)
+                    assertTrue("clip=$clip $w x $h card=${card.left},${card.top},${card.right},${card.bottom}",
+                        card.left >= 0 && card.top >= 0 && card.right <= width && card.bottom <= height)
+                    if (card.findViewById<View>(R.id.coloros_native_hero) != null) {
+                        assertCountImageFits(card)
+                        for (id in listOf(R.id.coloros_native_hero, R.id.coloros_native_hero_night)) {
+                            val drawable = card.findViewById<ImageView>(id).drawable as? BitmapDrawable
+                            if (drawable != null) bitmaps[drawable.bitmap] = true
+                        }
+                    }
+                }
+            }
+            assertEquals("All size variants share the same day/night bitmap pair", 2, bitmaps.size)
+            assertTrue("Shared artwork remains within the RemoteViews bitmap budget", bitmaps.keys.sumOf { it.allocationByteCount.toLong() } <= 8_000_000L)
+            // A late provider callback after release must not restore an oversized
+            // virtual canvas over the bounded layout selected during the drag.
+            host.updateAppWidget(ColorOsNativeFollowerViews.createResponsive(context, 400, 295,
+                WidgetPreviews.settings(WidgetStyle.COLOR_OS), ProfileStats("Probe", "probe", 7936, 1, 1, 1), -1, null))
+            val width = (348 * density).roundToInt()
+            val height = (254 * density).roundToInt()
+            host.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+            host.layout(0, 0, width, height)
+            val released = host.getChildAt(0)
+            assertTrue("Late provider update remains inside the released frame",
+                released.left >= 0 && released.top >= 0 && released.right <= width && released.bottom <= height)
+            assertCountImageFits(released)
         }
     }
 

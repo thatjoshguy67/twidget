@@ -97,7 +97,7 @@ open class TwidgetWidget : AppWidgetProvider() {
 
             // The count layer scales against the live host frame, independently of the blur and footer.
             if (hostSurface) {
-                val views = ColorOsNativeFollowerViews.create(context, artworkWidth, artworkHeight,
+                val views = ColorOsNativeFollowerViews.createResponsive(context, artworkWidth, artworkHeight,
                     widgetSettings, stats, delta, tapIntent(context, appWidgetId, widgetSettings.tapAction, account))
                 if (widgetSizeOptionsMatch(options, appWidgetManager.getAppWidgetOptions(appWidgetId)))
                     appWidgetManager.updateAppWidget(appWidgetId, views)

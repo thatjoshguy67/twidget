@@ -18,6 +18,8 @@ internal fun Project.configureResValues() {
     }
     extensions.configure<ApplicationAndroidComponentsExtension> {
         onVariants { variant ->
+            // Vendor widget shortcut XML must target this exact installed variant.
+            variant.putString("widget_runtime_package", variant.applicationId)
             variant.putString(
                 name = "buffer_oauth_client_id",
                 value = propertyOrEnv(

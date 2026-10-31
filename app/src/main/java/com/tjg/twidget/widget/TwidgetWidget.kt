@@ -297,6 +297,10 @@ open class TwidgetWidget : AppWidgetProvider() {
             val settings = TwidgetStore.widgetSettings(context, appWidgetId)
             if (usesColorOsAdapter(context, appWidgetId, settings)) {
                 if (settings.style != WidgetStyle.COLOR_OS) return R.layout.widget_coloros_bitmap_surface
+                val height = if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight)
+                if (height <= 110 || settings.fontFamily != TwidgetStore.FONT_SYSTEM)
+                    return if (usesColorOsProbeSurface(context, appWidgetId, settings)) R.layout.widget_coloros_native_bitmap_surface
+                    else R.layout.widget_coloros_bitmap_surface
                 return ColorOsNativeFollowerViews.layout(
                     if (landscape) minHeight else options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight),
                     usesColorOsProbeSurface(context, appWidgetId, settings))

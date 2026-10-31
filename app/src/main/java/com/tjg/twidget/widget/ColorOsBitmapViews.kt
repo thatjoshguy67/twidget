@@ -13,8 +13,9 @@ import com.tjg.twidget.data.TwidgetWidgetSettings
 internal object ColorOsBitmapViews {
     fun create(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
         description: String, onTap: PendingIntent?, paintSurface: Boolean, bitmapBudgetCap: Long = 5_000_000L,
-        render: (Boolean, Long) -> Bitmap): RemoteViews =
-        RemoteViews(context.packageName, R.layout.widget_coloros_bitmap_surface).apply {
+        nativeBlur: Boolean = false, render: (Boolean, Long) -> Bitmap): RemoteViews =
+        RemoteViews(context.packageName, if (nativeBlur) R.layout.widget_coloros_native_bitmap_surface
+            else R.layout.widget_coloros_bitmap_surface).apply {
             if (android.os.Build.VERSION.SDK_INT >= 31) {
                 setViewLayoutWidth(android.R.id.background, width.coerceAtLeast(1).toFloat(), TypedValue.COMPLEX_UNIT_DIP)
                 setViewLayoutHeight(android.R.id.background, height.coerceAtLeast(1).toFloat(), TypedValue.COMPLEX_UNIT_DIP)

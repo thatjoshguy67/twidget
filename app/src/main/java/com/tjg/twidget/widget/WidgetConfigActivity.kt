@@ -433,6 +433,9 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     )
 
     private fun render() {
+        val systemAppearance = !isLockWidget && widgetStyle == WidgetStyle.COLOR_OS &&
+            com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.available
+        findViewById<View>(R.id.tint_row).visibility = if (isLockWidget || systemAppearance) View.GONE else View.VISIBLE
         val previewMode = if (!isLockWidget && !isBriefWidget) homePreviewSpec().mode else -1
         findViewById<View>(R.id.contained_footer_row).visibility = if (
             widgetStyle == WidgetStyle.MATERIAL && !isLockWidget && !isBriefWidget &&
@@ -441,9 +444,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.contained_footer_summary).visibility = findViewById<View>(R.id.contained_footer_row).visibility
         findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked = containedFooter
         findViewById<View>(R.id.opacity_block).visibility =
-            if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.font_row).visibility =
-            if (isColorOsNativeFollowers && widgetStyle == WidgetStyle.COLOR_OS) View.GONE else View.VISIBLE
+            if (isLockWidget || systemAppearance || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.font_row).visibility = View.VISIBLE
         findViewById<CardItemView>(R.id.font_row).showTopDivider = findViewById<View>(R.id.opacity_block).visibility == View.VISIBLE
         findViewById<CardItemView>(R.id.language_row).showTopDivider = !isLockWidget
         findViewById<CardItemView>(R.id.logo_row).showTopDivider = true
@@ -481,7 +483,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, if (fontFamily == widgetStyle.defaultFont) style.defaultFont else fontFamily, showDelta, language, style, containedFooter)
+        val previewSettings = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.systemAppearance(
+            TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, if (fontFamily == widgetStyle.defaultFont) style.defaultFont else fontFamily, showDelta, language, style, containedFooter))
 
         if (isLockWidget) {
             preview.background = null
@@ -501,7 +504,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             val spec = homePreviewSpec(style)
             val widthDp = spec.widthDp
             val heightDp = spec.heightDp
-            val darkPreview = isDarkPreview()
+            val darkPreview = widgetUsesDarkTheme(previewSettings.colorMode)
             preview.background = GradientDrawable().apply {
                 cornerRadius = resources.displayMetrics.density * spec.cornerRadiusDp * previewScale(widthDp)
                 setColor(WidgetColors.resolve(this@WidgetConfigActivity, previewSettings, darkPreview).background)

@@ -10,7 +10,14 @@ import com.tjg.twidget.data.TwidgetWidgetSettings
 internal object ColorOsFollowersViews {
     fun create(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
         stats: ProfileStats, delta: Long, tap: PendingIntent?, nativeBlur: Boolean, bitmapBudgetCap: Long = 5_000_000L): RemoteViews {
-        if (settings.style == WidgetStyle.COLOR_OS && (nativeBlur || settings.fontFamily == com.tjg.twidget.data.TwidgetStore.FONT_SYSTEM))
+        return createStyled(context, width, height,
+            com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.systemAppearance(settings), stats, delta, tap, nativeBlur, bitmapBudgetCap)
+    }
+
+    private fun createStyled(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
+        stats: ProfileStats, delta: Long, tap: PendingIntent?, nativeBlur: Boolean, bitmapBudgetCap: Long): RemoteViews {
+        val colorOs = settings.style == WidgetStyle.COLOR_OS
+        if (colorOs && height > 110 && settings.fontFamily == com.tjg.twidget.data.TwidgetStore.FONT_SYSTEM)
             return ColorOsNativeFollowerViews.create(context, width, height, settings, stats, delta, tap, nativeBlur)
         val density = context.resources.displayMetrics.density
         val locale = com.tjg.twidget.core.AppLocales.resolve(settings.language)
@@ -20,10 +27,11 @@ internal object ColorOsFollowersViews {
             com.tjg.twidget.brief.BriefStrings.quantity(stats.followersCount))
         val change = if (settings.showDelta && delta != 0L) com.tjg.twidget.data.TwidgetStore.signedNumber(delta, locale) else ""
         return ColorOsBitmapViews.create(context, width, height, settings,
-            "$count $noun $change @${stats.userName}".trim(), tap, false, bitmapBudgetCap) { dark, budget ->
+            "$count $noun $change @${stats.userName}".trim(), tap, colorOs, bitmapBudgetCap,
+            nativeBlur = colorOs && nativeBlur) { dark, budget ->
             WidgetArtworkRenderer.render(context, (width * density).toInt(), (height * density).toInt(),
                 stats, settings, TwidgetWidget.layoutModeForAosp(width, height), dark, delta,
-                drawBackground = true, bitmapBudgetBytes = budget)
+                drawBackground = !colorOs, bitmapBudgetBytes = budget)
         }
     }
 

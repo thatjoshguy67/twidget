@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_coloros_content_outline" android:clipToOutline="false" android:clipChildren="true" android:clipToPadding="true">
+    <!-- Native material is separate from the transparent, jointly fitted foreground. -->
+    <FrameLayout android:id="@+id/coloros_blur_target" android:tag="OplusBlurBg" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:background="@drawable/widget_color_os_surface" />
+    <ImageView android:id="@+id/coloros_native_hero" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:scaleType="fitCenter" android:contentDescription="@null" android:importantForAccessibility="no" />
+    <ImageView android:id="@+id/coloros_native_hero_night" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:scaleType="fitCenter" android:visibility="gone" android:contentDescription="@null" android:importantForAccessibility="no" />
+    <ProgressBar android:id="@+id/widget_loading" android:layout_width="30dp" android:layout_height="30dp"
+        android:layout_gravity="center" android:visibility="gone" android:indeterminate="true" android:indeterminateDrawable="@drawable/oneui85_spinner" />
+</FrameLayout>

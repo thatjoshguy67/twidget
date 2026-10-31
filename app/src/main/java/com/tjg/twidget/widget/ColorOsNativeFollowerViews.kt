@@ -24,10 +24,7 @@ internal object ColorOsNativeFollowerViews {
     /** The framework selects these against its live viewport, not ColorOS's virtual size options. */
     fun createResponsive(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,
         stats: ProfileStats, delta: Long, onTap: PendingIntent?, nativeBlur: Boolean = true): RemoteViews {
-        return ColorOsResponsiveViews.wrap(context, width, height,
-            create(context, width, height, settings, stats, delta, onTap, nativeBlur)) { w, h ->
-            create(context, w, h, settings, stats, delta, onTap, nativeBlur)
-        }
+        return ColorOsFollowersViews.createResponsive(context, width, height, settings, stats, delta, onTap, nativeBlur)
     }
 
     fun create(context: Context, width: Int, height: Int, settings: TwidgetWidgetSettings,

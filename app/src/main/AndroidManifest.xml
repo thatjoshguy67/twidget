@@ -129,6 +129,9 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".widget.coloros.ColorOsWidgetSettingsActivity"
+            android:theme="@style/Theme.Twidget.WidgetConfig" android:exported="true" />
+
         <activity
             android:name=".main.AboutActivity"
             android:theme="@style/Theme.Twidget.Settings"
@@ -321,6 +324,7 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_provider_followers_hidden" />
             <meta-data android:name="com.tjg.twidget.coloros.visible_provider" android:resource="@xml/widget_provider_blur" />
+            <meta-data android:name="oplus.appwidget.shortcuts" android:resource="@xml/coloros_widget_shortcuts" />
         </receiver>
 
         <receiver

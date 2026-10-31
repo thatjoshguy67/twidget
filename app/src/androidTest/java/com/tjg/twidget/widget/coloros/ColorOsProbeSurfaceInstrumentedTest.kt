@@ -306,7 +306,7 @@ class ColorOsProbeSurfaceInstrumentedTest {
                     }
                 }
             }
-            assertEquals("All size variants share the same day/night bitmap pair", 2, bitmaps.size)
+            assertTrue("Scaled tall variants share a pair; each compact layout has at most one pair", bitmaps.size <= 8)
             assertTrue("Shared artwork remains within the RemoteViews bitmap budget", bitmaps.keys.sumOf { it.allocationByteCount.toLong() } <= 8_000_000L)
             // A late provider callback after release must not restore an oversized
             // virtual canvas over the bounded layout selected during the drag.

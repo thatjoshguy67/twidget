@@ -22,6 +22,7 @@ internal object ColorOsBriefViews {
 
     fun create(context: Context, id: Int, width: Int, height: Int, account: String,
         snapshot: BriefSnapshot?, settings: TwidgetWidgetSettings, bitmapBudgetCap: Long = 5_000_000L): RemoteViews {
+        val appearance = com.tjg.twidget.widget.coloros.ColorOsWidgetSupport.systemAppearance(settings)
         val localized = AppLocales.wrap(context, settings.language)
         val strings = BriefStrings.from(context, settings.language)
         val summary = BriefStore.presentation(context, account, snapshot, strings)?.summary()
@@ -30,7 +31,7 @@ internal object ColorOsBriefViews {
         val tap = if (account.isBlank()) null else PendingIntent.getActivity(context, 9321 + id,
             TwidgetBriefActivity.intent(context, account), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val density = context.resources.displayMetrics.density
-        return ColorOsBitmapViews.create(context, width, height, settings, description, tap, true, bitmapBudgetCap) { dark, budget ->
+        return ColorOsBitmapViews.create(context, width, height, appearance, description, tap, true, bitmapBudgetCap) { dark, budget ->
             BriefWidgetArtworkRenderer.render(localized, (width * density).toInt(), (height * density).toInt(),
                 account, snapshot, dark, settings.fontFamily, strings, settings.style,
                 background = null, bitmapBudgetBytes = budget)

@@ -8,6 +8,11 @@ import android.os.Build
 
 /** Detect the vendor framework, not the phone manufacturer (including guest ROMs). */
 internal object ColorOsWidgetSupport {
+    /** ColorOS material and contrast follow the system; layout choices stay per widget. */
+    fun systemAppearance(settings: com.tjg.twidget.data.TwidgetWidgetSettings) =
+        if (available && settings.style == com.tjg.twidget.widget.WidgetStyle.COLOR_OS)
+            settings.copy(tintAlpha = 205, colorMode = com.tjg.twidget.data.TwidgetStore.COLOR_MODE_SYSTEM)
+        else settings
     val isColorOs: Boolean by lazy {
         listOf("com.oplus.os.OplusBuild", "com.oppo.os.OppoBuild").any {
             runCatching { Class.forName(it, false, ColorOsWidgetSupport::class.java.classLoader) }.isSuccess

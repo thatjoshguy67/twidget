@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Safe first-layout fallback; replaced by a fitting size as soon as the host lays out. -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/background" android:layout_width="0dp" android:layout_height="0dp"
-    android:visibility="invisible" android:clipChildren="true" android:clipToPadding="true" />

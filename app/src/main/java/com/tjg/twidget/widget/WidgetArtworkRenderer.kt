@@ -153,7 +153,7 @@ object WidgetArtworkRenderer {
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val width = widthPx.coerceAtLeast(dp(context, 100))
-        val height = heightPx.coerceAtLeast(dp(context, 56))
+        val height = heightPx.coerceAtLeast(if (settings.style == WidgetStyle.COLOR_OS) 1 else dp(context, 56))
         val (bitmap, canvas) = widgetArtworkSurface(width, height, bitmapBudgetBytes)
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val colors = WidgetColors.resolve(context, settings, dark)

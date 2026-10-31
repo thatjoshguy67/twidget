@@ -68,12 +68,28 @@ The previous OEM-rule/live-host resize regression tests remain in place.
 
 ## Settings
 
-This launcher builds the native adapter's long-press Settings action from
-`oplus.appwidget.shortcuts`, rather than its standard reconfigurable flag alone.
-The `common_settings` shortcut targets the exact installed application variant.
-It supplies no widget ID: the app opens the sole configured instance directly,
-or offers an instance chooser when there are several. The standard configuration
-activity and reconfigurable metadata remain available for other launchers.
+The launcher has a conditional long-press hook for
+`oplus.appwidget.shortcuts`, but it is **not working on the connected ROM**.
+The installed launcher logs `The set shortcut menu data cannot be loaded from
+MetaData configured by other applications` while binding the native Followers
+provider, and `FixedWidgetShortcut, enabled=false` during the user's long press.
+
+`Launcher.prepareAppWidget` only loads that metadata when `!FeatureOption.isExp`,
+`!FeatureOption.isSellMode`, item type 5, and one of two allowlisted class names
+all match. Our class already matches; the launcher skips loading its shortcut.
+`FixedWidgetShortcut` consequently has no cached target and stays disabled.
+The ordinary `CardSetting` action instead requires proprietary `LauncherCardInfo`
+with a setting URL (or an Inspiration Clock). It does not accept an ordinary
+`LauncherAppWidgetInfo` based on its standard reconfigurable flag.
+
+The `common_settings` declaration and destination remain valid on launchers
+that load them, and target the exact installed application variant. That hook
+supplies no widget ID: the app opens the sole configured instance directly, or
+offers an instance chooser when there are several. The instrumentation test
+validates this declaration and destination, not the launcher's menu eligibility.
+The standard configuration activity and reconfigurable metadata remain available
+for other launchers. An app-owned settings entry is needed on this ROM unless
+the launcher itself changes.
 
 On ColorOS, the ColorOS preset follows the system's day/night appearance and
 material. It hides per-widget opacity and colour-mode controls, retaining fonts,

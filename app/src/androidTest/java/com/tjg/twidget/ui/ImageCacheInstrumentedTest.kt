@@ -41,4 +41,42 @@ class ImageCacheInstrumentedTest {
             assertSame("Decoded offline hit needs no file", first, ProfileImageLoader.cachedBitmap(context, urls[0]))
         } finally { pool.shutdownNow(); files.forEach { it.delete() } }
     }
+    @Test fun mediaLoadRetriesAfterTheImageQueueIsFull() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val url = "https://example.invalid/queued-media-${System.nanoTime()}.png"
+        val hash = MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
+        val file = File(context.cacheDir, "tweet_media_$hash.img")
+        val bitmap = Bitmap.createBitmap(40, 30, Bitmap.Config.ARGB_8888)
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+        val release = java.util.concurrent.CountDownLatch(1)
+        val started = java.util.concurrent.CountDownLatch(2)
+        var image: android.widget.ImageView? = null
+        try {
+            androidx.test.core.app.ActivityScenario.launch(com.tjg.twidget.brief.BriefCoachTestActivity::class.java).use { scenario ->
+                repeat(2) { assertTrue(com.tjg.twidget.core.AppExecutors.executeImage {
+                    started.countDown(); release.await(10, TimeUnit.SECONDS)
+                }) }
+                assertTrue(started.await(5, TimeUnit.SECONDS))
+                repeat(64) { assertTrue(com.tjg.twidget.core.AppExecutors.executeImage {}) }
+                scenario.onActivity { activity ->
+                    image = MediaAspectImageView(activity)
+                    activity.setContentView(image)
+                    ProfileImageLoader.loadMediaInto(activity, image!!, url, 0)
+                    assertNull(image!!.drawable)
+                }
+                release.countDown()
+                val deadline = android.os.SystemClock.uptimeMillis() + 5000
+                var loaded = false
+                do {
+                    instrumentation.runOnMainSync { loaded = image!!.drawable != null }
+                    if (!loaded) Thread.sleep(50)
+                } while (!loaded && android.os.SystemClock.uptimeMillis() < deadline)
+                assertTrue("A full queue must not permanently discard a photo", loaded)
+                instrumentation.runOnMainSync { assertEquals(android.view.View.VISIBLE, image!!.visibility) }
+            }
+        } finally { release.countDown(); file.delete() }
+    }
+
 }

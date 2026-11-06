@@ -43,4 +43,21 @@ class BriefTranslatedButtonsInstrumentedTest {
             }
         }
     }
+    @Test fun compactReviewButtonsShareARowWhenTheyFit() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            val actions = BriefReviewViews.actions(context, listOf(
+                BriefReviewAction(R.string.brief_action_open_tweet) {},
+                BriefReviewAction(R.string.review_view) {}), compact = true)
+            val width = BriefReviewViews.dp(context, 430)
+            actions.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+            actions.layout(0, 0, width, actions.measuredHeight)
+            assertEquals(android.widget.LinearLayout.HORIZONTAL, actions.orientation)
+            assertEquals(actions.getChildAt(0).top, actions.getChildAt(1).top)
+            assertTrue(actions.getChildAt(1).left >= actions.getChildAt(0).right)
+        }
+    }
+
 }

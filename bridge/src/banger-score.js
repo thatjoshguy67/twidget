@@ -1,18 +1,19 @@
-// A banger is a post that hit hard in absolute terms, so rank by weighted
-// engagement volume. Engagement *rate* falls as reach grows, so it is only
-// a bounded quality multiplier: it lets a well-received post edge out a
-// hollow one of similar size, but can never lift a small high-rate post
-// over a genuinely viral one.
+// Lifetime audience response: likes lead, reposts support, and replies/quotes
+// contribute modestly. The bonus is capped at 25% of likes so discussion alone
+// cannot dominate. These are Twidget product weights, not X prediction weights.
+// Keep in sync with BangerScore in the Android client.
 export function bangerScore(post) {
-  const views = Number(post?.views) || 0;
-  if (views <= 0) return 0;
-  const impact =
-    Number(post.likes || 0) +
-    Number(post.replies || 0) * 2 +
-    Number(post.reposts || 0) * 3 +
-    Number(post.quotes || 0) * 4;
-  if (impact <= 0) return 0;
-  const rate = impact / (views + 100);
-  const quality = Math.min(1.5, Math.max(0.5, Math.sqrt(rate / 0.02)));
-  return impact * quality;
+  const likes = count(post?.likes);
+  const bonus = count(post?.reposts) * 2 + count(post?.replies) * 0.25 + count(post?.quotes) * 0.5;
+  return likes + Math.min(likes * 0.25, bonus);
+}
+
+// Reach only breaks an exact audience-response tie; missing views are eligible.
+export function compareBangers(candidate, incumbent) {
+  return bangerScore(candidate) - bangerScore(incumbent) || count(candidate?.views) - count(incumbent?.views);
+}
+
+function count(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }

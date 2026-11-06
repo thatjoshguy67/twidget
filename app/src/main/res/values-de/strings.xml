@@ -237,7 +237,7 @@
     <string name="notices_upcoming">Demnächst</string>
     <string name="notices_upcoming_summary">Vorschau auf die nächste Version. Änderungen vorbehalten.</string>
     <string name="notices_no_details">Es wurden keine zusätzlichen Release-Details veröffentlicht.</string>
-    <string name="notices_view_on_github">Vollständige Version auf GitHub ansehen</string>
+    <string name="notices_view_on_github">Alle Änderungen auf GitHub ansehen</string>
     <string name="notices_view_changelog">Changelog ansehen</string>
     <string name="notices_changelog_title">Changelog</string>
     <string name="notices_check_for_update">Auf Updates überprüfen</string>
@@ -387,7 +387,7 @@
     <string name="onboarding_run_locally">Lokal erinnern</string>
     <string name="connect">Verbinden</string>
     <string name="onboarding_tip_stats_title">Live Follower-Stats</string>
-    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Konten, Beiträge und Likes für jedes öffentliche X-Profil.</string>
+    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Konten, Tweets und Likes für jedes öffentliche X-Profil.</string>
     <string name="onboarding_tip_widgets_title">Start- und Sperrbildschirm-Widgets</string>
     <string name="onboarding_tip_widgets_summary">Übersichtliche One-UI-Widgets mit Optionen für Blur, Tönung und Schriftarten.</string>
     <string name="onboarding_tip_accounts_title">Mehrere Accounts</string>
@@ -659,6 +659,9 @@
     <string name="brief_widget_label">Dein Briefing</string>
     <string name="brief_widget_description">Eine persönliche Nachricht, die sich dynamisch an deine aktuellen Aktivitäten anpasst</string>
     <string name="brief_widget_empty_title">Dein Briefing wird vorbereitet</string>
+    <string name="brief_loading_status_analyzing">Deine aktuellen Tweets werden ausgewertet&#8230;</string>
+    <string name="brief_loading_status_insights">Die wichtigsten Einblicke werden zusammengestellt&#8230;</string>
+    <string name="brief_loading_status_preparing">Dein persönliches Briefing wird vorbereitet&#8230;</string>
     <string name="brief_widget_empty_body">Öffne Dein Briefing, um es einzurichten.</string>
     <string name="brief_preview_title">Du erhältst Aufmerksamkeit</string>
     <string name="brief_preview_body">Dein letzter Post bekommt immer mehr Reichweite. Du bist auf einem guten Weg.</string>
@@ -683,8 +686,8 @@
         <item quantity="other">%1$s Follower</item>
     </plurals>
     <string name="brief_provider_note_template">Modellerstellung ausstehend</string>
-    <string name="brief_provider_note_nano">Privat mit Gemini Nano auf diesem Gerät generiert</string>
-    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key geschrieben</string>
+    <string name="brief_provider_note_nano">Lokal mit Gemini Nano auf diesem Gerät erstellt</string>
+    <string name="brief_provider_note_cloud">Mit Gemini Cloud und deinem API-Key erstellt</string>
     <string name="brief_provider_note_nano_then_cloud">Gemini Nano konnte dieses Briefing nicht fertigstellen; Gemini Cloud mit deinem API-Key wurde verwendet</string>
     <string name="brief_provider_note_nano_downloadable">Gemini Nano wird unterstützt und kann heruntergeladen werden</string>
     <string name="brief_provider_note_nano_downloading">Gemini Nano wird noch heruntergeladen</string>
@@ -790,7 +793,7 @@
         <item quantity="other">%1$s Prozentpunkte</item>
     </plurals>
     <string name="brief_guide_follow_up_title">Knüpf an, solange es frisch ist</string>
-    <string name="brief_guide_follow_up_body">Ein aktueller Tweet hat den Median deiner anderen Tweets mit ähnlichem Alter übertroffen. Ergänze ein nützliches Update oder beantworte eine Antwort.</string>
+    <string name="brief_guide_follow_up_body">Ein aktueller Tweet hat den Median deiner anderen Tweets mit ähnlichem Alter übertroffen. Ergänze ein nützliches Update oder beantworte einen Kommentar.</string>
     <string name="brief_guide_window_title">Probiere deinen nächsten Tweet am %1$s</string>
     <string name="brief_guide_window_body">Unter aktuellen Tweets mit ähnlichem Alter hatten deine Tweets am %1$s einen höheren Median der Aufrufe. Teste dieses Zeitfenster noch einmal als Experiment.</string>
     <string name="brief_window_morning">Vormittag</string>
@@ -810,7 +813,7 @@
     <string name="tweet_performance_strong_retweets">Er hat mehr Retweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_strong_replies">Er hat mehr Antworten erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_engagements">Er hat weniger Engagements erzielt als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
-    <string name="tweet_performance_quiet_views">Er hat weniger Aufrufe erzielt als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
+    <string name="tweet_performance_quiet_views">Du hast bei diesem Tweet weniger Aufrufe als bei deinen anderen aktuellen Tweets mit gleichem Alter erhalten.</string>
     <string name="tweet_performance_quiet_likes">Er hat weniger Likes bekommen als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_quotes">Er hat weniger Zitat-Tweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
     <string name="tweet_performance_quiet_retweets">Er hat weniger Retweets erhalten als deine anderen aktuellen Tweets mit ähnlichem Alter.</string>
@@ -907,7 +910,7 @@
     <string name="brief_saved_summary_info">Dein letzter erfolgreicher Brief vom %1$s bleibt sichtbar, während ein neuer erstellt wird.</string>
 
     <!-- Brief and tweet-review debug tools. -->
-    <string name="debug_brief_home">Dein Brief debuggen</string>
+    <string name="debug_brief_home">Dein Briefing-Debug</string>
     <string name="debug_brief_ai">KI-Debugging</string>
     <string name="debug_brief_ranking">Kartenrangfolge</string>
     <string name="debug_ui_state">Oberflächenstatus</string>

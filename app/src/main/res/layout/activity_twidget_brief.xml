@@ -179,7 +179,7 @@
             android:gravity="center"
             android:id="@+id/brief_provider_required_body"
             android:text="@string/brief_provider_required_body"
-            android:textColor="@color/oneui_text_secondary"
+            android:textColor="@color/brief_loading_status_text"
             android:textSize="14sp" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -193,16 +193,44 @@
             android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />
     </LinearLayout>
 
-    <com.airbnb.lottie.LottieAnimationView
-        android:id="@+id/brief_loading"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+    <LinearLayout
+        android:id="@+id/brief_loading_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:contentDescription="@string/brief_widget_empty_title"
-        android:visibility="gone"
-        app:lottie_autoPlay="false"
-        app:lottie_loop="true"
-        app:lottie_rawRes="@raw/intelligence_progress_mono" />
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="32dp"
+        android:paddingBottom="12dp"
+        android:visibility="gone">
+
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/brief_loading"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:contentDescription="@string/brief_widget_empty_title"
+            app:lottie_autoPlay="false"
+            app:lottie_loop="true"
+            app:lottie_rawRes="@raw/intelligence_progress_mono" />
+
+        <TextView
+            android:id="@+id/brief_loading_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:alpha="0"
+            android:fontFamily="sec"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="2"
+            android:textColor="@color/oneui_text_secondary"
+            android:textSize="15sp" />
+    </LinearLayout>
 
     <View
         android:id="@+id/brief_top_gradient"

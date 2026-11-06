@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="l10n_error_unknown">Etwas ist schiefgegangen. Versuche es erneut.</string>
-    <string name="l10n_error_empty_thread">Ein Thread muss mindestens einen Beitrag enthalten.</string>
-    <string name="l10n_error_empty_item">Ein Beitrag muss Text oder Medien enthalten.</string>
+    <string name="l10n_error_empty_thread">Ein Thread muss mindestens einen Tweet enthalten.</string>
+    <string name="l10n_error_empty_item">Ein Tweet muss Text oder Medien enthalten.</string>
     <string name="l10n_error_text_limit">Der Text darf höchstens %1$s Zeichen enthalten.</string>
-    <string name="l10n_error_media_limit">Ein Beitrag darf höchstens %1$s Medien enthalten.</string>
+    <string name="l10n_error_media_limit">Ein Tweet darf höchstens %1$s Medien enthalten.</string>
     <string name="l10n_error_future_time">Der geplante Zeitpunkt muss in der Zukunft liegen.</string>
     <string name="l10n_error_schedule_failed">Die Planung ist fehlgeschlagen. Versuche es erneut.</string>
     <string name="l10n_error_reminder_failed">Die Erinnerung konnte nicht geplant werden. Prüfe die Alarmberechtigung.</string>

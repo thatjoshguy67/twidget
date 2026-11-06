@@ -8,7 +8,7 @@ import { createClient as createRedisClient } from "redis";
 import { Rettiwt } from "rettiwt-api";
 import { ownFxPostEligible, weeklyWinners } from "./post-ranking.js";
 import { coachingFields, coachingReplies } from "./post-coaching.js";
-import { bangerScore } from "./banger-score.js";
+import { bangerScore, compareBangers } from "./banger-score.js";
 import { prepareAnalyticsImport } from "./analytics-import.js";
 import { createTopFollowersActivityRecorder, prepareTopFollowersCache, topFollowersRefreshKind } from "./top-followers.js";
 import {
@@ -56,7 +56,7 @@ const topFollowersMaxConcurrent = envInteger("TOP_FOLLOWERS_MAX_CONCURRENT", 2, 
 const topFollowersMaxPages = envInteger("TOP_FOLLOWERS_MAX_PAGES", 6250, 1, 6250);
 const bangerPagesPerRequest = envInteger("BANGER_PAGES_PER_REQUEST", 5, 1, 20);
 const bangerMaxPosts = envInteger("BANGER_MAX_POSTS", 75000, 20, 100000);
-const bangerScoringVersion = 3;
+const bangerScoringVersion = 4;
 // Archive lookups fan one request out into many remote fetches, so self-hosters
 // must opt in deliberately. It is unsafe as a public-instance default.
 const waybackEnabled = process.env.WAYBACK_BACKFILL === "1";
@@ -839,7 +839,7 @@ async function refreshBanger(username) {
   const meta = await historyRepository.getMeta(key);
   let state = normalizeBangerState(meta.banger);
   if (state.version !== bangerScoringVersion) {
-    // Revisit older pages for replies while retaining the previous winner.
+    // Rescan under the likes-led ranking, including posts without views.
     state = { ...normalizeBangerState(null), post: state.post, score: state.post ? bangerScore(state.post) : 0 };
   }
   // A raised BANGER_MAX_POSTS lets a previously capped scan resume from its cursor.
@@ -858,10 +858,9 @@ async function refreshBanger(username) {
     for (const status of page.results) {
       if (!ownFxPostEligible(status, key, { includeReplies: true })) continue;
       const post = normalizeFxStatus(status);
-      if (post.views <= 0) continue;
       if (!state.complete && !state.capped) state.postsScanned += 1;
       const score = bangerScore(post);
-      if (!state.post || score > state.score || post.url === state.post.url) {
+      if (!state.post || compareBangers(post, state.post) > 0 || post.url === state.post.url) {
         state.post = post;
         state.score = score;
       }

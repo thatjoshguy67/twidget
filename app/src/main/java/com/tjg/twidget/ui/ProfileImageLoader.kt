@@ -35,21 +35,22 @@ object ProfileImageLoader {
         if (url.isBlank()) return null
         val key = "${if (media) "media" else "avatar"}:$url"
         bitmaps.get(key)?.let { return it }
+        val requestKey = "$key:download=$download"
         val request = synchronized(requests) {
-            requests[key] ?: FutureTask<Bitmap?> {
+            requests[requestKey] ?: FutureTask<Bitmap?> {
                 runCatching {
                     val file = if (media) mediaCacheFile(context, url) else cacheFile(context, url)
                     if (!file.exists() && download) downloadFile(url, file)
                     val bitmap = file.takeIf { it.exists() }?.let { decodeSampledBitmap(it, if (media) 1600 else 400) }
                     bitmap?.also { bitmaps.put(key, it) }
                 }.getOrNull()
-            }.also { requests[key] = it }
+            }.also { requests[requestKey] = it }
         }
         return try {
             request.run() // FutureTask runs exactly once, on the winning caller, without nested executor waits.
             request.get()
         } finally {
-            synchronized(requests) { if (requests[key] === request && request.isDone) requests.remove(key) }
+            synchronized(requests) { if (requests[requestKey] === request && request.isDone) requests.remove(requestKey) }
         }
     }
 
@@ -126,17 +127,31 @@ object ProfileImageLoader {
         }
         imageView.visibility = View.VISIBLE
         imageView.setImageDrawable(null)
-        AppExecutors.executeImage {
-            val bitmap = cachedMediaBitmap(context, imageUrl) ?: downloadMediaToCache(context, imageUrl)
-            imageView.post {
-                if (imageView.getTag(R.id.profile_image_request) != requestToken) return@post
-                if (bitmap != null) {
-                    imageView.setImageBitmap(bitmap)
-                } else {
-                    imageView.visibility = View.GONE
+        fun enqueue(attempt: Int) {
+            if (imageView.getTag(R.id.profile_image_request) != requestToken) return
+            fun retry() {
+                imageView.postDelayed({
+                    if (imageView.getTag(R.id.profile_image_request) == requestToken) enqueue(attempt + 1)
+                }, 500L * (attempt + 1))
+            }
+            AppExecutors.executeImage(onRejected = {
+                if (attempt < 2) retry() else imageView.visibility = View.GONE
+            }) {
+                val bitmap = downloadMediaToCache(context.applicationContext, imageUrl)
+                imageView.post {
+                    if (imageView.getTag(R.id.profile_image_request) != requestToken) return@post
+                    if (bitmap != null) {
+                        imageView.visibility = View.VISIBLE
+                        imageView.setImageBitmap(bitmap)
+                    } else if (attempt < 2) {
+                        retry()
+                    } else {
+                        imageView.visibility = View.GONE
+                    }
                 }
             }
         }
+        enqueue(0)
     }
 
     fun cachedBitmap(context: Context, url: String): Bitmap? =

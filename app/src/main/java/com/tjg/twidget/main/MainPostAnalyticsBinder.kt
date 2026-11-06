@@ -18,6 +18,7 @@ import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
+import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.brief.BriefReviewTarget
 import com.tjg.twidget.brief.BriefTweetReviewActivity
@@ -37,7 +38,7 @@ internal class MainPostAnalyticsBinder(
         return when (card) {
             DashboardCardType.ALL_TIME_POST -> {
                 var scanning = BangerScanWorker.isScanning(activity, account)
-                if (data != null && data.banger == null && !scanning) {
+                if (data != null && (data.banger == null || BangerClient.needsRescan(activity, account)) && !scanning) {
                     BangerScanWorker.enqueue(activity, account)
                     scanning = true
                 }

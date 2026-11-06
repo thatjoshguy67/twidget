@@ -54,6 +54,16 @@ object BangerClient {
         return runCatching { resultFromJson(JSONObject(raw)) }.getOrNull()
     }
 
+    // Old results remain visible while a scoring-version upgrade scans again.
+    fun needsRescan(context: Context, username: String): Boolean {
+        val key = "latest:${username.trim().trimStart('@').lowercase(Locale.US)}"
+        val raw = com.tjg.twidget.data.AccountPreferences.open(context, PREFS).getString(key, null)
+        val state = raw?.let { runCatching { JSONObject(it) }.getOrNull() }
+        return needsRescan(state)
+    }
+
+    internal fun needsRescan(state: JSONObject?): Boolean = state?.optInt("version", 0) != VERSION
+
     fun clear(context: Context, username: String) {
         synchronized(com.tjg.twidget.data.TwidgetStore) {
             val suffix = ":${username.trim().trimStart('@').lowercase(Locale.US)}"
@@ -68,6 +78,7 @@ object BangerClient {
         synchronized(com.tjg.twidget.data.TwidgetStore) {
             val key = "latest:${username.trim().trimStart('@').lowercase(Locale.US)}"
             val json = JSONObject()
+                .put("version", VERSION)
                 .put("score", result.score)
                 .put("complete", result.complete)
                 .put("postsScanned", result.postsScanned)

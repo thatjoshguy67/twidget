@@ -4,9 +4,17 @@ import com.tjg.twidget.core.json
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class BangerClientParseTest {
+    @Test fun scoringUpgradeRescansOldResultsEvenWhenAnalyticsAreFresh() {
+        assertTrue(BangerClient.needsRescan(null))
+        assertTrue(BangerClient.needsRescan(JSONObject().put("complete", true)))
+        assertTrue(BangerClient.needsRescan(JSONObject().put("version", 3).put("complete", true)))
+        assertFalse(BangerClient.needsRescan(JSONObject().put("version", 4)))
+    }
+
     @Test fun resultFromJson_preservesReviewContextFromTheSharedPostFormat() {
         val post = com.tjg.twidget.analytics.PostSummary("https://x.com/example/status/1", "A preview", 100, 3, 2, 1, 0, 6,
             1L, "", "Example", "example", "", fullText = "The complete reply with useful context.", isReply = true,

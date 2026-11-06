@@ -167,7 +167,9 @@ class AnimatedTitleView @JvmOverloads constructor(
         }
         val layout = StaticLayout.Builder.obtain(title, 0, title.length, titlePaint, width)
             .setAlignment(Layout.Alignment.ALIGN_CENTER)
-            .setIncludePad(false)
+            // Samsung's sec font lets descenders such as g extend beyond the compact
+            // line box. Keep the font padding so the title is never clipped.
+            .setIncludePad(true)
             .setLineSpacing(0f, 1f)
             .build()
         var sequence = 0

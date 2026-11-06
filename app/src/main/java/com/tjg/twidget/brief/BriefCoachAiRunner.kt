@@ -11,6 +11,7 @@ import com.tjg.twidget.core.HttpTransport
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
@@ -58,8 +59,13 @@ internal object BriefCoachAiRunner {
                                 BriefReviewDebugLog.record(context, "VALIDATION", JSONObject().put("reason", it)
                                     .put("kind", input.kind).put("language", input.language))
                             },
+                            onTransientFailure = { code ->
+                                BriefReviewDebugLog.record(context, "CLOUD_RETRY", JSONObject().put("status", code))
+                            },
                             accepts = { true }) { prompt, selected ->
-                            runInterruptible(Dispatchers.IO) { cloudRequest(key, prompt, selected, BriefCoachAi.languageInstruction(prepared)) }
+                            runInterruptible(Dispatchers.IO) { cloudRequest(key, prompt, selected, BriefCoachAi.languageInstruction(prepared)) { data ->
+                                BriefReviewDebugLog.record(context, "CLOUD_HTTP", data)
+                            } }
                         }
                         if (result == BriefCoachGeneration.Unavailable) BriefCoachGeneration.Failure(BriefReviewFailure.INVALID_RESPONSE) else result
                     } else local(context, prepared, images, onResponse)
@@ -157,9 +163,26 @@ internal object BriefCoachAiRunner {
         images: List<BriefCoachImage> = emptyList(),
         onInvalid: (String) -> Unit = {},
         accepts: (BriefCoachFeedback) -> Boolean = { true },
+        onTransientFailure: (Int) -> Unit = {},
+        retryDelay: suspend () -> Unit = { delay(1_000L) },
         request: suspend (String, List<BriefCoachImage>) -> String?): BriefCoachGeneration {
         // A compact retry accommodates smaller combined budgets; omitted images are explicitly marked unseen.
         var invalidReason: String? = null
+        // One service retry per review, shared across validation attempts. Keep exactly
+        // the same prompt and attachments; authentication and quota errors are not retried.
+        var serviceRetriesRemaining = if (cloud) 1 else 0
+        suspend fun requestCurrent(prompt: String, selected: List<BriefCoachImage>): String? {
+            while (true) {
+                try {
+                    return request(prompt, selected)
+                } catch (error: HttpTransport.HttpException) {
+                    if (serviceRetriesRemaining == 0 || error.code !in setOf(500, 502, 503, 504)) throw error
+                    serviceRetriesRemaining--
+                    onTransientFailure(error.code)
+                    retryDelay()
+                }
+            }
+        }
         for (compact in listOf(false, true)) {
             val selected = if (compact && !cloud) images.take(1) else images
             val ids = selected.map(BriefCoachImage::id).toSet()
@@ -169,7 +192,7 @@ internal object BriefCoachAiRunner {
                 "Use only the allowed quoteIds and evidenceIds. " +
                 if (cloud) "Follow the exact JSON schema." else "Return the exact labelled plain-text format above; no JSON or markdown." }.orEmpty()
             val prompt = if (cloud) BriefCoachAi.prompt(input, packet) else BriefCoachAi.textPrompt(input, packet)
-            val raw = request(prompt + correction, selected) ?: continue
+            val raw = requestCurrent(prompt + correction, selected) ?: continue
             val feedback = (if (!cloud) BriefCoachAi.parseText(raw, packet) else null)
                 ?: BriefCoachAi.parse(raw, packet) { reason -> invalidReason = reason; onInvalid(reason) } ?: continue
             if (!accepts(feedback)) { invalidReason = "feedback_validation"; onInvalid(invalidReason); continue }
@@ -178,7 +201,8 @@ internal object BriefCoachAiRunner {
         return BriefCoachGeneration.Unavailable
     }
 
-    private fun cloudRequest(key: String, prompt: String, images: List<BriefCoachImage>, languageRules: String): String? {
+    private fun cloudRequest(key: String, prompt: String, images: List<BriefCoachImage>, languageRules: String,
+        diagnostics: (JSONObject) -> Unit): String? {
         val parts = JSONArray()
         images.forEach { item ->
             val encoded = ByteArrayOutputStream().use { output ->
@@ -193,8 +217,16 @@ internal object BriefCoachAiRunner {
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", languageRules))))
             .put("generationConfig", JSONObject().put("maxOutputTokens", 2048).put("temperature", 0.4)
                 .put("responseMimeType", "application/json"))
+        val started = android.os.SystemClock.elapsedRealtime()
         val response = HttpTransport.post(GeminiCloudBriefProvider.ENDPOINT, request.toString(),
             headers = mapOf("Content-Type" to "application/json", "x-goog-api-key" to key), readTimeoutMs = 30_000)
+        // Only bounded transport metadata; never retain server messages or request/response content.
+        val metadata = JSONObject().put("status", response.code)
+            .put("durationMs", android.os.SystemClock.elapsedRealtime() - started)
+            .put("responseBytes", response.body.toByteArray(Charsets.UTF_8).size)
+            .put("imageCount", images.size)
+        runCatching { diagnostics(metadata) }
+        Log.d("BriefCoachAi", "cloud HTTP ${response.code}; durationMs=${metadata.optLong("durationMs")}")
         if (response.code == 400) {
             val details = runCatching { JSONObject(response.body).optJSONObject("error")?.optJSONArray("details") }.getOrNull()
             val invalidKey = details != null && (0 until details.length()).any {

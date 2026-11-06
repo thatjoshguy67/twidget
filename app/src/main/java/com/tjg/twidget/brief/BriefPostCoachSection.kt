@@ -5,8 +5,6 @@ import android.view.View
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.PostSummary
-import com.tjg.twidget.schedule.ScheduleStore
-import com.tjg.twidget.schedule.ScheduledPost
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -22,14 +20,12 @@ internal object BriefPostCoachSection {
 
     fun create(activity: Activity, username: String, analytics: PostAnalytics?,
         excludedPostUrls: Set<String> = emptySet(),
-        openReview: (BriefReviewTarget) -> Unit = { activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity, it)) },
-        editDraft: (ScheduledPost) -> Unit): Items? {
+        openReview: (BriefReviewTarget) -> Unit = { activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity, it)) }): Items? {
         if (!BriefSettingsStore.contentEnabled(activity, BriefContentCategory.TWEET_REVIEWS)) return null
-        val drafts = BriefPostCoach.readyDrafts(ScheduleStore(activity).listForAccount(username), username)
         val allPosts = BriefPostCoach.reviewablePosts(analytics, username, System.currentTimeMillis())
         val posts = allPosts.filterNot { it.url in excludedPostUrls }
         val savedReviews = BriefPublishedReviewStore.hasReviews(activity, username)
-        if (drafts.isEmpty() && allPosts.isEmpty() && !savedReviews) return null
+        if (allPosts.isEmpty() && !savedReviews) return null
         val strings = BriefStrings.from(activity)
         val descriptions = mutableListOf<Pair<PostSummary, TextView>>()
         fun preview(label: CharSequence, card: View) = BriefReviewViews.column(activity).apply {
@@ -46,12 +42,6 @@ internal object BriefPostCoachSection {
                 actions = listOf(BriefReviewAction(R.string.review_view) { openReview(target) }))).also { section ->
                 descriptions += post to (section.getChildAt(0) as TextView)
             }
-        } + drafts.take(2).map { draft ->
-            val target = BriefReviewTarget(username, draftId = draft.id)
-            preview(activity.getString(R.string.review_intro_draft), BriefReviewTweetCard.create(activity, username, draft = draft, compact = true,
-                actions = listOf(BriefReviewAction(R.string.coach_edit_draft, false) { editDraft(draft) },
-                    BriefReviewAction(R.string.review_view) { openReview(target) }),
-                onClick = { openReview(target) }))
         }
         val libraryCard = BriefReviewLibraryCard.create(activity) {
             activity.startRightSidePopOverActivity(BriefReviewListActivity.intent(activity, username))

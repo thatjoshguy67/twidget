@@ -8,16 +8,12 @@ import java.util.Locale
 /** Versioned, language-independent error payloads survive storage and a later language change. */
 object UiMessages {
     enum class Key(val resource: Int, val plural: Boolean = false) {
-        ERROR_BUFFER_WAIT_MINUTES(R.plurals.l10n_buffer_retry_minutes, true),
-        ERROR_BUFFER_WAIT_HOURS(R.plurals.l10n_buffer_retry_hours, true),
-        ERROR_BUFFER_WAIT_DAYS(R.plurals.l10n_buffer_retry_days, true),
         ERROR_CSV_INCONSISTENT(R.string.l10n_error_csv_inconsistent),
         ERROR_CSV_GAP(R.string.l10n_error_csv_gap),
         ERROR_CSV_SIZE(R.string.l10n_error_csv_size),
         ERROR_CSV_QUOTES(R.string.l10n_error_csv_quotes),
         ERROR_CSV_OLD(R.string.import_failure_old_export),
         ERROR_CSV_SYNC(R.string.analytics_import_sync_first),
-        ERROR_BUFFER_PUBLISH(R.string.schedule_buffer_failed_fallback),
         ERROR_UNKNOWN(R.string.l10n_error_unknown),
         ERROR_EMPTY_THREAD(R.string.l10n_error_empty_thread),
         ERROR_EMPTY_ITEM(R.string.l10n_error_empty_item),
@@ -26,16 +22,6 @@ object UiMessages {
         ERROR_FUTURE_TIME(R.string.l10n_error_future_time),
         ERROR_SCHEDULE_FAILED(R.string.l10n_error_schedule_failed),
         ERROR_REMINDER_FAILED(R.string.l10n_error_reminder_failed),
-        ERROR_BUFFER_REQUEST(R.string.l10n_error_buffer_request),
-        ERROR_BUFFER_CHANNEL(R.string.l10n_error_buffer_channel),
-        ERROR_BUFFER_TIME(R.string.l10n_error_buffer_time),
-        ERROR_BUFFER_CONNECT(R.string.l10n_error_buffer_connect),
-        ERROR_BUFFER_LOGIN(R.string.l10n_error_buffer_login),
-        ERROR_BUFFER_VERIFY(R.string.l10n_error_buffer_verify),
-        ERROR_BUFFER_CONFIG(R.string.l10n_error_buffer_config),
-        ERROR_BUFFER_LIMIT(R.string.l10n_error_buffer_limit),
-        ERROR_CLOUDINARY_CONFIG(R.string.l10n_error_cloudinary_config),
-        ERROR_UPLOAD(R.string.l10n_error_upload),
         ERROR_READ_MEDIA(R.string.l10n_error_read_media),
         ERROR_MEDIA_LARGE(R.string.l10n_error_media_large),
         ERROR_SAVE_MEDIA(R.string.l10n_error_save_media),
@@ -71,7 +57,6 @@ object UiMessages {
             "The scheduled time must be in the future." to Key.ERROR_FUTURE_TIME,
             "Unable to schedule reminder" to Key.ERROR_REMINDER_FAILED,
             "Scheduling failed" to Key.ERROR_SCHEDULE_FAILED,
-            "Buffer request failed" to Key.ERROR_BUFFER_REQUEST,
         )
         fixed[value]?.let { return listOf(Message(it, emptyList())) }
         Regex("Text must be ([0-9]+) characters or fewer\\.").matchEntire(value)?.let {

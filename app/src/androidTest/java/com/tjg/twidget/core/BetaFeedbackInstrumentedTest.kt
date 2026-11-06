@@ -63,37 +63,7 @@ class BetaFeedbackInstrumentedTest {
         }
     }
 
-    @Test fun bufferSyncKeepsTrashedDraftsHiddenAndRestoresThemOnlyOnRequest() {
-        val store = ScheduleStore(context)
-        val now = System.currentTimeMillis()
-        val post = ScheduledPost(provider = ScheduleProvider.BUFFER,
-            status = ScheduleStatus.DRAFT, accountUsername = "beta-channel", scheduledAt = null,
-            thread = listOf(ScheduleThreadItem(text = "Draft")), remotePostId = "beta-remote")
-        val remote = BufferPost("beta-remote", "beta-channel", "Draft", "draft", null, now)
-        val sync = BufferScheduleSync(context, store)
-        store.create(post)
-        try {
-            store.moveToTrash(post.id, now)
-            val result = sync.reconcileRemotePosts("beta-channel", "beta-account", listOf(remote), now)
-            assertEquals(0, result.imported)
-            assertEquals(0, result.updated)
-            assertFalse(store.list().any { it.id == post.id })
-            assertEquals(now, store.listTrash().single { it.id == post.id }.deletedAt)
-            val duplicateText = remote.copy(id = "beta-new-remote")
-            val imported = sync.reconcileRemotePosts("beta-channel", "beta-account", listOf(remote, duplicateText), now)
-            assertEquals(1, imported.imported)
-            assertTrue(store.list().any { it.remotePostId == duplicateText.id })
-            assertFalse(store.list().any { it.id == post.id })
-            sync.reconcileRemotePosts("beta-channel", "beta-account", emptyList(), now)
-            assertTrue(store.listTrash().any { it.id == post.id })
-            store.restoreFromTrash(post.id, now + 1)
-            sync.reconcileRemotePosts("beta-channel", "beta-account", listOf(remote), now + 2)
-            assertEquals("Draft", store.list().single { it.id == post.id }.thread.first().text)
-        } finally {
-            store.remove(post.id)
-            store.remove(BufferScheduleSync.remoteLocalId("beta-new-remote"))
-        }
-    }
+
 
     @Test fun briefWidgetLanguageOverrideUsesGermanResourcesWithoutChangingEnglishCache() {
         val snapshot = BriefSnapshot("test", 1, 1, 0, 0, 100, 0, 0, 0, 0,

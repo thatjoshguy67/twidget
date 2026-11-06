@@ -54,11 +54,7 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         screen.addPreference(spacerCategory())
         screen.addPreference(categorySwitch(BriefContentCategory.TOP_TWEET, R.string.brief_content_top_tweet))
         screen.addPreference(categorySwitch(BriefContentCategory.WORST_TWEET, R.string.brief_content_worst_tweet))
-        screen.addPreference(explainedCategorySwitch(
-            BriefContentCategory.POST_FOLLOW_THROUGH,
-            R.string.brief_content_post_follow_through,
-            R.string.brief_post_follow_through_explainer,
-        ))
+
         screen.addPreference(explainedCategorySwitch(
             BriefContentCategory.POSTING_GUIDANCE,
             R.string.brief_content_posting_guidance,
@@ -80,15 +76,8 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
         })
-        screen.addPreference(categorySwitch(
-            BriefContentCategory.SCHEDULED_TWEETS,
-            R.string.brief_content_scheduled_tweets,
-        ))
-        screen.addPreference(explainedCategorySwitch(
-            BriefContentCategory.SCHEDULE_HEALTH,
-            R.string.brief_content_schedule_health,
-            R.string.brief_schedule_health_explainer,
-        ))
+
+
 
         screen.addPreference(spacerCategory())
         screen.addPreference(navigableCategorySwitch(

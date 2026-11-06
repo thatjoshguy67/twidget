@@ -24,7 +24,7 @@ class BriefSavedReviewTest {
             .copy(reviewEvidence = evidence, reviewCitations = evidence.citations(strings))
         val result = BriefCoachGeneration.Success(BriefCoachFeedback("Your opening may need more context.", listOf(
             BriefCoachSuggestion("Name the tool in your opening.", "The screenshot helps, but the wording could introduce it.", "Finally shipped this.",
-                "I shipped a tool for comparing tweets. Which comparison would help you most?", false,
+                null, false,
                 input.packet(attachedMediaIds = setOf("m0")).citations.filter { it.id in setOf("m0", "subject", "performance") })),
             null, listOf("interaction_breakdown", "history_comparison")), true, setOf("m0"), true)
         val saved = BriefSavedReview(BriefReviewSubject(BriefReviewTarget("example", postUrl = post.url), input, post = post), result, now)

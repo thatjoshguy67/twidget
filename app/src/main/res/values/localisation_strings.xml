@@ -8,16 +8,6 @@
     <string name="l10n_error_future_time">The scheduled time must be in the future.</string>
     <string name="l10n_error_schedule_failed">Scheduling failed. Please try again.</string>
     <string name="l10n_error_reminder_failed">Unable to schedule the reminder. Check alarm permissions.</string>
-    <string name="l10n_error_buffer_request">Buffer could not complete the request. Please try again.</string>
-    <string name="l10n_error_buffer_channel">Choose a Buffer X channel.</string>
-    <string name="l10n_error_buffer_time">A scheduled time is required.</string>
-    <string name="l10n_error_buffer_connect">Connect Buffer in Scheduling settings.</string>
-    <string name="l10n_error_buffer_login">Buffer sign-in failed. Please try again.</string>
-    <string name="l10n_error_buffer_verify">Buffer sign-in could not be verified. Please try again.</string>
-    <string name="l10n_error_buffer_config">Buffer sign-in is not configured for this build.</string>
-    <string name="l10n_error_buffer_limit">Buffer request limit reached. Try again later.</string>
-    <string name="l10n_error_cloudinary_config">Add your Cloudinary cloud name and upload preset in Buffer settings to attach device media to Buffer posts.</string>
-    <string name="l10n_error_upload">Unable to upload media to Cloudinary. Check your connection and upload settings.</string>
     <string name="l10n_error_read_media">Unable to read the selected media.</string>
     <string name="l10n_error_media_large">The media file is too large.</string>
     <string name="l10n_error_save_media">Unable to save the media. Check storage access and try again.</string>
@@ -35,8 +25,6 @@
     <string name="l10n_error_account_exists">That handle already has saved data. Your existing accounts have been kept.</string>
     <string name="l10n_error_account_invalid">Enter a valid X handle.</string>
     <string name="l10n_error_account_save">Account data could not be saved. Restart the app to recover safely.</string>
-    <string name="l10n_buffer_connected_message">Buffer connected</string>
-    <string name="l10n_buffer_retry_wait">Buffer request limit reached. Try again in %1$s.</string>
     <string name="l10n_widget_followers_of">followers</string>
     <string name="l10n_import_localized_range">%1$s to %2$s</string>
     <string name="l10n_error_csv_inconsistent">Row %1$s reports %2$s engagements, fewer than its %3$s visible interaction actions.</string>

@@ -75,16 +75,11 @@ internal object BriefReviewSubjects {
         val account = TwidgetStore.canonicalAccount(context, target.username)
         if ((!target.fromDashboard && !BriefSettingsStore.contentEnabled(context, BriefContentCategory.TWEET_REVIEWS)) ||
             TwidgetStore.accounts(context).none { it.equals(account, true) } ||
-            (target.draftId == null) == (target.postUrl == null)) return null
+            target.draftId != null || target.postUrl == null) return null
         val strings = BriefStrings.from(context)
         val analytics = AnalyticsClient.cached(context, account)?.let { canonicalAuthors(context, it, account, target) }
         val now = System.currentTimeMillis()
-        if (target.draftId != null) {
-            val draft = BriefPostCoach.readyDrafts(ScheduleStore(context).listForAccount(account), account)
-                .firstOrNull { it.id == target.draftId } ?: return null
-            val report = BriefPostCoach.draft(draft, analytics, strings, now)
-            return BriefReviewSubject(target.copy(username = account), BriefCoachAi.draft(draft, analytics, report, strings, now), draft = draft)
-        }
+
         analytics ?: return null
         val post = BriefPostCoach.reviewTargets(analytics, account, now).firstOrNull { BriefPublishedReviewStore.postId(it.url) == BriefPublishedReviewStore.postId(target.postUrl.orEmpty()) } ?: return null
         val report = BriefPostCoach.review(post, analytics, strings, now) ?: return null

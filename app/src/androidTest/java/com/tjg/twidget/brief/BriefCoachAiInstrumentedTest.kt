@@ -89,11 +89,7 @@ class BriefCoachAiInstrumentedTest {
         assertTrue("Expected cloud feedback; synthetic result saved for inspection", result is BriefCoachGeneration.Success)
         result as BriefCoachGeneration.Success
         assertTrue(result.cloud)
-        assertTrue(result.feedback.suggestions.any { !it.rewrite.isNullOrBlank() })
-        for (suggestion in result.feedback.suggestions) suggestion.rewrite?.let {
-            assertEquals("en", BriefCoachWritingLanguage.identify(context, it))
-        }
-        assertEquals("fr", BriefCoachWritingLanguage.identify(context, result.feedback.possibleExplanation))
+        assertTrue(result.feedback.suggestions.all { it.rewrite == null })
     }
 
     /** Opt-in regression for the reported post. Uses existing Auto/Cloud settings, never changes keys or mode. */

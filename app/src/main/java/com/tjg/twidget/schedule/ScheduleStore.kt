@@ -124,7 +124,7 @@ class ScheduleStore(
 
     private fun ScheduledPost.belongsTo(account: String): Boolean =
         listOf(accountId.orEmpty(), accountUsername).any {
-            ScheduleAccountMapping.normalize(it) == ScheduleAccountMapping.normalize(account)
+            normalizeLegacyScheduleAccount(it) == normalizeLegacyScheduleAccount(account)
         }
 
     private fun releaseUnusedLocalMedia(previous: Collection<ScheduledPost>, next: Collection<ScheduledPost>) {

@@ -51,15 +51,6 @@ import com.tjg.twidget.main.MilestoneMetricResolver
 import com.tjg.twidget.main.MilestonePerformanceState
 import com.tjg.twidget.main.MilestonePolicy
 import com.tjg.twidget.main.StreakCardFactory
-import com.tjg.twidget.schedule.BufferScheduleSync
-import com.tjg.twidget.schedule.LocalUriMedia
-import com.tjg.twidget.schedule.PublicUrlMedia
-import com.tjg.twidget.schedule.ScheduleComposeActivity
-import com.tjg.twidget.schedule.ScheduleActivity
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleStatus
-import com.tjg.twidget.schedule.ScheduleStore
-import com.tjg.twidget.schedule.ScheduledPost
 import com.tjg.twidget.settings.BriefSettingsActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.CardValueTextView
@@ -272,13 +263,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             try {
                 val source = withContext(Dispatchers.IO) {
                     if (forceAi) {
-                        val content = BriefSettingsStore.enabledContent(this@TwidgetBriefActivity)
-                        if (content.any(BriefContentCategory::usesScheduledPostData)) {
-                            // Refresh Buffer only when an enabled category can use schedule data.
-                            runCatching {
-                                BufferScheduleSync(this@TwidgetBriefActivity).sync(userInitiated = true)
-                            }
-                        }
                         BriefStore.resetAi(this@TwidgetBriefActivity, username)
                     }
                     debugScenario.snapshot(
@@ -592,8 +576,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         // Keep every review preview independent so masonry can balance unequal tweet heights.
         val reviews = if (debugScenario == BriefDebugScenario.REAL && snapshot.hasGeneratedNarrative) {
             BriefPostCoachSection.create(this, username, analytics,
-                excludedPostUrls = snapshot.cards.mapNotNull { resolveBriefPost(it, analytics)?.url }.toSet(),
-                editDraft = ::openDraft)
+                excludedPostUrls = snapshot.cards.mapNotNull { resolveBriefPost(it, analytics)?.url }.toSet())
         } else null
         refreshReviewPreviews = reviews?.refreshDescriptions
         val sections = buildList {
@@ -601,9 +584,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 items.previews.forEach { add(it to 20) }
                 add(items.libraryCard to 20)
             }
-            if (snapshot.upcomingTweets.isNotEmpty()) {
-                add(upcomingSection(snapshot.upcomingTweets) to 24)
-            }
+
             snapshot.cards.forEach { card -> add(cardSection(card, analytics) to 20) }
         }.mapIndexed { index, (section, topMargin) ->
             section to if (index == 0) 32 else topMargin
@@ -647,130 +628,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
-    // Scheduled copy is rendered locally and never enters an AI prompt.
-    private fun upcomingSection(tweets: List<BriefUpcomingTweet>): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        addView(sectionLabel(getString(R.string.brief_upcoming_scheduled_tweets)))
-        tweets.forEachIndexed { index, tweet ->
-            addView(scheduledPostCard(tweet), matchWrap(top = if (index == 0) 10 else 20))
-        }
-    }
-
-    private fun scheduledPostCard(tweet: BriefUpcomingTweet): View = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(14), dp(14), dp(14), dp(14))
-        isClickable = true
-        isFocusable = true
-        setBackgroundResource(R.drawable.brief_card_background)
-        applyBriefCardRipple()
-        setOnClickListener { openSchedule(tweet) }
-
-        val stats = TwidgetStore.currentStats(this@TwidgetBriefActivity, username)
-        val scheduledPost = ScheduleStore(this@TwidgetBriefActivity).get(tweet.id)
-        val firstPost = scheduledPost?.thread?.firstOrNull()
-
-        addView(LinearLayout(context).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            orientation = LinearLayout.HORIZONTAL
-            addView(ImageView(context).apply {
-                ProfileImageLoader.loadInto(context, this, stats.profileImage)
-            }, LinearLayout.LayoutParams(dp(40), dp(40)))
-            addView(LinearLayout(this@TwidgetBriefActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(10), 0, 0, 0)
-                addView(primaryText(stats.fullName.ifBlank { "@$username" }, 14f, true))
-                addView(supportingText("@$username · ${scheduleDate(tweet.scheduledAt)}", 12f))
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        })
-
-        addView(primaryText(firstPost?.text.orEmpty().ifBlank {
-            tweet.preview.ifBlank { getString(R.string.brief_scheduled_tweet_placeholder) }
-        }, 14f).apply {
-            setLineSpacing(dp(2).toFloat(), 1f)
-        }, matchWrap(top = 10))
-
-        firstPost?.media?.firstOrNull()?.let { media ->
-            addView(com.tjg.twidget.ui.MediaAspectImageView(context).apply {
-                contentDescription = getString(R.string.post_media)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                when (media) {
-                    is LocalUriMedia -> {
-                        background = AppCompatResources.getDrawable(context, R.drawable.schedule_media_preview_bg)
-                        outlineProvider = ViewOutlineProvider.BACKGROUND
-                        clipToOutline = true
-                        runCatching { setImageURI(Uri.parse(media.uri)) }
-                    }
-                    is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(
-                        context,
-                        this,
-                        media.displayUrl,
-                        dp(14),
-                    )
-                }
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(10) })
-        }
-
-        val details = buildList {
-            if (tweet.threadCount > 1) {
-                add(resources.getQuantityString(R.plurals.brief_draft_thread_count, tweet.threadCount, tweet.threadCount))
-            }
-            if (tweet.mediaCount > 0) add(getString(R.string.brief_scheduled_media_count, tweet.mediaCount))
-            add(
-                getString(
-                    if (tweet.provider == ScheduleProvider.BUFFER) R.string.schedule_provider_buffer else R.string.schedule_provider_local,
-                ),
-            )
-        }.joinToString(" · ")
-        addView(supportingText(details, 12f), matchWrap(top = 10))
-    }
-
-    private fun draftPostCard(post: ScheduledPost): View {
-        val actions = buildList {
-            add(BriefReviewAction(R.string.coach_edit_draft, false) { openDraft(post) })
-            if (BriefSettingsStore.contentEnabled(this@TwidgetBriefActivity, BriefContentCategory.TWEET_REVIEWS)) {
-                add(BriefReviewAction(R.string.review_view) {
-                    startRightSidePopOverActivity(BriefTweetReviewActivity.intent(this@TwidgetBriefActivity,
-                        BriefReviewTarget(username, draftId = post.id)))
-                })
-            }
-        }
-        return BriefReviewTweetCard.create(this, username, draft = post, compact = true, actions = actions)
-    }
-
-    private fun scheduleDate(timestamp: Long): String = if (timestamp > 0L) {
-        AppLocales.formatDate(timestamp, "EMMMdjm")
-    } else {
-        getString(R.string.time_unavailable)
-    }
-
-    private fun openSchedule(tweet: BriefUpcomingTweet) {
-        reloadOnResume = true
-        startRightSidePopOverActivity(
-            Intent(this, ScheduleComposeActivity::class.java)
-                .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, username)
-                .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, tweet.id),
-        )
-    }
-
-    private fun openDraft(post: ScheduledPost) {
-        reloadOnResume = true
-        startRightSidePopOverActivity(
-            Intent(this, ScheduleComposeActivity::class.java)
-                .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, username)
-                .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, post.id),
-        )
-    }
-
-    override fun onConfigurationChanged(newConfig: Configuration) {
-        super.onConfigurationChanged(newConfig)
-        renderedSnapshot?.let(::render) ?: configureResponsiveLayout()
-    }
-
-    override fun allowsPopOverPresentation(): Boolean = false
-
     private fun configureResponsiveLayout(): Int {
         val columns = BriefLayoutPolicy.columnCount(resources.configuration.screenWidthDp)
         findViewById<LinearLayout>(R.id.brief_content).layoutParams =
@@ -802,19 +659,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         analytics: PostAnalytics?,
     ): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        val followThroughPost = if (card.type == BriefCardType.POST_FOLLOW_THROUGH) {
-            analytics?.recentPosts?.firstOrNull { it.url == card.actionData }
-                ?: analytics?.best?.takeIf { debugScenario == BriefDebugScenario.POST_FOLLOW_THROUGH }
-        } else {
-            null
-        }
-        val guideDraft = if (
-            card.type == BriefCardType.SCHEDULE_GUIDE && card.id.startsWith("schedule-drafts-")
-        ) {
-            readyDraftForCard(card)
-        } else {
-            null
-        }
         val selectedPost = resolveBriefPost(card, analytics)
         addView(sectionLabel(card.body.ifBlank { card.title }).apply {
             setLineSpacing(dp(2).toFloat(), 1f)
@@ -831,24 +675,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 ?: genericCard(card)
             BriefCardType.WORST_POST -> selectedPost?.let { postCard(it) }
                 ?: genericCard(card)
-            BriefCardType.POST_FOLLOW_THROUGH -> followThroughPost
-                ?.let { postCard(it, card.sourceAttribution) }
-                ?: genericCard(card)
-            BriefCardType.SCHEDULE_GUIDE -> guideDraft?.let(::draftPostCard) ?: compactGuideAction(card)
             BriefCardType.POSTING_GUIDE -> compactGuideAction(card)
             BriefCardType.TOP_FOLLOWER -> topFollowersCard(card)
             BriefCardType.INACTIVITY -> genericCard(card, warm = true)
             else -> genericCard(card)
         }
         addView(content, matchWrap(top = 10))
-    }
-
-    private fun readyDraftForCard(card: BriefCard): ScheduledPost? {
-        val drafts = ScheduleStore(this).listForAccount(username).filter { post ->
-            post.status == ScheduleStatus.DRAFT &&
-                post.thread.any { it.text.isNotBlank() || it.media.isNotEmpty() }
-        }
-        return drafts.firstOrNull { it.id == card.actionData } ?: drafts.firstOrNull()
     }
 
     private fun contextStatCard(card: BriefCard): View = LinearLayout(this).apply {
@@ -922,7 +754,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         orientation = LinearLayout.HORIZONTAL
 
         val openPrimary = View.OnClickListener { performCardAction(card) }
-        val openSchedule = View.OnClickListener { openScheduledTweets() }
         addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL
             minimumHeight = dp(52)
@@ -938,18 +769,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             marginEnd = dp(10)
         })
 
-        addView(ImageView(context).apply {
-            setImageResource(OneUiIconR.drawable.ic_oui_open)
-            imageTintList = ColorStateList.valueOf(Color.WHITE)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            setBackgroundResource(R.drawable.brief_guide_action_button)
-            clipToOutline = true
-            applyBriefCardRipple()
-            contentDescription = getString(R.string.brief_open_scheduled_tweets)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener(openSchedule)
-        }, LinearLayout.LayoutParams(dp(52), dp(52)))
     }
 
     private fun actionLabel(card: BriefCard): String? = when (card.action) {
@@ -962,26 +781,13 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun performCardAction(card: BriefCard) {
         when (card.action) {
             BriefCardAction.NONE -> Unit
-            BriefCardAction.OPEN_SCHEDULER -> openScheduledTweets()
-            BriefCardAction.COMPOSE_TWEET -> {
-                reloadOnResume = true
-                startRightSidePopOverActivity(
-                    Intent(this, ScheduleComposeActivity::class.java)
-                        .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, username),
-                )
-            }
+            BriefCardAction.OPEN_SCHEDULER -> Unit
+
+            BriefCardAction.COMPOSE_TWEET -> Unit
             BriefCardAction.OPEN_POST -> card.actionData
                 .takeIf { it.startsWith("https://") || it.startsWith("http://") }
                 ?.let { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
         }
-    }
-
-    private fun openScheduledTweets() {
-        reloadOnResume = true
-        startRightSidePopOverActivity(
-            Intent(this, ScheduleActivity::class.java)
-                .putExtra(ScheduleActivity.EXTRA_USERNAME, username),
-        )
     }
 
     private fun View.applyBriefCardRipple() {

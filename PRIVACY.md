@@ -1,15 +1,14 @@
 # Twidget Privacy Policy
 
 **Effective date:** 26 July 2026
-**Last updated:** 19 September 2026
+**Last updated:** 6 November 2026
 
 This Privacy Policy explains how **Twidget** (`com.tjg.twidget`) accesses,
 uses, stores, transmits, and deletes information. Twidget is developed and
 published by **That Josh Guy**.
 
 Twidget is an independent app for viewing public X/Twitter account statistics,
-displaying widgets, importing account analytics, finding top followers, generating an optional Your Brief summary, and
-optionally preparing or scheduling posts. It is not affiliated with X Corp.,
+displaying widgets, importing account analytics, finding top followers, generating optional Your Brief summaries and Tweet Reports. It is not affiliated with X Corp.,
 Buffer, Cloudinary, Google, Samsung, or the other services named below.
 
 ## Summary
@@ -24,15 +23,15 @@ Buffer, Cloudinary, Google, Samsung, or the other services named below.
   writing sends Brief content to Google; ML Kit also sends SDK diagnostics.
 - Contributing public account history to the Twidget bridge is optional and is
   off by default.
-- Twidget does not create a Twidget user account. Users may optionally connect
-  an existing Buffer account for scheduling.
+- Twidget does not create a Twidget user account. Tweet composing, scheduling,
+  Buffer connections and Cloudinary uploads have been retired.
 
 ## Information stored on the device
 
 Twidget may store the following in app-private storage:
 
 - configured public X/Twitter usernames;
-- app, dashboard, schedule, and widget preferences;
+- app, dashboard, and widget preferences;
 - public profile information and statistics returned by the selected provider,
   including display name, username, avatar URL, follower and following counts,
   post counts, likes, verification status, and protected-account status;
@@ -40,13 +39,13 @@ Twidget may store the following in app-private storage:
 - imported X Analytics movements and metrics;
 - cached Top Followers rankings and follower lists;
 - Your Brief preferences, generated summaries and cards, goals, and streaks;
-- locally created post drafts, reminders, publishing state, and references to
-  media explicitly selected through Android's system picker;
+- retained drafts, publishing state and media references created by older
+  versions of the retired composer; these are no longer scheduled or uploaded;
 - optional self-hosted bridge settings and local diagnostic logs enabled
   through the hidden debug menu.
 
 Optional official X API credentials, self-hosted bridge tokens, cached bearer
-tokens, Buffer OAuth tokens, a user-supplied TwitterAPIs key, and a Gemini API
+tokens, a user-supplied TwitterAPIs key, and a Gemini API
 key are protected
 with Android Keystore-backed encryption.
 
@@ -144,43 +143,24 @@ post analytics. These requests send the username directly to the selected
 provider. Personal provider keys remain encrypted on the device and are not
 sent through the Twidget bridge.
 
-### Buffer scheduling and Cloudinary media
+### Retired composer, Buffer and Cloudinary
 
-Buffer integration is optional. Twidget does not create a Twidget account.
-When the user connects an existing Buffer account, Buffer's OAuth service
-processes the sign-in and consent flow. Twidget stores the resulting access and
-refresh tokens in encrypted app-private storage and uses them to retrieve the
-Buffer account, organisations, X channels, drafts, and scheduled-post state.
+Twidget no longer connects to Buffer, uploads media to Cloudinary, or schedules
+post reminders. On upgrade, it removes saved connector credentials and settings,
+cancels local reminder alarms and publishing checks, and removes their notification
+channels. Existing local draft archives are retained until the associated account
+or app data is removed.
 
-When the user explicitly saves or schedules a Buffer post, Twidget sends
-Buffer:
-
-- the selected Buffer organisation and X channel identifiers;
-- post or thread text;
-- the requested publishing time;
-- draft or scheduling state; and
-- public media URLs for any attachments.
-
-Buffer's API requires attachments to be reachable by public URL. Images or
-videos explicitly selected for a Buffer post are therefore uploaded to the
-configured Cloudinary account using its unsigned upload preset. A release may
-provide a maintainer-operated Cloudinary configuration, and users can replace
-it with their own Cloudinary cloud and preset. The upload includes the media
-content, file name, and media type. Cloudinary returns a public URL that is
-then sent to Buffer.
-
-Cloudinary-hosted media may remain available after a Buffer post or local draft
-is removed. For media uploaded to the maintainer-operated Cloudinary account,
-use the deletion process below. If the user supplied their own Cloudinary
-configuration, they control deletion and retention in that account.
-
-Local-reminder drafts and attachments are not uploaded to Buffer or Cloudinary.
+Posts already queued in Buffer remain under the user's Buffer account and must be
+managed there. Media previously uploaded to Cloudinary may remain publicly
+available until deleted by the account's operator. For media uploaded through the
+maintainer-operated account in an older release, use the deletion process below.
 
 ### Your Brief, Gemini Nano, and Gemini Cloud
 
 Your Brief is optional and is off until enabled. Twidget builds a factual
 summary and cards from the selected account's statistics, history, public post
-performance, Top Followers, goals, streaks, and scheduling state. It stores the
+performance, Top Followers, goals, and streaks. It stores the
 result on the device and may ask an AI model to rewrite that copy.
 
 On supported devices, Gemini Nano performs this rewriting on the device through
@@ -192,7 +172,7 @@ Cloud mode requires a Gemini API key supplied by the user. Twidget sends the
 Brief summary and card titles and bodies, card identifiers and priorities, and
 language instructions directly to Google's Gemini API over HTTPS. This can
 include public names or handles, account metrics, goal and streak information,
-and summaries of scheduling activity. It does not upload the original analytics
+and public tweet analysis. It does not upload the original analytics
 CSV, attachments, or the full local draft database. The API key is sent only to
 Google for these requests and is encrypted in app-private storage. Requests do
 not pass through the Twidget bridge.
@@ -247,7 +227,7 @@ is generated; there is no separate in-app switch for SDK telemetry. See
 Information is used only to:
 
 - provide dashboards, widgets, history, post insights, provider access,
-  scheduling, media upload, Your Brief, and distribution-specific update features;
+  Your Brief, Tweet Reports, and distribution-specific update features;
 - authenticate requests to services the user has configured;
 - support Google SDK diagnostics and usage analytics as described above;
 - maintain optional shared public history and reusable public rankings;
@@ -265,9 +245,6 @@ Information may be processed by the following categories of recipient:
 
 - public-profile and analytics providers selected by the user, including
   FxTwitter/FxEmbed, X, TwitterAPIs, and a configured bridge operator;
-- Buffer, when the user connects Buffer or explicitly uses remote
-  draft/scheduling features;
-- Cloudinary, when the user attaches media to a Buffer post;
 - Google, for optional Gemini Cloud processing and ML Kit SDK operations;
 - GitHub, for release notes and, in GitHub builds, update checks and downloads;
 - Unavatar and image hosts, when the app retrieves an image; and
@@ -324,10 +301,8 @@ Users can:
 - use direct FxTwitter mode without joining shared history;
 - turn shared-history contribution on or off in Settings;
 - choose a different data provider or a self-hosted bridge;
-- use local reminders instead of Buffer;
 - disable Your Brief, select Local writing, or remove a Gemini API key to stop
   future cloud rewriting;
-- disconnect Buffer and remove its local OAuth tokens;
 - remove a tracked account and its local history;
 - clear cached app data through Android; and
 - request deletion of information controlled by the maintainer.

@@ -4,6 +4,11 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Retire the tweet composer, Buffer integration and Cloudinary uploads. Remove
+  scheduling cards from Your Brief and tweet rewrites from Tweet Report.
+  Existing local draft archives are retained; manage posts already queued with
+  Buffer directly in Buffer.
+
 - Add Catalan localisation for the app, widgets, goals and Brief.
 
 - Preserve regional number and date conventions when choosing an app or widget

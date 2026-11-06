@@ -65,9 +65,6 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             startActivity(Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS)
                 .putExtra(AndroidSettings.EXTRA_APP_PACKAGE, context.packageName))
         })
-        screen.addPreference(destination(SettingsActivity.PREFERENCE_SCHEDULING, R.string.settings_scheduled_tweets, R.drawable.settings_icon_schedule) {
-            openCategory(SettingsPage.SCHEDULING)
-        })
         screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(destination("app_language_pref", R.string.language, R.drawable.settings_icon_language) {
             SettingsLanguage.open(requireActivity())

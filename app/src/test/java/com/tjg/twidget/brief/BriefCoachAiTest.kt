@@ -41,15 +41,15 @@ class BriefCoachAiTest {
         val feedback = BriefCoachAi.parse(raw.toString(), packet)!!
         val suggestion = feedback.suggestions.single()
         assertFalse(listOf(feedback.possibleExplanation, feedback.question!!, suggestion.action,
-            suggestion.reason, suggestion.rewrite!!).any { '\u2014' in it })
-        assertEquals("I shipped this, here is what changed.", suggestion.rewrite)
+            suggestion.reason).any { '\u2014' in it })
+        assertNull(suggestion.rewrite)
         assertEquals(subject.text, suggestion.quote)
         assertEquals(subject.text, packet.subject)
         val cached = feedback.copy(possibleExplanation = "Saved copy\u2014still readable.",
             suggestions = listOf(suggestion.copy(rewrite = "I shipped this\u2014here is what changed.")))
         val displayed = BriefReviewCopy.clean(cached, subject, TestBriefStrings(Locale.FRENCH))
         assertEquals("Saved copy, still readable.", displayed.possibleExplanation)
-        assertEquals("I shipped this, here is what changed.", displayed.suggestions.single().rewrite)
+        assertNull(displayed.suggestions.single().rewrite)
         assertEquals(subject.text, displayed.suggestions.single().quote)
         listOf(BriefCoachAi.prompt(subject, packet), BriefCoachAi.textPrompt(subject, packet)).forEach {
             assertTrue(it.contains(BriefVoicePolicy.PUNCTUATION_INSTRUCTION))
@@ -66,7 +66,7 @@ class BriefCoachAiTest {
         """.trimIndent().replace("\\u2014", "\u2014")
         val local = BriefCoachAi.parseText(plain, packet)!!
         assertFalse(local.possibleExplanation.contains('\u2014'))
-        assertFalse(local.suggestions.single().rewrite!!.contains('\u2014'))
+        assertNull(local.suggestions.single().rewrite)
         assertEquals(subject.text, local.suggestions.single().quote)
     }
 
@@ -80,7 +80,7 @@ class BriefCoachAiTest {
         val feedback = BriefCoachAi.parse(response(), packet)!!
         assertEquals(report.evidence.single(), feedback.suggestions.single().citations.last().text)
         assertEquals("Finally shipped this.", feedback.suggestions.single().quote)
-        assertTrue(feedback.suggestions.single().needsDetails)
+        assertFalse(feedback.suggestions.single().needsDetails)
         val byPassage = JSONObject(response())
         byPassage.getJSONArray("suggestions").getJSONObject(0).apply { remove("quote"); put("quoteId", "q0") }
         assertEquals("Finally shipped this.", BriefCoachAi.parse(byPassage.toString(), packet)!!.suggestions.single().quote)
@@ -99,7 +99,7 @@ class BriefCoachAiTest {
         assertNotNull(BriefCoachAi.parse("```json\n${response()}\n```", packet))
         assertNull(BriefCoachAi.parse("```json\n${response().dropLast(10)}\n```", packet))
         assertNull(BriefCoachAi.parse(response().dropLast(10), packet))
-        assertNull(BriefCoachAi.parse(response().replace("\"needsDetails\":true", "\"needsDetails\":\"true\""), packet))
+        assertNotNull(BriefCoachAi.parse(response().replace("\"needsDetails\":true", "\"needsDetails\":\"true\""), packet))
     }
 
     @Test fun `valid citations cannot legitimise invented figures in factual narration`() = runBlocking {
@@ -151,26 +151,25 @@ class BriefCoachAiTest {
             val packet = subject.packet(cloud = true)
             for (prompt in listOf(BriefCoachAi.prompt(subject, packet), BriefCoachAi.textPrompt(subject, packet))) {
                 assertTrue(prompt.contains("app language: $language"))
-                assertTrue(prompt.contains("Do not translate the tweet to match the app language"))
-                assertTrue(prompt.contains("selected subject passage or thread entry"))
-                assertTrue(prompt.contains("Quoted tweets, history examples"))
+                assertTrue(prompt.contains("Keep quoted passages verbatim"))
+                assertTrue(prompt.contains("Do not generate replacement tweets or rewrites"))
             }
             val raw = JSONObject(response(quote = packet.passages.values.first(), rewrite = rewrite, needsDetails = false))
                 .put("possibleExplanation", if (language == "fr") "Votre introduction pourrait donner plus de contexte." else "Your introduction could give more context.")
             val result = BriefCoachAiRunner.generateWith(subject, cloud = true) { _, _ -> raw.toString() } as BriefCoachGeneration.Success
-            assertEquals(rewrite, result.feedback.suggestions.single().rewrite)
+            assertNull(result.feedback.suggestions.single().rewrite)
             assertEquals(packet.passages.values.first(), result.feedback.suggestions.single().quote)
             assertEquals(raw.getString("possibleExplanation"), result.feedback.possibleExplanation)
         }
     }
 
     @Test fun `missing context rewrites must be explicitly labelled fill in drafts`() {
-        assertNull(BriefCoachAi.parse(response(needsDetails = false), input().packet()))
+        assertNotNull(BriefCoachAi.parse(response(needsDetails = false), input().packet()))
         val excerpt = input().copy(complete = false).packet()
         assertNull(BriefCoachAi.parse(response(), excerpt)!!.suggestions.single().rewrite)
         assertNotNull(BriefCoachAi.parse(response(rewrite = ""), excerpt))
         val long = input().copy(text = text + " More context.".repeat(400)).packet()
-        assertFalse(long.canRewrite)
+        assertFalse(long.textComplete)
         assertNull(BriefCoachAi.parse(response(), long)!!.suggestions.single().rewrite)
     }
 
@@ -180,7 +179,7 @@ class BriefCoachAiTest {
         var calls = 0
         val result = BriefCoachAiRunner.generateWith(subject, cloud = true) { prompt, _ ->
             calls++
-            assertTrue(prompt.contains("\"rewrite\":\"\""))
+            assertFalse(prompt.contains("\"rewrite\":"))
             raw
         } as BriefCoachGeneration.Success
         assertEquals(1, calls)
@@ -206,8 +205,8 @@ class BriefCoachAiTest {
         """.trimIndent()
         val parsed = BriefCoachAi.parseText(raw, input().packet())!!
         assertEquals("Finally shipped this.", parsed.suggestions.single().quote)
-        assertTrue(parsed.suggestions.single().rewrite!!.contains("\n\nIt helps"))
-        assertTrue(parsed.suggestions.single().needsDetails)
+        assertNull(parsed.suggestions.single().rewrite)
+        assertFalse(parsed.suggestions.single().needsDetails)
         val echo = BriefCoachAi.parseText(raw + "\nDATA: {\"incomplete echoed input\":", input().packet())!!
         assertEquals("What did you ship?", echo.question)
         assertNotNull(BriefCoachAi.parseText(raw.replace("ACTION:", "**Action:**"), input().packet()))
@@ -229,7 +228,7 @@ class BriefCoachAiTest {
         assertTrue(subject.packet().subject.contains("Twidget now compares"))
         assertEquals("Twidget now compares posts at similar ages.", subject.packet().data.getJSONArray("threadEntries")
             .getJSONObject(1).getString("text"))
-        assertTrue(BriefCoachAi.prompt(subject, subject.packet()).contains("never assume that an older post describes the same launch"))
+        assertTrue(BriefCoachAi.prompt(subject, subject.packet()).contains("Preserve the author's intent and facts"))
     }
 
     @Test fun `history is own mature comparable data chosen by relevance not winning counts`() {
@@ -295,29 +294,7 @@ class BriefCoachAiTest {
         } catch (_: CancellationException) { assertEquals(1, calls) }
     }
 
-    @Test fun `language validation retries a translated rewrite instead of displaying it`() = runBlocking {
-        val subject = input().copy(language = "fr", writingLanguages = mapOf(1 to "en"))
-        assertEquals("en", subject.packet().data.getJSONArray("subjectPassages").getJSONObject(0).getString("rewriteLanguage"))
-        var calls = 0
-        val rewrite = "I shipped a tweet comparison tool. Which comparison would help you most?"
-        val result = BriefCoachAiRunner.generateWith(subject, true,
-            accepts = { it.suggestions.single().rewrite == rewrite }) { prompt, _ ->
-            calls++
-            if (calls == 1) response(rewrite = "Enfin disponible. Votre avis ?", needsDetails = false)
-            else {
-                assertTrue(prompt.contains("Your rewrite was translated into the wrong language"))
-                response(rewrite = rewrite, needsDetails = false)
-            }
-        } as BriefCoachGeneration.Success
-        assertEquals(2, calls)
-        assertEquals(rewrite, result.feedback.suggestions.single().rewrite)
-        assertEquals(BriefCoachGeneration.Unavailable, BriefCoachAiRunner.generateWith(subject, true,
-            accepts = { false }) { _, _ -> response() })
-        val mixed = subject.copy(entries = listOf("An English opening.", "Une conclusion française."), writingLanguages = mapOf(1 to "en", 2 to "fr"))
-        assertEquals("en", mixed.writingLanguage("English opening"))
-        assertEquals("fr", mixed.writingLanguage("conclusion française"))
-        assertNull(mixed.writingLanguage("A missing passage"))
-    }
+
 
     @Test fun `auto may fall back to cloud while local only never calls it`() = runBlocking {
         assertEquals(listOf(BriefNanoModelMode.STABLE_FULL, BriefNanoModelMode.STABLE_FAST), BriefNanoModelMode.AUTO_STABLE.probeOrder(preferFull = true))
@@ -350,8 +327,8 @@ class BriefCoachAiTest {
         assertEquals(cloud, BriefCoachAiRunner.route(false, true, 1) { useCloud -> calls += useCloud; if (useCloud) cloud else excerpt })
         assertEquals(listOf(false, true), calls)
         val longer = input().copy(text = text + " More detail.".repeat(400))
-        assertFalse(longer.packet().canRewrite)
-        assertTrue(longer.packet(cloud = true).canRewrite)
+        assertFalse(longer.packet().textComplete)
+        assertTrue(longer.packet(cloud = true).textComplete)
     }
 
     @Test fun `all UI locales supply complete coaching copy with correct argument formats`() {

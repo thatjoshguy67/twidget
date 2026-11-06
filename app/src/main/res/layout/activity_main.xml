@@ -36,40 +36,8 @@
                 android:layout_height="match_parent" />
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <FrameLayout
-            android:id="@+id/main_schedule_host"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-
-            <ViewStub
-                android:id="@+id/schedule_page_stub"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:inflatedId="@id/schedule_queue_container"
-                android:layout="@layout/schedule_page" />
-        </FrameLayout>
 
     </FrameLayout>
 
-    <!-- Fixed to the viewport, independent of the scrolling content height. -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/schedule_fab"
-        android:layout_width="70dp"
-        android:layout_height="70dp"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
-        android:clickable="true"
-        android:contentDescription="@string/schedule_new"
-        android:elevation="6dp"
-        android:focusable="true"
-        app:backgroundTint="@color/oneui_accent"
-        app:fabCustomSize="70dp"
-        app:behavior_autoHide="false"
-        app:layout_behavior="com.google.android.material.floatingactionbutton.FloatingActionButton$Behavior"
-        app:layout_location="root"
-        app:srcCompat="@drawable/ic_oui_add"
-        app:tint="@android:color/white" />
 
 </dev.oneuiproject.oneui.layout.NavDrawerLayout>

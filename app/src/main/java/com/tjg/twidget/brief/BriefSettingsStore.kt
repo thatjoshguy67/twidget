@@ -47,7 +47,7 @@ object BriefSettingsStore {
     }
 
     fun contentEnabled(context: Context, category: BriefContentCategory): Boolean =
-        prefs(context).getBoolean(KEY_CONTENT_PREFIX + category.storageId, true)
+        !category.isRetired() && prefs(context).getBoolean(KEY_CONTENT_PREFIX + category.storageId, true)
 
     fun setContentEnabled(
         context: Context,
@@ -72,7 +72,7 @@ object BriefSettingsStore {
         BriefContentCategory.entries.filterTo(linkedSetOf()) { contentEnabled(context, it) }
 
     fun contentFingerprint(context: Context): String = BriefContentCategory.entries.filterNot {
-        it == BriefContentCategory.TWEET_REVIEWS
+        it == BriefContentCategory.TWEET_REVIEWS || it.isRetired()
     }.joinToString(",") {
         "${it.storageId}:${contentEnabled(context, it)}"
     }

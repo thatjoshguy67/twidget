@@ -5,7 +5,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.ScheduleStore
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -18,10 +17,7 @@ internal object BriefReviewDebug {
         val posts = (BriefPostCoach.reviewTargets(analytics, username, System.currentTimeMillis()) + listOfNotNull(analytics?.banger) +
             BriefPublishedReviewStore.posts(context, username, 100)).distinctBy { BriefPublishedReviewStore.postId(it.url) }
         return posts.map { Choice(context.getString(if (it.isReply) R.string.coach_reply_choice else R.string.coach_post_choice, it.text.replace('\n', ' ').take(80)),
-            BriefReviewTarget(username, postUrl = it.url, fromDashboard = true)) } +
-            BriefPostCoach.readyDrafts(ScheduleStore(context).listForAccount(username), username).map {
-                Choice(context.getString(R.string.review_draft) + " · " + it.thread.firstOrNull()?.text.orEmpty().replace('\n', ' ').take(80), BriefReviewTarget(username, draftId = it.id))
-            }
+            BriefReviewTarget(username, postUrl = it.url, fromDashboard = true)) }
     }
 
     fun subject(context: Context, target: BriefReviewTarget): BriefReviewSubject? =
@@ -34,7 +30,7 @@ internal object BriefReviewDebug {
         val input = subject.input
         return buildString {
             appendLine(context.getString(R.string.l10n_debug_kind_language, input.kind, input.language))
-            appendLine(context.getString(R.string.l10n_debug_source_complete, yes(context, input.complete), yes(context, input.packet().canRewrite)))
+            appendLine(context.getString(R.string.l10n_debug_source_complete, yes(context, input.complete), yes(context, input.packet().textComplete)))
             appendLine(context.getString(R.string.l10n_debug_history_media, AppLocales.integer(input.history.size.toLong()), AppLocales.integer(input.media.size.toLong())))
             appendLine(context.getString(R.string.l10n_debug_quote_observations, yes(context, input.quotedPost != null), AppLocales.integer(input.reviewEvidence?.observations?.size?.toLong() ?: 0)))
             appendLine(context.getString(R.string.l10n_debug_panels, input.reviewEvidence?.panelIds.orEmpty().joinToString()))
@@ -44,13 +40,7 @@ internal object BriefReviewDebug {
     }
 
     fun cache(context: Context, target: BriefReviewTarget, now: Long = System.currentTimeMillis()): String {
-        if (target.draftId != null) {
-            val current = subject(context, target) ?: return context.getString(R.string.l10n_debug_draft_unavailable)
-            val key = BriefReviewResults.key(current, BriefProviderMode.CLOUD, BriefNanoModelMode.AUTO_STABLE)
-            val saved = BriefPublishedReviewStore.readDraft(context, current, key, now)
-            return context.getString(R.string.l10n_debug_draft_cache) + "\n" +
-                (saved?.let { context.getString(R.string.l10n_debug_cache_match, AppLocales.dateTime(context, it.savedAt)) } ?: context.getString(R.string.l10n_debug_cache_none))
-        }
+
         val saved = BriefPublishedReviewStore.read(context, target) ?: return context.getString(R.string.l10n_debug_cache_post_none)
         val language = BriefStrings.from(context).languageTag
         val lifetime = BriefReviewFreshness.lifetime(saved.subject.post?.timestamp ?: 0L, saved.checkedAt)

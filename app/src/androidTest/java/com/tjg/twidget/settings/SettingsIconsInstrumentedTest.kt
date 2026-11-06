@@ -18,7 +18,7 @@ class SettingsIconsInstrumentedTest {
     private val icons = listOf(
         R.drawable.settings_icon_accounts, R.drawable.settings_icon_appearance,
         R.drawable.settings_icon_data, R.drawable.settings_icon_brief,
-        R.drawable.settings_icon_notifications, R.drawable.settings_icon_schedule,
+        R.drawable.settings_icon_notifications,
         R.drawable.settings_icon_language, R.drawable.settings_icon_about,
         R.drawable.settings_icon_debug,
     )

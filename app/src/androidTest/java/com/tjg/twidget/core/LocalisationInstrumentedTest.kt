@@ -21,11 +21,7 @@ class LocalisationInstrumentedTest {
             val stored = UiMessages.message(UiMessages.Key.ERROR_TEXT_LIMIT, 25000)
             val count = AppLocales.integer(25000, AppLocales.formattingLocale(c))
             assertEquals(c.getString(R.string.l10n_error_text_limit, count), UiMessages.resolve(c, stored))
-            for (n in listOf(1, 2, 1000000)) {
-                val wait = UiMessages.message(UiMessages.Key.ERROR_BUFFER_WAIT_HOURS, n)
-                assertEquals(c.resources.getQuantityString(R.plurals.l10n_buffer_retry_hours, n,
-                    AppLocales.integer(n.toLong(), AppLocales.formattingLocale(c))), UiMessages.resolve(c, wait))
-            }
+
             assertFalse(AppLocales.dateTime(c, 1792843200000).contains(" at "))
         }
     }

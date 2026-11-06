@@ -9,7 +9,8 @@ internal object BriefReviewCopy {
         suggestions = feedback.suggestions.map { it.copy(
             action = BriefVoicePolicy.withoutEmDashes(it.action),
             reason = BriefVoicePolicy.withoutEmDashes(it.reason),
-            rewrite = it.rewrite?.let(BriefVoicePolicy::withoutEmDashes),
+            rewrite = null,
+            needsDetails = false,
         ) },
         question = feedback.question?.let(BriefVoicePolicy::withoutEmDashes),
     )
@@ -32,7 +33,7 @@ internal object BriefReviewCopy {
         return withoutEmDashes(feedback.copy(
             possibleExplanation = prose(feedback.possibleExplanation),
             suggestions = feedback.suggestions.map { it.copy(action = prose(it.action), reason = prose(it.reason),
-                rewrite = it.rewrite?.let { value -> prose(value, preserveOriginalTokens = true) }) },
+                rewrite = null, needsDetails = false) },
             question = feedback.question?.let { prose(it) },
         ))
     }

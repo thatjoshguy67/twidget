@@ -19,7 +19,6 @@ internal object BriefCoachResultCodec {
             .put("question", result.feedback.question ?: "").put("panelIds", JSONArray(result.feedback.panelIds))
             .put("suggestions", JSONArray(result.feedback.suggestions.map { suggestion ->
                 JSONObject().put("action", suggestion.action).put("reason", suggestion.reason).put("quote", suggestion.quote)
-                    .put("rewrite", suggestion.rewrite ?: "").put("needsDetails", suggestion.needsDetails)
                     .put("evidenceIds", JSONArray(suggestion.citations.map(BriefCoachCitation::id)))
             })))
 
@@ -64,7 +63,6 @@ internal object BriefSavedReviewCodec {
                 .put("question", feedback.question ?: "").put("panelIds", JSONArray(feedback.panelIds))
                 .put("suggestions", JSONArray(feedback.suggestions.map { suggestion ->
                     JSONObject().put("action", suggestion.action).put("reason", suggestion.reason).put("quote", suggestion.quote)
-                        .put("rewrite", suggestion.rewrite ?: "").put("needsDetails", suggestion.needsDetails)
                         .put("evidenceIds", JSONArray(suggestion.citations.map(BriefCoachCitation::id)))
                 })))
     }

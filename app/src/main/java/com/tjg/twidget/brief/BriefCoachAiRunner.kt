@@ -43,9 +43,8 @@ internal object BriefCoachAiRunner {
     suspend fun generate(context: Context, input: BriefCoachInput, cloud: Boolean,
         allowCloudFallback: Boolean = false, onResponse: (String) -> Unit = {}): BriefCoachGeneration {
         if (cloud && BriefSettingsStore.cloudApiKey(context).isBlank()) return BriefCoachGeneration.Failure(BriefReviewFailure.MISSING_KEY)
-        var prepared = input
+        val prepared = input
         return pipeline(load = {
-            prepared = runInterruptible(Dispatchers.IO) { BriefCoachWritingLanguage.prepare(context, input) }
             BriefCoachMedia.load(context, input)
         }, release = { it: BriefCoachImage -> it.bitmap.recycle() }) { images ->
             suspend fun attempt(useCloud: Boolean): BriefCoachGeneration = try {
@@ -59,7 +58,7 @@ internal object BriefCoachAiRunner {
                                 BriefReviewDebugLog.record(context, "VALIDATION", JSONObject().put("reason", it)
                                     .put("kind", input.kind).put("language", input.language))
                             },
-                            accepts = { BriefCoachWritingLanguage.accepts(context, prepared, it) }) { prompt, selected ->
+                            accepts = { true }) { prompt, selected ->
                             runInterruptible(Dispatchers.IO) { cloudRequest(key, prompt, selected, BriefCoachAi.languageInstruction(prepared)) }
                         }
                         if (result == BriefCoachGeneration.Unavailable) BriefCoachGeneration.Failure(BriefReviewFailure.INVALID_RESPONSE) else result
@@ -146,7 +145,7 @@ internal object BriefCoachAiRunner {
             }
             return generateWith(input.copy(visualContext = visualContext), false, images,
                 onInvalid = { Log.d("BriefCoachAi", "validation=$it") },
-                accepts = { BriefCoachWritingLanguage.accepts(context, input, it) }) { prompt, _ ->
+                accepts = { true }) { prompt, _ ->
                 requestText(prompt, emptyList())
             }
         } finally {
@@ -166,7 +165,6 @@ internal object BriefCoachAiRunner {
             val ids = selected.map(BriefCoachImage::id).toSet()
             val packet = input.packet(compact, ids, cloud)
             val correction = invalidReason?.let { "\nThe last response failed validation. " +
-                (if (it == "rewrite_language") "Your rewrite was translated into the wrong language. Follow the selected passage's rewriteLanguage; keep commentary in ${input.language}. " else "") +
                 (if (it == "numeric_evidence") "A number in your explanation or reason was not supported. Use exact measurementReferences tokens instead of typing performance figures, or omit the numerical claim. " else "") +
                 "Use only the allowed quoteIds and evidenceIds. " +
                 if (cloud) "Follow the exact JSON schema." else "Return the exact labelled plain-text format above; no JSON or markdown." }.orEmpty()
@@ -174,8 +172,8 @@ internal object BriefCoachAiRunner {
             val raw = request(prompt + correction, selected) ?: continue
             val feedback = (if (!cloud) BriefCoachAi.parseText(raw, packet) else null)
                 ?: BriefCoachAi.parse(raw, packet) { reason -> invalidReason = reason; onInvalid(reason) } ?: continue
-            if (!accepts(feedback)) { invalidReason = "rewrite_language"; onInvalid(invalidReason); continue }
-            return BriefCoachGeneration.Success(feedback, cloud, ids, packet.canRewrite)
+            if (!accepts(feedback)) { invalidReason = "feedback_validation"; onInvalid(invalidReason); continue }
+            return BriefCoachGeneration.Success(feedback, cloud, ids, packet.textComplete)
         }
         return BriefCoachGeneration.Unavailable
     }

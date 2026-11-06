@@ -56,7 +56,7 @@ Twidget can fetch stats a few ways.
 4. **Official X API (bring your own credentials)** — for direct official profile stats. Bring your own API keys and fetch data directly from X using their V2 API. This is not cheap, so only paying X API users can utilise this option. Twidget does not provide this. 
 5. **TwitterAPIs** — Top Followers scans use Twidget's bridge and require shared-history consent. Add your own key for direct profile stats and bounded seven-day post analytics/media. Paid post analytics are cached for six hours and fall back to the configured bridge when unavailable.
 
-Changed your X handle? Twidget saves the permanent X account ID during profile sync and can resolve a missing or recycled handle to the same account. For older accounts with no saved ID, open **Settings → Accounts**, long-press the account, and choose **Change handle**. Enter the new handle for that same person to move local history, goals, widgets, imported analytics, streaks, cached results and scheduled posts together. Accounts that already have data under the new handle—including leftover goals or cached data—are kept separate to prevent overwriting either account. Migrations resume after an interruption, and late local writes follow the new handle. Shared-history reads require a matching permanent account ID. With shared history enabled, bridge transfers are queued and retried while offline; legacy bridge records with no saved ID require an administrator-verified transfer.
+Changed your X handle? Twidget saves the permanent X account ID during profile sync and can resolve a missing or recycled handle to the same account. For older accounts with no saved ID, open **Settings → Accounts**, long-press the account, and choose **Change handle**. Enter the new handle for that same person to move local history, goals, widgets, imported analytics, streaks, cached results and retained legacy drafts together. Accounts that already have data under the new handle—including leftover goals or cached data—are kept separate to prevent overwriting either account. Migrations resume after an interruption, and late local writes follow the new handle. Shared-history reads require a matching permanent account ID. With shared history enabled, bridge transfers are queued and retried while offline; legacy bridge records with no saved ID require an administrator-verified transfer.
 
 The **Your Top Followers** dashboard card uses the shared-history bridge in both GitHub and Play builds. Enable shared history under Settings → Data and sources, then tap **Find top follower**. The bridge reuses a fresh completed scan or scans the public account through [TwitterAPIs](https://twitterapis.com), then refreshes enrolled accounts daily. Completed lists are shared with other opted-in installs tracking that handle. Device-side follower scans and their foreground service have been removed. Existing rankings remain cached when upgrading or disabling shared history. Personal provider keys remain available for profile and post analytics. Protected accounts are not supported.
 
@@ -324,20 +324,12 @@ adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
 
 Stable and debug have independent app data and widget instances.
 
-Buffer scheduling uses a public OAuth client with PKCE. Register the redirect
-URI `https://thatjoshguy67.github.io/twidget/oauth/buffer/` in Buffer, or build
-with your own using `BUFFER_OAUTH_REDIRECT_URI` or `-PbufferOAuthRedirectUri=...`.
-The minimal callback page forwards the short-lived response to
-`twidget://oauth/buffer` on the device. Provide the client ID at build time with
-`BUFFER_OAUTH_CLIENT_ID` or `-PbufferOAuthClientId=...`; no client secret is
-embedded in the Android app.
-
-Device media attached to Buffer posts is hosted on Cloudinary through an
-unsigned upload preset. Provide the shared account at build time with
-`CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_UPLOAD_PRESET` (or
-`-PcloudinaryCloudName=...`/`-PcloudinaryUploadPreset=...`); users can override
-both in Buffer settings. Only the cloud name and unsigned preset name are
-embedded — no API key or secret.
+Tweet composing and scheduling have been retired. Twidget no longer connects to
+Buffer or uploads media to Cloudinary. Compose and schedule tweets in X. Manage
+any posts already queued with Buffer directly in Buffer; this update does not
+cancel them. Existing local draft archives are retained. Your Brief no longer
+uses scheduling data, and Tweet Report provides analysis and advice without
+generating tweet rewrites.
 
 GitHub Packages credentials belong in
 `~/.config/twidget/github.properties`; start from

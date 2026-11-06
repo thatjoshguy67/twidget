@@ -1,7 +1,6 @@
 package com.tjg.twidget.brief
 
 import android.content.Context
-import com.tjg.twidget.schedule.BufferScheduleSync
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -37,9 +36,7 @@ object BriefLaunchGeneration {
 
         val appContext = context.applicationContext
         return scope.async {
-            runCatching {
-                BufferScheduleSync(appContext).sync(userInitiated = true)
-            }
+
             BriefStore.resetAi(appContext, account)
             val source = BriefEngine.rebuild(appContext, account, force = true)
             runCatching {

@@ -52,9 +52,7 @@ class SettingsActivity : FoldablePopOverActivity() {
             }
         }
         if (savedInstanceState == null) {
-            if (intent.getStringExtra(EXTRA_SCROLL_TO_PREFERENCE) == PREFERENCE_SCHEDULING) {
-                startSettingsSubActivity(SettingsCategoryActivity.intent(this, SettingsPage.SCHEDULING))
-            }
+
             val fragment = SettingsPreferenceFragment()
             supportFragmentManager.beginTransaction()
                 .replace(R.id.preference_fragment_container, fragment)
@@ -64,7 +62,6 @@ class SettingsActivity : FoldablePopOverActivity() {
 
     companion object {
         const val EXTRA_SCROLL_TO_PREFERENCE = "settings_scroll_to_preference"
-        const val PREFERENCE_SCHEDULING = "scheduling_category"
     }
 
     private fun findAppBar(view: View): AppBarLayout? = when (view) {

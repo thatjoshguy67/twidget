@@ -29,7 +29,7 @@ class BriefContentCategoryTest {
     }
 
     @Test
-    fun onlyScheduleCategoriesRequestScheduledPostData() {
+    fun retiredScheduleCategoriesAreIdentifiableForUpgradeFiltering() {
         val expected = setOf(
             BriefContentCategory.SCHEDULED_TWEETS,
             BriefContentCategory.SCHEDULE_HEALTH,
@@ -37,7 +37,7 @@ class BriefContentCategoryTest {
         )
 
         assertEquals(expected, BriefContentCategory.entries.filterTo(linkedSetOf()) {
-            it.usesScheduledPostData()
+            it.isRetired()
         })
     }
 }

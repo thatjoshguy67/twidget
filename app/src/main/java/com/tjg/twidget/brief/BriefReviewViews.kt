@@ -26,12 +26,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.LocalUriMedia
-import com.tjg.twidget.schedule.PublicUrlMedia
-import com.tjg.twidget.schedule.ScheduleMediaSource
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduledPost
-import com.tjg.twidget.schedule.XComposeIntents
 import com.tjg.twidget.ui.MediaAspectImageView
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TweetMediaView
@@ -137,22 +131,18 @@ private class BriefTweetActions(context: Context) : LinearLayout(context) {
 
 /** Shared native tweet surface for entry points, the review header and proposed rewrites. */
 internal object BriefReviewTweetCard {
-    fun create(context: Context, username: String, post: PostSummary? = null, draft: ScheduledPost? = null,
-        rewrite: String? = null, rewriteEntry: Int = 0, compact: Boolean = false,
+    fun create(context: Context, username: String, post: PostSummary, compact: Boolean = false,
         actions: List<BriefReviewAction> = emptyList(), onClick: (() -> Unit)? = null,
         sourceAttribution: String = "", reviewPreview: Boolean = false, openOnCardTap: Boolean = false): View {
-        require((post == null) != (draft == null))
         val stats = TwidgetStore.currentStats(context, username)
-        val ai = rewrite != null
         val quoted = post?.quotedPost
         val mediaHeight = when {
             reviewPreview && quoted?.media?.isNotEmpty() == true -> 96
             quoted != null -> 167
-            ai && reviewPreview -> 218
             reviewPreview -> 172
             else -> TweetMediaView.MAX_HEIGHT_DP
         }
-        val publicPost = post?.takeIf { rewrite == null }
+        val publicPost = post
         val openPost = publicPost?.takeIf { canOpen(it.url) }?.let { source -> onClick ?: { openTweet(context, source.url) } }
         val click = if (publicPost == null) onClick else openPost.takeIf { openOnCardTap }
         val cardActions = if (openPost != null && !openOnCardTap) {
@@ -177,29 +167,18 @@ internal object BriefReviewTweetCard {
                 setPadding(BriefReviewViews.dp(context, 10), 0, BriefReviewViews.dp(context, 6), 0)
                 addView(BriefReviewViews.text(context, (post?.authorName?.ifBlank { stats.fullName }
                     ?: stats.fullName).ifBlank { "@$username" }, bold = true))
-                val time = post?.timestamp ?: draft?.updatedAt ?: 0L
+                val time = post.timestamp
                 val date = if (time > 0) AppLocales.formatDate(time, "MMMdjm") else ""
-                val source = if (draft != null) context.getString(R.string.review_draft) else date
+                val source = date
                 addView(BriefReviewViews.text(context, listOf("@$username", source, sourceAttribution).filter(String::isNotBlank).joinToString(" · "), 12f, secondary = true))
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            if (!ai) addView(BriefReviewViews.icon(context, when {
-                draft?.provider == ScheduleProvider.BUFFER -> R.drawable.ic_buffer
-                draft != null -> R.drawable.ic_settings_send
-                else -> R.drawable.ic_logo_twitter
-            }))
+            addView(BriefReviewViews.icon(context, R.drawable.ic_logo_twitter))
         }
         result.addView(header)
-        val entries = draft?.thread?.withIndex()?.toList()?.let {
-            when {
-                ai && reviewPreview -> it.filter { item -> item.index == rewriteEntry }
-                compact || reviewPreview -> it.take(1)
-                else -> it
-            }
-        }.orEmpty()
         if (post != null) {
-            result.addView(BriefReviewViews.text(context, rewrite ?: post.fullText ?: post.text, 13f).apply {
+            result.addView(BriefReviewViews.text(context, post.fullText ?: post.text, 13f).apply {
                 setTextIsSelectable(!compact && click == null)
-                if (!ai && (compact || reviewPreview)) { maxLines = if (reviewPreview && quoted != null) 3 else if (reviewPreview) 5 else 8; ellipsize = android.text.TextUtils.TruncateAt.END }
+                if (compact || reviewPreview) { maxLines = if (reviewPreview && quoted != null) 3 else if (reviewPreview) 5 else 8; ellipsize = android.text.TextUtils.TruncateAt.END }
             }, BriefReviewViews.params(context, 10))
             if (post.media.isNotEmpty()) {
                 val overlaidActions = if (quoted == null) cardActions else emptyList()
@@ -210,20 +189,8 @@ internal object BriefReviewTweetCard {
             quoted?.let { source ->
                 result.addView(quotedCard(context, source, reviewPreview || compact), BriefReviewViews.params(context, 10))
             }
-        } else entries.forEachIndexed { index, (entryIndex, entry) ->
-            if (index > 0 || (ai && draft!!.thread.size > 1)) result.addView(BriefReviewViews.text(context,
-                context.getString(R.string.review_thread_entry, entryIndex + 1), 12f, secondary = true), BriefReviewViews.params(context, 14))
-            result.addView(BriefReviewViews.text(context, if (entryIndex == rewriteEntry && rewrite != null) rewrite else entry.text, 13f).apply {
-                setTextIsSelectable(!compact && click == null)
-                if (!ai && (compact || reviewPreview)) { maxLines = if (reviewPreview && quoted != null) 3 else if (reviewPreview) 5 else 8; ellipsize = android.text.TextUtils.TruncateAt.END }
-            }, BriefReviewViews.params(context, 10))
-            entry.media.firstOrNull()?.let { media ->
-                val view = draftMedia(context, media, mediaHeight)
-                val overlaidActions = if (index == entries.lastIndex) cardActions else emptyList()
-                result.addView(mediaWithActions(context, view, overlaidActions), mediaParams(context, overlaidActions.isNotEmpty()))
-            }
         }
-        val lastHasMedia = if (post != null) post.media.isNotEmpty() && quoted == null else entries.lastOrNull()?.value?.media?.isNotEmpty() == true
+        val lastHasMedia = post.media.isNotEmpty() && quoted == null
         if (lastHasMedia && cardActions.isNotEmpty()) result.setPadding(result.paddingLeft, result.paddingTop, result.paddingRight, 0)
         if (!lastHasMedia && cardActions.isNotEmpty()) result.addView(BriefReviewViews.actions(context, cardActions, compact = true).apply {
             if (quoted != null) setPadding(0, BriefReviewViews.dp(context, 5), 0, BriefReviewViews.dp(context, 5))
@@ -241,7 +208,7 @@ internal object BriefReviewTweetCard {
             if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {
-            context.startActivity(Intent(intent).setPackage(XComposeIntents.X_APP_PACKAGE))
+            context.startActivity(Intent(intent).setPackage("com.twitter.android"))
         } catch (_: ActivityNotFoundException) {
             context.startActivity(intent)
         } catch (_: SecurityException) {
@@ -335,30 +302,7 @@ internal object BriefReviewTweetCard {
         } else if (media is ViewGroup) for (index in 0 until media.childCount) routeMediaTaps(media.getChildAt(index), owner)
     }
 
-    private fun draftMedia(context: Context, media: ScheduleMediaSource, maximumHeightDp: Int): View = MediaAspectImageView(context).apply {
-        contentDescription = context.getString(R.string.post_media)
-        scaleType = ImageView.ScaleType.FIT_CENTER
-        maximumMediaHeightPx = BriefReviewViews.dp(context, maximumHeightDp)
-        when (media) {
-            is PublicUrlMedia -> ProfileImageLoader.loadMediaInto(context, this, media.displayUrl, BriefReviewViews.dp(context, 14))
-            is LocalUriMedia -> {
-                setBackgroundResource(R.drawable.schedule_media_preview_bg)
-                outlineProvider = ViewOutlineProvider.BACKGROUND
-                clipToOutline = true
-                (context as? LifecycleOwner)?.lifecycleScope?.launch {
-                    val bitmap = withContext(Dispatchers.IO) {
-                        BriefCoachMedia.localPreview(context.applicationContext, media.uri, media.mimeType?.startsWith("video/") == true)?.let { source ->
-                            val scale = minOf(1.0, 512.0 / maxOf(source.width, source.height))
-                            if (scale == 1.0) source else android.graphics.Bitmap.createScaledBitmap(source,
-                                (source.width * scale).toInt().coerceAtLeast(1), (source.height * scale).toInt().coerceAtLeast(1), true)
-                                .also { if (it !== source) source.recycle() }
-                        }
-                    }
-                    if (bitmap != null) setImageBitmap(bitmap) else visibility = View.GONE
-                }
-            }
-        }
-    }
+
 
     private fun mediaWithActions(context: Context, media: View, actions: List<BriefReviewAction>): View {
         if (actions.isEmpty()) return media

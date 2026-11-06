@@ -120,8 +120,8 @@ object ScheduleQueuePolicy {
         ScheduleProvider.LOCAL_REMINDER ->
             post.provider == ScheduleProvider.LOCAL_REMINDER &&
                 listOf(post.accountId, post.accountUsername).any {
-                    ScheduleAccountMapping.normalize(it.orEmpty()) ==
-                        ScheduleAccountMapping.normalize(defaultUsername)
+                    normalizeLegacyScheduleAccount(it.orEmpty()) ==
+                        normalizeLegacyScheduleAccount(defaultUsername)
                 }
         ScheduleProvider.BUFFER ->
             post.provider == ScheduleProvider.BUFFER &&

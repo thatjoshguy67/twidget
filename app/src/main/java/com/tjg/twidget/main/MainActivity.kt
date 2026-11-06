@@ -15,7 +15,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewTreeObserver
-import android.view.ViewStub
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
@@ -32,9 +31,7 @@ import com.tjg.twidget.followers.TopFollowersBridgeSyncWorker
 import com.tjg.twidget.notices.NoticeBadgeDrawable
 import com.tjg.twidget.notices.NoticesActivity
 import com.tjg.twidget.notices.ReleaseNoticesStore
-import com.tjg.twidget.schedule.ScheduleAccountScope
-import com.tjg.twidget.schedule.ScheduleComposeActivity
-import com.tjg.twidget.schedule.ScheduleQueueHostActivity
+import com.tjg.twidget.ui.EdgeToEdgeActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import com.tjg.twidget.update.AppUpdateManager
 import com.tjg.twidget.update.UpdateCheckWorker
@@ -42,13 +39,9 @@ import com.tjg.twidget.update.UpdateNotificationHelper
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as OneUiIconR
-import dev.oneuiproject.oneui.layout.ToolbarLayout
 
-class MainActivity : ScheduleQueueHostActivity() {
-    override val embedsScheduleQueue: Boolean = true
+class MainActivity : EdgeToEdgeActivity() {
 
-    private var destination = MainDestination.DASHBOARD
-    private lateinit var scheduleBackCallback: androidx.activity.OnBackPressedCallback
     internal var accounts = emptyList<String>()
     internal var selectedAccount: String = ""
     internal var analytics: PostAnalytics? = null
@@ -60,9 +53,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     internal lateinit var postAnalyticsBinder: MainPostAnalyticsBinder
     internal lateinit var editModeController: MainEditModeController
     private var skipNextResumeRender = false
-    private var navigationBarInset = 0
     private var launchChromeReady = false
-    private var embeddedScheduleAttached = false
 
     private val bangerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -77,7 +68,7 @@ class MainActivity : ScheduleQueueHostActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val account = intent?.getStringExtra(com.tjg.twidget.brief.BriefStore.EXTRA_USERNAME) ?: return
             if (!account.equals(selectedAccount, true) || isFinishing || isDestroyed ||
-                destination != MainDestination.DASHBOARD || editModeController.editMode) return
+                editModeController.editMode) return
             dashboardBinder.bindContent(refreshRemote = false)
         }
     }
@@ -106,50 +97,26 @@ class MainActivity : ScheduleQueueHostActivity() {
             accounts = { accounts },
             selectedAccount = { selectedAccount },
             onAccountSelected = { account ->
-                destination = MainDestination.DASHBOARD
                 selectedAccount = account
                 render()
             },
             isEditMode = { editModeController.editMode },
             exitEditMode = { editModeController.setEditMode(false) },
-            isSchedulePage = { destination == MainDestination.SCHEDULING },
-            openSchedule = ::showScheduling,
         )
         syncController = MainSyncController(this)
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
-        destination = savedInstanceState?.getString(STATE_DESTINATION)
-            ?.let(MainDestination::valueOf)
-            ?: MainDestination.DASHBOARD
         accounts = TwidgetStore.accounts(this)
         selectedAccount = savedInstanceState?.getString(STATE_ACCOUNT)
             ?.takeIf { saved -> accounts.any { it.equals(saved, ignoreCase = true) } }
             ?: accounts.firstOrNull().orEmpty()
-        if (destination == MainDestination.DASHBOARD && selectedAccount.isNotBlank()) {
+        if (selectedAccount.isNotBlank()) {
             drawerController.renderHeader()
-        } else if (destination == MainDestination.SCHEDULING) {
-            findViewById<ToolbarLayout>(R.id.main_toolbar_layout).setTitle(getString(R.string.schedule_title))
         }
         setupLaunchChrome()
-        updateScheduleFabVisibility()
-        val scheduleFab = findViewById<View>(R.id.schedule_fab)
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout)) { inset ->
-            navigationBarInset = inset
-            scheduleFab.updateBottomMarginForNavigationBar(dp(20), inset)
-            updateScheduleBottomInsets(inset)
-        }
+        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout))
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
-        scheduleBackCallback = object : androidx.activity.OnBackPressedCallback(
-            destination == MainDestination.SCHEDULING,
-        ) {
-            override fun handleOnBackPressed() {
-                if (handleEmbeddedScheduleBack()) return
-                showDashboard()
-                isEnabled = false
-            }
-        }
-        onBackPressedDispatcher.addCallback(this, scheduleBackCallback)
         // Bind the saved dashboard before its first frame. Remote refresh and
         // maintenance begin afterwards without replacing the cached cards.
         render(refreshRemote = false)
@@ -172,10 +139,8 @@ class MainActivity : ScheduleQueueHostActivity() {
                         RefreshWorker.schedule(applicationContext)
                         UpdateCheckWorker.schedule(applicationContext)
                     }
-                    if (destination == MainDestination.DASHBOARD) {
-                        syncController.maybeRefreshAnalytics(selectedAccount)
-                        syncController.maybeRefreshStreak(selectedAccount)
-                    }
+                    syncController.maybeRefreshAnalytics(selectedAccount)
+                    syncController.maybeRefreshStreak(selectedAccount)
                     if (savedInstanceState == null) checkReleasesOnLaunch()
                     if (savedInstanceState == null && TwidgetStore.settings(this@MainActivity).refreshOnLaunch) {
                         syncController.sync(showProgress = false)
@@ -234,7 +199,6 @@ class MainActivity : ScheduleQueueHostActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main, menu)
-        menuInflater.inflate(R.menu.schedule, menu)
         updateNoticesMenuIcon(menu)
         return true
     }
@@ -256,12 +220,6 @@ class MainActivity : ScheduleQueueHostActivity() {
                 preparedProfileLogo = logo
             }
         }
-        if (destination == MainDestination.SCHEDULING) {
-            setDashboardMenuVisible(menu, false)
-            return super.onPrepareOptionsMenu(menu)
-        }
-        menu.findItem(R.id.schedule_trash_menu)?.isVisible = false
-        menu.findItem(R.id.schedule_settings_menu)?.isVisible = false
         // Set each item's final state once. Temporarily exposing the edit-only
         // action makes the floating toolbar relayout as its overflow popup opens.
         menu.findItem(R.id.menu_notices)?.isVisible = !editModeController.editMode
@@ -276,9 +234,7 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (destination == MainDestination.SCHEDULING) {
-            return super.onOptionsItemSelected(item)
-        }
+
         when (item.itemId) {
             R.id.menu_notices -> {
                 ReleaseNoticesStore.markCurrentAsSeen(this)
@@ -297,7 +253,6 @@ class MainActivity : ScheduleQueueHostActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString(STATE_DESTINATION, destination.name)
         outState.putString(STATE_ACCOUNT, selectedAccount)
         super.onSaveInstanceState(outState)
     }
@@ -365,97 +320,18 @@ class MainActivity : ScheduleQueueHostActivity() {
             selectedAccount = accounts.first()
         }
         val dashboard = findViewById<SwipeRefreshLayout>(R.id.main_refresh)
-        val schedule = findViewById<View>(R.id.main_schedule_host)
-        if (destination == MainDestination.SCHEDULING) {
-            ensureEmbeddedScheduleQueue()
-            dashboard.visibility = View.GONE
-            dashboard.isEnabled = false
-            schedule.visibility = View.VISIBLE
-            showEmbeddedScheduleQueue()
-        } else {
-            hideEmbeddedScheduleQueue()
-            schedule.visibility = View.GONE
-            dashboard.visibility = View.VISIBLE
-            dashboard.isEnabled = true
-            if (bindDashboard) dashboardBinder.bindContent(refreshRemote)
-        }
-        if (::scheduleBackCallback.isInitialized) {
-            scheduleBackCallback.isEnabled = destination == MainDestination.SCHEDULING
-        }
+        dashboard.visibility = View.VISIBLE
+        dashboard.isEnabled = true
+        if (bindDashboard) dashboardBinder.bindContent(refreshRemote)
         drawerController.buildDrawer()
-        if (destination == MainDestination.SCHEDULING) {
-            findViewById<ToolbarLayout>(R.id.main_toolbar_layout).setTitle(getString(R.string.schedule_title))
-        } else {
-            drawerController.renderHeader()
-        }
-        updateScheduleFabVisibility()
-    }
-
-    private fun setupScheduleAction() {
-        findViewById<View>(R.id.schedule_fab).setOnClickListener {
-            val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')
-            startRightSidePopOverActivity(
-                Intent(this, ScheduleComposeActivity::class.java)
-                    .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, defaultAccount)
-            )
-        }
+        drawerController.renderHeader()
     }
 
     private fun setupLaunchChrome() {
         if (launchChromeReady) return
         syncController.setupRefresh()
         drawerController.setupDrawerChrome()
-        setupScheduleAction()
         launchChromeReady = true
-    }
-
-    private fun ensureEmbeddedScheduleQueue() {
-        if (embeddedScheduleAttached) return
-        val root = findViewById<View?>(R.id.schedule_queue_container)
-            ?: findViewById<ViewStub>(R.id.schedule_page_stub).inflate()
-        attachEmbeddedScheduleQueue(
-            toolbar = findViewById<ToolbarLayout>(R.id.main_toolbar_layout),
-            root = root,
-        )
-        updateScheduleBottomInsets(navigationBarInset)
-        embeddedScheduleAttached = true
-    }
-
-    internal fun updateScheduleFabVisibility() {
-        val defaultAccount = TwidgetStore.settings(this).username
-        findViewById<View>(R.id.schedule_fab)?.visibility = if (
-            destination == MainDestination.DASHBOARD &&
-                !editModeController.editMode && selectedAccount.equals(defaultAccount, ignoreCase = true)
-        ) View.VISIBLE else View.GONE
-    }
-
-    override fun requestedUsername(): String =
-        ScheduleAccountScope.resolve(selectedAccount, super.requestedUsername())
-
-    private fun showScheduling(account: String) {
-        selectedAccount = ScheduleAccountScope.resolve(account, selectedAccount)
-        editModeController.setEditMode(false)
-        destination = MainDestination.SCHEDULING
-        render()
-        invalidateOptionsMenu()
-    }
-
-    private fun showDashboard() {
-        destination = MainDestination.DASHBOARD
-        render()
-        invalidateOptionsMenu()
-    }
-
-    private fun setDashboardMenuVisible(menu: Menu, visible: Boolean) {
-        listOf(
-            R.id.menu_notices,
-            R.id.menu_add_widget,
-            R.id.menu_open_profile,
-            R.id.menu_edit_layout,
-            R.id.menu_reset_layout,
-            R.id.menu_add_card,
-            R.id.menu_done_editing,
-        ).forEach { menu.findItem(it)?.isVisible = visible }
     }
 
     private fun openActiveProfile() {
@@ -490,13 +366,7 @@ class MainActivity : ScheduleQueueHostActivity() {
 
     internal fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private enum class MainDestination {
-        DASHBOARD,
-        SCHEDULING,
-    }
-
     private companion object {
-        const val STATE_DESTINATION = "main_destination"
         private const val STATE_ACCOUNT = "main_account"
     }
 }

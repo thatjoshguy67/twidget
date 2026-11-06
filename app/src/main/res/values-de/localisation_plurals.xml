@@ -16,18 +16,6 @@
         <item quantity="one">Engagement-Rate</item>
         <item quantity="other">Engagement-Rate</item>
     </plurals>
-    <plurals name="l10n_buffer_retry_minutes">
-        <item quantity="one">Buffer-Limit erreicht. Versuche es in %1$s Minute erneut.</item>
-        <item quantity="other">Buffer-Limit erreicht. Versuche es in %1$s Minuten erneut.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_hours">
-        <item quantity="one">Buffer-Limit erreicht. Versuche es in %1$s Stunde erneut.</item>
-        <item quantity="other">Buffer-Limit erreicht. Versuche es in %1$s Stunden erneut.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_days">
-        <item quantity="one">Buffer-Limit erreicht. Versuche es in %1$s Tag erneut.</item>
-        <item quantity="other">Buffer-Limit erreicht. Versuche es in %1$s Tagen erneut.</item>
-    </plurals>
     <plurals name="widget_count_followers">
         <item quantity="one">Follower</item>
         <item quantity="other">Follower</item>

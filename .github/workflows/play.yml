@@ -82,9 +82,6 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
-          CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
           BETA_NUMBER: ${{ inputs.beta_number }}
         run: ./gradlew testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta "-PbetaNumber=$BETA_NUMBER" --no-daemon --stacktrace
 
@@ -93,9 +90,6 @@ jobs:
         env:
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-          BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
-          CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
         run: ./gradlew testPlayReleaseUnitTest compilePlayDebugAndroidTestKotlin bundlePlayRelease lintPlayRelease --no-daemon --stacktrace
       - name: Verify Play bundle excludes the APK updater
         env:

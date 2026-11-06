@@ -23,10 +23,6 @@ import com.tjg.twidget.main.MilestoneMetric
 import com.tjg.twidget.main.MilestoneMetricResolver
 import com.tjg.twidget.main.MilestonePerformanceState
 import com.tjg.twidget.main.MilestonePolicy
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleStatus
-import com.tjg.twidget.schedule.ScheduleStore
-import com.tjg.twidget.schedule.ScheduledPost
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -38,7 +34,7 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 22
+    private const val ENGINE_VERSION = 23
 
     fun rebuild(context: Context, username: String, force: Boolean = false): BriefSnapshot {
         val clean = username.trim().trimStart('@')
@@ -46,11 +42,6 @@ object BriefEngine {
         val analytics = AnalyticsClient.cached(context, clean)
         val followerState = TopFollowersStore.read(context, clean)
         val content = BriefSettingsStore.enabledContent(context)
-        val upcomingTweets = if (BriefContentCategory.SCHEDULED_TWEETS in content) {
-            upcomingTweets(context, clean)
-        } else {
-            emptyList()
-        }
         val previous = BriefStore.read(context, clean)
         val strings = BriefStrings.from(context)
         val fingerprint = contextFingerprint(context, clean, strings)
@@ -69,14 +60,14 @@ object BriefEngine {
             return previous
         }
 
-        val evaluation = evaluate(context, clean, stats, analytics, followerState, previous, upcomingTweets, strings)
+        val evaluation = evaluate(context, clean, stats, analytics, followerState, previous, emptyList(), strings)
 
         val editorial = BriefEditorialSummary.from(
             cards = evaluation.selected,
             strings = strings,
             followersToday = evaluation.report.followersToday,
             followersWeek = evaluation.report.followersWeek,
-            upcomingTweets = upcomingTweets.size,
+            upcomingTweets = 0,
         )
         val rebuilt = BriefSnapshot(
             username = clean,
@@ -93,7 +84,7 @@ object BriefEngine {
             headline = editorial.title,
             subheading = editorial.body,
             shortDescription = editorial.shortDescription,
-            upcomingTweets = upcomingTweets,
+            upcomingTweets = emptyList(),
             topFollowerRanks = evaluation.currentRanks,
             engineVersion = ENGINE_VERSION,
             contextFingerprint = fingerprint,
@@ -119,11 +110,7 @@ object BriefEngine {
             analytics = AnalyticsClient.cached(context, clean),
             followerState = TopFollowersStore.read(context, clean),
             previous = BriefStore.read(context, clean),
-            upcomingTweets = if (BriefContentCategory.SCHEDULED_TWEETS in content) {
-                upcomingTweets(context, clean)
-            } else {
-                emptyList()
-            },
+            upcomingTweets = emptyList(),
         ).report
     }
 
@@ -153,11 +140,6 @@ object BriefEngine {
         }.toMap()
         val activity = DailyStreakStore.snapshot(context, username)
         val content = BriefSettingsStore.enabledContent(context)
-        val schedules = if (content.any(BriefContentCategory::usesScheduledPostData)) {
-            ScheduleStore(context).listForAccount(username)
-        } else {
-            emptyList()
-        }
         val now = System.currentTimeMillis()
         val candidates = mutableListOf<BriefCard>()
 
@@ -187,12 +169,7 @@ object BriefEngine {
         if (BriefContentCategory.TOP_FOLLOWERS in content) {
             topFollowerCard(followerState.top, previous, followerState.completedAt, strings)?.let(candidates::add)
         }
-        if (BriefContentCategory.SCHEDULE_HEALTH in content) {
-            BriefGuidePolicy.scheduleCard(schedules, strings, now)?.let(candidates::add)
-        }
-        if (BriefContentCategory.POST_FOLLOW_THROUGH in content) {
-            BriefGuidePolicy.followThroughCard(schedules, analytics, strings, now)?.let(candidates::add)
-        }
+
         if (BriefContentCategory.POSTING_GUIDANCE in content) {
             BriefGuidePolicy.postingCard(analytics, strings, now)?.let(candidates::add)
         }
@@ -231,7 +208,7 @@ object BriefEngine {
                     ?.let { resolveBriefPost(it, analytics)?.views },
                 postingStreak = activity.streak,
                 originalActivityComplete = activity.activityComplete,
-                upcomingTweets = upcomingTweets.size,
+                upcomingTweets = 0,
                 followerScanCompletedAt = followerState.completedAt,
                 followersScanned = followerState.scanned,
                 rankedCandidates = ranked,
@@ -448,22 +425,12 @@ object BriefEngine {
         strings: BriefStrings,
     ): BriefCard? {
         val streak = DailyStreakStore.snapshot(context, username)
-        val scheduledToday = upcomingTweets.firstOrNull { isScheduledToday(it, now) }
         val endOfDay = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault())
             .toLocalDate().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val urgency = dailyUrgency(now)
         if (streak.streak <= 0 && !BriefActivityPolicy.shouldStart(streak)) return null
         if (streak.streak <= 0) {
-            val body = strings.text(
-                when {
-                    scheduledToday?.provider == ScheduleProvider.BUFFER && scheduledToday.status == ScheduleStatus.SCHEDULED ->
-                        R.string.brief_card_streak_start_buffer
-                    scheduledToday?.provider == ScheduleProvider.LOCAL_REMINDER && scheduledToday.status == ScheduleStatus.NEEDS_ACTION ->
-                        R.string.brief_card_streak_start_ready
-                    scheduledToday != null -> R.string.brief_card_streak_start_queued
-                    else -> R.string.brief_card_streak_start_idle
-                },
-            )
+            val body = strings.text(R.string.brief_card_streak_start_idle)
             return BriefCard(
                 "start-streak",
                 BriefCardType.STREAK,
@@ -483,11 +450,6 @@ object BriefEngine {
             strings.quantityText(R.plurals.brief_card_streak_title, streak.streak, streak.streak),
             when {
                 streak.activeToday -> strings.text(R.string.brief_card_streak_kept_today)
-                scheduledToday?.provider == ScheduleProvider.BUFFER && scheduledToday.status == ScheduleStatus.SCHEDULED ->
-                    strings.quantityText(R.plurals.brief_card_streak_buffer, streak.streak, streak.streak)
-                scheduledToday?.provider == ScheduleProvider.LOCAL_REMINDER && scheduledToday.status == ScheduleStatus.NEEDS_ACTION ->
-                    strings.quantityText(R.plurals.brief_card_streak_ready, streak.streak, streak.streak)
-                scheduledToday != null -> strings.quantityText(R.plurals.brief_card_streak_queued, streak.streak, streak.streak)
                 else -> strings.quantityText(R.plurals.brief_card_streak_tweet_today, streak.streak, streak.streak)
             },
             BriefRankingPolicy.streak(streak.streak, streak.activeToday),
@@ -498,38 +460,6 @@ object BriefEngine {
             ),
         )
     }
-
-    private fun upcomingTweets(context: Context, username: String): List<BriefUpcomingTweet> {
-        val now = System.currentTimeMillis()
-        return ScheduleStore(context).listForAccount(username)
-            .asSequence()
-            .filter { BriefSchedulePolicy.isRelevant(it, now) }
-            .sortedWith(compareBy({ scheduleUrgency(it.status) }, { it.scheduledAt ?: Long.MAX_VALUE }))
-            .take(3)
-            .map { post ->
-                BriefUpcomingTweet(
-                    id = post.id,
-                    provider = post.provider,
-                    status = post.status,
-                    scheduledAt = post.scheduledAt ?: 0L,
-                    preview = post.thread.firstOrNull()?.text.orEmpty().replace(Regex("\\s+"), " ").trim().take(140),
-                    threadCount = post.thread.size,
-                    mediaCount = post.thread.sumOf { it.media.size },
-                    errorMessage = post.errorMessage.orEmpty().take(120),
-                )
-            }
-            .toList()
-    }
-
-    private fun scheduleUrgency(status: ScheduleStatus): Int = when (status) {
-        ScheduleStatus.NEEDS_ACTION, ScheduleStatus.FAILED -> 0
-        ScheduleStatus.SCHEDULED -> 1
-        else -> 2
-    }
-
-    private fun isScheduledToday(tweet: BriefUpcomingTweet, now: Long): Boolean = tweet.scheduledAt > 0L &&
-        Instant.ofEpochMilli(tweet.scheduledAt).atZone(ZoneId.systemDefault()).toLocalDate() ==
-        Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()
 
     private fun dailyUrgency(now: Long): Double {
         val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
@@ -591,13 +521,6 @@ object BriefEngine {
         val goals = MilestoneGoalStore.readAll(context, username)
         val streak = DailyStreakStore.snapshot(context, username)
         val now = System.currentTimeMillis()
-        val schedule = ScheduleStore(context).listForAccount(username)
-            .filter {
-                BriefSchedulePolicy.isRelevant(it, now) ||
-                    it.status == ScheduleStatus.DRAFT ||
-                    it.status == ScheduleStatus.PUBLISHED
-            }
-            .joinToString(";") { "${it.id}:${it.status}:${it.scheduledAt}:${it.updatedAt}" }
         return listOf(
             goals.joinToString(";") { goal ->
                 "${goal.metric.storageId}:${goal.target}:${goal.autoAdjust}"
@@ -606,7 +529,6 @@ object BriefEngine {
             streak.activeToday,
             streak.lastActiveDay,
             streak.activityCheckedAt,
-            schedule,
             BriefRankingPolicy.contextBucket(now),
             BriefSettingsStore.contentFingerprint(context),
             BriefSettingsStore.provider(context).storageId,
@@ -678,15 +600,6 @@ internal object BriefGoalCopy {
         val roundedUp = kotlin.math.ceil(value).toLong()
         return strings.quantityText(pluralRes, BriefStrings.quantity(roundedUp), strings.number(roundedUp))
     }
-}
-
-internal object BriefSchedulePolicy {
-    fun isRelevant(post: ScheduledPost, now: Long = System.currentTimeMillis()): Boolean =
-        when (post.status) {
-            ScheduleStatus.SCHEDULED -> post.scheduledAt?.let { it > now } == true
-            ScheduleStatus.NEEDS_ACTION, ScheduleStatus.FAILED -> true
-            else -> false
-        }
 }
 
 internal object BriefRankingPolicy {

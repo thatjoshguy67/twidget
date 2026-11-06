@@ -8,16 +8,6 @@
     <string name="l10n_error_future_time">L\'hora programada ha de ser futura.</string>
     <string name="l10n_error_schedule_failed">No s\'ha pogut programar. Torna-ho a provar.</string>
     <string name="l10n_error_reminder_failed">No s\'ha pogut programar el recordatori. Comprova els permisos d\'alarma.</string>
-    <string name="l10n_error_buffer_request">Buffer no ha pogut completar la sol·licitud. Torna-ho a provar.</string>
-    <string name="l10n_error_buffer_channel">Tria un canal d\'X de Buffer.</string>
-    <string name="l10n_error_buffer_time">Cal indicar una hora programada.</string>
-    <string name="l10n_error_buffer_connect">Connecta Buffer a la configuració de programació.</string>
-    <string name="l10n_error_buffer_login">No s\'ha pogut iniciar la sessió a Buffer. Torna-ho a provar.</string>
-    <string name="l10n_error_buffer_verify">No s\'ha pogut verificar l\'inici de sessió a Buffer. Torna-ho a provar.</string>
-    <string name="l10n_error_buffer_config">L\'inici de sessió a Buffer no està configurat en aquesta versió.</string>
-    <string name="l10n_error_buffer_limit">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar més tard.</string>
-    <string name="l10n_error_cloudinary_config">Afegeix el nom del núvol i la configuració predefinida de càrrega de Cloudinary a la configuració de Buffer per adjuntar fitxers del dispositiu a les publicacions de Buffer.</string>
-    <string name="l10n_error_upload">No s\'ha pogut pujar el contingut a Cloudinary. Comprova la connexió i la configuració de càrrega.</string>
     <string name="l10n_error_read_media">No s\'ha pogut llegir el contingut multimèdia seleccionat.</string>
     <string name="l10n_error_media_large">El fitxer multimèdia és massa gran.</string>
     <string name="l10n_error_save_media">No s\'ha pogut desar el contingut multimèdia. Comprova l\'accés a l\'emmagatzematge i torna-ho a provar.</string>
@@ -35,8 +25,6 @@
     <string name="l10n_error_account_exists">Aquest nom d\'usuari ja té dades desades. S\'han conservat els comptes existents.</string>
     <string name="l10n_error_account_invalid">Introdueix un nom d\'usuari d\'X vàlid.</string>
     <string name="l10n_error_account_save">No s\'han pogut desar les dades del compte. Reinicia l\'app per recuperar-les de manera segura.</string>
-    <string name="l10n_buffer_connected_message">Buffer connectat</string>
-    <string name="l10n_buffer_retry_wait">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s.</string>
     <string name="l10n_widget_followers_of">de seguidors</string>
     <string name="l10n_import_localized_range">de %1$s a %2$s</string>
     <string name="l10n_error_csv_inconsistent">La fila %1$s indica %2$s interaccions, menys que les %3$s accions d\'interacció visibles.</string>

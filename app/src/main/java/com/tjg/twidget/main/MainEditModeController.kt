@@ -142,7 +142,6 @@ internal class MainEditModeController(
         if (editMode == enabled) return
         editMode = enabled
         exitEditModeOnBack.isEnabled = enabled
-        activity.updateScheduleFabVisibility()
         if (!enabled) clearDragPreview()
         activity.invalidateOptionsMenu()
         activity.dashboardBinder.animateEditModeChange(enabled, onTransitionStart = {

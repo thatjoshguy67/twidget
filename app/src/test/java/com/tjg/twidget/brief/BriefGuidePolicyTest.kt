@@ -17,50 +17,13 @@ class BriefGuidePolicyTest {
     private val strings = TestBriefStrings()
     private val day = 24 * 60 * 60 * 1000L
 
-    @Test
-    fun scheduleHealthPrioritisesAQueuedPostThatNeedsAttention() {
-        val card = BriefGuidePolicy.scheduleCard(
-            listOf(schedule("failed", ScheduleStatus.FAILED, now + day)),
-            strings,
-            now,
-        )
 
-        assertEquals(BriefCardType.SCHEDULE_GUIDE, card?.type)
-        assertEquals(BriefCardAction.OPEN_SCHEDULER, card?.action)
-        assertTrue(card?.title.orEmpty().contains("Fix"))
-    }
 
-    @Test
-    fun scheduleHealthStaysHiddenBeforeSchedulingHasBeenUsed() {
-        assertNull(BriefGuidePolicy.scheduleCard(emptyList(), strings, now))
-    }
 
-    @Test
-    fun scheduleHealthIdentifiesTheDraftUsedForItsPreview() {
-        val draft = schedule("draft-preview", ScheduleStatus.DRAFT, now)
 
-        val card = BriefGuidePolicy.scheduleCard(listOf(draft), strings, now)
 
-        assertEquals(draft.id, card?.actionData)
-    }
 
-    @Test
-    fun followThroughLinksAConservativelyMatchedPublishedTweet() {
-        val publishedAt = now - 2 * day
-        val text = "A sufficiently distinctive scheduled tweet about making mobile tools easier"
-        val post = post(text, publishedAt, views = 2_000, engagements = 80)
-        val card = BriefGuidePolicy.followThroughCard(
-            schedules = listOf(schedule("published", ScheduleStatus.PUBLISHED, publishedAt, text)),
-            analytics = analytics(listOf(post, post("Second mature tweet with enough content", now - 3 * day), post("Third mature tweet with enough content", now - 5 * day / 2))),
-            strings = strings,
-            now = now,
-        )
 
-        assertEquals(BriefCardType.POST_FOLLOW_THROUGH, card?.type)
-        assertEquals(BriefCardAction.OPEN_POST, card?.action)
-        assertEquals(post.url, card?.actionData)
-        assertEquals("Tweeted with Buffer", card?.sourceAttribution)
-    }
 
     @Test
     fun nextPostGuidanceRequiresARepeatableSignal() {
@@ -74,23 +37,10 @@ class BriefGuidePolicyTest {
         val card = BriefGuidePolicy.postingCard(analytics(posts), strings, now)
 
         assertEquals(BriefCardType.POSTING_GUIDE, card?.type)
-        assertEquals(BriefCardAction.COMPOSE_TWEET, card?.action)
+        assertEquals(BriefCardAction.NONE, card?.action)
     }
 
-    @Test
-    fun scheduledPostIsNotJudgedAgainstMuchOlderPosts() {
-        val publishedAt = now - day
-        val text = "A sufficiently distinctive scheduled tweet about making mobile tools easier"
-        val posts = listOf(
-            post(text, publishedAt, 200, 2),
-            post("Older first original post", now - 6 * day, 2_000, 100),
-            post("Older second original post", now - 7 * day, 2_000, 100),
-        )
-        assertNull(BriefGuidePolicy.followThroughCard(
-            listOf(schedule("published", ScheduleStatus.PUBLISHED, publishedAt, text)),
-            analytics(posts), strings, now,
-        ))
-    }
+
 
     @Test
     fun formatAndTimingAdviceStayHiddenWhenAgeExplainsTheGrouping() {
@@ -125,20 +75,6 @@ class BriefGuidePolicyTest {
         assertNull(BriefGuidePolicy.postingCard(analytics(posts), strings, now + 2 * day))
     }
 
-    private fun schedule(
-        id: String,
-        status: ScheduleStatus,
-        at: Long,
-        text: String = "A complete scheduled tweet with enough content",
-    ) = ScheduledPost(
-        id = id,
-        provider = ScheduleProvider.BUFFER,
-        status = status,
-        accountUsername = "person",
-        scheduledAt = at,
-        thread = listOf(ScheduleThreadItem(text = text)),
-        publishedAt = at.takeIf { status == ScheduleStatus.PUBLISHED },
-    )
 
     private fun analytics(posts: List<PostSummary>) = PostAnalytics(
         userName = "person",

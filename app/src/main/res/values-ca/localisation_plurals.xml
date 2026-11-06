@@ -20,21 +20,6 @@
         <item quantity="many">taxa d\'interacció</item>
         <item quantity="other">taxa d\'interacció</item>
     </plurals>
-    <plurals name="l10n_buffer_retry_minutes">
-        <item quantity="one">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s minut.</item>
-        <item quantity="many">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s minuts.</item>
-        <item quantity="other">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s minuts.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_hours">
-        <item quantity="one">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s hora.</item>
-        <item quantity="many">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s hores.</item>
-        <item quantity="other">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s hores.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_days">
-        <item quantity="one">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s dia.</item>
-        <item quantity="many">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s dies.</item>
-        <item quantity="other">S\'ha assolit el límit de sol·licituds de Buffer. Torna-ho a provar d\'aquí a %1$s dies.</item>
-    </plurals>
     <plurals name="widget_count_followers" tools:ignore="ImpliedQuantity">
         <item quantity="one">Seguidor</item>
         <item quantity="many">Seguidors</item>

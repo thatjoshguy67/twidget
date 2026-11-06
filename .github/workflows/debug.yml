@@ -81,9 +81,6 @@ jobs:
           # auth even for public packages (token needs read:packages).
           GH_PACKAGES_USER: ${{ secrets.GH_PACKAGES_USER }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-          BUFFER_OAUTH_CLIENT_ID: ${{ vars.BUFFER_OAUTH_CLIENT_ID }}
-          CLOUDINARY_CLOUD_NAME: ${{ vars.CLOUDINARY_CLOUD_NAME }}
-          CLOUDINARY_UPLOAD_PRESET: ${{ vars.CLOUDINARY_UPLOAD_PRESET }}
         run: |
           ./gradlew testGithubDebugUnitTest compileGithubDebugAndroidTestKotlin assembleGithubDebug bundleGithubDebug lintGithubDebug --no-daemon --stacktrace
           jarsigner \

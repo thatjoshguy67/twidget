@@ -22,25 +22,23 @@ class OnboardingAccountValidationTest {
 
     @Test
     fun permissionReadinessRequiresBothGrants() {
-        assertTrue(OnboardingPermissionState(true, true).allGranted)
-        assertFalse(OnboardingPermissionState(false, true).allGranted)
-        assertFalse(OnboardingPermissionState(true, false).allGranted)
-        assertFalse(OnboardingPermissionState(false, false).allGranted)
+        assertTrue(OnboardingPermissionState(true).allGranted)
+        assertFalse(OnboardingPermissionState(false).allGranted)
     }
 
     @Test
     fun permissionsAreRequestedInNotificationThenAlarmOrder() {
         assertEquals(
             OnboardingPermissionAction.NOTIFICATIONS,
-            nextOnboardingPermissionAction(OnboardingPermissionState(false, false)),
-        )
-        assertEquals(
-            OnboardingPermissionAction.EXACT_ALARMS,
-            nextOnboardingPermissionAction(OnboardingPermissionState(true, false)),
+            nextOnboardingPermissionAction(OnboardingPermissionState(false)),
         )
         assertEquals(
             OnboardingPermissionAction.COMPLETE,
-            nextOnboardingPermissionAction(OnboardingPermissionState(true, true)),
+            nextOnboardingPermissionAction(OnboardingPermissionState(true)),
+        )
+        assertEquals(
+            OnboardingPermissionAction.COMPLETE,
+            nextOnboardingPermissionAction(OnboardingPermissionState(true)),
         )
     }
 }

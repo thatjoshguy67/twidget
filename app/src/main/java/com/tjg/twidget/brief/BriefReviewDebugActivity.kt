@@ -20,9 +20,6 @@ import com.tjg.twidget.analytics.PostObservation
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.analytics.QuotedPost
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleThreadItem
-import com.tjg.twidget.schedule.ScheduledPost
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import java.io.File
 import java.security.MessageDigest
@@ -44,7 +41,7 @@ class BriefReviewDebugActivity : FoldablePopOverActivity() {
             retry = { render("complete") },
             info = { AlertDialog.Builder(this).setTitle(R.string.review_stat_info_title).setMessage(R.string.review_stat_info_body)
                 .setPositiveButton(android.R.string.ok, null).show() },
-            addKey = ::sampleAction, openPost = { sampleAction() }, compose = { _, _ -> sampleAction() },
+            addKey = ::sampleAction, openPost = { sampleAction() },
             changeMode = ::sampleAction, limits = { body -> AlertDialog.Builder(this).setMessage(body).setPositiveButton(android.R.string.ok, null).show() }))
         val content = findViewById<LinearLayout>(R.id.review_content)
         content.addView(BriefReviewViews.text(this, getString(R.string.debug_synthetic_note), 12f, secondary = true), BriefReviewViews.params(this, 10))
@@ -71,7 +68,7 @@ class BriefReviewDebugActivity : FoldablePopOverActivity() {
 internal object BriefReviewDebugFixtures {
     fun scenarios(context: Context): List<Pair<String, String>> = listOf(
         "complete" to R.string.l10n_preview_complete, "quoted" to R.string.l10n_preview_quote,
-        "draft" to R.string.l10n_preview_draft, "loading" to R.string.l10n_preview_loading,
+        "loading" to R.string.l10n_preview_loading,
         "generating" to R.string.l10n_preview_generating, "refreshing" to R.string.l10n_preview_refreshing,
         "stale" to R.string.l10n_preview_stale, "missing" to R.string.l10n_preview_missing,
     ).map { it.first to context.getString(it.second) } + BriefReviewFailure.entries.map {
@@ -94,18 +91,13 @@ internal object BriefReviewDebugFixtures {
         val observations = listOf(PostObservation(now - 12 * 3_600_000L, 500, 3, 1, 1, 0),
             PostObservation(now - 6 * 3_600_000L, 900, 8, 2, 3, 1), PostObservation(now, 1164, 12, 4, 5, 2))
         val evidence = BriefReviewEvidence.create(post, analytics, observations)
-        val draft = ScheduledPost(provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = username,
-            thread = listOf(ScheduleThreadItem(text = text)), scheduledAt = null)
-        val subject = if (scenario == "draft" || scenario == "stale") {
-            BriefReviewSubject(BriefReviewTarget(username, draftId = draft.id), BriefCoachAi.draft(draft, analytics,
-                BriefPostCoach.draft(draft, analytics, strings, now), strings, now), draft = draft)
-        } else BriefReviewSubject(BriefReviewTarget(username, postUrl = post.url),
+        val subject = BriefReviewSubject(BriefReviewTarget(username, postUrl = post.url),
             BriefCoachAi.review(post, analytics, requireNotNull(BriefPostCoach.review(post, analytics, strings, now)), strings, now)
                 .copy(reviewEvidence = evidence, reviewCitations = evidence.citations(strings)), post = post)
         val result = BriefCoachGeneration.Success(BriefCoachFeedback(context.getString(
-            if (subject.draft != null) R.string.debug_sample_draft_explanation else if (quote != null) R.string.debug_sample_quote_explanation else R.string.debug_sample_explanation),
+            if (quote != null) R.string.debug_sample_quote_explanation else R.string.debug_sample_explanation),
             listOf(BriefCoachSuggestion(context.getString(R.string.debug_sample_suggestion), context.getString(R.string.debug_sample_reason),
-                text, "I shipped a tool that compares tweets at similar ages. Which comparison would help you most?", false,
+                text, null, false,
                 subject.input.reviewCitations)), null, if (subject.post != null) evidence.panelIds.toList() else emptyList()), cloud = true)
         val failure = scenario.removePrefix("error_").takeIf { scenario.startsWith("error_") }?.let { name -> BriefReviewFailure.entries.firstOrNull { it.name == name } }
         val phase = when {

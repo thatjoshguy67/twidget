@@ -29,6 +29,7 @@ enum class BriefCardType {
     WORST_POST,
     TOP_FOLLOWER,
     STREAK,
+    // Retained IDs decode old snapshots; retired cards are filtered by BriefStore.
     SCHEDULE_GUIDE,
     POST_FOLLOW_THROUGH,
     POSTING_GUIDE,
@@ -88,11 +89,8 @@ enum class BriefContentCategory(val storageId: String) {
         ACCOUNT_GOALS -> type == BriefCardType.MILESTONE
     }
 
-    fun usesScheduledPostData(): Boolean = this in setOf(
-        SCHEDULED_TWEETS,
-        SCHEDULE_HEALTH,
-        POST_FOLLOW_THROUGH,
-    )
+    /** Retired categories never appear in settings or enable data collection. */
+    fun isRetired(): Boolean = this in setOf(SCHEDULED_TWEETS, SCHEDULE_HEALTH, POST_FOLLOW_THROUGH)
 
     companion object {
         fun forCard(type: BriefCardType): BriefContentCategory? =
@@ -117,6 +115,7 @@ data class BriefCard(
     val narrativeGenerated: Boolean = false,
 )
 
+/** Legacy snapshot shape only. New Briefs never collect or render queued tweets. */
 data class BriefUpcomingTweet(
     val id: String,
     val provider: ScheduleProvider,

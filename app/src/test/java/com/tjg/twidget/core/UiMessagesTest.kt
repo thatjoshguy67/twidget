@@ -30,11 +30,5 @@ class UiMessagesTest {
         assertTrue(render("The scheduled time must be in the future.", Locale.forLanguageTag("es")).contains("futura"))
         assertTrue(render("Text must be 280 characters or fewer.", Locale.GERMAN).contains("280 Zeichen"))
     }
-    @Test fun retryDurationsKeepTheQuantityForEachPersistedMessage() {
-        val one = UiMessages.message(UiMessages.Key.ERROR_BUFFER_WAIT_HOURS, 1)
-        val two = UiMessages.message(UiMessages.Key.ERROR_BUFFER_WAIT_HOURS, 2)
-        val displayed = render("$one\n$two", Locale.forLanguageTag("es"))
-        assertTrue(displayed.contains("1 hora."))
-        assertTrue(displayed.contains("2 horas."))
-    }
+
 }

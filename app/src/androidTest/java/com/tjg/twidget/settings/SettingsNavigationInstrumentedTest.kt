@@ -17,8 +17,6 @@ import com.tjg.twidget.ui.AppAppearance
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.brief.BriefSettingsStore
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.widget.WidgetStyle
 import com.tjg.twidget.widget.RefreshWorker
 import dev.oneuiproject.oneui.preference.LayoutPreference
@@ -39,14 +37,12 @@ class SettingsNavigationInstrumentedTest {
     private lateinit var saved: Map<String, *>
     private lateinit var briefPreferences: SharedPreferences
     private lateinit var savedBrief: Map<String, *>
-    private lateinit var savedProvider: ScheduleProvider
 
     @Before fun preserveSettings() {
         preferences = context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE)
         saved = preferences.all
         briefPreferences = context.getSharedPreferences("twidget_brief_settings", Context.MODE_PRIVATE)
         savedBrief = briefPreferences.all
-        savedProvider = ScheduleSettingsStore.defaultProvider(context)
     }
 
     @After fun restoreSettings() {
@@ -64,7 +60,6 @@ class SettingsNavigationInstrumentedTest {
                 } }
             }.commit()
         }
-        ScheduleSettingsStore.setDefaultProvider(context, savedProvider)
         RefreshWorker.schedule(context)
     }
 
@@ -254,7 +249,7 @@ class SettingsNavigationInstrumentedTest {
                 main.preferenceScreen.getPreference(it).key
             }
             assertEquals(listOf("main_account", "accounts", "appearance", "widgets", "data_sources", "brief_settings_pref",
-                "notifications", SettingsActivity.PREFERENCE_SCHEDULING, "app_language_pref", "about_twidget"),
+                "notifications", "app_language_pref", "about_twidget"),
                 keys.filter { it != "bottom_inset" && it != "debug_menu" && it != "update_suggestion" })
             assertNull(main.findPreference<Preference>("refresh_interval_pref"))
             assertNull(main.findPreference<Preference>("data_source_pref"))
@@ -509,16 +504,7 @@ class SettingsNavigationInstrumentedTest {
         }
     }
 
-    @Test fun schedulingRadioRowsPersistBothMethods() {
-        val activity = launch(SettingsCategoryActivity.intent(context, SettingsPage.SCHEDULING))
-        onMain {
-            val group = fragment(activity).findPreference<LayoutPreference>("schedule_default_method_pref")!!.getView() as RadioItemViewGroup
-            group.check(group.getChildAt(0).id)
-            assertEquals(ScheduleProvider.BUFFER, ScheduleSettingsStore.defaultProvider(context))
-            group.check(group.getChildAt(1).id)
-            assertEquals(ScheduleProvider.LOCAL_REMINDER, ScheduleSettingsStore.defaultProvider(context))
-        }
-    }
+
 
     @Test fun settingsCopyHasGermanResources() {
         val configuration = android.content.res.Configuration(context.resources.configuration).apply { setLocale(java.util.Locale.GERMAN) }
@@ -533,7 +519,6 @@ class SettingsNavigationInstrumentedTest {
             BriefSettingsActivity::class.java to "brief",
             BriefContentSettingsActivity::class.java to "brief-content",
             SettingsDebugActivity::class.java to "debug",
-            SettingsScheduleActivity::class.java to "buffer",
         ).forEach { (type, name) ->
             val activity = launch(Intent(context, type))
             onMain { assertTrue(fragment(activity).preferenceScreen.preferenceCount > 0) }

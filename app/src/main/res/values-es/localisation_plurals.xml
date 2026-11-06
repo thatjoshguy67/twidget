@@ -20,21 +20,6 @@
         <item quantity="many">tasa de interacción</item>
         <item quantity="other">tasa de interacción</item>
     </plurals>
-    <plurals name="l10n_buffer_retry_minutes">
-        <item quantity="one">Límite de Buffer alcanzado. Inténtalo dentro de %1$s minuto.</item>
-        <item quantity="many">Límite de Buffer alcanzado. Inténtalo dentro de %1$s minutos.</item>
-        <item quantity="other">Límite de Buffer alcanzado. Inténtalo dentro de %1$s minutos.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_hours">
-        <item quantity="one">Límite de Buffer alcanzado. Inténtalo dentro de %1$s hora.</item>
-        <item quantity="many">Límite de Buffer alcanzado. Inténtalo dentro de %1$s horas.</item>
-        <item quantity="other">Límite de Buffer alcanzado. Inténtalo dentro de %1$s horas.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_days">
-        <item quantity="one">Límite de Buffer alcanzado. Inténtalo dentro de %1$s día.</item>
-        <item quantity="many">Límite de Buffer alcanzado. Inténtalo dentro de %1$s días.</item>
-        <item quantity="other">Límite de Buffer alcanzado. Inténtalo dentro de %1$s días.</item>
-    </plurals>
     <plurals name="widget_count_followers">
         <item quantity="one">Seguidor</item>
         <item quantity="many">Seguidores</item>

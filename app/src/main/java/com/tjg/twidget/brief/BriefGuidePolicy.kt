@@ -4,8 +4,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostAgeComparison
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.PostSummary
-import com.tjg.twidget.schedule.ScheduleStatus
-import com.tjg.twidget.schedule.ScheduledPost
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -15,130 +13,6 @@ internal object BriefGuidePolicy {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
     private const val MATCH_WINDOW_MS = 3 * DAY_MS
     private const val FOLLOW_UP_WINDOW_MS = 3 * DAY_MS
-
-    fun scheduleCard(
-        posts: List<ScheduledPost>,
-        strings: BriefStrings,
-        now: Long = System.currentTimeMillis(),
-    ): BriefCard? {
-        val active = posts.filter { it.deletedAt == null }
-        val needsAttention = active.firstOrNull {
-            it.status == ScheduleStatus.FAILED || it.status == ScheduleStatus.NEEDS_ACTION
-        }
-        if (needsAttention != null) {
-            return BriefCard(
-                id = "schedule-attention-${needsAttention.id}",
-                type = BriefCardType.SCHEDULE_GUIDE,
-                title = strings.text(R.string.brief_guide_fix_title),
-                body = strings.text(R.string.brief_guide_fix_body),
-                score = 97,
-                action = BriefCardAction.OPEN_SCHEDULER,
-                rankSignals = BriefRankSignals(contextRelevance = 1.0, timeRelevance = 1.0),
-            )
-        }
-
-        val readyDrafts = active.filter { post ->
-            post.status == ScheduleStatus.DRAFT && post.thread.any { it.text.isNotBlank() || it.media.isNotEmpty() }
-        }
-        val previewDraft = readyDrafts.firstOrNull()
-        if (previewDraft != null) {
-            return BriefCard(
-                id = "schedule-drafts-${readyDrafts.size}",
-                type = BriefCardType.SCHEDULE_GUIDE,
-                title = strings.text(
-                    if (readyDrafts.size == 1) R.string.brief_guide_draft_title_one else R.string.brief_guide_draft_title_many,
-                ),
-                body = if (readyDrafts.size == 1) {
-                    strings.text(R.string.brief_guide_draft_body_one)
-                } else {
-                    strings.text(R.string.brief_guide_draft_body_many, readyDrafts.size)
-                },
-                score = 87,
-                action = BriefCardAction.OPEN_SCHEDULER,
-                actionData = previewDraft.id,
-                rankSignals = BriefRankSignals(contextRelevance = 0.88, timeRelevance = 0.75),
-            )
-        }
-
-        // Avoid advertising scheduling to someone who has never used it. Once
-        // it is part of their workflow, a genuine gap becomes useful guidance.
-        if (active.none { it.status != ScheduleStatus.CANCELLED }) return null
-        val next = active.asSequence()
-            .filter { it.status == ScheduleStatus.SCHEDULED }
-            .mapNotNull(ScheduledPost::scheduledAt)
-            .filter { it > now }
-            .minOrNull()
-        if (next != null && next - now <= 3 * DAY_MS) return null
-        return BriefCard(
-            id = "schedule-gap-${now / DAY_MS}",
-            type = BriefCardType.SCHEDULE_GUIDE,
-            title = strings.text(R.string.brief_guide_gap_title),
-            body = strings.text(
-                if (next == null) R.string.brief_guide_gap_body_none else R.string.brief_guide_gap_body_far,
-            ),
-            score = 82,
-            action = BriefCardAction.COMPOSE_TWEET,
-            rankSignals = BriefRankSignals(contextRelevance = 0.72, timeRelevance = 0.65),
-        )
-    }
-
-    fun followThroughCard(
-        schedules: List<ScheduledPost>,
-        analytics: PostAnalytics?,
-        strings: BriefStrings,
-        now: Long = System.currentTimeMillis(),
-    ): BriefCard? {
-        analytics ?: return null
-        if (analytics.cachedAt > now || analytics.recentPosts.size < 3) return null
-        val matched = schedules.asSequence()
-            .filter { it.status == ScheduleStatus.PUBLISHED }
-            .mapNotNull { schedule ->
-                val publishedAt = schedule.publishedAt ?: schedule.scheduledAt ?: return@mapNotNull null
-                if (now - publishedAt !in DAY_MS..(analytics.windowDays * DAY_MS)) return@mapNotNull null
-                val scheduledText = schedule.thread.firstOrNull()?.text.orEmpty()
-                analytics.recentPosts
-                    .filter { post -> timestampsMatch(publishedAt, post.timestamp) && textMatches(scheduledText, post.text) }
-                    .minByOrNull { post -> kotlin.math.abs(post.timestamp - publishedAt) }
-                    ?.let { schedule to it }
-            }
-            .maxByOrNull { (_, post) -> post.timestamp }
-            ?: return null
-        val (schedule, match) = matched
-
-        if ((PostAgeComparison.age(match, analytics) ?: 0L) < DAY_MS) return null
-        val baseline = PostAgeComparison.baseline(match, analytics) ?: return null
-        val viewRatio = baseline.ratio(match, PostSummary::views)
-        val engagementRatio = baseline.ratio(match, PostSummary::engagements)
-        val strong = maxOf(viewRatio ?: 0.0, engagementRatio ?: 0.0) >= 1.35
-        val quiet = viewRatio != null && engagementRatio != null && viewRatio <= 0.7 && engagementRatio <= 0.8
-        if (!strong && !quiet) return null
-        return BriefCard(
-            id = "follow-through-${match.timestamp.takeIf { it > 0L } ?: match.url.hashCode()}",
-            type = BriefCardType.POST_FOLLOW_THROUGH,
-            title = strings.text(
-                if (strong) R.string.brief_guide_follow_through_strong_title else R.string.brief_guide_follow_through_quiet_title,
-            ),
-            body = strings.text(
-                if (strong) R.string.brief_guide_follow_through_strong_body else R.string.brief_guide_follow_through_quiet_body,
-            ),
-            score = if (strong) 94 else 88,
-            action = BriefCardAction.OPEN_POST,
-            actionData = match.url,
-            sourceAttribution = strings.text(
-                when (schedule.provider) {
-                    com.tjg.twidget.schedule.ScheduleProvider.BUFFER -> R.string.brief_guide_source_buffer
-                    com.tjg.twidget.schedule.ScheduleProvider.LOCAL_REMINDER -> R.string.brief_guide_source_twidget
-                },
-            ),
-            rankSignals = BriefRankSignals(
-                contextRelevance = 0.9,
-                timeRelevance = 0.35,
-                occurredAt = match.timestamp,
-                freshForMillis = FOLLOW_UP_WINDOW_MS,
-                validUntil = match.timestamp + analytics.windowDays * DAY_MS,
-            ),
-        )
-    }
 
     fun postingCard(
         analytics: PostAnalytics?,
@@ -183,7 +57,7 @@ internal object BriefGuidePolicy {
             title = strings.text(R.string.brief_guide_follow_up_title),
             body = strings.text(R.string.brief_guide_follow_up_body),
             score = 93,
-            action = BriefCardAction.COMPOSE_TWEET,
+            action = BriefCardAction.NONE,
             rankSignals = BriefRankSignals(
                 contextRelevance = 0.95,
                 timeRelevance = 0.4,
@@ -223,7 +97,7 @@ internal object BriefGuidePolicy {
             title = strings.text(R.string.brief_guide_window_title, label),
             body = strings.text(R.string.brief_guide_window_body, label),
             score = 86,
-            action = BriefCardAction.COMPOSE_TWEET,
+            action = BriefCardAction.NONE,
             rankSignals = BriefRankSignals(contextRelevance = 0.82, timeRelevance = 0.7),
         )
     }
@@ -248,7 +122,7 @@ internal object BriefGuidePolicy {
                 if (mediaWins) R.string.brief_guide_format_media_body else R.string.brief_guide_format_text_body,
             ),
             score = 84,
-            action = BriefCardAction.COMPOSE_TWEET,
+            action = BriefCardAction.NONE,
             rankSignals = BriefRankSignals(contextRelevance = 0.78, timeRelevance = 0.65),
         )
     }

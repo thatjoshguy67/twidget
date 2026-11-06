@@ -1,5 +1,7 @@
 package com.tjg.twidget.main
 
+import com.tjg.twidget.schedule.ScheduleStore
+
 import android.app.Activity
 import androidx.core.widget.NestedScrollView
 import android.content.Context
@@ -11,7 +13,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.tjg.twidget.schedule.*
 import com.tjg.twidget.notices.*
 import com.tjg.twidget.update.ReleaseNotice
 import org.junit.Assume.assumeTrue
@@ -165,7 +166,6 @@ class SeslCompatibilityInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             settle()
             scenario.onActivity { activity ->
-                assertFullyVisible(activity.findViewById(R.id.schedule_fab))
                 val layout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
                 val toolbarPosition = IntArray(2).also(layout.toolbar::getLocationOnScreen)
                 val appbarPosition = IntArray(2).also(layout.appBarLayout::getLocationOnScreen)
@@ -182,7 +182,6 @@ class SeslCompatibilityInstrumentedTest {
                     val floating = layout.toolbar.parent as View
                     assertEquals(false, floating.javaClass.getMethod("getEnableScrollTransition").invoke(floating))
                     assertEquals("Toolbar must remain opaque while scrolling", 1f, floating.alpha, .01f)
-                    assertFullyVisible(activity.findViewById(R.id.schedule_fab))
                 }
                 capture("DashboardScrolled-$index")
             }
@@ -283,84 +282,8 @@ class SeslCompatibilityInstrumentedTest {
         }
     }
 
-    @Test fun composerActionsStayInsideWindowWithScrollAndKeyboard() {
-        val post = ScheduleStore(context).create(ScheduledPost(
-            provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = account,
-            scheduledAt = System.currentTimeMillis() + 3_600_000,
-            thread = List(3) { ScheduleThreadItem(text = "Composer bounds\n".repeat(12)) },
-        ))
-        ActivityScenario.launch<ScheduleComposeActivity>(Intent(context, ScheduleComposeActivity::class.java)
-            .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, post.id)).use { scenario ->
-            settle()
-            scenario.onActivity { activity -> assertComposerChrome(activity) }
-            capture("ComposerNativeInitial")
-            repeat(3) {
-                swipeUp(scenario)
-                settle()
-                scenario.onActivity { activity -> assertComposerChrome(activity) }
-            }
-            capture("ComposerNativeScrolled")
-            scenario.onActivity { activity ->
-                val input = descendants(activity.findViewById<ViewGroup>(R.id.schedule_compose_thread_container))
-                    .filterIsInstance<android.widget.EditText>().last()
-                assertTrue("Composer input must take focus", input.requestFocus())
-            }
-            settle()
-            scenario.onActivity { activity ->
-                val input = activity.currentFocus!!
-                (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
-                    .showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-            }
-            repeat(5) { settle() }
-            capture("ComposerNativeKeyboard")
-            scenario.onActivity { activity ->
-                val decor = activity.window.decorView
-                val insets = ViewCompat.getRootWindowInsets(decor)!!
-                val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                assertTrue("Test must open the keyboard", insets.isVisible(WindowInsetsCompat.Type.ime()))
-                assertComposerChrome(activity)
-                val bottom = activity.findViewById<View>(R.id.schedule_compose_add_thread)
-                val position = IntArray(2).also(bottom::getLocationOnScreen)
-                assertTrue("Bottom actions must clear the keyboard", position[1] + bottom.height <= decor.height - ime)
-            }
-            capture("ComposerNativeKeyboard")
-            scenario.onActivity { activity ->
-                androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
-                    .hide(WindowInsetsCompat.Type.ime())
-            }
-            settle()
-            scenario.onActivity { activity ->
-                assertComposerChrome(activity)
-                val input = descendants(activity.findViewById<ViewGroup>(R.id.schedule_compose_thread_container))
-                    .filterIsInstance<android.widget.EditText>().first()
-                input.setText("Draft from native composer action")
-            }
-            settle()
-            scenario.onActivity { activity ->
-                val toolbar = activity.findViewById<ToolbarLayout>(R.id.schedule_compose_root).toolbar
-                assertTrue(toolbar.menu.findItem(R.id.schedule_compose_save).isEnabled)
-                toolbar.menu.performIdentifierAction(R.id.schedule_compose_draft_button, 0)
-                assertEquals("Draft from native composer action", ScheduleStore(context).get(post.id)!!.thread.first().text)
-            }
-        }
-    }
 
-    private fun assertComposerChrome(activity: ScheduleComposeActivity) {
-        val toolbar = activity.findViewById<ToolbarLayout>(R.id.schedule_compose_root).toolbar
-        assertNull("Save must use native toolbar measurement", toolbar.menu.findItem(R.id.schedule_compose_save).actionView)
-        val toolbarBounds = Rect().also { assertTrue(toolbar.getGlobalVisibleRect(it)) }
-        for (id in listOf(R.id.schedule_compose_save, R.id.schedule_compose_draft_button)) {
-            val action = toolbar.findViewById<View>(id)
-            assertFullyVisible(action)
-            val bounds = Rect().also { action.getGlobalVisibleRect(it) }
-            assertTrue("Action exceeds toolbar: $bounds vs $toolbarBounds", toolbarBounds.contains(bounds))
-        }
-        for (id in listOf(R.id.schedule_compose_attach_media, R.id.schedule_compose_camera,
-            R.id.schedule_compose_time_summary, R.id.schedule_compose_add_thread)) {
-            assertFullyVisible(activity.findViewById(id))
-        }
-        assertEquals("FloatingBottomLayout", activity.findViewById<View>(R.id.schedule_compose_bottom_bar).javaClass.simpleName)
-    }
+
 
     @Test fun widgetSettingsUsesNativeFloatingActions() {
         ActivityScenario.launch(com.tjg.twidget.widget.WidgetConfigActivity::class.java).use { scenario ->
@@ -581,7 +504,6 @@ class SeslCompatibilityInstrumentedTest {
             "Brief" to Intent(context, com.tjg.twidget.settings.BriefSettingsActivity::class.java),
             "BriefContent" to Intent(context, com.tjg.twidget.settings.BriefContentSettingsActivity::class.java),
             "Debug" to Intent(context, com.tjg.twidget.settings.SettingsDebugActivity::class.java),
-            "Buffer" to Intent(context, com.tjg.twidget.settings.SettingsScheduleActivity::class.java),
             "Bridge" to Intent(context, com.tjg.twidget.settings.SettingsAdvancedActivity::class.java),
             "TwitterApis" to Intent(context, com.tjg.twidget.settings.SettingsAdvancedActivity::class.java)
                 .putExtra(com.tjg.twidget.settings.SettingsAdvancedActivity.EXTRA_SOURCE, TwidgetStore.DATA_SOURCE_TWITTERAPIS),
@@ -708,133 +630,11 @@ class SeslCompatibilityInstrumentedTest {
         bitmap.recycle()
     }
 
-    @Test fun floatingScheduleNavigationSelectionAndFab() {
-        context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
-            .putString("username", account).putBoolean("refresh_on_launch", false).commit()
-        ScheduleSettingsStore.setDefaultProvider(context, ScheduleProvider.LOCAL_REMINDER)
-        val post = ScheduleStore(context).create(ScheduledPost(
-            provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = account,
-            scheduledAt = System.currentTimeMillis() + 3_600_000,
-            thread = listOf(ScheduleThreadItem(text = "Floating navigation test")),
-        ))
-        ActivityScenario.launch<ScheduleActivity>(Intent(context, ScheduleActivity::class.java)
-            .putExtra(ScheduleActivity.EXTRA_USERNAME, account)).use { scenario ->
-            settle()
-            scenario.onActivity { activity ->
-                activity.findViewById<ToolbarLayout>(R.id.schedule_root).setExpanded(true, false)
-            }
-            settle()
-            capture("ScheduleFloatingExpanded")
-            scenario.onActivity { activity ->
-                if (com.tjg.twidget.ui.AppAppearance.mode(context) == androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES) {
-                    assertEquals("Dark-mode test must use dark resources", android.content.res.Configuration.UI_MODE_NIGHT_YES, activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                }
-                assertScheduleChrome(activity)
-                assertEquals(View.GONE, activity.findViewById<View>(R.id.schedule_tabs).visibility)
-            }
-            capture("ScheduleFloatingExpanded")
-            swipeUp(scenario)
-            settle()
-            scenario.onActivity { activity ->
-                assertScheduleChrome(activity)
-                val content = activity.findViewById<ViewGroup>(R.id.schedule_content)
-                descendants(content).first { it.isLongClickable }.performLongClick()
-            }
-            settle()
-            scenario.onActivity { activity ->
-                val actions = activity.findViewById<BottomNavigationView>(R.id.schedule_selection_bottom_nav)
-                assertFullyVisible(actions)
-                assertEquals(View.GONE, activity.findViewById<View>(R.id.schedule_primary_button).visibility)
-                val toolbar = activity.findViewById<ToolbarLayout>(R.id.schedule_root)
-                assertTrue(toolbar.isActionMode)
-                val active = activity.findViewById<Toolbar>(dev.oneuiproject.oneui.design.R.id.toolbarlayout_action_mode_toolbar)
-                assertEquals("FloatingToolbarLayout", active.parent.javaClass.simpleName)
-                assertEquals(View.INVISIBLE, toolbar.toolbar.visibility)
-                assertEquals("Selection toolbar uses native start spacing", Toolbar(activity).contentInsetStart, active.contentInsetStart)
-                assertEquals("1", active.findViewById<android.widget.TextView>(dev.oneuiproject.oneui.design.R.id.toolbar_layout_action_mode_title).text.toString())
-                val cancel = active.menu.findItem(dev.oneuiproject.oneui.design.R.id.menu_item_am_cancel)
-                assertNull(cancel.icon)
-                val cancelLabel = descendants(active).filterIsInstance<android.widget.TextView>().first { it.text == cancel.title }
-                assertEquals("Cancel must fit on one line", 1, cancelLabel.lineCount)
-                assertTrue("Cancel text must not be clipped: width=${cancelLabel.width}, padding=${cancelLabel.paddingLeft + cancelLabel.paddingRight}, text=${cancelLabel.paint.measureText(cancelLabel.text.toString())}", cancelLabel.width - cancelLabel.paddingLeft - cancelLabel.paddingRight >= cancelLabel.layout.getLineWidth(0).toInt())
-                assertEquals("Cancel must not be ellipsized", 0, cancelLabel.layout.getEllipsisCount(0))
-                val scrollView = activity.findViewById<androidx.core.widget.NestedScrollView>(R.id.schedule_scroll)
-                assertEquals(true, scrollView.javaClass.getMethod("seslIsFadingEdgeEnabled").invoke(scrollView))
-            }
-            capture("ScheduleFloatingSelection")
-            scenario.onActivity { activity ->
-                activity.findViewById<BottomNavigationView>(R.id.schedule_selection_bottom_nav)
-                    .menu.performIdentifierAction(R.id.schedule_selection_pin, 0)
-                assertTrue(ScheduleStore(context).get(post.id)!!.pinned)
-                assertFalse(activity.findViewById<ToolbarLayout>(R.id.schedule_root).isActionMode)
-            }
-            settle()
-            scenario.onActivity { activity ->
-                val nav = floatingScheduleNav(activity)
-                nav.selectedItemId = nav.menu.getItem(1).itemId
-            }
-            settle()
-            scenario.onActivity { activity ->
-                assertFullyVisible(floatingScheduleNav(activity))
-                val nav = floatingScheduleNav(activity)
-                assertTrue(nav.menu.getItem(1).isChecked)
-                assertFalse(nav.menu.getItem(0).isChecked)
-                assertTrue(nav.findViewById<View>(nav.menu.getItem(1).itemId).background.state.contains(android.R.attr.state_checked))
-                assertEquals(View.GONE, activity.findViewById<View>(R.id.schedule_primary_button).visibility)
-                val content = activity.findViewById<ViewGroup>(R.id.schedule_content)
-                val grid = descendants(content).filterIsInstance<android.widget.GridLayout>().first()
-                grid.children.filterIsInstance<ViewGroup>().forEach { cell ->
-                    val background = (cell.background as android.graphics.drawable.GradientDrawable).color!!.defaultColor
-                    cell.children.filterIsInstance<android.widget.TextView>().forEach { label ->
-                        val surface = (label.background as? android.graphics.drawable.GradientDrawable)?.color?.defaultColor ?: background
-                        assertTrue("Calendar text must contrast with its cell in either theme",
-                            androidx.core.graphics.ColorUtils.calculateContrast(label.currentTextColor, surface) >= 3.0)
-                    }
-                }
-            }
-            capture("ScheduleFloatingCalendar")
-        }
-    }
 
-    @Test fun floatingScheduleNavigationInDarkMode() {
-        instrumentation.runOnMainSync {
-            com.tjg.twidget.ui.AppAppearance.setMode(context, androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)
-        }
-        try {
-            floatingScheduleNavigationSelectionAndFab()
-        } finally {
-            instrumentation.runOnMainSync {
-                com.tjg.twidget.ui.AppAppearance.setMode(context, androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-            }
-        }
-    }
 
-    @Test fun embeddedScheduleNavigationDoesNotLeakOntoDashboard() {
-        context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
-            .putString("username", account).putBoolean("refresh_on_launch", false).commit()
-        TwidgetStore.saveStats(context, ProfileStats("SESL Test", account, 7757, 200, 400, 900))
-        ScheduleSettingsStore.setDefaultProvider(context, ScheduleProvider.LOCAL_REMINDER)
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            settle()
-            scenario.onActivity { activity ->
-                val drawer = activity.findViewById<ViewGroup>(R.id.drawer_nav)
-                val label = descendants(drawer).filterIsInstance<android.widget.TextView>()
-                    .first { it.text.toString() == activity.getString(R.string.schedule_title) }
-                var target: View = label
-                while (!target.isClickable) target = target.parent as View
-                target.performClick()
-            }
-            settle()
-            scenario.onActivity { activity -> assertScheduleChrome(activity) }
-            capture("EmbeddedScheduleFloating")
-            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-            settle()
-            scenario.onActivity { activity ->
-                assertFalse(floatingScheduleNav(activity).isShown)
-                assertFullyVisible(activity.findViewById(R.id.schedule_fab))
-            }
-        }
-    }
+
+
+
 
     @Test fun noticesCardsUseDesignSectionsAndRetainChangelogNavigation() {
         val stable = ReleaseNotice("v99.0.0", "Twidget v99.0.0", "A concise release introduction.\n\n## Added\n- A feature",
@@ -921,28 +721,8 @@ class SeslCompatibilityInstrumentedTest {
         }
     }
 
-    private fun floatingScheduleNav(activity: Activity): BottomNavigationView = activity.findViewById(
-        context.resources.getIdentifier("schedule_view_bottom_nav", "id", context.packageName),
-    )
 
-    private fun assertScheduleChrome(activity: Activity) {
-        val nav = floatingScheduleNav(activity)
-        val fab = activity.findViewById<View>(R.id.schedule_primary_button)
-        assertFullyVisible(nav)
-        assertFullyVisible(fab)
-        val navPosition = IntArray(2).also(nav::getLocationOnScreen)
-        val fabPosition = IntArray(2).also(fab::getLocationOnScreen)
-        assertTrue("Compose must clear the floating navigation", fabPosition[1] + fab.height < navPosition[1])
-        assertEquals(2, nav.menu.size())
-        assertTrue(nav.menu.getItem(0).isCheckable)
-        assertTrue("Items: " + (0 until nav.menu.size()).joinToString { "${nav.menu.getItem(it).itemId}:${nav.menu.getItem(it).title}:${nav.menu.getItem(it).isChecked}" } + " selected=${nav.selectedItemId}", nav.menu.getItem(0).isChecked)
-        val selected = nav.findViewById<View>(nav.menu.getItem(0).itemId)
-        assertTrue("Active destination must draw checked state", selected.background.state.contains(android.R.attr.state_checked))
-        assertNotNull(nav.background)
-        assertTrue("Navigation should wrap its two items", nav.width < activity.window.decorView.width * .85f)
-        assertTrue("Floating navigation needs elevation", nav.elevation > 0f)
-        assertEquals(context.resources.getIdentifier("schedule_navigation_item_background", "drawable", context.packageName), nav.itemBackgroundResource)
-    }
+
 
     private fun descendants(root: ViewGroup): Sequence<View> = sequence {
         for (index in 0 until root.childCount) {

@@ -23,5 +23,3 @@ One UI 9.0 assets from the user-supplied `Settings.apk`:
 `res/drawable-xxhdpi-v4/sec_display_help_{light,dark}_mode.webp`,
 with `_fold_main_screen` and `_tablet` variants for wider displays. These assets
 are not covered by Twidget's MIT licence. The About Settings icon is the supplied Twidget asset.
-The Buffer brand mark is reused from the supplied Figma design in Accounts and
-onboarding to identify the Buffer integration.

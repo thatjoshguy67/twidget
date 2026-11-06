@@ -40,8 +40,6 @@ internal class MainDrawerController(
     private val onAccountSelected: (String) -> Unit,
     private val isEditMode: () -> Boolean = { false },
     private val exitEditMode: () -> Unit = {},
-    private val isSchedulePage: () -> Boolean = { false },
-    private val openSchedule: (String) -> Unit,
 ) {
     private val drawerAccountItemIds = mutableMapOf<Int, String>()
     private val drawerAvatarItemIds = mutableSetOf<Int>()
@@ -114,17 +112,6 @@ internal class MainDrawerController(
         ).apply {
             setIcon(OneUiIconR.drawable.ic_oui_add)
             contentDescription = activity.getString(R.string.add_account)
-        }
-        menu.add(
-            DRAWER_GROUP_ACTIONS,
-            DRAWER_ITEM_SCHEDULE,
-            drawerAccounts.size + 1,
-            activity.getString(R.string.schedule_title),
-        ).apply {
-            setIcon(OneUiIconR.drawable.ic_oui_time_outline)
-            isCheckable = true
-            isChecked = isSchedulePage()
-            contentDescription = activity.getString(R.string.schedule_title)
         }
         drawerNav.refreshDrawerMenu()
         drawerNav.post {
@@ -327,7 +314,6 @@ internal class MainDrawerController(
         }
         listOf(
             DRAWER_ITEM_ADD_ACCOUNT,
-            DRAWER_ITEM_SCHEDULE,
         ).forEach { itemId ->
             drawerNav.findViewById<View>(itemId)
                 ?.findViewById<ImageView>(OneUiDesignR.id.drawer_menu_item_icon)
@@ -424,11 +410,7 @@ internal class MainDrawerController(
             activity.startAddAccountActivity()
             return true
         }
-        if (item.itemId == DRAWER_ITEM_SCHEDULE) {
-            closeDrawerOnCompactScreens()
-            openSchedule(selectedAccount())
-            return true
-        }
+
         return false
     }
 
@@ -462,7 +444,6 @@ internal class MainDrawerController(
         private const val DRAWER_GROUP_ACTIONS = 2
         private const val DRAWER_ACCOUNT_ITEM_BASE = 10_000
         private const val DRAWER_ITEM_ADD_ACCOUNT = 20_000
-        private const val DRAWER_ITEM_SCHEDULE = 20_001
         private const val DRAWER_STANDARD_ICON_ALPHA = 0.7f
     }
 }

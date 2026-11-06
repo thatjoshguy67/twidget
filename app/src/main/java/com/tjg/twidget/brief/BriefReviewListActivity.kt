@@ -10,8 +10,6 @@ import androidx.lifecycle.lifecycleScope
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.ScheduleComposeActivity
-import com.tjg.twidget.schedule.ScheduleStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import kotlinx.coroutines.Dispatchers
@@ -49,19 +47,15 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
             if (!BriefSettingsStore.contentEnabled(this@BriefReviewListActivity, BriefContentCategory.TWEET_REVIEWS) ||
                 TwidgetStore.accounts(this@BriefReviewListActivity).none { it.equals(username, true) }) { finish(); return@launch }
             val excludedPosts = intent.getStringArrayListExtra(EXTRA_POSTS).orEmpty().toSet()
-            val excludedDrafts = intent.getStringArrayListExtra(EXTRA_DRAFTS).orEmpty().toSet()
             val (savedPosts, liveCards) = withContext(Dispatchers.IO) {
                 BriefPublishedReviewStore.posts(this@BriefReviewListActivity, username, savedReviewLimit + 1) to (
                 BriefPostCoach.reviewablePosts(AnalyticsClient.cached(this@BriefReviewListActivity, username), username,
-                    System.currentTimeMillis()) to
-                    BriefPostCoach.readyDrafts(ScheduleStore(this@BriefReviewListActivity).listForAccount(username), username)
-                        .filterNot { it.id in excludedDrafts })
+                    System.currentTimeMillis()))
             }
             val excludedIds = excludedPosts.mapNotNull(BriefPublishedReviewStore::postId).toSet()
-            val posts = (liveCards.first + savedPosts.take(savedReviewLimit))
+            val posts = (liveCards + savedPosts.take(savedReviewLimit))
                 .filterNot { it.url in excludedPosts || BriefPublishedReviewStore.postId(it.url) in excludedIds }
                 .distinctBy { BriefPublishedReviewStore.postId(it.url) ?: it.url }
-            val drafts = liveCards.second
             val content = findViewById<LinearLayout>(R.id.review_content)
             content.removeAllViews()
             fun open(target: BriefReviewTarget) = startRightSidePopOverActivity(BriefTweetReviewActivity.intent(this@BriefReviewListActivity, target))
@@ -71,17 +65,8 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
                     actions = listOf(BriefReviewAction(R.string.review_view) { open(target) })),
                     BriefReviewViews.params(this@BriefReviewListActivity, 10))
             }
-            drafts.forEach { draft ->
-                val target = BriefReviewTarget(username, draftId = draft.id)
-                content.addView(BriefReviewTweetCard.create(this@BriefReviewListActivity, username, draft = draft, compact = true,
-                    actions = listOf(BriefReviewAction(R.string.coach_edit_draft, false) {
-                        startRightSidePopOverActivity(Intent(this@BriefReviewListActivity, ScheduleComposeActivity::class.java)
-                            .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, username)
-                            .putExtra(ScheduleComposeActivity.EXTRA_SCHEDULE_ID, draft.id))
-                    }, BriefReviewAction(R.string.review_view) { open(target) }), onClick = { open(target) }),
-                    BriefReviewViews.params(this@BriefReviewListActivity, 10))
-            }
-            if (posts.isEmpty() && drafts.isEmpty()) content.addView(BriefReviewViews.card(this@BriefReviewListActivity).apply {
+
+            if (posts.isEmpty()) content.addView(BriefReviewViews.card(this@BriefReviewListActivity).apply {
                 addView(BriefReviewViews.text(this@BriefReviewListActivity, getString(R.string.review_list_empty)))
             })
             if (savedPosts.size > savedReviewLimit) content.addView(BriefReviewViews.button(this@BriefReviewListActivity,

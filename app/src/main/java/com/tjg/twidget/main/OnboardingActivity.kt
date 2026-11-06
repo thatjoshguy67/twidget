@@ -48,12 +48,6 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.followers.TopFollowersBridgeCache
 import com.tjg.twidget.followers.TopFollowersStore
 import com.tjg.twidget.providers.FxTwitterClient
-import com.tjg.twidget.schedule.BufferChannel
-import com.tjg.twidget.schedule.BufferClient
-import com.tjg.twidget.schedule.BufferOAuth
-import com.tjg.twidget.schedule.BufferScheduleSync
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.EdgeToEdgeActivity
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.widget.LockScreenFollowerViews
@@ -75,10 +69,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private var welcomeButtonFade: ObjectAnimator? = null
     private var primaryButtonBaseElevation = 0f
     private var asyncGeneration = 0L
-    private var bufferConnectStarted = false
     private var notificationPermissionRequested = false
     private var permissionSequenceInProgress = false
-    private var exactAlarmRequestStarted = false
     private val notificationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -92,8 +84,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             when (step) {
                 STEP_PERMISSIONS -> goToStep(STEP_OVERVIEW)
                 STEP_PROFILE -> goToStep(STEP_PERMISSIONS)
-                STEP_SCHEDULING -> goToStep(STEP_PROFILE)
-                STEP_WIDGETS -> goToStep(STEP_SCHEDULING)
+                STEP_WIDGETS -> goToStep(STEP_PROFILE)
                 STEP_DONE -> goToStep(STEP_WIDGETS)
             }
         }
@@ -165,20 +156,15 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 val state = permissionState()
                 when {
                     state.allGranted -> goToStep(STEP_PROFILE)
-                    state.notificationsGranted && !exactAlarmRequestStarted -> requestExactAlarmPermission()
                 }
             }
         }
-        if (bufferConnectStarted && BufferOAuth.isConnected(this)) {
-            bufferConnectStarted = false
-            configureBufferChannel()
-        }
+
     }
 
     private fun goToStep(next: Int) {
         if (next != STEP_PERMISSIONS) {
             permissionSequenceInProgress = false
-            exactAlarmRequestStarted = false
         }
         step = next
         renderStep(animate = true)
@@ -214,11 +200,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                     goToStep(STEP_PROFILE)
                 } else {
                     permissionSequenceInProgress = true
-                    exactAlarmRequestStarted = false
                     requestNextPermission()
                 }
                 STEP_PROFILE -> submitProfile()
-                STEP_SCHEDULING -> connectBuffer()
                 STEP_WIDGETS -> {
                     requestWidgetPin()
                     goToStep(STEP_DONE)
@@ -229,10 +213,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         findViewById<AppCompatButton>(R.id.secondary_button).setOnClickListener {
             when (step) {
                 STEP_PERMISSIONS -> goToStep(STEP_PROFILE)
-                STEP_SCHEDULING -> {
-                    ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.LOCAL_REMINDER)
-                    goToStep(STEP_WIDGETS)
-                }
+
                 STEP_WIDGETS -> goToStep(STEP_DONE)
             }
         }
@@ -248,24 +229,19 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.permission_notifications_row).setOnClickListener {
             requestNotificationPermission()
         }
-        findViewById<View>(R.id.permission_alarms_row).setOnClickListener {
-            requestExactAlarmPermission()
-        }
+
     }
 
     private fun permissionState(): OnboardingPermissionState = OnboardingPermissionState(
         notificationsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED &&
                 NotificationManagerCompat.from(this).areNotificationsEnabled()),
-        exactAlarmsGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-            getSystemService(AlarmManager::class.java).canScheduleExactAlarms(),
     )
 
     private fun renderPermissionState() {
         if (step != STEP_PERMISSIONS) return
         val state = permissionState()
         updatePermissionStatus(R.id.permission_notifications_status, state.notificationsGranted)
-        updatePermissionStatus(R.id.permission_alarms_status, state.exactAlarmsGranted)
     }
 
     private fun updatePermissionStatus(viewId: Int, granted: Boolean) {
@@ -287,7 +263,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     private fun requestNextPermission() {
         when (nextOnboardingPermissionAction(permissionState())) {
             OnboardingPermissionAction.NOTIFICATIONS -> requestNotificationPermission()
-            OnboardingPermissionAction.EXACT_ALARMS -> requestExactAlarmPermission()
             OnboardingPermissionAction.COMPLETE -> continuePermissionSequence()
         }
     }
@@ -304,18 +279,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                 .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
         )
-    }
-
-    private fun requestExactAlarmPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || permissionState().exactAlarmsGranted) return
-        exactAlarmRequestStarted = true
-        runCatching {
-            startActivity(
-                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")),
-            )
-        }.onFailure {
-            Toast.makeText(this, R.string.onboarding_permission_settings_failed, Toast.LENGTH_LONG).show()
-        }
     }
 
     // Saved immediately on toggle: the widgets step has no explicit finish
@@ -341,7 +304,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             STEP_OVERVIEW to R.id.step_overview,
             STEP_PERMISSIONS to R.id.step_permissions,
             STEP_PROFILE to R.id.step_profile,
-            STEP_SCHEDULING to R.id.step_scheduling,
             STEP_WIDGETS to R.id.step_widgets,
             STEP_DONE to R.id.step_done,
         )
@@ -497,11 +459,11 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun updateButtons() {
         stepBackCallback.isEnabled = !isStarting && !addAccountMode && when (step) {
-            STEP_PERMISSIONS, STEP_PROFILE, STEP_SCHEDULING, STEP_DONE -> true
+            STEP_PERMISSIONS, STEP_PROFILE, STEP_DONE -> true
             STEP_WIDGETS -> !startedOnWidgetStep
             else -> false
         }
-        val showSecondary = step == STEP_PERMISSIONS || step == STEP_SCHEDULING || step == STEP_WIDGETS
+        val showSecondary = step == STEP_PERMISSIONS || step == STEP_WIDGETS
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
                 isStarting && step == STEP_PROFILE -> getString(R.string.onboarding_checking_account)
@@ -512,7 +474,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 step == STEP_PERMISSIONS -> getString(R.string.continue_button)
                 step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
                 step == STEP_PROFILE -> getString(R.string.continue_button)
-                step == STEP_SCHEDULING -> getString(R.string.onboarding_connect_buffer)
                 step == STEP_WIDGETS -> getString(R.string.add_widget)
                 else -> getString(R.string.continue_button)
             }
@@ -540,7 +501,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
             text = getString(
-                if (step == STEP_SCHEDULING) R.string.onboarding_run_locally else R.string.skip,
+                R.string.skip,
             )
             visibility = if (showSecondary) View.VISIBLE else View.GONE
             isEnabled = !isStarting
@@ -726,7 +687,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 val error = result.exceptionOrNull()
                 when {
                     error == null && addAccountMode -> finish()
-                    error == null -> goToStep(STEP_SCHEDULING)
+                    error == null -> goToStep(STEP_WIDGETS)
                     onboardingAccountIsMissing(error) -> showUsernameError(R.string.onboarding_account_not_found)
                     else -> Toast.makeText(
                         this,
@@ -747,68 +708,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun hideUsernameError() {
         findViewById<TextView>(R.id.username_error).visibility = View.GONE
-    }
-
-    private fun connectBuffer() {
-        if (!BufferOAuth.isConfigured(this)) {
-            Toast.makeText(this, R.string.schedule_buffer_oauth_unavailable, Toast.LENGTH_LONG).show()
-            return
-        }
-        runCatching {
-            bufferConnectStarted = true
-            startActivity(BufferOAuth.authorizationIntent(this))
-        }.onFailure {
-            bufferConnectStarted = false
-            Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun configureBufferChannel() {
-        val generation = ++asyncGeneration
-        AppExecutors.execute(onRejected = {
-            postUiIfCurrent(generation) { Toast.makeText(this, R.string.schedule_busy, Toast.LENGTH_SHORT).show() }
-        }) {
-            val result = BufferClient(this).listTwitterChannels()
-            postUiIfCurrent(generation) {
-                val channels = result.value.orEmpty()
-                if (channels.isEmpty()) {
-                    Toast.makeText(
-                        this,
-                        UiMessages.resolve(this, result.errors.firstOrNull()?.message, R.string.onboarding_buffer_no_x_account),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                } else {
-                    chooseBufferChannel(channels)
-                }
-            }
-        }
-    }
-
-    private fun chooseBufferChannel(channels: List<BufferChannel>) {
-        val tracked = TwidgetStore.settings(this).username
-        val matching = channels.firstOrNull {
-            it.name.equals(tracked, ignoreCase = true) || it.displayName.equals(tracked, ignoreCase = true)
-        }
-        if (matching != null || channels.size == 1) {
-            finishBufferConnection(matching ?: channels.single())
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.onboarding_choose_buffer_account)
-            .setItems(channels.map { it.displayName ?: it.name }.toTypedArray()) { _, index ->
-                finishBufferConnection(channels[index])
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun finishBufferConnection(channel: BufferChannel) {
-        val tracked = TwidgetStore.settings(this).username
-        ScheduleSettingsStore.setBufferChannel(this, tracked, channel)
-        ScheduleSettingsStore.setDefaultProvider(this, ScheduleProvider.BUFFER)
-        Toast.makeText(this, getString(R.string.schedule_connection_success, channel.displayName ?: channel.name), Toast.LENGTH_SHORT).show()
-        AppExecutors.execute { BufferScheduleSync(this).sync() }
-        goToStep(STEP_WIDGETS)
     }
 
     private fun showDoneProfileAvatar() {
@@ -861,7 +760,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         private const val STEP_OVERVIEW = 0
         private const val STEP_PERMISSIONS = 1
         private const val STEP_PROFILE = 2
-        private const val STEP_SCHEDULING = 3
         private const val STEP_WIDGETS = 4
         private const val STEP_DONE = 5
         private const val WELCOME_BUTTON_START_DELAY_MS = 180L
@@ -879,15 +777,13 @@ internal fun shouldShowOnboardingHistoryOption(addAccountMode: Boolean): Boolean
 
 internal data class OnboardingPermissionState(
     val notificationsGranted: Boolean,
-    val exactAlarmsGranted: Boolean,
 ) {
-    val allGranted: Boolean get() = notificationsGranted && exactAlarmsGranted
+    val allGranted: Boolean get() = notificationsGranted
 }
 
-internal enum class OnboardingPermissionAction { NOTIFICATIONS, EXACT_ALARMS, COMPLETE }
+internal enum class OnboardingPermissionAction { NOTIFICATIONS, COMPLETE }
 
 internal fun nextOnboardingPermissionAction(state: OnboardingPermissionState): OnboardingPermissionAction = when {
     !state.notificationsGranted -> OnboardingPermissionAction.NOTIFICATIONS
-    !state.exactAlarmsGranted -> OnboardingPermissionAction.EXACT_ALARMS
     else -> OnboardingPermissionAction.COMPLETE
 }

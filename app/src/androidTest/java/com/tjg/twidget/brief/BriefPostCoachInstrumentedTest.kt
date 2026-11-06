@@ -23,7 +23,6 @@ import com.tjg.twidget.analytics.PostMedia
 import com.tjg.twidget.analytics.PostObservationHistory
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.main.AboutActivity
-import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.schedule.ScheduleProvider
 import com.tjg.twidget.schedule.ScheduleStore
 import com.tjg.twidget.schedule.ScheduleThreadItem
@@ -56,7 +55,7 @@ class BriefPostCoachInstrumentedTest {
                 assertEquals(BriefProviderMode.LOCAL, BriefSettingsStore.provider(activity))
                 var modeCalls = 0
                 val screen = BriefReviewScreen(activity, BriefReviewCallbacks(
-                    retry = {}, info = {}, addKey = {}, openPost = {}, compose = { _, _ -> }, changeMode = { modeCalls++ }))
+                    retry = {}, info = {}, addKey = {}, openPost = {}, changeMode = { modeCalls++ }))
                 screen.render(BriefReviewState(phase = BriefReviewPhase.GENERATING))
                 assertNotNull(findText(screen.view, activity.getString(R.string.coach_ai_cloud_note)))
                 assertNull(findText(screen.view, activity.getString(R.string.coach_ai_local_note)))
@@ -206,118 +205,9 @@ class BriefPostCoachInstrumentedTest {
         }
     }
 
-    @Test fun tweetCardsNavigateWithoutDialogsAndUseTheirOwnContentSwitch() = withSettings {
-        val account = "review_cards_fixture"
-        val now = System.currentTimeMillis()
-        val draft = ScheduledPost(provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = account,
-            scheduledAt = null, thread = listOf(ScheduleThreadItem(text = "Finally shipped this. Thoughts?")))
-        val store = ScheduleStore(context)
-        store.create(draft)
-        try {
-            val posts = posts(account, now)
-            val analytics = AnalyticsClient.analyticsFromPosts(account, 100, 4, false, posts, cachedAt = now)
-            ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
-                scenario.onActivity { activity ->
-                    var opened: BriefReviewTarget? = null
-                    var edited = ""
-                    val items = BriefPostCoachSection.create(activity, account, analytics,
-                        openReview = { opened = it }, editDraft = { edited = it.id })!!
-                    assertEquals(3, items.previews.size)
-                    items.previews.forEach { preview ->
-                        assertNull("Each preview must be independently placeable in masonry", preview.parent)
-                        assertEquals(1, preview.walk().filterIsInstance<TextView>().count {
-                            it.text.toString() == context.getString(R.string.review_view) })
-                        val intro = (preview as ViewGroup).getChildAt(0)
-                        assertEquals("The outer section supplies spacing, including below the summary", 0, intro.paddingTop)
-                    }
-                    val section = BriefReviewViews.column(activity).apply {
-                        items.previews.forEach { addView(it) }
-                        addView(items.libraryCard)
-                    }
-                    assertNotNull(findText(section, activity.getString(R.string.review_view)))
-                    assertNull(findText(section, activity.getString(R.string.brief_content_tweet_reviews)))
-                    listOf(R.string.coach_ai_auto_note, R.string.coach_ai_cloud_note, R.string.coach_ai_local_note).forEach {
-                        assertNull(findText(section, activity.getString(it)))
-                    }
-                    findText(section, activity.getString(R.string.review_view))!!.performClick()
-                    assertEquals(posts.first().url, opened!!.postUrl)
-                    findText(section, activity.getString(R.string.coach_edit_draft))!!.performClick()
-                    assertEquals(draft.id, edited)
-                    BriefSettingsStore.setContentEnabled(activity, BriefContentCategory.TWEET_REVIEWS, false)
-                    assertNull(BriefPostCoachSection.create(activity, account, analytics, editDraft = {}))
-                    BriefSettingsStore.setContentEnabled(activity, BriefContentCategory.TWEET_REVIEWS, true)
-                    assertFalse(BriefSettingsStore.contentEnabled(activity, BriefContentCategory.POSTING_GUIDANCE))
-                    assertNotNull(BriefPostCoachSection.create(activity, account, analytics, editDraft = {}))
-                    assertTrue(BriefTweetReviewActivity.intent(activity, opened!!).component!!.className.endsWith("BriefTweetReviewActivity"))
-                }
-            }
-        } finally { store.removeAll(setOf(draft.id)) }
-    }
 
-    @Test fun reviewLibraryShowsAllTweetsAndDraftsWithoutExpandingTheBrief() = withSettings {
-        withAccount { account, cacheKey ->
-            val now = System.currentTimeMillis()
-            val posts = posts(account, now).map { it.copy(media = emptyList()) }
-            val analytics = AnalyticsClient.analyticsFromPosts(account, 100, posts.size, false, posts, cachedAt = now)
-            context.getSharedPreferences("twidget_analytics", Context.MODE_PRIVATE).edit().putString(cacheKey,
-                JSONObject().put("userName", account).put("followers", 100).put("postsAnalyzed", posts.size)
-                    .put("windowDays", 7).put("cachedAt", now).put("recentPosts", JSONArray(posts.map(::json))).toString()).commit()
-            val store = ScheduleStore(context)
-            val drafts = List(3) { index -> ScheduledPost(provider = ScheduleProvider.LOCAL_REMINDER,
-                accountUsername = account, scheduledAt = null, updatedAt = now - index,
-                thread = listOf(ScheduleThreadItem(text = "Draft fixture $index"))) }
-            drafts.forEach(store::create)
-            val monitor = instrumentation.addMonitor(BriefReviewListActivity::class.java.name, null, false)
-            var page: android.app.Activity? = null
-            try {
-                ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
-                    var section: View? = null
-                    var before = 0
-                    scenario.onActivity { activity ->
-                        val items = BriefPostCoachSection.create(activity, account, analytics, editDraft = {})!!
-                        section = BriefReviewViews.column(activity).apply {
-                            items.previews.forEach { addView(it) }
-                            addView(items.libraryCard)
-                        }
-                        before = (section as ViewGroup).childCount
-                        assertTrue(section!!.findViewById<View>(R.id.review_library_card).isClickable)
-                        saveLibraryPreview(activity, android.content.res.Configuration.UI_MODE_NIGHT_NO, "review-library-light.png")
-                        saveLibraryPreview(activity, android.content.res.Configuration.UI_MODE_NIGHT_YES, "review-library-dark.png")
-                        assertEquals(4, section!!.walk().filterIsInstance<TextView>().count { it.text.toString() == context.getString(R.string.review_view) })
-                        section!!.findViewById<View>(R.id.review_library_card).performClick()
-                    }
-                    page = instrumentation.waitForMonitorWithTimeout(monitor, 5_000)
-                    assertNotNull("More should open the review library", page)
-                    val deadline = System.currentTimeMillis() + 5_000
-                    var ready = false
-                    do {
-                        instrumentation.runOnMainSync {
-                            ready = findText(page!!.findViewById(R.id.review_root), "Draft fixture 2") != null
-                        }
-                        if (!ready) Thread.sleep(80)
-                    } while (!ready && System.currentTimeMillis() < deadline)
-                    assertTrue("Remaining drafts should appear on the new page", ready)
-                    instrumentation.runOnMainSync {
-                        val root = page!!.findViewById<View>(R.id.review_root)
-                        assertNotNull(findText(root, context.getString(R.string.review_list_title)))
-                        assertEquals(7, root.walk().filterIsInstance<TextView>().count { it.text.toString() == context.getString(R.string.review_view) })
-                        assertNotNull(findText(root, posts.first().fullText!!))
-                        assertNotNull(findText(root, "Draft fixture 0"))
-                        assertEquals(before, (section as ViewGroup).childCount)
-                        assertNotNull(findText(section!!, context.getString(R.string.review_library_title)))
-                    }
-                    instrumentation.waitForIdleSync()
-                    Thread.sleep(450)
-                    saveScreen("review-more-page.png")
-                    instrumentation.runOnMainSync { page!!.finish() }
-                }
-            } finally {
-                instrumentation.runOnMainSync { page?.finish() }
-                instrumentation.removeMonitor(monitor)
-                store.removeAll(drafts.map { it.id }.toSet())
-            }
-        }
-    }
+
+
 
     @Test fun reviewPageShowsMeasuredCardsSourcesAndAnnotatedInfoDialog() = withSettings {
         val image = fixtureMedia()
@@ -376,11 +266,9 @@ class BriefPostCoachInstrumentedTest {
                             .count { it is com.tjg.twidget.ui.CardValueTextView })
                     }
                     assertFalse(root.walk().filterIsInstance<TextView>().any { Regex("\\b[mq]0\\b").containsMatchIn(it.text) })
-                    assertNotNull(findText(root, result.feedback.suggestions.single().rewrite!!))
+                    assertNull(findText(root, result.feedback.suggestions.single().rewrite.orEmpty()))
                     assertNull("The rewrite uses a single introduction", findText(root, context.getString(R.string.coach_ai_rewrite)))
-                    val composer = findText(root, context.getString(R.string.review_open_composer))!!
-                    assertNotNull("The composer button includes the design's edit icon", composer.compoundDrawablesRelative[0])
-                    assertEquals(BriefReviewViews.dp(activity, 24), composer.compoundDrawablesRelative[0].bounds.width())
+                    assertNull("Tweet Report must not offer the retired composer", findText(root, context.getString(R.string.review_open_composer)))
                     assertTrue(root.walk().count { it is com.tjg.twidget.ui.CardValueTextView } >= 8)
                     assertNotNull(findText(root, context.getString(R.string.review_trend_title)))
                     assertTrue(root.walk().any { it is com.tjg.twidget.ui.MetricChartView })
@@ -834,7 +722,7 @@ class BriefPostCoachInstrumentedTest {
                 var firstCard: View? = null
                 fun mount(activity: BriefCoachTestActivity) {
                     observer?.cancel()
-                    items = BriefPostCoachSection.create(activity, account, analytics, editDraft = {})!!
+                    items = BriefPostCoachSection.create(activity, account, analytics)!!
                     val content = activity.findViewById<LinearLayout>(R.id.review_content)
                     content.removeAllViews()
                     items!!.previews.forEach { content.addView(it, BriefReviewViews.params(activity, 20)) }
@@ -944,101 +832,9 @@ class BriefPostCoachInstrumentedTest {
         } }
     }
 
-    @Test fun aDurableDraftReviewReopensInLocalModeWithoutCallingTheProvider() = withSettings {
-        withAccount { account, _ ->
-            val store = ScheduleStore(context)
-            val draft = store.create(ScheduledPost(provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = account,
-                scheduledAt = null, thread = listOf(ScheduleThreadItem(text = "Finally shipped this. Thoughts?"))))
-            try {
-                val target = BriefReviewTarget(account, draftId = draft.id)
-                val subject = BriefReviewSubjects.load(context, target)!!
-                val result = feedback(subject)
-                val key = BriefReviewResults.key(subject, BriefProviderMode.CLOUD, BriefNanoModelMode.AUTO_STABLE)
-                BriefPublishedReviewStore.saveDraft(context, subject, key, result, TwidgetStore.accountGeneration(context, account))!!
-                BriefPublishedReviewStore.closeForTest()
-                assertEquals(BriefProviderMode.LOCAL, BriefSettingsStore.provider(context))
-                ActivityScenario.launch<BriefTweetReviewActivity>(BriefTweetReviewActivity.intent(context, target)).use { scenario ->
-                    waitForText(scenario, context.getString(R.string.review_next_steps_intro))
-                    scenario.onActivity { activity ->
-                        val state = androidx.lifecycle.ViewModelProvider(activity)[BriefReviewSession::class.java].state.value
-                        assertEquals(BriefReviewPhase.COMPLETE, state.phase)
-                        assertEquals(result, state.result)
-                        assertNotNull(state.savedAt)
-                        androidx.lifecycle.ViewModelProvider(activity)[BriefReviewSession::class.java].open(target, force = true)
-                    }
-                    waitForText(scenario, context.getString(R.string.review_error_local))
-                    scenario.onActivity { activity ->
-                        val state = androidx.lifecycle.ViewModelProvider(activity)[BriefReviewSession::class.java].state.value
-                        assertEquals(BriefReviewPhase.FAILED, state.phase)
-                        assertEquals(BriefReviewFailure.LOCAL_ONLY, state.failure)
-                        assertEquals("Refresh failure must retain matching draft advice", result, state.result)
-                        assertNotNull(state.savedAt)
-                    }
-                }
-            } finally { store.removeAll(setOf(draft.id)) }
-        }
-    }
 
-    @Test fun draftRewriteOpensComposerWithoutOverwritingOriginal() = withSettings {
-        val image = fixtureMedia()
-        try { withAccount { account, _ ->
-            val store = ScheduleStore(context)
-            val draft = store.create(ScheduledPost(provider = ScheduleProvider.LOCAL_REMINDER, accountUsername = account,
-                accountId = account, scheduledAt = null, thread = listOf(ScheduleThreadItem(text = "Finally shipped this. Thoughts?"),
-                    ScheduleThreadItem(text = "It compares tweets at similar ages.",
-                        media = listOf(com.tjg.twidget.schedule.PublicUrlMedia(FIXTURE_URL))))))
-            val target = BriefReviewTarget(account, draftId = draft.id)
-            val subject = BriefReviewSubjects.load(context, target)!!
-            var monitor = instrumentation.addMonitor(ScheduleComposeActivity::class.java.name, null, false)
-            try {
-              for (entryIndex in draft.thread.indices) {
-                if (entryIndex > 0) {
-                    instrumentation.removeMonitor(monitor)
-                    monitor = instrumentation.addMonitor(ScheduleComposeActivity::class.java.name, null, false)
-                }
-                val base = feedback(subject)
-                val result = base.copy(feedback = base.feedback.copy(suggestions = listOf(base.feedback.suggestions.single().copy(
-                    quote = draft.thread[entryIndex].text, rewrite = "A clearer version of thread entry ${entryIndex + 1}."))))
-                BriefReviewResults.put(BriefReviewResults.key(subject, BriefProviderMode.CLOUD, BriefNanoModelMode.AUTO_STABLE), result)
-                ActivityScenario.launch<BriefTweetReviewActivity>(BriefTweetReviewActivity.intent(context, target)).use { scenario ->
-                    waitForText(scenario, context.getString(R.string.review_open_composer))
-                    scenario.onActivity { activity ->
-                        val root = activity.findViewById<View>(R.id.review_root)
-                        assertNotNull("The preview must show the selected entry's actual rewrite", findText(root, result.feedback.suggestions.single().rewrite!!))
-                        assertNotNull(findText(root, activity.getString(R.string.review_thread_entry, entryIndex + 1)))
-                        assertEquals("Only the selected entry's media belongs in its rewrite preview", entryIndex,
-                            root.walk().count { it.contentDescription == activity.getString(R.string.post_media) })
-                        activity.findViewById<com.google.android.material.appbar.AppBarLayout>(R.id.review_app_bar).setExpanded(false, false)
-                    }
-                    instrumentation.waitForIdleSync(); Thread.sleep(350)
-                    scenario.onActivity { activity ->
-                        val button = findText(activity.findViewById(R.id.review_root), context.getString(R.string.review_open_composer))!!
-                        button.requestRectangleOnScreen(Rect(0, 0, button.width, button.height), true)
-                    }
-                    instrumentation.waitForIdleSync()
-                    scenario.onActivity { activity ->
-                        val button = findText(activity.findViewById(R.id.review_root), context.getString(R.string.review_open_composer))!!
-                        val bounds = Rect()
-                        assertTrue(button.getGlobalVisibleRect(bounds))
-                        assertTrue("The composer action should be visible within pixel rounding", bounds.height() >= button.height - 1)
-                        button.performClick()
-                    }
-                    val composer = monitor.waitForActivityWithTimeout(5_000L)!!
-                    instrumentation.waitForIdleSync()
-                    instrumentation.runOnMainSync {
-                        val editor = composer as ScheduleComposeActivity
-                        assertEquals(entryIndex, editor.intent.getIntExtra(ScheduleComposeActivity.EXTRA_REVIEW_ENTRY, -1))
-                        assertEquals(result.feedback.suggestions.single().rewrite, editor.composeItemText(entryIndex))
-                        assertEquals(draft.thread[1 - entryIndex].text, editor.composeItemText(1 - entryIndex))
-                        draft.thread.indices.forEach { assertEquals(draft.thread[it].media, editor.composeItemMedia(it)) }
-                        composer.finish()
-                    }
-                    assertEquals(draft, store.get(draft.id))
-                }
-              }
-            } finally { instrumentation.removeMonitor(monitor); store.removeAll(setOf(draft.id)) }
-        } } finally { image.delete() }
-    }
+
+
 
     private fun saveLibraryPreview(activity: android.app.Activity, nightMode: Int, filename: String) {
         val config = android.content.res.Configuration(activity.resources.configuration).apply {

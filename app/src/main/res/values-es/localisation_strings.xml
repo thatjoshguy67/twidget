@@ -8,16 +8,6 @@
     <string name="l10n_error_future_time">La hora programada debe ser futura.</string>
     <string name="l10n_error_schedule_failed">No se pudo programar. Inténtalo de nuevo.</string>
     <string name="l10n_error_reminder_failed">No se pudo programar el recordatorio. Comprueba los permisos de las alarmas.</string>
-    <string name="l10n_error_buffer_request">Buffer no pudo completar la solicitud. Inténtalo de nuevo.</string>
-    <string name="l10n_error_buffer_channel">Elige un canal de X en Buffer.</string>
-    <string name="l10n_error_buffer_time">Debes elegir una hora de programación.</string>
-    <string name="l10n_error_buffer_connect">Conecta Buffer en los ajustes de programación.</string>
-    <string name="l10n_error_buffer_login">No se pudo iniciar sesión en Buffer. Inténtalo de nuevo.</string>
-    <string name="l10n_error_buffer_verify">No se pudo verificar el inicio de sesión en Buffer. Inténtalo de nuevo.</string>
-    <string name="l10n_error_buffer_config">El inicio de sesión en Buffer no está configurado en esta versión.</string>
-    <string name="l10n_error_buffer_limit">Se alcanzó el límite de solicitudes de Buffer. Inténtalo más tarde.</string>
-    <string name="l10n_error_cloudinary_config">Añade el nombre de tu nube de Cloudinary y el ajuste de subida en los ajustes de Buffer para adjuntar contenido del dispositivo.</string>
-    <string name="l10n_error_upload">No se pudo subir el contenido a Cloudinary. Comprueba la conexión y los ajustes de subida.</string>
     <string name="l10n_error_read_media">No se pudo leer el contenido seleccionado.</string>
     <string name="l10n_error_media_large">El archivo multimedia es demasiado grande.</string>
     <string name="l10n_error_save_media">No se pudo guardar el contenido. Comprueba el acceso al almacenamiento e inténtalo de nuevo.</string>
@@ -35,8 +25,6 @@
     <string name="l10n_error_account_exists">Ese nombre de usuario ya tiene datos guardados. Se han conservado tus cuentas existentes.</string>
     <string name="l10n_error_account_invalid">Introduce un nombre de usuario de X válido.</string>
     <string name="l10n_error_account_save">No se pudieron guardar los datos de la cuenta. Reinicia la app para recuperarlos de forma segura.</string>
-    <string name="l10n_buffer_connected_message">Buffer conectado</string>
-    <string name="l10n_buffer_retry_wait">Se alcanzó el límite de solicitudes de Buffer. Inténtalo de nuevo dentro de %1$s.</string>
     <string name="l10n_widget_followers_of">de seguidores</string>
     <string name="l10n_import_localized_range">Del %1$s al %2$s</string>
     <string name="l10n_error_csv_inconsistent">La fila %1$s indica %2$s interacciones, menos que sus %3$s acciones de interacción visibles.</string>

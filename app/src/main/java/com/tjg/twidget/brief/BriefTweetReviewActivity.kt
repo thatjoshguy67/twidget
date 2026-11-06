@@ -16,7 +16,6 @@ import androidx.core.widget.NestedScrollView
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.PostSummary
 import com.tjg.twidget.data.TwidgetStore
-import com.tjg.twidget.schedule.ScheduleComposeActivity
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import kotlinx.coroutines.launch
@@ -34,7 +33,7 @@ class BriefTweetReviewActivity : FoldablePopOverActivity() {
         super.onCreate(savedInstanceState)
         target = BriefReviewTarget(intent.getStringExtra(EXTRA_USERNAME).orEmpty(),
             intent.getStringExtra(EXTRA_DRAFT), intent.getStringExtra(EXTRA_POST), intent.getBooleanExtra(EXTRA_DASHBOARD, false))
-        if (target.username.isBlank() || (target.draftId == null) == (target.postUrl == null)) { finish(); return }
+        if (target.username.isBlank() || target.postUrl == null || target.draftId != null) { finish(); return }
         forceFirstOpen = savedInstanceState == null && intent.getBooleanExtra(EXTRA_DEBUG_FORCE, false) && TwidgetStore.debugMenuUnlocked(this)
         setContentView(R.layout.activity_brief_tweet_review)
         applyEdgeToEdgeInsets(findViewById(R.id.review_root)) { bottom ->
@@ -52,7 +51,6 @@ class BriefTweetReviewActivity : FoldablePopOverActivity() {
                 .setMessage(R.string.review_stat_info_body).setPositiveButton(android.R.string.ok, null).show() },
             addKey = ::addKey,
             openPost = ::openPost,
-            compose = ::openComposer,
             changeMode = ::changeMode,
             limits = { body -> AlertDialog.Builder(this).setTitle(R.string.coach_limits)
                 .setMessage(body).setPositiveButton(android.R.string.ok, null).show() },
@@ -132,27 +130,7 @@ class BriefTweetReviewActivity : FoldablePopOverActivity() {
         BriefReviewTweetCard.openTweet(this, post.url)
     }
 
-    private fun openComposer(subject: BriefReviewSubject, suggestion: BriefCoachSuggestion) {
-        val index = BriefReviewRewrite.entryIndex(subject, suggestion) ?: return
-        if (!subject.isCurrent(this)) { session.open(target, force = true); return }
-        val seed = BriefReviewRewrite.seed(subject.target.username, suggestion.rewrite.orEmpty(), index,
-            subject.draft, subject.post?.let { it.copy(authorUserName = com.tjg.twidget.data.TwidgetStore.canonicalAccount(this, it.authorUserName)) },
-            subject.draft?.updatedAt ?: 0L) ?: return
-        val intent = Intent(this, ScheduleComposeActivity::class.java)
-            .putExtra(ScheduleComposeActivity.EXTRA_USERNAME, subject.target.username)
-            .putExtra(ScheduleComposeActivity.EXTRA_REVIEW_REWRITE, suggestion.rewrite)
-            .putExtra(ScheduleComposeActivity.EXTRA_REVIEW_ENTRY, index)
-        subject.draft?.let {
-            intent.putExtra(ScheduleComposeActivity.EXTRA_REVIEW_DRAFT_ID, it.id)
-                .putExtra(ScheduleComposeActivity.EXTRA_REVIEW_UPDATED_AT, it.updatedAt)
-        }
-        subject.post?.let {
-            intent.putExtra(ScheduleComposeActivity.EXTRA_REVIEW_POST_URL, it.url)
-                .putExtra(ScheduleComposeActivity.EXTRA_REVIEW_ORIGINAL_TEXT, it.fullText)
-            if (it.media.size > seed.first().media.size) Toast.makeText(this, R.string.review_media_not_copied, Toast.LENGTH_LONG).show()
-        }
-        startRightSidePopOverActivity(intent)
-    }
+
 
     override fun onDestroy() {
         keyDialog?.dismiss()

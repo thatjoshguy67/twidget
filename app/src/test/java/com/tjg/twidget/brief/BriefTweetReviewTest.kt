@@ -55,12 +55,6 @@ class BriefTweetReviewTest {
         assertTrue(packet.passages.values.none { it.contains("We shipped") })
         assertEquals("quoted_tweet", packet.data.getJSONArray("media").getJSONObject(2).getString("origin"))
         assertFalse(packet.data.getJSONObject("quotedTweet").has("views"))
-        val seed = BriefReviewRewrite.seed("example", "My reaction.", 0, post = original)!!
-        assertEquals("My reaction.\n\nhttps://x.com/source/status/9", seed.single().text)
-        val linked = "My reaction. https://twitter.com/oldhandle/status/9"
-        assertEquals(linked, BriefReviewRewrite.seed("example", linked, 0, post = original)!!.single().text)
-        assertEquals(4, seed.single().media.size)
-        assertTrue(seed.single().media.none { (it as? PublicUrlMedia)?.url == "https://example.com/source.jpg" })
         val clean = BriefReviewCopy.clean(BriefCoachFeedback("Read quoted_post.", listOf(suggestion()), null), input, strings)
         assertEquals("Read Quoted tweet.", clean.possibleExplanation)
     }
@@ -74,12 +68,12 @@ class BriefTweetReviewTest {
         assertEquals("Compare the quoted wording with attachment 1 and a similar tweet.", clean.possibleExplanation)
         assertEquals("Make the quoted wording clearer using attachment 1.", clean.suggestions.single().action)
         assertTrue(clean.suggestions.single().reason.contains("describe performance, not causation"))
-        assertEquals("A clearer version of the quoted wording.", clean.suggestions.single().rewrite)
+        assertNull(clean.suggestions.single().rewrite)
         assertEquals("Does attachment 2 add context?", clean.question)
         assertEquals(original.suggestions.single().quote, clean.suggestions.single().quote)
         assertEquals(original.suggestions.single().citations, clean.suggestions.single().citations)
         val literal = original.copy(suggestions = listOf(suggestion().copy(rewrite = "The q0 compiler is faster.")))
-        assertEquals("The q0 compiler is faster.", BriefReviewCopy.clean(literal,
+        assertNull(BriefReviewCopy.clean(literal,
             input.copy(text = "I shipped the q0 compiler."), TestBriefStrings()).suggestions.single().rewrite)
         assertEquals("Compare die zitierte Formulierung with Anhang 1 and ein ähnlicher Tweet.",
             BriefReviewCopy.clean(original, input, TestBriefStrings(java.util.Locale.GERMAN)).possibleExplanation)
@@ -140,38 +134,11 @@ class BriefTweetReviewTest {
         assertEquals(3, packet.data.getJSONObject("visualEvidence").getJSONArray("recordedTotalsLastSevenDays").length())
     }
 
-    @Test fun `rewrites open a separate thread preserving media and other entries`() {
-        val original = draft()
-        val subject = subject(original)
-        assertEquals(0, BriefReviewRewrite.entryIndex(subject, suggestion()))
-        val seed = BriefReviewRewrite.seed("example", suggestion().rewrite!!, 0, draft = original, expectedUpdatedAt = now)!!
-        assertEquals(suggestion().rewrite, seed[0].text)
-        assertEquals(original.thread[0].media, seed[0].media)
-        assertEquals(original.thread[1].text, seed[1].text)
-        assertEquals("Finally shipped this.", original.thread[0].text)
-        assertNotEquals(original.thread[0].id, seed[0].id)
-        assertNull(BriefReviewRewrite.seed("example", "New", 0, draft = original, expectedUpdatedAt = now - 1))
-        assertNull(BriefReviewRewrite.seed("other", "New", 0, draft = original, expectedUpdatedAt = now))
-        assertNull(BriefReviewRewrite.entryIndex(subject, suggestion("Not in the text")))
-        assertNull(BriefReviewRewrite.entryIndex(subject, suggestion().copy(rewrite = null)))
-    }
 
-    @Test fun `published rewrite never attaches a video preview as an original video`() {
-        val post = post().copy(media = listOf(PostMedia("photo", "https://example.com/a.jpg", "", 1, 1),
-            PostMedia("video", "https://example.com/video-preview.jpg", "", 1, 1)))
-        val seed = BriefReviewRewrite.seed("example", "New wording", 0, post = post)!!
-        assertEquals(1, seed.single().media.size)
-        assertNull(BriefReviewRewrite.seed("other", "New wording", 0, post = post))
-        assertNull(BriefReviewRewrite.seed("example", "New wording", 0, post = post.copy(fullText = null)))
-    }
 
-    @Test fun `Buffer draft ownership follows the account id rather than channel id`() {
-        val draft = draft().copy(provider = ScheduleProvider.BUFFER, accountId = "example", accountUsername = "channel-id")
-        assertEquals(listOf(draft), BriefPostCoach.readyDrafts(listOf(draft), "example"))
-        assertTrue(BriefPostCoach.readyDrafts(listOf(draft), "channel-id").isEmpty())
-        assertNotNull(BriefReviewRewrite.seed("example", "New text", 0, draft = draft, expectedUpdatedAt = now))
-        assertTrue(subject(draft).input.history.any { it.authorUserName == "example" })
-    }
+
+
+
 
     @Test fun `review cache separates providers languages and draft revisions and expires`() {
         val subject = subject()

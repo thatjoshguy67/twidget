@@ -32,8 +32,6 @@ import com.tjg.twidget.analytics.AnalyticsImportActivity
 import com.tjg.twidget.data.TwidgetSettings
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.env.BuildVars
-import com.tjg.twidget.schedule.ScheduleProvider
-import com.tjg.twidget.schedule.ScheduleSettingsStore
 import com.tjg.twidget.ui.InsetPreferenceFragment
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.startAddAccountActivity
@@ -48,7 +46,6 @@ import dev.oneuiproject.oneui.widget.CardItemView
 import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
 import androidx.preference.PreferenceScreen
 import androidx.appcompat.app.AlertDialog
-import com.tjg.twidget.schedule.BufferOAuth
 import dev.oneuiproject.oneui.widget.RadioItemView
 import dev.oneuiproject.oneui.widget.RadioItemViewGroup
 import dev.oneuiproject.oneui.preference.HorizontalRadioPreference
@@ -159,7 +156,6 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             SettingsPage.DATA -> data(screen)
             SettingsPage.APPEARANCE -> appearance(screen)
             SettingsPage.WIDGETS -> WidgetSettingsCards.populate(this, screen)
-            SettingsPage.SCHEDULING -> scheduling(screen)
         }
         screen.addBottomInset()
         preferenceScreen = screen
@@ -252,7 +248,6 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-
         screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(Preference(context).apply {
             key = "clear_cached_stats"
@@ -272,16 +267,6 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         screen.addPreference(category(R.string.settings_main_account))
         screen.addPreference(account(settings.username, true))
         screen.addPreference(InsetPreferenceCategory(context))
-        screen.addPreference(Preference(context).apply {
-            key = "buffer_settings"
-            setTitle(R.string.schedule_provider_buffer)
-            setIcon(R.drawable.ic_buffer)
-            summary = getString(if (BufferOAuth.isConnected(context)) R.string.settings_connected else R.string.status_not_configured)
-            setOnPreferenceClickListener {
-                requireActivity().startSettingsSubActivity(Intent(context, SettingsScheduleActivity::class.java))
-                true
-            }
-        })
         screen.addPreference(Preference(context).apply {
             key = "analytics_import"
             setTitle(R.string.settings_analytics_import)
@@ -446,51 +431,6 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             .putExtra(AnalyticsImportActivity.EXTRA_USERNAME, username))
     }
 
-    private fun scheduling(screen: PreferenceScreen) {
-        val context = requireContext()
-        screen.addPreference(category(R.string.scheduling_method))
-        val methods = listOf(ScheduleProvider.BUFFER, ScheduleProvider.LOCAL_REMINDER)
-        val group = RadioItemViewGroup(context)
-        methods.forEachIndexed { index, method ->
-            group.addView(RadioItemView(context).apply {
-                id = View.generateViewId()
-                title = providerLabel(method)
-                showTopDivider = index > 0
-                isChecked = ScheduleSettingsStore.defaultProvider(context) == method
-            })
-        }
-        group.setOnCheckedChangeListener { _, checkedId ->
-            val selected = methods.firstOrNull { method ->
-                group.getChildAt(methods.indexOf(method)).id == checkedId
-            } ?: return@setOnCheckedChangeListener
-            ScheduleSettingsStore.setDefaultProvider(context, selected)
-        }
-        screen.addPreference(LayoutPreference(context, group).apply { key = "schedule_default_method_pref" })
-        screen.addPreference(InsetPreferenceCategory(context))
-        screen.addPreference(Preference(context).apply {
-            key = "schedule_buffer_connection"
-            val connected = BufferOAuth.isConnected(context)
-            title = if (connected) SpannableString(getString(R.string.schedule_disconnect_buffer)).apply {
-                setSpan(ForegroundColorSpan(context.getColor(R.color.metric_red)), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            } else getString(R.string.login_to_buffer)
-            setOnPreferenceClickListener {
-                if (connected) {
-                    AlertDialog.Builder(context)
-                        .setTitle(R.string.schedule_disconnect_buffer)
-                        .setMessage(R.string.schedule_disconnect_confirm)
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .setPositiveButton(R.string.schedule_disconnect_buffer) { _, _ ->
-                            ScheduleSettingsStore.clearBuffer(context)
-                            buildScreen()
-                        }.show()
-                } else {
-                    requireActivity().startSettingsSubActivity(Intent(context, SettingsScheduleActivity::class.java))
-                }
-                true
-            }
-        })
-    }
-
     private fun appearanceThemePreview(): AppearanceThemePreview {
         // Maximum bounds describe the active display even in split screen or a Samsung
         // pop-over. A narrow window on an unfolded device should still preview a wide UI.
@@ -623,13 +563,5 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         TwidgetStore.DATA_SOURCE_TWITTERAPIS -> getString(R.string.source_twitterapis)
         else -> getString(R.string.source_default)
     }
-
-    private fun providerLabel(provider: ScheduleProvider): String = getString(
-        if (provider == ScheduleProvider.BUFFER) {
-            R.string.schedule_provider_buffer
-        } else {
-            R.string.schedule_provider_local
-        }
-    )
 
 }

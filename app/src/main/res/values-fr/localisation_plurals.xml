@@ -21,21 +21,6 @@
         <item quantity="many">d’engagement</item>
         <item quantity="other">d’engagement</item>
     </plurals>
-    <plurals name="l10n_buffer_retry_minutes">
-        <item quantity="one">Limite Buffer atteinte. Réessayez dans %1$s minute.</item>
-        <item quantity="many">Limite Buffer atteinte. Réessayez dans %1$s minutes.</item>
-        <item quantity="other">Limite Buffer atteinte. Réessayez dans %1$s minutes.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_hours">
-        <item quantity="one">Limite Buffer atteinte. Réessayez dans %1$s heure.</item>
-        <item quantity="many">Limite Buffer atteinte. Réessayez dans %1$s heures.</item>
-        <item quantity="other">Limite Buffer atteinte. Réessayez dans %1$s heures.</item>
-    </plurals>
-    <plurals name="l10n_buffer_retry_days">
-        <item quantity="one">Limite Buffer atteinte. Réessayez dans %1$s jour.</item>
-        <item quantity="many">Limite Buffer atteinte. Réessayez dans %1$s jours.</item>
-        <item quantity="other">Limite Buffer atteinte. Réessayez dans %1$s jours.</item>
-    </plurals>
     <plurals name="widget_count_followers" tools:ignore="ImpliedQuantity">
         <item quantity="one">Abonné</item>
         <item quantity="many">Abonnés</item>

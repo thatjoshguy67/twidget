@@ -12,7 +12,6 @@ internal enum class SettingsPage(val titleRes: Int) {
     APPEARANCE(R.string.widget_appearance_section),
     WIDGETS(R.string.settings_widgets),
     DATA(R.string.settings_data_sources),
-    SCHEDULING(R.string.scheduling),
 }
 
 class SettingsCategoryActivity : FoldablePopOverActivity() {

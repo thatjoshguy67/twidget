@@ -23,7 +23,6 @@ import dev.oneuiproject.oneui.R as OneUiIconR
 internal data class BriefReviewCallbacks(
     val retry: () -> Unit, val info: () -> Unit, val addKey: () -> Unit,
     val openPost: (PostSummary) -> Unit,
-    val compose: (BriefReviewSubject, BriefCoachSuggestion) -> Unit,
     val changeMode: () -> Unit = {}, val limits: (String) -> Unit = {},
 )
 
@@ -70,7 +69,7 @@ internal class BriefReviewScreen(private val context: Context, private val callb
             lastSubject = state.subject
             original.removeAllViews()
             state.subject?.let { subject -> original.addView(BriefReviewTweetCard.create(context,
-                subject.target.username, subject.post, subject.draft, reviewPreview = true, openOnCardTap = true,
+                subject.target.username, requireNotNull(subject.post), reviewPreview = true, openOnCardTap = true,
                 onClick = subject.post?.let { post -> { callbacks.openPost(post) } })) }
         }
         original.rotation = 0f
@@ -211,15 +210,7 @@ internal class BriefReviewScreen(private val context: Context, private val callb
                 }, BriefReviewViews.params(context, 11))
                 addView(text(suggestion.reason), BriefReviewViews.params(context, 11))
             })
-            suggestion.rewrite?.let { rewrite ->
-                adviceHeading(if (suggestion.needsDetails) R.string.review_rewrite_fill_intro else R.string.review_rewrite_intro)
-                val entry = BriefReviewRewrite.entryIndex(subject, suggestion)
-                val actions = if (entry == null) emptyList() else listOf(BriefReviewAction(R.string.review_open_composer, icon = R.drawable.ic_review_edit) {
-                    callbacks.compose(subject, suggestion)
-                })
-                add(BriefReviewTweetCard.create(context, subject.target.username, subject.post, subject.draft,
-                    rewrite = rewrite, rewriteEntry = entry ?: 0, actions = actions, reviewPreview = true))
-            }
+
         }
         feedback.question?.let { question ->
             heading(R.string.coach_ai_question)

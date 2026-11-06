@@ -140,8 +140,6 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
     TOP_FOLLOWER("top_follower", R.string.brief_debug_scenario_top_follower),
     INACTIVITY("inactivity", R.string.brief_debug_scenario_inactivity),
     STREAK("streak", R.string.brief_debug_scenario_streak),
-    SCHEDULE_GUIDE("schedule_guide", R.string.brief_debug_scenario_schedule_guide),
-    POST_FOLLOW_THROUGH("post_follow_through", R.string.brief_debug_scenario_post_follow_through),
     POSTING_GUIDE("posting_guide", R.string.brief_debug_scenario_posting_guide),
     STEADY("steady", R.string.brief_debug_scenario_steady);
 
@@ -163,17 +161,7 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
         TOP_FOLLOWER -> fixture(strings, base, BriefCard("debug-top-follower", BriefCardType.TOP_FOLLOWER, strings.text(R.string.brief_debug_card_top_follower_title), strings.text(R.string.brief_debug_card_top_follower_body), 92))
         INACTIVITY -> fixture(strings, base, BriefCard("debug-inactivity", BriefCardType.STREAK, strings.text(R.string.brief_debug_card_inactivity_title), strings.text(R.string.brief_debug_card_inactivity_body), 84))
         STREAK -> fixture(strings, base, BriefCard("debug-streak", BriefCardType.STREAK, strings.text(R.string.brief_debug_card_streak_title), strings.text(R.string.brief_debug_card_streak_body), 84))
-        SCHEDULE_GUIDE -> fixture(strings, base, BriefCard("debug-schedule-guide", BriefCardType.SCHEDULE_GUIDE, strings.text(R.string.brief_debug_card_schedule_guide_title), strings.text(R.string.brief_debug_card_schedule_guide_body), 82, BriefCardAction.COMPOSE_TWEET))
-        POST_FOLLOW_THROUGH -> fixture(strings, base, BriefCard(
-            "debug-post-follow-through",
-            BriefCardType.POST_FOLLOW_THROUGH,
-            strings.text(R.string.brief_debug_card_post_follow_through_title),
-            strings.text(R.string.brief_debug_card_post_follow_through_body),
-            94,
-            BriefCardAction.OPEN_POST,
-            sourceAttribution = strings.text(R.string.brief_debug_card_source_buffer),
-        ))
-        POSTING_GUIDE -> fixture(strings, base, BriefCard("debug-posting-guide", BriefCardType.POSTING_GUIDE, strings.text(R.string.brief_debug_card_posting_guide_title), strings.text(R.string.brief_debug_card_posting_guide_body), 86, BriefCardAction.COMPOSE_TWEET))
+        POSTING_GUIDE -> fixture(strings, base, BriefCard("debug-posting-guide", BriefCardType.POSTING_GUIDE, strings.text(R.string.brief_debug_card_posting_guide_title), strings.text(R.string.brief_debug_card_posting_guide_body), 86, BriefCardAction.NONE))
         STEADY -> fixture(strings, base, BriefCard("debug-steady", BriefCardType.SUMMARY, strings.text(R.string.brief_debug_card_steady_title), strings.text(R.string.brief_debug_card_steady_body), 50), today = 0, week = 0)
     }
 

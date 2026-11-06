@@ -123,7 +123,7 @@ class BriefCoachAiTest {
         val generated = BriefCoachAiRunner.generateWith(input(), cloud = true) { prompt, _ ->
             calls++
             if (calls == 1) badReason else {
-                assertTrue(prompt.contains("A number in your explanation or reason was not supported"))
+                assertTrue(prompt.contains("A numerical performance claim or measurement reference"))
                 supported.toString()
             }
         }

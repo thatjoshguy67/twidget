@@ -61,6 +61,24 @@ class BriefCloudRecoveryTest {
         }
     }
 
+    @Test fun numericalValidationRetryAsksForQualitativeAdviceWithoutWeakeningValidation() = runBlocking {
+        var calls = 0
+        val result = BriefCoachAiRunner.generateWith(input, true) { prompt, _ ->
+            calls++
+            if (calls == 1) response.replace("The purpose is clear.", "You received 99999 views.")
+            else {
+                assertTrue(prompt.contains("do not include counts, rates, percentages, durations"))
+                assertTrue(prompt.contains("Keep evidenceIds"))
+                response
+            }
+        }
+        assertEquals(2, calls)
+        assertTrue(result is BriefCoachGeneration.Success)
+        assertEquals(BriefCoachGeneration.Unavailable, BriefCoachAiRunner.generateWith(input, true) { _, _ ->
+            response.replace("The purpose is clear.", "You received 99999 views.")
+        })
+    }
+
     @Test fun cancellingTheDelayPreventsAnotherRequest() = runBlocking {
         var calls = 0
         try {

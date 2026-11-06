@@ -14,7 +14,7 @@ internal data class BriefReviewMeasurement(val source: String, val metric: Strin
     val postedAt: Long = 0, val peerCount: Int = 0)
 
 internal object BriefReviewMeasurements {
-    const val INSTRUCTION = "For numerical performance claims in possibleExplanation or reason, use the exact supplied measurementReferences token, " +
+    const val INSTRUCTION = "The app displays all recorded statistics in separate measurement cards. Prefer qualitative explanations of the wording and media. For numerical performance claims in possibleExplanation or reason, use the exact supplied measurementReferences token, " +
         "such as {{stat:performance:views}} or {{stat:p0:likes}}. The app supplies its figure, unit and source attribution. " +
         "Use {{observation:e0}} to quote a supplied observation as a complete sentence. Never type, swap or calculate performance figures yourself. " +
         "Do not put measurement tokens in action, rewrite or question. Product names and version numbers visible in media are ordinary context, not performance measurements. "

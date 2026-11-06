@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Retry temporary Gemini failures in Tweet Report and recover from invalid
+  numerical claims with qualitative advice while keeping measured figures
+  in the app’s statistics cards.
+
 - Retire the tweet composer, Buffer integration and Cloudinary uploads. Remove
   scheduling cards from Your Brief and tweet rewrites from Tweet Report.
   Existing local draft archives are retained; manage posts already queued with

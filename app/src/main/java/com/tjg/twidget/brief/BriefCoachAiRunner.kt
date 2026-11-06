@@ -188,7 +188,7 @@ internal object BriefCoachAiRunner {
             val ids = selected.map(BriefCoachImage::id).toSet()
             val packet = input.packet(compact, ids, cloud)
             val correction = invalidReason?.let { "\nThe last response failed validation. " +
-                (if (it == "numeric_evidence") "A number in your explanation or reason was not supported. Use exact measurementReferences tokens instead of typing performance figures, or omit the numerical claim. " else "") +
+                (if (it == "numeric_evidence") "A numerical performance claim or measurement reference in your explanation or reason was not valid. The app already displays the recorded statistics separately. For this retry, discuss wording and image context qualitatively: do not include counts, rates, percentages, durations, or measurementReferences tokens in possibleExplanation or reason. Keep evidenceIds for the observations you use. Product names and version numbers are still allowed. " else "") +
                 "Use only the allowed quoteIds and evidenceIds. " +
                 if (cloud) "Follow the exact JSON schema." else "Return the exact labelled plain-text format above; no JSON or markdown." }.orEmpty()
             val prompt = if (cloud) BriefCoachAi.prompt(input, packet) else BriefCoachAi.textPrompt(input, packet)

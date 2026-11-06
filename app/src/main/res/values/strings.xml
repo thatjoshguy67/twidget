@@ -518,6 +518,10 @@
     <string name="brief_debug_nano_refresh_summary">Query the on-device feature and model state again</string>
     <string name="brief_debug_nano_test">Run provider test</string>
     <string name="brief_debug_nano_test_summary">Rebuild the Brief and run the configured local/cloud selection now</string>
+    <string name="brief_debug_diagnose_generation">Run full generation diagnosis</string>
+    <string name="brief_debug_diagnose_generation_summary">Stores failed model responses, evidence and validation details for this debug-only run</string>
+    <string name="brief_debug_diagnosis_report">Generation diagnosis report</string>
+    <string name="brief_debug_no_diagnosis">No detailed diagnosis recorded</string>
     <string name="brief_debug_scenario_real">Real account data</string>
     <string name="brief_debug_scenario_post">Getting attention</string>
     <string name="brief_debug_scenario_worst_post">Quietest tweet</string>

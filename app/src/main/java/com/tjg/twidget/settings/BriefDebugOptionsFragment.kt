@@ -146,12 +146,27 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         val attempt = diagnostics?.let { getString(R.string.l10n_debug_attempt, date(it.lastAttemptAt), it.lastOutcome ?: getString(R.string.brief_debug_nano_no_attempt)) } ?: getString(R.string.brief_debug_nano_no_attempt)
         row(screen, "last_attempt", R.string.debug_last_attempt, attempt, copy = true) { show(getString(R.string.debug_last_attempt), diagnostics.toString()) }
         gap(screen)
+        row(screen, "diagnose_provider", R.string.brief_debug_diagnose_generation,
+            getString(R.string.brief_debug_diagnose_generation_summary), enabled = username.isNotBlank()) {
+            work {
+                val source = withContext(Dispatchers.IO) { BriefEngine.rebuild(context, username, force = true) }
+                BriefAiCoordinator.diagnoseGeneration(context, source)
+                diagnostics = BriefAiCoordinator.diagnostics(context, username)
+                show(getString(R.string.brief_debug_diagnosis_report), diagnostics?.lastDetailedReport.orEmpty())
+            }
+        }
         row(screen, "test_provider", R.string.brief_debug_nano_test, getString(R.string.brief_debug_nano_test_summary), enabled = username.isNotBlank()) {
             work {
                 val source = withContext(Dispatchers.IO) { BriefEngine.rebuild(context, username, force = true) }
                 BriefAiCoordinator.enrich(context, source, force = true)
                 diagnostics = BriefAiCoordinator.diagnostics(context, username)
             }
+        }
+        val report = diagnostics?.lastDetailedReport
+        row(screen, "diagnosis_report", R.string.brief_debug_diagnosis_report,
+            report?.lineSequence()?.firstOrNull() ?: getString(R.string.brief_debug_no_diagnosis), copy = true,
+            enabled = !report.isNullOrBlank()) {
+            show(getString(R.string.brief_debug_diagnosis_report), report.orEmpty())
         }
     }
 

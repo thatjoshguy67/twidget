@@ -486,6 +486,10 @@
     <string name="brief_debug_nano_refresh_summary">Gerätefeature und Modellstatus erneut abfragen</string>
     <string name="brief_debug_nano_test">Provider-Test ausführen</string>
     <string name="brief_debug_nano_test_summary">Briefing neu erstellen und die konfigurierte lokale/Cloud-Auswahl jetzt ausführen</string>
+    <string name="brief_debug_diagnose_generation">Vollständige Generierungsdiagnose ausführen</string>
+    <string name="brief_debug_diagnose_generation_summary">Speichert für diesen Debug-Durchlauf fehlgeschlagene Modellantworten, Quelldaten und Prüfdetails</string>
+    <string name="brief_debug_diagnosis_report">Diagnosebericht der Generierung</string>
+    <string name="brief_debug_no_diagnosis">Noch keine ausführliche Diagnose gespeichert</string>
     <string name="brief_debug_scenario_real">Echte Accountdaten</string>
     <string name="brief_debug_scenario_post">Du erhältst Aufmerksamkeit</string>
     <string name="brief_debug_scenario_worst_post">Ruhigster Tweet</string>

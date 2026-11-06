@@ -911,8 +911,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     private fun actionLabel(card: BriefCard): String? = when (card.action) {
         BriefCardAction.NONE -> null
-        BriefCardAction.OPEN_SCHEDULER -> getString(R.string.brief_action_review_schedule)
-        BriefCardAction.COMPOSE_TWEET -> getString(R.string.brief_action_draft_tweet)
+        BriefCardAction.OPEN_SCHEDULER, BriefCardAction.COMPOSE_TWEET -> null
         BriefCardAction.OPEN_POST -> getString(R.string.brief_action_open_tweet)
     }
 

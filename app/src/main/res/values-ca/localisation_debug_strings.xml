@@ -14,7 +14,7 @@
     <string name="l10n_debug_key_missing">Absent</string>
     <string name="l10n_debug_source_unavailable">Font no disponible. Comprova el compte i les estadístiques a la memòria cau.</string>
     <string name="l10n_debug_kind_language">Tipus: %1$s · idioma: %2$s</string>
-    <string name="l10n_debug_source_complete">Text d\'origen complet: %1$s · reescriptura permesa: %2$s</string>
+    <string name="l10n_debug_source_complete">Text d\'origen complet: %1$s · fragment de l’anàlisi complet: %2$s</string>
     <string name="l10n_debug_history_media">Exemples de l\'historial: %1$s · contingut multimèdia: %2$s</string>
     <string name="l10n_debug_quote_observations">Tuit citat: %1$s · observacions: %2$s</string>
     <string name="l10n_debug_panels">Taulers disponibles: %1$s</string>

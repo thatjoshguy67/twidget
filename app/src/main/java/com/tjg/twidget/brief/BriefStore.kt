@@ -191,7 +191,9 @@ object BriefStore {
                         body = if (card.optBoolean("narrativeGenerated")) BriefVoicePolicy.withoutEmDashes(card.optString("body")) else card.optString("body"),
                         score = card.optInt("score"),
                         action = runCatching { BriefCardAction.valueOf(card.optString("action")) }
-                            .getOrDefault(BriefCardAction.NONE),
+                            .getOrDefault(BriefCardAction.NONE)
+                            .takeUnless { it == BriefCardAction.OPEN_SCHEDULER || it == BriefCardAction.COMPOSE_TWEET }
+                            ?: BriefCardAction.NONE,
                         actionData = card.optString("actionData"),
                         sourceAttribution = card.optString("sourceAttribution"),
                         narrativeGenerated = card.optBoolean("narrativeGenerated"),

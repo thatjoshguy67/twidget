@@ -189,7 +189,7 @@ jobs:
           disable-animations: true
           script: |
             adb shell settings put secure show_ime_with_hard_keyboard 1
-            ./gradlew connected${{ matrix.distribution == 'github' && 'Github' || 'Play' }}DebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.tjg.twidget.data.AccountMutationInstrumentedTest,com.tjg.twidget.schedule.ScheduleTransactionsInstrumentedTest,com.tjg.twidget.main.DashboardCardRenderingInstrumentedTest,com.tjg.twidget.main.DashboardSnapshotInstrumentedTest,com.tjg.twidget.ui.ImageCacheInstrumentedTest,com.tjg.twidget.ui.FontAssetEquivalenceInstrumentedTest,com.tjg.twidget.widget.WidgetStylesInstrumentedTest,com.tjg.twidget.followers.TopFollowersSearchInstrumentedTest --no-daemon
+            ./gradlew connected${{ matrix.distribution == 'github' && 'Github' || 'Play' }}DebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.tjg.twidget.data.AccountMutationInstrumentedTest,com.tjg.twidget.schedule.ScheduleTransactionsInstrumentedTest,com.tjg.twidget.schedule.ComposerRetirementInstrumentedTest,com.tjg.twidget.main.DashboardCardRenderingInstrumentedTest,com.tjg.twidget.main.DashboardSnapshotInstrumentedTest,com.tjg.twidget.ui.ImageCacheInstrumentedTest,com.tjg.twidget.ui.FontAssetEquivalenceInstrumentedTest,com.tjg.twidget.widget.WidgetStylesInstrumentedTest,com.tjg.twidget.followers.TopFollowersSearchInstrumentedTest --no-daemon
             ./gradlew connected${{ matrix.distribution == 'github' && 'Github' || 'Play' }}AuditAndroidTest -PauditTestBuildType=audit --no-daemon --max-workers=1
       - uses: actions/upload-artifact@v4
         if: always()

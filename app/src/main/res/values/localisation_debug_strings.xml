@@ -14,7 +14,7 @@
     <string name="l10n_debug_key_missing">Missing</string>
     <string name="l10n_debug_source_unavailable">Source unavailable. Check the account and cached analytics.</string>
     <string name="l10n_debug_kind_language">Kind: %1$s · language: %2$s</string>
-    <string name="l10n_debug_source_complete">Complete source text: %1$s · rewrite allowed: %2$s</string>
+    <string name="l10n_debug_source_complete">Complete source text: %1$s · complete review excerpt: %2$s</string>
     <string name="l10n_debug_history_media">History examples: %1$s · media: %2$s</string>
     <string name="l10n_debug_quote_observations">Quoted tweet: %1$s · observations: %2$s</string>
     <string name="l10n_debug_panels">Available panels: %1$s</string>

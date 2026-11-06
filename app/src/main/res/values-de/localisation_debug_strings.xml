@@ -14,7 +14,7 @@
     <string name="l10n_debug_key_missing">Fehlt</string>
     <string name="l10n_debug_source_unavailable">Quelle nicht verfügbar. Prüfe Konto und zwischengespeicherte Statistiken.</string>
     <string name="l10n_debug_kind_language">Typ: %1$s · Sprache: %2$s</string>
-    <string name="l10n_debug_source_complete">Vollständiger Quelltext: %1$s · Umschreiben erlaubt: %2$s</string>
+    <string name="l10n_debug_source_complete">Vollständiger Quelltext: %1$s · vollständiger Analyseausschnitt: %2$s</string>
     <string name="l10n_debug_history_media">Verlaufsbeispiele: %1$s · Medien: %2$s</string>
     <string name="l10n_debug_quote_observations">Zitierter Tweet: %1$s · Beobachtungen: %2$s</string>
     <string name="l10n_debug_panels">Verfügbare Bereiche: %1$s</string>

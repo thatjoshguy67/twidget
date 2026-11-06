@@ -255,18 +255,18 @@
     <string name="import_failure_difference">Abweichung: %1$s Follower</string>
     <string name="import_failure_comparison_day">Verglichene Zahlen vom %1$s</string>
     <string name="import_failure_impossible">Die Follower-Änderungen in diesem Export würden eine negative Zahl ergeben.</string>
-    <string name="import_failure_refresh_help">X Analytics und gespeicherte Zahlen werden möglicherweise zu unterschiedlichen Zeiten aktualisiert. Aktualisiere dieses Konto und lade einen neuen Export herunter, der den heutigen Tag einschließt. Falls es weiterhin nicht klappt, warte und versuche es erneut.</string>
+    <string name="import_failure_refresh_help">X Analytics und gespeicherte Zahlen werden möglicherweise zu unterschiedlichen Zeiten aktualisiert. Aktualisiere diesen Account und lade einen neuen Export herunter, der den heutigen Tag einschließt. Falls es weiterhin nicht klappt, warte und versuche es erneut.</string>
     <string name="import_failure_old_export">Dieser Export enthält den heutigen Tag nicht.</string>
     <string name="import_failure_invalid_rows">Im Export fehlen Tagesdaten oder sie sind ungültig.</string>
     <string name="import_failure_connection">Wir konnten die Follower-Zahl nicht beim Server überprüfen.</string>
     <string name="import_failure_connection_help">Prüfe deine Verbindung und versuche es in Kürze erneut.</string>
-    <string name="import_failure_history_help">Synchronisiere dieses Konto weiterhin, um einen täglichen Verlauf aufzubauen. Versuche es dann mit einem neuen Export für diese Tage erneut.</string>
-    <string name="import_failure_private_help">Verwende den lokalen Verlauf ohne Bridge, um Analytics für ein privates Konto zu importieren.</string>
-    <string name="import_failure_file_help">Wähle eine CSV-Datei der Kontoübersicht für dieses Konto aus X Analytics. Der Zeitraum muss den heutigen Tag einschließen.</string>
+    <string name="import_failure_history_help">Synchronisiere diesen Account weiterhin, um einen täglichen Verlauf aufzubauen. Versuche es dann mit einem neuen Export für diese Tage erneut.</string>
+    <string name="import_failure_private_help">Verwende den lokalen Verlauf ohne Bridge, um Analytics für einen privaten Account zu importieren.</string>
+    <string name="import_failure_file_help">Wähle eine CSV-Datei der Kontoübersicht für diesen Account aus X Analytics. Der Zeitraum muss den heutigen Tag einschließen.</string>
     <string name="import_try_another_file">CSV wählen</string>
     <string name="import_no_browser">Kein Browser verfügbar.</string>
     <string name="import_action">Importieren</string>
-    <string name="analytics_import_sync_first">Synchronisiere dieses Konto zuerst, damit Twidget den Import am aktuellen Follower-Stand ausrichten kann.</string>
+    <string name="analytics_import_sync_first">Synchronisiere diesen Account zuerst, damit Twidget den Import am aktuellen Follower-Stand ausrichten kann.</string>
     <string name="analytics_import_cannot_open">Twidget konnte diese Datei nicht öffnen.</string>
     <string name="analytics_import_unknown_error">Unbekannter Fehler beim Importieren aufgetreten.</string>
     <string name="analytics_import_failed">Datei öffnen: %1$s</string>
@@ -387,7 +387,7 @@
     <string name="onboarding_run_locally">Lokal erinnern</string>
     <string name="connect">Verbinden</string>
     <string name="onboarding_tip_stats_title">Live Follower-Stats</string>
-    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Konten, Tweets und Likes für jedes öffentliche X-Profil.</string>
+    <string name="onboarding_tip_stats_summary">Synchronisiere Follower, gefolgte Accounts, Tweets und Likes für jedes öffentliche X-Profil.</string>
     <string name="onboarding_tip_widgets_title">Start- und Sperrbildschirm-Widgets</string>
     <string name="onboarding_tip_widgets_summary">Übersichtliche One-UI-Widgets mit Optionen für Blur, Tönung und Schriftarten.</string>
     <string name="onboarding_tip_accounts_title">Mehrere Accounts</string>
@@ -402,7 +402,7 @@
     <string name="onboarding_username_label">X Benutzername</string>
     <string name="onboarding_username_error">Gültigen X-Benutzernamen eingeben.</string>
     <string name="onboarding_account_not_found">Dieser X-Account wurde nicht gefunden. Überprüfe den Benutzernamen und versuche es erneut.</string>
-    <string name="onboarding_account_check_failed">Dieses Konto konnte im Moment nicht überprüft werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="onboarding_account_check_failed">Dieser Account konnte im Moment nicht überprüft werden. Prüfe deine Verbindung und versuche es erneut.</string>
     <string name="onboarding_checking_account">Account überprüfen…</string>
     <string name="continue_button">Weiter</string>
     <string name="starting_twidget">Startet…</string>
@@ -454,7 +454,7 @@
     <string name="brief_debug_preview_category">Status-Vorschau</string>
     <string name="brief_debug_scenario">Briefing-Status</string>
     <string name="brief_debug_open_preview">Briefing-Vorschau öffnen</string>
-    <string name="brief_debug_open_preview_summary">%1$s mit dem aktuellen Konto als Basis rendern</string>
+    <string name="brief_debug_open_preview_summary">%1$s mit dem aktuellen Account als Basis rendern</string>
     <string name="brief_debug_open_onboarding">Ersteinrichtung öffnen</string>
     <string name="brief_debug_open_onboarding_summary">Vorschau auf den Willkommensbildschirm und Hintergrundgenerierungs-Flow anzeigen</string>
     <string name="brief_debug_inputs_category">Engine-Eingaben</string>
@@ -523,7 +523,7 @@
     <string name="brief_debug_card_steady_body">Bleib dran, und Twidget achtet auf die nächste bedeutende Veränderung.</string>
     <string name="brief_debug_synthetic_provider_message">Synthetischer Debug-Zustand · keine KI-Anfrage wurde gestellt</string>
     <string name="brief_debug_report_title">Twidget-Briefing: Engine-Log</string>
-    <string name="brief_debug_report_account">Konto: @%1$s</string>
+    <string name="brief_debug_report_account">Account: @%1$s</string>
     <string name="brief_debug_report_generated">Erstellt: %1$s</string>
     <string name="brief_debug_report_input_facts">EINGABEDATEN</string>
     <string name="brief_debug_report_ranked_candidates">SORTIERTE KANDIDATEN</string>
@@ -848,7 +848,7 @@
     <string name="streak_card_restart">Starte deine Serie neu</string>
     <string name="settings_app_logo_style">Twitter/X-Logostil</string>
     <string name="card_catalogue_hint">Tippe auf eine Kartenvorschau, um sie deinem Dashboard hinzuzufügen.</string>
-    <string name="card_group_metrics">Konto und Zielgruppe</string>
+    <string name="card_group_metrics">Account und Zielgruppe</string>
     <string name="card_group_growth">Wachstum und Aktivität</string>
     <string name="card_group_posts">Tweet-Analyse</string>
     <string name="card_group_x">X-Analysen</string>
@@ -894,7 +894,7 @@
     <string name="notices_latest_version">Neueste Version</string>
     <string name="notices_older_releases">Ältere Versionen</string>
     <string name="change_account_handle">Nutzernamen ändern</string>
-    <string name="change_account_handle_message">Gib den neuen X-Nutzernamen dieses Kontos ein. Dein Verlauf, deine Widgets, Ziele und lokalen Daten werden übernommen. Prüfe bei Konten, die vor der Identitätserfassung gespeichert wurden, dass es sich um dieselbe Person handelt.</string>
+    <string name="change_account_handle_message">Gib den neuen X-Nutzernamen für diesen Account ein. Dein Verlauf, deine Widgets, Ziele und lokalen Daten werden übernommen. Prüfe bei Accounts, die vor der Identitätserfassung gespeichert wurden, dass es sich um dieselbe Person handelt.</string>
     <string name="invalid_account_handle">Gib einen X-Nutzernamen mit 1–15 Buchstaben, Zahlen oder Unterstrichen ein.</string>
     <string name="account_handle_changed">Nutzername aktualisiert. Deine Daten wurden beibehalten.</string>
     <string name="brief_context_relative_title">Ein herausragender Tweet für deinen Account</string>
@@ -982,7 +982,7 @@
     <string name="widget_language_ca">Katalanisch (Català)</string>
     <string name="language_catalan">Katalanisch (Català)</string>
     <string name="debug_open_review_library">Tweets öffnen</string>
-    <string name="debug_no_review_subjects">Keine zwischengespeicherten Tweets, gespeicherten Analysen für dieses Konto</string>
+    <string name="debug_no_review_subjects">Keine zwischengespeicherten Tweets, gespeicherten Analysen für diesen Account</string>
     <string name="onboarding_permission_notifications_summary">Zeigt den Scanfortschritt und Benachrichtigungen zu App-Updates.</string>
     <string name="debug_test_review_provider_summary">Ausgewählten Tweet mit Kontext und Medien an die Cloud senden. Validierung und untersuchte Medien anzeigen, ohne die gespeicherte Analyse zu ersetzen.</string>
     <string name="debug_review_subject">Tweet zum Prüfen</string>

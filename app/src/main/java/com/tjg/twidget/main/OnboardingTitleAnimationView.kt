@@ -22,7 +22,7 @@ import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
-import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class OnboardingTitleAnimationView @JvmOverloads constructor(
     context: Context,
@@ -38,6 +38,10 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
     private val usesHardwareBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     private val softwareLettersLayer = SoftwareTitleLayer(context, titlePaint)
     private val hardwareGlyphLayers = mutableListOf<HardwareGlyphLayer>()
+    @get:androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
+    private val blurEffects: Array<RenderEffect?> by lazy {
+        arrayOfNulls(BLUR_BUCKET_COUNT + 1)
+    }
 
     private var title = ""
     private var geometry = TitleGeometry.EMPTY
@@ -198,7 +202,6 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
         hardwareGlyphLayers.clear()
         geometry.glyphs.forEach { glyph ->
             HardwareGlyphLayer(context, titlePaint, glyph).also { layer ->
-                layer.setLayerType(LAYER_TYPE_HARDWARE, null)
                 hardwareGlyphLayers += layer
                 addView(
                     layer,
@@ -206,6 +209,31 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
                 )
             }
         }
+    }
+
+    private fun appliedBlurRadius(radius: Float): Float {
+        if (radius <= BLUR_REMOVE_PX) return 0f
+        if (radius < BLUR_FINE_THRESHOLD_PX) return radius
+        if (radius < BLUR_COARSE_THRESHOLD_PX) return radius.roundToInt().toFloat()
+        return (
+            BLUR_COARSE_THRESHOLD_PX +
+                ((radius - BLUR_COARSE_THRESHOLD_PX) / BLUR_COARSE_STEP_PX).roundToInt() *
+                    BLUR_COARSE_STEP_PX
+            ).roundToInt().coerceIn(0, BLUR_BUCKET_COUNT).toFloat()
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
+    private fun blurEffectFor(radius: Float): RenderEffect? {
+        if (radius <= 0f) return null
+        val bucket = radius.toInt()
+        if (radius == bucket.toFloat() && bucket in 1..BLUR_BUCKET_COUNT) {
+            return blurEffects[bucket] ?: RenderEffect.createBlurEffect(
+                radius,
+                radius,
+                Shader.TileMode.DECAL,
+            ).also { blurEffects[bucket] = it }
+        }
+        return RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.DECAL)
     }
 
     private fun updateAnimationFrame() {
@@ -252,14 +280,14 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
         private val glyph: Glyph,
     ) : View(context) {
         private val paint = TextPaint(paintSource)
-        private var lastBlurRadius = Float.NaN
+        private var lastAppliedRadius = Float.NaN
 
         fun updateAnimation(globalTime: Float, horizontalDistance: Float) {
             val localTime = globalTime - glyph.sequence * LETTER_STAGGER_MS
-            if (localTime < 0f) {
+            if (localTime <= 0f) {
                 alpha = 0f
                 translationX = horizontalDistance
-                updateBlur(GLYPH_BLUR_RADIUS_PX)
+                updateBlur(0f)
                 return
             }
             val fade = fadeInterpolator.getInterpolation(
@@ -270,26 +298,19 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
             )
             alpha = fade
             translationX = horizontalDistance * (1f - movement)
-            updateBlur(GLYPH_BLUR_RADIUS_PX * (1f - movement))
+            if (fade <= 0f) {
+                updateBlur(0f)
+            } else {
+                updateBlur(GLYPH_BLUR_RADIUS_PX * (1f - movement))
+            }
         }
 
         private fun updateBlur(radius: Float) {
-            val normalizedRadius = radius.coerceAtLeast(0f)
-            if (abs(normalizedRadius - lastBlurRadius) < BLUR_UPDATE_THRESHOLD_PX) return
-            lastBlurRadius = normalizedRadius
-            setRenderEffect(
-                if (normalizedRadius > 0.5f) {
-                    RenderEffect.createBlurEffect(
-                        normalizedRadius,
-                        normalizedRadius,
-                        Shader.TileMode.DECAL,
-                    )
-                } else {
-                    null
-                },
-            )
+            val applied = appliedBlurRadius(radius)
+            if (applied == lastAppliedRadius) return
+            lastAppliedRadius = applied
+            setRenderEffect(blurEffectFor(applied))
         }
-
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             canvas.drawText(title, glyph.start, glyph.end, glyph.x, glyph.baseline, paint)
@@ -327,7 +348,7 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
                 )
                 paint.alpha = (fade * 255).toInt()
                 val blurRadius = GLYPH_BLUR_RADIUS_PX * (1f - movement)
-                paint.maskFilter = if (blurRadius > 0.5f) {
+                paint.maskFilter = if (blurRadius > BLUR_REMOVE_PX) {
                     BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
                 } else {
                     null
@@ -352,7 +373,12 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
         const val FADE_DURATION_MS = 500f
         const val MOVEMENT_DURATION_MS = 1_000L
         const val GLYPH_BLUR_RADIUS_PX = 100f
-        const val BLUR_UPDATE_THRESHOLD_PX = 1f
+        const val BLUR_RADIUS_STEP_PX = 1f
+        const val BLUR_BUCKET_COUNT = (GLYPH_BLUR_RADIUS_PX / BLUR_RADIUS_STEP_PX).toInt()
+        const val BLUR_COARSE_THRESHOLD_PX = 70f
+        const val BLUR_COARSE_STEP_PX = 4f
+        const val BLUR_FINE_THRESHOLD_PX = 8f
+        const val BLUR_REMOVE_PX = 0.05f
         const val TITLE_BLUR_BOTTOM_INSET_DP = 24f
     }
 }

@@ -26,7 +26,7 @@ class AnimatedTitleRenderingInstrumentedTest {
                 title.prepare()
                 for (index in 0 until title.childCount) {
                     val glyph = title.getChildAt(index)
-                    assertEquals(View.LAYER_TYPE_HARDWARE, glyph.layerType)
+                    assertEquals(View.LAYER_TYPE_NONE, glyph.layerType)
                     assertEquals(0f, glyph.alpha, 0f)
                 }
                 title.play()

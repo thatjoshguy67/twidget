@@ -24,4 +24,18 @@ class BriefNumericEvidenceTest {
         assertTrue(BriefNumericEvidence.accepts("1 200 abonnés", "1\u202f200 abonnés", french))
         assertFalse(BriefNumericEvidence.accepts("1 201 abonnés", "1200 abonnés", french))
     }
+
+    @Test fun shortWrittenNumbersInSourceAllowTheirDigitEquivalent() {
+        listOf(
+            Triple(Locale.US, "more than three days", "more than 3 days"),
+            Triple(Locale.GERMAN, "mehr als drei Tage", "mehr als 3 Tage"),
+            Triple(Locale.FRENCH, "plus de trois jours", "plus de 3 jours"),
+            Triple(Locale.forLanguageTag("es"), "más de tres días", "más de 3 días"),
+            Triple(Locale.forLanguageTag("ca"), "més de tres dies", "més de 3 dies"),
+        ).forEach { (locale, evidence, rendered) ->
+            val strings = TestBriefStrings(locale)
+            assertTrue("$locale should accept its equivalent digit", BriefNumericEvidence.accepts(rendered, evidence, strings))
+            assertFalse("$locale must still reject an invented digit", BriefNumericEvidence.accepts(rendered.replace("3", "4"), evidence, strings))
+        }
+    }
 }

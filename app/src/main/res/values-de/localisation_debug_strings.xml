@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="l10n_debug_inputs">Follower %1$s · heute %2$s · Woche %3$s\nBeiträge %4$s · Verlauf %5$s Einträge\nFollower-Scan %6$s Konten</string>
+    <string name="l10n_debug_inputs">Follower %1$s · heute %2$s · Woche %3$s\nPosts %4$s · Verlauf %5$s Einträge\nFollower-Scan %6$s Accounts</string>
     <string name="l10n_debug_nano_state">Status: %1$s · Modus: %2$s\nModell: %3$s · Kontext: %4$s Tokens</string>
     <string name="l10n_debug_attempt">%1$s\nErgebnis: %2$s</string>
     <string name="l10n_debug_rank_detail">Rang: %1$s · Basis: %2$s\nAusgewählt: %3$s\nID: %4$s\n\n%5$s</string>
@@ -12,7 +12,7 @@
     <string name="l10n_debug_cloud_config">Modell: %1$s\nAPI-Schlüssel: %2$s\nNur Konfiguration · kein Verbindungstest</string>
     <string name="l10n_debug_key_present">Vorhanden</string>
     <string name="l10n_debug_key_missing">Fehlt</string>
-    <string name="l10n_debug_source_unavailable">Quelle nicht verfügbar. Prüfe Konto und zwischengespeicherte Statistiken.</string>
+    <string name="l10n_debug_source_unavailable">Quelle nicht verfügbar. Prüfe den Account und zwischengespeicherte Statistiken.</string>
     <string name="l10n_debug_kind_language">Typ: %1$s · Sprache: %2$s</string>
     <string name="l10n_debug_source_complete">Vollständiger Quelltext: %1$s · vollständiger Analyseausschnitt: %2$s</string>
     <string name="l10n_debug_history_media">Verlaufsbeispiele: %1$s · Medien: %2$s</string>
@@ -20,7 +20,7 @@
     <string name="l10n_debug_panels">Verfügbare Bereiche: %1$s</string>
     <string name="l10n_debug_no_send">Diese Prüfung hat keine Medien an ein Modell gesendet.</string>
     <string name="l10n_debug_draft_unavailable">Entwurf nicht verfügbar.</string>
-    <string name="l10n_debug_draft_cache">Entwurfsanalysen verwenden einen privaten Cache nach Version, Daten und Sprache. Hinweise bleiben bis zu 7 Tage für höchstens 32 Entwürfe pro Konto erhalten.</string>
+    <string name="l10n_debug_draft_cache">Entwurfsanalysen verwenden einen privaten Cache nach Version, Daten und Sprache. Hinweise bleiben bis zu 7 Tage für höchstens 32 Entwürfe pro Account erhalten.</string>
     <string name="l10n_debug_cache_match">Passende Analyse gespeichert am: %1$s</string>
     <string name="l10n_debug_cache_none">Keine passende gespeicherte Analyse.</string>
     <string name="l10n_debug_cache_post_none">Keine gespeicherte Analyse für diesen Tweet.</string>

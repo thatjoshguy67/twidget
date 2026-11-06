@@ -89,6 +89,74 @@ class BriefAiCardResponseTest {
     }
 
     @Test
+    fun signedNumericFactsCannotLoseTheirSign() {
+        val card = BriefCard("follower-context", BriefCardType.FOLLOWER_CONTEXT,
+            "Your follower week", "Your follower change was -1, from 131 to 130.", 70)
+        val source = source.copy(cards = listOf(card))
+
+        val unsigned = BriefAiCardResponse.apply(source,
+            """[{"i":"follower-context","t":"Your follower week","b":"Your follower count fell by 1, from 131 to 130."}]""",
+            BriefProviderUsed.CLOUD, strings).snapshot!!.cards.single()
+        val signed = BriefAiCardResponse.apply(source,
+            """[{"i":"follower-context","t":"Your follower week","b":"Your follower change was -1, from 131 to 130."}]""",
+            BriefProviderUsed.CLOUD, strings).snapshot!!.cards.single()
+
+        assertEquals(false, unsigned.narrativeGenerated)
+        assertEquals(true, signed.narrativeGenerated)
+    }
+
+    @Test
+    fun overlongCompactSummaryKeepsTheSentencesThatFit() {
+        val german = TestBriefStrings(Locale.GERMAN)
+        val followerBody = "Vom 30.10.2026 bis 06.11.2026 betrug deine Nettoveränderung bei Followern 0 (130 → 130)."
+        val cards = listOf(
+            BriefCard("start-streak", BriefCardType.STREAK, "Starte einen Streak",
+                "Twidget hat seit mehr als 3 Tagen keinen eigenen Tweet erkannt.", 70),
+            BriefCard("follower-context-2026-11-06", BriefCardType.FOLLOWER_CONTEXT, "Deine Follower-Woche", followerBody, 80),
+            BriefCard("milestone-followers-200.0", BriefCardType.MILESTONE, "Weiter so",
+                "Du näherst dich deinem Ziel von 200 Followern.", 60),
+        )
+        val short = "Vom 30.10.2026 bis 06.11.2026 blieb deine Follower-Zahl bei 130. Dein Ziel von 200 Followern ist in Sicht."
+        val result = BriefAiCardResponse.apply(
+            source.copy(followers = 130, followersToday = 0, followersWeek = 0, cards = cards),
+            """[
+                {"id":"__brief_summary__","title":"Deine Woche im Überblick","body":"$followerBody Dein Ziel bleibt in Sicht.","shortDescription":"$short"},
+                {"id":"start-streak","title":"Starte einen Streak","body":"Twidget hat seit mehr als 3 Tagen keinen eigenen Tweet erkannt. Tweete heute, um anzufangen."},
+                {"id":"follower-context-2026-11-06","title":"Deine Follower-Woche","body":"$followerBody"},
+                {"id":"milestone-followers-200.0","title":"Weiter so","body":"Du näherst dich deinem Ziel von 200 Followern."}
+            ]""",
+            BriefProviderUsed.CLOUD,
+            german,
+        )
+
+        assertEquals(true, result.snapshot?.hasGeneratedNarrative)
+        assertEquals(
+            "Vom 30.10.2026 bis 06.11.2026 blieb deine Follower-Zahl bei 130.",
+            result.snapshot?.shortDescription,
+        )
+    }
+
+    @Test
+    fun compactSummaryWithoutAFittingSentenceReportsItsLength() {
+        val result = BriefAiCardResponse.apply(
+            source,
+            """[{"id":"__brief_summary__","title":"Your week","body":"You gained 10 followers.","shortDescription":"${"You gained 10 followers this week and the rest of this sentence keeps going past the compact limit without another stop. "}"}]""",
+            BriefProviderUsed.CLOUD,
+            strings,
+        )
+
+        assertEquals(false, result.snapshot?.hasGeneratedNarrative == true)
+        assertEquals(true, result.failure?.contains("summary_length") == true)
+    }
+
+    @Test
+    fun cloudNumericRepairPromptForbidsDroppingSigns() {
+        val prompt = cloudNumericRepairPrompt(source, strings)
+        assertEquals(true, prompt.contains("never write 1 when the evidence says -1"))
+        assertEquals(true, prompt.contains("before-and-after values"))
+    }
+
+    @Test
     fun aiSummaryIsSentenceCasedAndStoredForEveryBriefSurface() {
         val result = BriefAiCardResponse.apply(
             source.copy(followersToday = 1),

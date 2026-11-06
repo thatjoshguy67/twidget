@@ -10,7 +10,6 @@ import com.tjg.twidget.core.NetworkResponseParsers
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import kotlin.math.sqrt
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,7 +24,7 @@ data class BangerResult(
 /** Builds a durable per-account Hall of Fame without retaining full timelines. */
 object BangerClient {
     private const val PREFS = "twidget_bangers"
-    private const val VERSION = 3
+    private const val VERSION = 4
     private const val PAGES_PER_REFRESH = 5
     private const val MAX_POSTS = 75_000
     private const val PAGE_SIZE = 100
@@ -88,7 +87,8 @@ object BangerClient {
         val key = "v$VERSION:${username.lowercase(Locale.US)}"
         val prefs = com.tjg.twidget.data.AccountPreferences.open(context, PREFS)
         val state = prefs.getString(key, null)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
-        val previous = prefs.getString("v2:${username.lowercase(Locale.US)}", null)
+        val previous = (prefs.getString("v3:${username.lowercase(Locale.US)}", null)
+            ?: prefs.getString("v2:${username.lowercase(Locale.US)}", null))
             ?.let { runCatching { JSONObject(it) }.getOrNull() }
         var winner = (state.optJSONObject("post") ?: previous?.optJSONObject("post"))?.let(::postFromJson)
         var winnerScore = winner?.let(BangerScore::calculate) ?: 0.0
@@ -120,10 +120,9 @@ object BangerClient {
                 val status = results.optJSONObject(index) ?: continue
                 if (!isOwnPost(status, requested)) continue
                 val post = AnalyticsClient.parseFxPost(status)
-                if (post.views <= 0) continue
                 if (!complete && !capped) postsScanned++
                 val score = BangerScore.calculate(post)
-                if (winner == null || score > winnerScore || post.url == winner?.url) {
+                if (winner == null || BangerScore.compare(post, winner) > 0 || post.url == winner?.url) {
                     winner = post
                     winnerScore = score
                 }
@@ -182,18 +181,19 @@ object BangerClient {
 
 }
 
-// A banger is a post that hit hard in absolute terms, so rank by weighted
-// engagement volume. Engagement *rate* falls as reach grows, so it is only
-// a bounded quality multiplier: it lets a well-received post edge out a
-// hollow one of similar size, but can never lift a small high-rate post
-// over a genuinely viral one. Must match bridge/src/banger-score.js.
+// Lifetime audience response. These are Twidget product weights, not X's
+// per-viewer prediction weights. Must match bridge/src/banger-score.js.
 internal object BangerScore {
     fun calculate(post: PostSummary): Double {
-        if (post.views <= 0) return 0.0
-        val impact = post.likes + post.replies * 2.0 + post.reposts * 3.0 + post.quotes * 4.0
-        if (impact <= 0) return 0.0
-        val rate = impact / (post.views + 100.0)
-        val quality = sqrt(rate / 0.02).coerceIn(0.5, 1.5)
-        return impact * quality
+        val likes = post.likes.coerceAtLeast(0).toDouble()
+        val bonus = post.reposts.coerceAtLeast(0) * 2.0 +
+            post.replies.coerceAtLeast(0) * 0.25 + post.quotes.coerceAtLeast(0) * 0.5
+        return likes + minOf(likes * 0.25, bonus)
+    }
+
+    fun compare(candidate: PostSummary, incumbent: PostSummary): Int {
+        val engagement = calculate(candidate).compareTo(calculate(incumbent))
+        return if (engagement != 0) engagement else
+            candidate.views.coerceAtLeast(0).compareTo(incumbent.views.coerceAtLeast(0))
     }
 }

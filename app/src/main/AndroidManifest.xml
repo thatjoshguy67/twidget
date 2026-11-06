@@ -22,8 +22,6 @@
         <package android:name="com.twitter.android" />
         <!-- Invalidate local generation capabilities when AICore is updated. -->
         <package android:name="com.google.android.aicore" />
-        <!-- Samsung Gallery, preferred media picker on One UI. -->
-        <package android:name="com.sec.android.gallery3d" />
     </queries>
 
     <application

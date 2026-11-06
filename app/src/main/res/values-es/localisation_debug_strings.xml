@@ -14,7 +14,7 @@
     <string name="l10n_debug_key_missing">Ausente</string>
     <string name="l10n_debug_source_unavailable">Fuente no disponible. Comprueba la cuenta y las estadísticas en caché.</string>
     <string name="l10n_debug_kind_language">Tipo: %1$s · idioma: %2$s</string>
-    <string name="l10n_debug_source_complete">Texto de origen completo: %1$s · reescritura permitida: %2$s</string>
+    <string name="l10n_debug_source_complete">Texto de origen completo: %1$s · fragmento del análisis completo: %2$s</string>
     <string name="l10n_debug_history_media">Ejemplos del historial: %1$s · contenido multimedia: %2$s</string>
     <string name="l10n_debug_quote_observations">Tuit citado: %1$s · observaciones: %2$s</string>
     <string name="l10n_debug_panels">Paneles disponibles: %1$s</string>

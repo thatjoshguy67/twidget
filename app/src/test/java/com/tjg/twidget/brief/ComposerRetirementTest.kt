@@ -12,6 +12,7 @@ class ComposerRetirementTest {
 
     @Test fun oldBriefsDiscardScheduleCardsAndUnpublishedQueueWithoutLosingAnalyticsCards() {
         val raw = BriefStore.encode(snapshot())
+        raw.getJSONArray("cards").getJSONObject(0).put("action", "COMPOSE_TWEET")
         raw.getJSONArray("cards").put(JSONObject().put("id", "old-schedule").put("type", "SCHEDULE_GUIDE"))
             .put(JSONObject().put("id", "old-follow-through").put("type", "POST_FOLLOW_THROUGH"))
         // Retired payloads are deliberately ignored, even when their provider schema is obsolete.
@@ -20,6 +21,7 @@ class ComposerRetirementTest {
         val restored = BriefStore.decode(raw)
         assertEquals(listOf("growth"), restored.cards.map { it.id })
         assertTrue(restored.upcomingTweets.isEmpty())
+        assertEquals(BriefCardAction.NONE, restored.cards.single().action)
         assertFalse(BriefStore.encode(restored).has("upcomingTweets"))
     }
 

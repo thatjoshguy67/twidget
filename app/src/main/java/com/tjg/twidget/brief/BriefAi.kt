@@ -77,7 +77,34 @@ data class BriefAiDiagnostics(
     val lastLocalFailure: String?,
     val lastLocalDetail: String?,
     val cloudConfigured: Boolean,
+    val lastDetailedReport: String?,
 )
+
+/** Saved only after the explicit debug action. It may contain the account's Brief source text. */
+private class BriefGenerationTrace(private val strings: BriefStrings) {
+    private val lines = mutableListOf<String>()
+
+    fun event(value: String) { lines += value }
+
+    fun localAttempt(attempt: BriefNanoTextNarrative.FieldAttempt) {
+        val allowed = BriefNumericEvidence.diagnosticFacts(attempt.allowedNumbers, strings)
+        val detected = attempt.candidate?.let { BriefNumericEvidence.diagnosticFacts(it, strings) }.orEmpty()
+        lines += buildString {
+            append("NANO · ").append(attempt.stage).append(" · attempt ").append(attempt.attempt)
+            append('\n').append("Candidate: ").append(attempt.candidate ?: "<no response>")
+            append('\n').append("Detected numbers: ").append(detected.ifEmpty { listOf("none") }.joinToString())
+            append('\n').append("Allowed numbers: ").append(allowed.ifEmpty { listOf("none") }.joinToString())
+            append('\n').append("Evidence: ").append(attempt.evidence)
+            append('\n').append("Rejected: ").append(attempt.rejection ?: "no")
+        }
+    }
+
+    fun cloudResponse(raw: String) {
+        lines += "CLOUD · Raw response:\n$raw"
+    }
+
+    fun persist(context: Context) = BriefAiDiagnosticsStore.detailedReport(context, lines.joinToString("\n\n"))
+}
 
 object BriefAiCoordinator {
     private val generationMutex = Mutex()
@@ -96,6 +123,23 @@ object BriefAiCoordinator {
         context: Context,
         source: BriefSnapshot,
         force: Boolean = false,
+    ): BriefAiResult = enrichInternal(context, source, force, null)
+
+    suspend fun diagnoseGeneration(context: Context, source: BriefSnapshot): BriefAiResult {
+        val trace = BriefGenerationTrace(BriefStrings.from(context))
+        BriefAiDiagnosticsStore.clearDetailedReport(context)
+        return try {
+            enrichInternal(context, source, force = true, trace = trace)
+        } finally {
+            trace.persist(context)
+        }
+    }
+
+    private suspend fun enrichInternal(
+        context: Context,
+        source: BriefSnapshot,
+        force: Boolean,
+        trace: BriefGenerationTrace?,
     ): BriefAiResult = withContext(Dispatchers.IO) {
         generationMutex.withLock {
             val mode = BriefSettingsStore.provider(context)
@@ -125,23 +169,27 @@ object BriefAiCoordinator {
             val generated = when (mode) {
                 BriefProviderMode.LOCAL -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    GeminiNanoBriefProvider.generate(context, currentSource, strings)?.copy(
+                    val local = GeminiNanoBriefProvider.generate(context, currentSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
+                    if (local == null) trace?.event("NANO · ${BriefAiDiagnosticsStore.lastLocalFailure(context) ?: "no validated response"}")
+                    local?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_nano),
                     )
                 }
                 BriefProviderMode.CLOUD -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
-                    GeminiCloudBriefProvider.generate(context, currentSource, strings)?.copy(
+                    GeminiCloudBriefProvider.generate(context, currentSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_cloud),
                     )
                 }
                 BriefProviderMode.AUTO -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    GeminiNanoBriefProvider.generate(context, currentSource, strings)?.copy(
+                    val local = GeminiNanoBriefProvider.generate(context, currentSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
+                    if (local == null) trace?.event("NANO · ${BriefAiDiagnosticsStore.lastLocalFailure(context) ?: "no validated response"}")
+                    local?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_nano),
                     ) ?: run {
                         BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
-                        GeminiCloudBriefProvider.generate(context, currentSource, strings)?.copy(
+                        GeminiCloudBriefProvider.generate(context, currentSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
                             providerMessage = strings.text(R.string.brief_provider_note_nano_then_cloud),
                         )
                     }
@@ -153,6 +201,7 @@ object BriefAiCoordinator {
             )
 
             BriefAiDiagnosticsStore.outcome(context, generated.providerUsed, generated.providerMessage)
+            trace?.event("OUTCOME · ${generated.providerUsed} · ${generated.providerMessage}")
             BriefStore.write(context, generated)
             TwidgetBriefWidget.updateAll(context)
             BriefAiResult(generated, localStatus)
@@ -281,8 +330,13 @@ internal object GeminiNanoBriefProvider {
         NanoProbe(BriefLocalStatus.UNAVAILABLE, reason, selectedMode = mode)
     }
 
-    suspend fun generate(context: Context, source: BriefSnapshot, strings: BriefStrings,
-        onResponse: (String, String) -> Unit = { _, _ -> }): BriefSnapshot? {
+    suspend fun generate(
+        context: Context,
+        source: BriefSnapshot,
+        strings: BriefStrings,
+        onResponse: (String, String) -> Unit = { _, _ -> },
+        onFieldAttempt: ((BriefNanoTextNarrative.FieldAttempt) -> Unit)? = null,
+    ): BriefSnapshot? {
         val probe = probe(context)
         if (probe.status != BriefLocalStatus.AVAILABLE) {
             BriefAiDiagnosticsStore.localFailure(context, "Feature status: ${probe.status}")
@@ -364,7 +418,12 @@ internal object GeminiNanoBriefProvider {
                 kotlinx.coroutines.withTimeoutOrNull(120_000L) {
                     // Nano writes short fields; the app supplies structure and validates each field
                     // before moving on. Cloud's larger JSON contract is unreliable on small models.
-                    BriefNanoTextNarrative.generate(source, strings, onInvalid = { validationFailure = it }) { stage, prompt ->
+                    BriefNanoTextNarrative.generate(
+                        source,
+                        strings,
+                        onInvalid = { validationFailure = it },
+                        onFieldAttempt = onFieldAttempt,
+                    ) { stage, prompt ->
                         request(stage, prompt, 256)
                     }?.also { remember() }
                 }.also { result ->
@@ -447,6 +506,7 @@ private object BriefAiDiagnosticsStore {
     private const val KEY_OUTCOME = "outcome"
     private const val KEY_LOCAL_FAILURE = "local_failure"
     private const val KEY_LOCAL_DETAIL = "local_detail"
+    private const val KEY_DETAILED_REPORT = "detailed_report"
     private const val KEY_NANO_MODEL_MODE = "nano_model_mode"
 
     fun nanoModelMode(context: Context): BriefNanoModelMode =
@@ -482,6 +542,17 @@ private object BriefAiDiagnosticsStore {
         prefs(context).edit().putString(KEY_LOCAL_DETAIL, detail).apply()
     }
 
+    fun lastLocalFailure(context: Context): String? =
+        prefs(context).getString(KEY_LOCAL_FAILURE, null)
+
+    fun clearDetailedReport(context: Context) {
+        prefs(context).edit().remove(KEY_DETAILED_REPORT).apply()
+    }
+
+    fun detailedReport(context: Context, report: String) {
+        prefs(context).edit().putString(KEY_DETAILED_REPORT, report.take(48_000)).apply()
+    }
+
     fun read(
         context: Context,
         mode: BriefProviderMode,
@@ -506,6 +577,7 @@ private object BriefAiDiagnosticsStore {
             lastLocalFailure = prefs.getString(KEY_LOCAL_FAILURE, null),
             lastLocalDetail = prefs.getString(KEY_LOCAL_DETAIL, null),
             cloudConfigured = BriefSettingsStore.cloudApiKey(context).isNotBlank(),
+            lastDetailedReport = prefs.getString(KEY_DETAILED_REPORT, null),
         )
     }
 
@@ -517,44 +589,89 @@ internal object GeminiCloudBriefProvider {
     internal const val ENDPOINT =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
 
-    fun generate(context: Context, source: BriefSnapshot, strings: BriefStrings): BriefSnapshot? {
+    fun generate(
+        context: Context,
+        source: BriefSnapshot,
+        strings: BriefStrings,
+        onDiagnostic: ((String) -> Unit)? = null,
+        onRawResponse: ((String) -> Unit)? = null,
+    ): BriefSnapshot? {
         val key = BriefSettingsStore.cloudApiKey(context)
-        if (key.isBlank()) return null
-        return runCatching {
-            val request = JSONObject().apply {
-                put("systemInstruction", JSONObject().put(
-                    "parts",
-                    JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION)),
-                ))
-                put("contents", JSONArray().put(JSONObject().apply {
-                    put("role", "user")
-                    put("parts", JSONArray().put(JSONObject().put("text", promptFor(source, strings))))
-                }))
-                put("generationConfig", JSONObject().apply {
-                    put("maxOutputTokens", (300 + source.cards.size * 160).coerceAtMost(4096))
-                    put("responseMimeType", "application/json")
-                })
+        if (key.isBlank()) {
+            onDiagnostic?.invoke("CLOUD · API key is missing")
+            return null
+        }
+        return try {
+            fun requestText(prompt: String, label: String): String {
+                val request = JSONObject().apply {
+                    put("systemInstruction", JSONObject().put(
+                        "parts",
+                        JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION)),
+                    ))
+                    put("contents", JSONArray().put(JSONObject().apply {
+                        put("role", "user")
+                        put("parts", JSONArray().put(JSONObject().put("text", prompt)))
+                    }))
+                    put("generationConfig", JSONObject().apply {
+                        put("maxOutputTokens", (300 + source.cards.size * 160).coerceAtMost(4096))
+                        put("responseMimeType", "application/json")
+                    })
+                }
+                val response = HttpTransport.post(
+                    ENDPOINT,
+                    request.toString(),
+                    headers = mapOf(
+                        "Content-Type" to "application/json",
+                        "x-goog-api-key" to key,
+                    ),
+                    readTimeoutMs = 30_000,
+                )
+                onDiagnostic?.invoke("CLOUD · $label HTTP ${response.code} · response=${response.body.length} chars")
+                val root = JSONObject(HttpTransport.requireSuccess(response, "Gemini"))
+                return root.optJSONArray("candidates")
+                    ?.optJSONObject(0)
+                    ?.optJSONObject("content")
+                    ?.optJSONArray("parts")
+                    ?.optJSONObject(0)
+                    ?.optString("text")
+                    .orEmpty()
             }
-            val response = HttpTransport.post(
-                ENDPOINT,
-                request.toString(),
-                headers = mapOf(
-                    "Content-Type" to "application/json",
-                    "x-goog-api-key" to key,
-                ),
-                readTimeoutMs = 30_000,
-            )
-            val root = JSONObject(HttpTransport.requireSuccess(response, "Gemini"))
-            val text = root.optJSONArray("candidates")
-                ?.optJSONObject(0)
-                ?.optJSONObject("content")
-                ?.optJSONArray("parts")
-                ?.optJSONObject(0)
-                ?.optString("text")
-                .orEmpty()
-            BriefAiCardResponse.apply(source, text, BriefProviderUsed.CLOUD, strings).snapshot
-                ?.takeIf { it.hasGeneratedNarrative }
-        }.getOrNull()
+
+            val initialText = requestText(promptFor(source, strings), "initial")
+            val initial = BriefAiCardResponse.apply(source, initialText, BriefProviderUsed.CLOUD, strings)
+            val initialSnapshot = initial.snapshot?.takeIf { it.hasGeneratedNarrative }
+            if (initialSnapshot != null) {
+                onDiagnostic?.invoke("CLOUD · initial response validated")
+                initialSnapshot
+            } else {
+                val failure = initial.failure
+                if (!isRepairableCloudFailure(failure)) {
+                    onRawResponse?.invoke(initialText)
+                    onDiagnostic?.invoke("CLOUD · response rejected · appliedCards=${initial.appliedCards} · reason=${failure ?: "incomplete narrative"}")
+                    null
+                } else {
+                    onRawResponse?.invoke("Initial response rejected:\n$initialText")
+                    onDiagnostic?.invoke("CLOUD · validation failed · requesting one repair · reason=$failure")
+                    val repairedText = requestText(cloudNumericRepairPrompt(source, strings), "repair")
+                    val repaired = BriefAiCardResponse.apply(source, repairedText, BriefProviderUsed.CLOUD, strings)
+                    val snapshot = repaired.snapshot?.takeIf { it.hasGeneratedNarrative }
+                    if (snapshot == null) {
+                        onRawResponse?.invoke("Repair response rejected:\n$repairedText")
+                        onDiagnostic?.invoke("CLOUD · repair rejected · appliedCards=${repaired.appliedCards} · reason=${repaired.failure ?: "incomplete narrative"}")
+                    } else {
+                        onDiagnostic?.invoke("CLOUD · repair response validated")
+                    }
+                    snapshot
+                }
+            }
+        } catch (error: Exception) {
+            val detail = when (error) {
+                is HttpTransport.HttpException -> "HTTP ${error.code}: ${error.message.orEmpty().take(500)}"
+                else -> "${error.javaClass.simpleName}: ${error.message.orEmpty().take(500)}"
+            }
+            onDiagnostic?.invoke("CLOUD · request failed · $detail")
+            null
+        }
     }
 }
 
@@ -568,11 +685,14 @@ private const val SYSTEM_INSTRUCTION =
         "Never add numbers, names, causes, predictions, or claims. Follow the target language's native " +
         "capitalisation and singular/plural rules. Write complete grammatical sentences; do not splice " +
         "sentence fragments or change the action requested in the source. " +
+        "Never drop or change a sign on a numeric fact: -1 is not 1. If a signed change sounds unnatural, " +
+        "omit its magnitude and use the supplied before-and-after values instead. " +
         "Keep titles under 45 characters and bodies under 150 characters. " +
         "For MILESTONE cards, keep the supplied title unchanged. Write the description above the goal card; its target and progress are app-owned. " +
         "For the brief_summary only, also write a distinct shortDescription of no more than 100 characters for compact " +
         "surfaces. It may use one or two short sentences, should fill up to two lines when useful, and must preserve " +
-        "every numeric fact in its supplied value without adding facts. " +
+        "every numeric fact in its supplied value without adding facts. If two sentences would exceed 100 characters, " +
+        "keep only the first complete sentences that fit. " +
         "When follower totals are absent from the supplied brief_summary body, keep them only in shortDescription " +
         "because a follower card already shows them. " +
         "Keep quote tweets and retweets separate. Always call them quote tweets and retweets; never shares or reposts. " +
@@ -633,6 +753,35 @@ internal fun promptFor(source: BriefSnapshot, strings: BriefStrings): String {
         "shared by the dashboard and home-screen widget. Return card objects with exactly id, title, and body; " +
         "the brief_summary object must also include shortDescription: $input"
 }
+
+internal fun cloudNumericRepairPrompt(source: BriefSnapshot, strings: BriefStrings): String =
+    promptFor(source, strings) +
+        "\n\nThe previous JSON was rejected. Rewrite the complete JSON from the supplied evidence. " +
+        "Preserve every numeric sign exactly: never write 1 when the evidence says -1. " +
+        "When a signed change would read unnaturally, omit its magnitude and use only the supplied before-and-after values. " +
+        "Keep the brief_summary shortDescription to at most 100 characters by ending on a complete sentence. " +
+        "Include the brief_summary and every supplied card id."
+
+private fun isRepairableCloudFailure(failure: String?): Boolean =
+    failure != null && listOf("_numeric", "_length", "_missing").any(failure::contains)
+
+internal fun fitCompactCopy(value: String, maxChars: Int = 100): String? {
+    val trimmed = value.trim()
+    if (trimmed.isEmpty()) return null
+    if (trimmed.length <= maxChars) return trimmed
+    val kept = StringBuilder()
+    for (part in compactSentenceBoundary.split(trimmed)) {
+        val sentence = part.trim()
+        if (sentence.isEmpty()) continue
+        val next = if (kept.isEmpty()) sentence else "$kept $sentence"
+        if (next.length > maxChars) break
+        kept.setLength(0)
+        kept.append(next)
+    }
+    return kept.toString().takeIf { it.isNotEmpty() && it.length <= maxChars && it.last() in ".!?" }
+}
+
+private val compactSentenceBoundary = Regex("(?<=[.!?])\\s+(?=\\p{Lu})")
 
 internal fun localPromptFor(
     source: BriefSnapshot, strings: BriefStrings, includeSummary: Boolean = true,
@@ -712,12 +861,13 @@ internal object BriefAiCardResponse {
             val item = array.optJSONObject(index) ?: continue
             val id = item.optString("id").ifBlank { item.optString("i") }
             if (id == SUMMARY_ID && seen.add(id)) {
-                val title = item.optString("title").ifBlank { item.optString("t") }
-                    .trim().takeIf { it.length in 1..60 } ?: continue
-                val body = item.optString("body").ifBlank { item.optString("b") }
-                    .trim().takeIf { it.length in 1..180 } ?: continue
-                val shortBody = item.optString("shortDescription").ifBlank { item.optString("s") }
-                    .trim().takeIf { it.length in 1..100 } ?: continue
+                val title = item.optString("title").ifBlank { item.optString("t") }.trim()
+                val body = item.optString("body").ifBlank { item.optString("b") }.trim()
+                val shortBody = fitCompactCopy(item.optString("shortDescription").ifBlank { item.optString("s") })
+                if (title.length !in 1..60 || body.length !in 1..180 || shortBody == null) {
+                    rejected += "summary_length"
+                    continue
+                }
                 if (!BriefVoicePolicy.accepts("$title $body $shortBody", strings)) { rejected += "summary_style"; continue }
                 if (!BriefNumericEvidence.accepts(shortBody, summaryFacts, strings)) { rejected += "summary_numeric"; continue }
                 if (BriefNumericEvidence.accepts("$title $body", summaryFacts, strings)) {
@@ -730,10 +880,12 @@ internal object BriefAiCardResponse {
             }
             val original = originals[id] ?: continue
             if (!seen.add(id)) continue
-            val title = item.optString("title").ifBlank { item.optString("t") }
-                .trim().takeIf { it.length in 1..60 } ?: continue
-            val body = item.optString("body").ifBlank { item.optString("b") }
-                .trim().takeIf { it.length in 1..180 } ?: continue
+            val title = item.optString("title").ifBlank { item.optString("t") }.trim()
+            val body = item.optString("body").ifBlank { item.optString("b") }.trim()
+            if (title.length !in 1..60 || body.length !in 1..180) {
+                rejected += "card_length:${original.type}"
+                continue
+            }
             val allowedFacts = "${original.title} ${original.body} ${original.metrics.joinToString { it.label + " " + it.value }}"
             val visibleCopy = if (original.type == BriefCardType.MILESTONE) body else "$title $body"
             val factual = BriefNumericEvidence.accepts(visibleCopy, allowedFacts, strings) && BriefVoicePolicy.accepts(visibleCopy, strings)
@@ -751,8 +903,14 @@ internal object BriefAiCardResponse {
             }
             applied++
         }
+        if (!summaryApplied && rejected.none { it.startsWith("summary_") }) rejected += "summary_missing"
+        if (source.cards.any { replacements[it.id]?.narrativeGenerated != true } &&
+            rejected.none { it.startsWith("card_") }
+        ) rejected += "card_missing"
         val rewritten = source.cards.map { replacements[it.id] ?: it.copy(narrativeGenerated = false) }
-        if (!summaryApplied && applied == 0) return Result(null, 0, "Response contained no recognised ids")
+        if (!summaryApplied && applied == 0) {
+            return Result(null, 0, rejected.joinToString(",").ifBlank { "Response contained no recognised ids" })
+        }
         val generatedAt = System.currentTimeMillis()
         return Result(
             snapshot = source.copy(

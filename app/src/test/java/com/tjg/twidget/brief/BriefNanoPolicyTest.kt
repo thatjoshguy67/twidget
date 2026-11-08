@@ -69,6 +69,19 @@ class BriefNanoPolicyTest {
         assertNull(result)
     }
 
+    @Test fun `diagnostic callback records the rejected candidate and its allowed evidence`() = runBlocking {
+        val attempts = mutableListOf<BriefNanoTextNarrative.FieldAttempt>()
+        val result = BriefNanoTextNarrative.generate(source, strings, onFieldAttempt = { attempts += it }) { stage, _ ->
+            if (stage.startsWith("card-0-description")) "You gained 999 followers." else response(stage)
+        }
+        assertNull(result)
+        assertEquals(3, attempts.size)
+        assertEquals("card-0-description", attempts.last().stage)
+        assertEquals("You gained 999 followers.", attempts.last().candidate)
+        assertEquals("numeric evidence validation", attempts.last().rejection)
+        assertTrue(attempts.last().allowedNumbers.contains("-2"))
+    }
+
     @Test fun narratorMistakesAreRetriedBeforeTheyCanBecomeVisibleCopy() = runBlocking {
         val stages = mutableListOf<String>()
         val result = BriefNanoTextNarrative.generate(source, strings) { stage, prompt ->

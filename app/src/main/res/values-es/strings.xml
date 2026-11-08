@@ -1019,4 +1019,8 @@
     <string name="debug_test_review_provider_summary">Envía el tuit seleccionado, su contexto y contenido multimedia a la nube. Informa de la validación y la cobertura multimedia sin sustituir el análisis guardado.</string>
     <string name="debug_review_subject">Tuit que examinar</string>
     <string name="brief_api_key_dialog_body">Crea y copia una clave de API en Google AI Studio y pégala aquí. Esta clave permite los análisis de tuits en la nube y los resúmenes en la nube cuando se seleccionan para Tu resumen. Lee la <annotation link="privacy">Política de privacidad</annotation> para saber cómo se utilizan y protegen estos datos.</string>
+    <string name="brief_debug_diagnose_generation">Ejecutar el diagnóstico completo de generación</string>
+    <string name="brief_debug_diagnose_generation_summary">Guarda las respuestas rechazadas del modelo, los datos de referencia y los detalles de validación solo para esta ejecución de depuración</string>
+    <string name="brief_debug_diagnosis_report">Informe de diagnóstico de generación</string>
+    <string name="brief_debug_no_diagnosis">Aún no hay ningún diagnóstico detallado registrado</string>
 </resources>

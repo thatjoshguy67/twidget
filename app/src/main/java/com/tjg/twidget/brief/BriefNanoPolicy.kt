@@ -24,10 +24,20 @@ internal object BriefNanoPolicy {
 
 /** Nano writes one plain-text field per request; the app validates it and assembles the JSON. */
 internal object BriefNanoTextNarrative {
+    internal data class FieldAttempt(
+        val stage: String,
+        val attempt: Int,
+        val evidence: String,
+        val allowedNumbers: String,
+        val candidate: String?,
+        val rejection: String?,
+    )
+
     suspend fun generate(
         source: BriefSnapshot,
         strings: BriefStrings,
         onInvalid: (String) -> Unit = {},
+        onFieldAttempt: ((FieldAttempt) -> Unit)? = null,
         request: suspend (stage: String, prompt: String) -> String?,
     ): BriefSnapshot? {
         suspend fun field(stage: String, role: String, maximum: Int, evidence: JSONObject, allowedNumbers: String): String? {
@@ -55,6 +65,14 @@ internal object BriefNanoTextNarrative {
                     !BriefNumericEvidence.accepts(value, allowedNumbers, strings) -> "numeric evidence validation"
                     else -> return value
                 }
+                onFieldAttempt?.invoke(FieldAttempt(
+                    stage = stage,
+                    attempt = attempt + 1,
+                    evidence = evidence.toString(),
+                    allowedNumbers = allowedNumbers,
+                    candidate = value,
+                    rejection = issue,
+                ))
             }
             onInvalid("field:$stage:$issue")
             return null

@@ -1007,4 +1007,8 @@
     <string name="debug_test_review_provider_summary">Envoyer le tweet sélectionné, son contexte et ses médias au cloud. Afficher la validation et les médias examinés sans remplacer l’analyse enregistrée.</string>
     <string name="debug_review_subject">Tweet à inspecter</string>
     <string name="brief_api_key_dialog_body">Crée et copie une clé d\'API dans Google AI Studio, puis colle-la ici. Elle permet les analyses cloud de tweets, ainsi que les résumés cloud si tu les sélectionnes pour ton Brief. Consulte la <annotation link="privacy">politique de confidentialité</annotation> pour savoir comment ces données sont utilisées et sécurisées.</string>
+    <string name="brief_debug_diagnose_generation">Lancer le diagnostic complet de génération</string>
+    <string name="brief_debug_diagnose_generation_summary">Enregistre les réponses rejetées du modèle, les données de référence et les détails de validation pour cette exécution de débogage uniquement</string>
+    <string name="brief_debug_diagnosis_report">Rapport de diagnostic de génération</string>
+    <string name="brief_debug_no_diagnosis">Aucun diagnostic détaillé enregistré</string>
 </resources>

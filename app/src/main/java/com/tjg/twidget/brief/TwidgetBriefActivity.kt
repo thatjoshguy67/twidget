@@ -1024,9 +1024,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     providerNote,
                 ),
             )
-            .setNegativeButton(android.R.string.cancel, null)
         if (localStatus == BriefLocalStatus.DOWNLOADABLE) {
-            builder.setPositiveButton(R.string.brief_prepare_local) { _, _ -> downloadLocalModel() }
+            builder
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.brief_prepare_local) { _, _ -> downloadLocalModel() }
         } else {
             builder.setPositiveButton(android.R.string.ok, null)
         }

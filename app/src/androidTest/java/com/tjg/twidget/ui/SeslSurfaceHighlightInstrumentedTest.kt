@@ -148,31 +148,23 @@ class SeslSurfaceHighlightInstrumentedTest {
         }
     }
 
-    @Test fun legacyDrawerRimRoundsOnlyTrailingCornersAndOmitsWindowEdge() {
+    @Test fun legacyDrawerPanelRetainsItsNativeUnoutlinedSurface() {
         instrumentation.runOnMainSync {
             val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
-            val pane = androidx.slidingpanelayout.widget.SlidingPaneLayout(context).apply { seslSetRoundedCornerOn(null) }
             val panel = FrameLayout(context).apply {
                 id = dev.oneuiproject.oneui.design.R.id.drawer_panel
                 background = ColorDrawable(Color.GRAY)
             }
-            pane.addView(panel)
-            SeslSurfaceHighlight.applyTo(pane)
-            val rim = requireNotNull(panel.foreground)
-            for (rtl in listOf(false, true)) {
-                panel.layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
-                rim.setBounds(0, 0, 400, 200)
-                val bitmap = Bitmap.createBitmap(400, 200, Bitmap.Config.ARGB_8888)
-                rim.draw(Canvas(bitmap))
-                val leading = if (rtl) 398 else 1
-                val trailing = if (rtl) 1 else 398
-                assertEquals("Window edge has no fabricated border", 0, Color.alpha(bitmap.getPixel(leading, 40)))
-                assertTrue("Top edge stays square at the window", Color.alpha(bitmap.getPixel(if (rtl) 390 else 10, 1)) > 0)
-                assertEquals("Trailing corner follows native rounding", 0, Color.alpha(bitmap.getPixel(trailing, 1)))
-                bitmap.recycle()
-            }
+            val nativeForeground = ColorDrawable(Color.TRANSPARENT)
+            panel.foreground = nativeForeground
+            // Also exercise cleanup if a caller previously decorated the host.
+            SeslSurfaceHighlight.attach(panel, 26f)
+            repeat(3) { SeslSurfaceHighlight.applyTo(panel) }
+            assertSame(nativeForeground, panel.foreground)
+            assertNull(panel.getTag(R.id.sesl_surface_highlight))
         }
     }
+
 
     @SdkSuppress(minSdkVersion = 29)
     @Test fun platformSettingsDropdownGetsWholeWindowSurfaceRim() {

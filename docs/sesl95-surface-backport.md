@@ -48,7 +48,7 @@ the observer when their separate window is shown.
 | Bottom navigation | Native navigation background |
 | Divider action bar | Native DividerButtonLayout, including widget-editor actions |
 | Main tabs | Backed TabLayout surface |
-| Responsive drawer / floating pane | Native pane surfaces and the older design wrapper's drawer panel |
+| Responsive drawer / floating pane | Native responsive pane surfaces; older wrapper drawer panels retain their own treatment |
 | Suggestion snackbar | SnackbarContentLayout, using the reference's dark-surface stroke color |
 | Go-to-top | RecyclerView's public overlay view |
 | Index tip | Kept controller/view fields bridge the overlay outside normal child traversal |
@@ -63,8 +63,8 @@ Ordinary content cards and focus-only control outlines retain their own styling.
 
 The notices reader's `notice_detail_back` is a full-width transparent host for a
 native floating toolbar, so only its projection background receives a rim. The
-legacy sliding drawer rounds its trailing corners only, and joins the window on
-its leading edge. Its rim follows that LTR/RTL contour and omits the joined edge.
+older design wrapper's drawer panel retains its native fill and corner masking,
+without an added outline. It is not the newer ResponsiveDrawerLayout surface.
 
 `SeslSurfaceHighlightInstrumentedTest` checks light/dark rim pixels, resizing,
 inset ovals and asymmetric corners, blur-panel radius fallback, foreground

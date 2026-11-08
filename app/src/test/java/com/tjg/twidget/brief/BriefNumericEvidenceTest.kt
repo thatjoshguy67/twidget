@@ -38,4 +38,19 @@ class BriefNumericEvidenceTest {
             assertFalse("$locale must still reject an invented digit", BriefNumericEvidence.accepts(rendered.replace("3", "4"), evidence, strings))
         }
     }
+    @Test fun compoundNumbersMustNotAuthorizeTheirComponents() {
+        listOf(
+            Triple(Locale.US, "twenty-three days", "3 days"),
+            Triple(Locale.US, "twenty-three days", "20 days"),
+            Triple(Locale.US, "three hundred days", "3 days"),
+            Triple(Locale.FRENCH, "dix-sept jours", "7 jours"),
+            Triple(Locale.FRENCH, "vingt et trois jours", "3 jours"),
+            Triple(Locale.forLanguageTag("es"), "veinte y tres días", "3 días"),
+            Triple(Locale.forLanguageTag("ca"), "vint-i-tres dies", "3 dies"),
+        ).forEach { (locale, evidence, rendered) ->
+            assertFalse(evidence, BriefNumericEvidence.accepts(rendered, evidence, locale))
+        }
+        assertTrue(BriefNumericEvidence.accepts("17 jours", "dix-sept jours", Locale.FRENCH))
+        assertFalse(BriefNumericEvidence.accepts("twenty-three days", "3 days", Locale.US))
+    }
 }

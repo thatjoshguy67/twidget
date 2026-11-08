@@ -54,13 +54,29 @@ internal object BriefNumericEvidence {
      * generation contract asks models to use digits ("3 days"). Treat those equivalent
      * values as evidence without accepting a different number.
      */
-    private fun writtenNumberFacts(value: String, locale: Locale): List<String> =
-        numberWords(locale).flatMap { (word, number) ->
-            Regex("(?<![\\p{L}])${Regex.escape(word)}(?![\\p{L}])", RegexOption.IGNORE_CASE)
-                .findAll(value)
-                .map { number.toString() }
-                .toList()
+    private fun writtenNumberFacts(value: String, locale: Locale): List<String> {
+        val words = numberWords(locale)
+        // Consume compound expressions as a whole. Components of an unsupported number
+        // must never become independently allowed evidence (twenty-three != 3).
+        val compoundWords = when (locale.language) {
+            "de" -> listOf("hundert", "tausend")
+            "fr" -> listOf("cent", "cents", "mille", "et")
+            "es" -> listOf("cien", "ciento", "mil", "y")
+            "ca" -> listOf("cent", "cents", "mil", "i")
+            else -> listOf("hundred", "thousand", "million", "and")
         }
+        val alternatives = (words.keys + compoundWords).sortedByDescending { it.length }
+            .joinToString("|") { Regex.escape(it) }
+        val token = "(?:$alternatives)"
+        val pattern = Regex(
+            "(?<![\\p{L}\\p{N}\\p{Pd}])$token(?:[\\s\\p{Pd}]+$token)*(?![\\p{L}\\p{N}\\p{Pd}])",
+            RegexOption.IGNORE_CASE,
+        )
+        return pattern.findAll(value).map { match ->
+            val expression = match.value.lowercase(locale)
+            words[expression]?.toString() ?: "written:$expression"
+        }.toList()
+    }
 
     private fun numberWords(locale: Locale): Map<String, Int> = when (locale.language) {
         "de" -> mapOf(

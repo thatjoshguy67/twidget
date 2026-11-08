@@ -1019,4 +1019,8 @@
     <string name="debug_test_review_provider_summary">Envia el tuit seleccionat, el seu context i contingut multimèdia al núvol. Informa de la validació i la cobertura multimèdia sense substituir l\'anàlisi desada.</string>
     <string name="debug_review_subject">Tuit a examinar</string>
     <string name="brief_api_key_dialog_body">Crea i copia una clau d\'API a Google AI Studio i pega-la aquí. Aquesta clau permet les anàlisis de tuits al núvol i els resums al núvol quan se seleccionen per a El teu resum. Llegeix la <annotation link="privacy">Política de privadesa</annotation> per saber com s\'utilitzen i protegeixen aquestes dades.</string>
+    <string name="brief_debug_diagnose_generation">Executa el diagnòstic complet de generació</string>
+    <string name="brief_debug_diagnose_generation_summary">Desa les respostes rebutjades del model, les dades de referència i els detalls de validació només per a aquesta execució de depuració</string>
+    <string name="brief_debug_diagnosis_report">Informe de diagnòstic de generació</string>
+    <string name="brief_debug_no_diagnosis">Encara no hi ha cap diagnòstic detallat</string>
 </resources>

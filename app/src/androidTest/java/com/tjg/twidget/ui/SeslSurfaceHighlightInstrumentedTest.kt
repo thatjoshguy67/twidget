@@ -116,7 +116,6 @@ class SeslSurfaceHighlightInstrumentedTest {
                 SnackbarContentLayout(context), BottomNavigationView(context).apply {
                     background = GradientDrawable().apply { cornerRadius = 26f }
                 }, TabLayout(context).apply { background = GradientDrawable().apply { cornerRadius = 26f } },
-                View(context).apply { id = R.id.notice_detail_back },
                 View(context).apply { id = R.id.brief_footer_info },
                 View(context).apply { id = com.google.android.material.R.id.design_bottom_sheet },
                 View(context).apply { SeslSurfaceHighlight.mark(this, 26f) })
@@ -129,6 +128,49 @@ class SeslSurfaceHighlightInstrumentedTest {
             assertNotNull("Search frame owns the rim", plate.getTag(R.id.sesl_surface_highlight))
             assertNull("Search content must not get a second rim",
                 search.findViewById<View>(androidx.appcompat.R.id.search_plate).getTag(R.id.sesl_surface_highlight))
+        }
+    }
+
+    @Test fun noticeBackHostIsNotOutlinedAlongsideNativeButtonSurface() {
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            val host = FrameLayout(context).apply {
+                id = R.id.notice_detail_back
+                layoutParams = FrameLayout.LayoutParams(400, 56)
+            }
+            com.tjg.twidget.notices.NoticeReaderChrome.install(host) { }
+            SeslSurfaceHighlight.applyTo(host)
+            assertNull("The full-width toolbar host has no surface of its own", host.foreground)
+            val surfaces = descendants(host).filterIsInstance<
+                FloatingGroupLayout.SeslProjectionView.SeslProjectionBackgroundView>().toList()
+            assertTrue(surfaces.isNotEmpty())
+            surfaces.forEach { assertNotNull(it.getTag(R.id.sesl_surface_highlight)) }
+        }
+    }
+
+    @Test fun legacyDrawerRimRoundsOnlyTrailingCornersAndOmitsWindowEdge() {
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            val pane = androidx.slidingpanelayout.widget.SlidingPaneLayout(context).apply { seslSetRoundedCornerOn(null) }
+            val panel = FrameLayout(context).apply {
+                id = dev.oneuiproject.oneui.design.R.id.drawer_panel
+                background = ColorDrawable(Color.GRAY)
+            }
+            pane.addView(panel)
+            SeslSurfaceHighlight.applyTo(pane)
+            val rim = requireNotNull(panel.foreground)
+            for (rtl in listOf(false, true)) {
+                panel.layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
+                rim.setBounds(0, 0, 400, 200)
+                val bitmap = Bitmap.createBitmap(400, 200, Bitmap.Config.ARGB_8888)
+                rim.draw(Canvas(bitmap))
+                val leading = if (rtl) 398 else 1
+                val trailing = if (rtl) 1 else 398
+                assertEquals("Window edge has no fabricated border", 0, Color.alpha(bitmap.getPixel(leading, 40)))
+                assertTrue("Top edge stays square at the window", Color.alpha(bitmap.getPixel(if (rtl) 390 else 10, 1)) > 0)
+                assertEquals("Trailing corner follows native rounding", 0, Color.alpha(bitmap.getPixel(trailing, 1)))
+                bitmap.recycle()
+            }
         }
     }
 

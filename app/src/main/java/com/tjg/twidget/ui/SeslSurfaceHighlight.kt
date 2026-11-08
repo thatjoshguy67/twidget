@@ -24,6 +24,7 @@ import android.widget.ListView
 import androidx.appcompat.widget.SeslProgressBar
 import androidx.core.view.children
 import androidx.recyclerview.widget.RecyclerView
+import androidx.slidingpanelayout.widget.SlidingPaneLayout
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.oneui.floatingactioncontainer.FloatingGroupLayout
 import com.google.android.material.oneui.dividerbuttonlayout.DividerButtonLayout
@@ -72,7 +73,7 @@ internal object SeslSurfaceHighlight {
             view.id == androidx.appcompat.R.id.search_plate_frame ||
                 (view.id == androidx.appcompat.R.id.search_button && view.background != null) ->
                 view.resources.getDimension(androidx.appcompat.R.dimen.sesl_search_plate_radius_size)
-            view.id == R.id.notice_detail_back || view.id == R.id.onboarding_back ||
+            view.id == R.id.onboarding_back ||
                 view.id == R.id.brief_footer_info || view.id == R.id.brief_footer_settings ->
                 28f * view.resources.displayMetrics.density
             view.id == com.google.android.material.R.id.design_bottom_sheet ->
@@ -135,7 +136,19 @@ internal object SeslSurfaceHighlight {
         if (previous != null && view.foreground === previous.combined &&
             previous.radius == radius && previous.light == light) return
         val original = if (view.foreground === previous?.combined) previous?.original else view.foreground
-        val rim = SeslRimDrawable(view.resources.displayMetrics.density, radius, light) {
+        val drawer = if (view.id == dev.oneuiproject.oneui.design.R.id.drawer_panel)
+            generateSequence(view.parent as? View) { it.parent as? View }.filterIsInstance<SlidingPaneLayout>().firstOrNull()
+        else null
+        val ltrCorners = floatArrayOf(0f, 0f, radius, radius, radius, radius, 0f, 0f)
+        val rtlCorners = floatArrayOf(radius, radius, 0f, 0f, 0f, 0f, radius, radius)
+        val squareCorners = FloatArray(8)
+        val rim = SeslRimDrawable(view.resources.displayMetrics.density, radius, light,
+            cornerRadii = drawer?.let { pane -> {
+                if (!pane.seslGetRoundedCornerOn()) squareCorners
+                else if (view.layoutDirection == View.LAYOUT_DIRECTION_RTL) rtlCorners else ltrCorners
+            } },
+            omitEdge = drawer?.let { { if (view.layoutDirection == View.LAYOUT_DIRECTION_RTL) 1 else -1 } },
+        ) {
             if (view.id == androidx.appcompat.R.id.search_plate_frame)
                 view.findViewById<View>(androidx.appcompat.R.id.search_plate)?.background
             else view.background
@@ -174,6 +187,8 @@ internal class SeslRimDrawable(
     private val width: Float,
     private val fallbackRadius: Float,
     private val light: Boolean,
+    private val cornerRadii: (() -> FloatArray?)? = null,
+    private val omitEdge: (() -> Int)? = null,
     private val background: () -> Drawable? = { null },
 ) : Drawable() {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = width }
@@ -214,7 +229,7 @@ internal class SeslRimDrawable(
         rect.inset(width / 2f, width / 2f)
         paint.alpha = opacity
         path.rewind()
-        val radii = gradient?.cornerRadii
+        val radii = cornerRadii?.invoke() ?: gradient?.cornerRadii
         if (gradient?.shape == GradientDrawable.OVAL) {
             path.addOval(rect, Path.Direction.CW)
         } else if (radii != null) {
@@ -224,7 +239,15 @@ internal class SeslRimDrawable(
             path.addRoundRect(rect, (radius - width / 2f).coerceAtLeast(0f),
                 (radius - width / 2f).coerceAtLeast(0f), Path.Direction.CW)
         }
+        val save = canvas.save()
+        // Legacy SlidingPaneLayout masks only the trailing corners; its leading
+        // edge joins the window. Do not invent an inset border along that edge.
+        when (omitEdge?.invoke()) {
+            -1 -> canvas.clipRect(bounds.left + width, bounds.top.toFloat(), bounds.right.toFloat(), bounds.bottom.toFloat())
+            1 -> canvas.clipRect(bounds.left.toFloat(), bounds.top.toFloat(), bounds.right - width, bounds.bottom.toFloat())
+        }
         canvas.drawPath(path, paint)
+        canvas.restoreToCount(save)
     }
 
     private fun gradientBackground(drawable: Drawable?, depth: Int = 0): GradientDrawable? {

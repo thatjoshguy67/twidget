@@ -61,6 +61,11 @@ ripple mask. A rectangular fill outline does not cancel the component's fallback
 radius: on One UI the window/blur layer often supplies the rounded clipping.
 Ordinary content cards and focus-only control outlines retain their own styling.
 
+The notices reader's `notice_detail_back` is a full-width transparent host for a
+native floating toolbar, so only its projection background receives a rim. The
+legacy sliding drawer rounds its trailing corners only, and joins the window on
+its leading edge. Its rim follows that LTR/RTL contour and omits the joined edge.
+
 `SeslSurfaceHighlightInstrumentedTest` checks light/dark rim pixels, resizing,
 inset ovals and asymmetric corners, blur-panel radius fallback, foreground
 composition/replacement, circular track tint, native dropdown observation and

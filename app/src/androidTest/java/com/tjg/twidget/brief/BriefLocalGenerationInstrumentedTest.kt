@@ -45,9 +45,9 @@ class BriefLocalGenerationInstrumentedTest {
                     if (real) {
                         assertEquals("The main Brief must remain local", BriefProviderMode.LOCAL, BriefSettingsStore.provider(context))
                         BriefAiCoordinator.enrich(context, source, force = true).snapshot
-                    } else GeminiNanoBriefProvider.generate(context, source, strings) { stage, raw ->
+                    } else GeminiNanoBriefProvider.generate(context, source, strings) { attempt ->
                         // Real account prompts and generated text are never written to logs or diagnostic files.
-                        output.appendText("$stage: ${if (real) "${raw.length} chars" else raw}\n")
+                        output.appendText("${attempt.stage}: attempt=${attempt.attempt}, chars=${attempt.candidate?.length ?: 0}, accepted=${attempt.rejection == null}\n")
                     }
                 }
                 output.appendText("complete=${result?.hasGeneratedNarrative == true}; provider=${result?.providerUsed}; generatedCards=${result?.cards?.count { it.narrativeGenerated }}\n")

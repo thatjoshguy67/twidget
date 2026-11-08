@@ -165,7 +165,10 @@ object TwidgetFonts {
                 scheduled = true
                 root.postOnAnimation {
                     scheduled = false
-                    if (root.isAttachedToWindow && root.getTag(R.id.app_font_observer) != null) applyTo(root)
+                    if (root.isAttachedToWindow && root.getTag(R.id.app_font_observer) != null) {
+                        applyTo(root)
+                        SeslSurfaceHighlight.applyTo(root)
+                    }
                 }
             }
         }
@@ -180,6 +183,7 @@ object TwidgetFonts {
             }
         })
         applyTo(root)
+        SeslSurfaceHighlight.applyTo(root)
     }
 
     fun applyTo(view: View) = applyTo(view, AppAppearance.font(view.context))

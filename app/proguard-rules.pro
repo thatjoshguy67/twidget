@@ -42,6 +42,10 @@
 # Preserve line numbers for crash reports
 -renamesourcefileattribute SourceFile
 
+# The SESL9 circular-mode compatibility check distinguishes this private drawable
+# from horizontal and gradient tracks; its binary name is part of that check.
+-keepnames class androidx.appcompat.widget.SeslProgressBar$CirCleProgressDrawable
+
 # SESL exposes no setter for the native fast-scroller overlay typeface.
 -keepclassmembers class androidx.recyclerview.widget.RecyclerView {
     *** mFastScroller;

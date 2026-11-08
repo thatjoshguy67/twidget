@@ -93,6 +93,7 @@ internal object BriefReviewViews {
                 }
                 if (action.outlined) foreground = androidx.appcompat.content.res.AppCompatResources.getDrawable(context, R.drawable.brief_open_tweet_outline)
                 if (compact) {
+                    com.tjg.twidget.ui.SeslSurfaceHighlight.mark(this, dp(context, 26).toFloat())
                     stateListAnimator = null
                     elevation = dp(context, 8).toFloat()
                 }

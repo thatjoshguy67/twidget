@@ -34,6 +34,11 @@ internal class TwidgetSnackbar(private val activity: AppCompatActivity) : Defaul
             }
             if (actionText != null && action != null) setAction(actionText) { action() }
             TwidgetFonts.applyTo(view)
+            addCallback(object : Snackbar.Callback() {
+                override fun onShown(bar: Snackbar) {
+                    TwidgetFonts.observeWindow(bar.view.rootView)
+                }
+            })
             current = this
             show()
         }

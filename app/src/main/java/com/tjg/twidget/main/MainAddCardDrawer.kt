@@ -144,6 +144,9 @@ internal class MainAddCardDrawer(
             sheet.transitionName = "catalogue_sheet"
             sheet.background = rounded(activity.getColor(R.color.oneui_drawer_bg), 28)
             sheet.clipToOutline = true
+            // The catalogue is built programmatically in its own dialog window,
+            // so it does not pass through the AppCompat text-view inflater hook.
+            com.tjg.twidget.ui.TwidgetFonts.observeWindow(sheet.rootView)
             val height = maxSheetHeight()
             sheet.layoutParams = sheet.layoutParams.apply { this.height = ViewGroup.LayoutParams.WRAP_CONTENT }
             dialog.behavior.apply {

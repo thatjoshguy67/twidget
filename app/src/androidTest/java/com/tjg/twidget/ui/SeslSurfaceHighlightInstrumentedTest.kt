@@ -6,11 +6,22 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SeslProgressBar
+import androidx.appcompat.widget.SearchView
+import android.widget.FrameLayout
+import androidx.test.filters.SdkSuppress
+import android.view.inspector.WindowInspector
+import com.google.android.material.oneui.dividerbuttonlayout.DividerButtonLayout
+import com.google.android.material.oneui.responsivepane.ResponsiveDrawerLayout
+import com.google.android.material.snackbar.SnackbarContentLayout
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.tabs.TabLayout
 import androidx.core.view.children
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -62,6 +73,87 @@ class SeslSurfaceHighlightInstrumentedTest {
             view.foreground = replacement
             SeslSurfaceHighlight.remove(view)
             assertSame("A later owner retains its foreground", replacement, view.foreground)
+        }
+    }
+
+    @Test fun blurPanelWithRectangularOutlineStillGetsRoundedRim() {
+        val background = ColorDrawable(Color.GRAY).apply { setBounds(0, 0, 160, 100) }
+        val rim = SeslRimDrawable(2f, 26f, true) { background }
+        rim.setBounds(0, 0, 160, 100)
+        val bitmap = Bitmap.createBitmap(160, 100, Bitmap.Config.ARGB_8888)
+        rim.draw(Canvas(bitmap))
+        assertTrue("A blur panel's plain fill must not suppress its rim", Color.alpha(bitmap.getPixel(80, 1)) > 150)
+        assertEquals(0, Color.alpha(bitmap.getPixel(0, 0)))
+        bitmap.recycle()
+    }
+
+    @Test fun insetOvalAndIndependentCornersFollowTheirBackground() {
+        for (oval in listOf(true, false)) {
+            val shape = GradientDrawable().apply {
+                setColor(Color.GRAY)
+                if (oval) this.shape = GradientDrawable.OVAL
+                else cornerRadii = floatArrayOf(24f, 24f, 24f, 24f, 0f, 0f, 0f, 0f)
+            }
+            val background = InsetDrawable(shape, 10).apply { setBounds(0, 0, 120, 120) }
+            val rim = SeslRimDrawable(2f, 26f, true) { background }
+            rim.setBounds(0, 0, 120, 120)
+            val bitmap = Bitmap.createBitmap(120, 120, Bitmap.Config.ARGB_8888)
+            rim.draw(Canvas(bitmap))
+            assertEquals("Inset area remains clear", 0, Color.alpha(bitmap.getPixel(60, 1)))
+            assertTrue("Rim follows the inset surface", Color.alpha(bitmap.getPixel(60, 11)) > 150)
+            assertEquals(0, Color.alpha(bitmap.getPixel(11, 11)))
+            assertEquals(0, Color.alpha(bitmap.getPixel(60, 60)))
+            bitmap.recycle()
+        }
+    }
+
+    @android.annotation.SuppressLint("RestrictedApi")
+    @Test fun discoversActionBarsTabsSnackbarsDrawerSearchAndCustomCapsules() {
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            val root = FrameLayout(context)
+            val surfaces = listOf(DividerButtonLayout(context), ResponsiveDrawerLayout(context),
+                SnackbarContentLayout(context), BottomNavigationView(context).apply {
+                    background = GradientDrawable().apply { cornerRadius = 26f }
+                }, TabLayout(context).apply { background = GradientDrawable().apply { cornerRadius = 26f } },
+                View(context).apply { id = R.id.notice_detail_back },
+                View(context).apply { id = R.id.brief_footer_info },
+                View(context).apply { id = com.google.android.material.R.id.design_bottom_sheet },
+                View(context).apply { SeslSurfaceHighlight.mark(this, 26f) })
+            surfaces.forEach(root::addView)
+            val search = SearchView(context)
+            root.addView(search)
+            SeslSurfaceHighlight.applyTo(root)
+            surfaces.forEach { assertNotNull(it.javaClass.name, it.getTag(R.id.sesl_surface_highlight)) }
+            val plate = search.findViewById<View>(androidx.appcompat.R.id.search_plate_frame)
+            assertNotNull("Search frame owns the rim", plate.getTag(R.id.sesl_surface_highlight))
+            assertNull("Search content must not get a second rim",
+                search.findViewById<View>(androidx.appcompat.R.id.search_plate).getTag(R.id.sesl_surface_highlight))
+        }
+    }
+
+    @SdkSuppress(minSdkVersion = 29)
+    @Test fun platformSettingsDropdownGetsWholeWindowSurfaceRim() {
+        ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
+            var popup: android.widget.ListPopupWindow? = null
+            scenario.onActivity { activity ->
+                popup = com.tjg.twidget.settings.showSettingsDropdown(
+                    activity.findViewById(R.id.about_toolbar), listOf("First", "Second")) { }
+            }
+            instrumentation.waitForIdleSync()
+            scenario.onActivity {
+                try {
+                    val list = requireNotNull(popup?.listView)
+                    assertTrue(WindowInspector.getGlobalWindowViews().contains(list.rootView))
+                    val ancestors = generateSequence(list as View) { view -> view.parent as? View }.toList()
+                    assertTrue("Native popup must be observed and styled", ancestors.any { view ->
+                        view.getTag(R.id.sesl_surface_highlight) != null
+                    })
+                    assertTrue("Only one rim encloses the popup", ancestors.count { view ->
+                        view.getTag(R.id.sesl_surface_highlight) != null
+                    } == 1)
+                } finally { popup?.dismiss() }
+            }
         }
     }
 

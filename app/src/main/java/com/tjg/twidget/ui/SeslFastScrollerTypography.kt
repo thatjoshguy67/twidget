@@ -23,5 +23,9 @@ internal object SeslFastScrollerTypography {
             val label = scroller.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(scroller) as TextView
             label.typeface = face
         }
+        val preview = scroller.javaClass.getDeclaredField("mPreviewImage").apply { isAccessible = true }
+            .get(scroller) as android.view.View
+        SeslSurfaceHighlight.mark(preview, 26f * list.resources.displayMetrics.density)
+        SeslSurfaceHighlight.applyTo(preview)
     }
 }

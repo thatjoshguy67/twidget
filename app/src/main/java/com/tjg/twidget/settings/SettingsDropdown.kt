@@ -60,6 +60,7 @@ internal fun showSettingsDropdown(anchor: View, labels: List<String>, selectedIn
         onSelected(position)
     }
     popup.show()
+    popup.listView?.let { com.tjg.twidget.ui.TwidgetFonts.observeWindow(it.rootView) }
     if (selectedIndex >= 0) popup.setSelection(selectedIndex)
     return popup
 }

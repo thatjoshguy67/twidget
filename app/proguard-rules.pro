@@ -45,12 +45,19 @@
 # The SESL9 circular-mode compatibility check distinguishes this private drawable
 # from horizontal and gradient tracks; its binary name is part of that check.
 -keepnames class androidx.appcompat.widget.SeslProgressBar$CirCleProgressDrawable
+-keepclassmembers class androidx.recyclerview.widget.RecyclerView {
+    *** mIndexTipController;
+}
+-keepclassmembers class androidx.recyclerview.widget.SeslIndexTipController {
+    androidx.recyclerview.widget.SeslIndexTipView mView;
+}
 
 # SESL exposes no setter for the native fast-scroller overlay typeface.
 -keepclassmembers class androidx.recyclerview.widget.RecyclerView {
     *** mFastScroller;
 }
 -keepclassmembers class androidx.recyclerview.widget.SeslRecyclerViewFastScroller {
+    android.view.View mPreviewImage;
     android.widget.TextView mPrimaryText;
     android.widget.TextView mSecondaryText;
 }

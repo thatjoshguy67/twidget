@@ -56,6 +56,18 @@ class ResponsiveDashboardLaunchInstrumentedTest {
                 assertTrue(activity.drawerController.isDrawerOpen)
                 val drawer = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
                 assertEquals("Expanded drawer shows the complete rim", 255, drawer.foreground.alpha)
+                val root = activity.findViewById<View>(R.id.dashboard_root)
+                val safe = androidx.core.view.ViewCompat.getRootWindowInsets(root)!!.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+                val gap = activity.resources.getDimensionPixelSize(R.dimen.dashboard_drawer_surface_gap)
+                val position = IntArray(2).also(drawer::getLocationOnScreen)
+                val origin = IntArray(2).also(root::getLocationOnScreen)
+                assertTrue("Floating drawer leaves a start-edge gap", if (root.layoutDirection == View.LAYOUT_DIRECTION_RTL)
+                    position[0] + drawer.width <= origin[0] + root.width - safe.right - gap
+                    else position[0] >= origin[0] + safe.left + gap)
+                assertTrue("Floating drawer clears the status bar with a gap", position[1] >= origin[1] + safe.top + gap)
+                assertTrue("Floating drawer clears navigation with a gap",
+                    position[1] + drawer.height <= origin[1] + root.height - safe.bottom - gap)
                 assertEquals(width, grid.width)
                 assertEquals(cardWidth, grid.getChildAt(0).width)
                 assertTrue(activity.findViewById<View>(dev.oneuiproject.oneui.design.R.id.oui_des_drawer_header_button)

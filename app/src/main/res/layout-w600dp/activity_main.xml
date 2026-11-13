@@ -42,6 +42,6 @@
 
  </FrameLayout>
  <com.google.android.material.oneui.responsivepane.ResponsiveDrawerLayout android:id="@id/responsive_pane_drawer"
-  android:layout_width="0dp" android:layout_height="0dp" android:layout_margin="8dp"
+  android:layout_width="0dp" android:layout_height="0dp" android:layout_margin="@dimen/dashboard_drawer_surface_gap"
   android:background="@drawable/sesl_menu_popup_background" />
 </com.google.android.material.oneui.responsivepane.ResponsivePaneLayout>

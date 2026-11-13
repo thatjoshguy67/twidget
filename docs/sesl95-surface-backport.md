@@ -33,6 +33,10 @@ fade with `PathInterpolator(.22, .25, 0, 1)` and the native slide offset, leavin
 the collapsed rail transparent. Only the decorative rim fades; existing ripple
 and focus foregrounds retain their own alpha. The phone surface translates at
 full width and keeps its rim throughout the slide.
+The phone surface remains a direct child of SESL's DrawerLayout for canvas blur.
+An 8dp start offset follows the native slide offset because DrawerLayout ignores
+start margins. Top and bottom clearance retain the same 8dp gap outside system
+bars; DrawerLayout does not subtract its root padding from drawer height.
 
 The other confirmed correction is theme-aware MODE_CIRCLE progress tracks.
 The compatibility layer recognizes the private circular background layer and

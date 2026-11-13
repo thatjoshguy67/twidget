@@ -97,8 +97,15 @@ internal class MainDrawerController(
         if (isPhoneDrawer) {
             val drawer = requireNotNull(phoneDrawer)
             drawer.setScrimColor(android.graphics.Color.TRANSPARENT)
+            val edgeGap = activity.resources.getDimensionPixelSize(R.dimen.dashboard_drawer_surface_gap).toFloat() *
+                if (nativeDrawer.layoutDirection == View.LAYOUT_DIRECTION_RTL) -1f else 1f
             var moving = false
             drawer.addDrawerListener(object : androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
+                override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                    // DrawerLayout ignores start margins. Retain its direct blur
+                    // surface and apply just the inset along its native slide.
+                    nativeDrawer.translationX = edgeGap * slideOffset
+                }
                 override fun onDrawerStateChanged(newState: Int) {
                     // Canvas blur is captured once per native sliding transition, not per frame.
                     if (newState != androidx.drawerlayout.widget.DrawerLayout.STATE_IDLE && !moving) {
@@ -182,6 +189,8 @@ internal class MainDrawerController(
 
     internal fun setDrawerOpen(open: Boolean, animate: Boolean = true) {
         phoneDrawer?.let { drawer ->
+            if (open && !animate) drawer.seslSetDrawerViewFloatingBlur(activity,
+                activity.findViewById(com.google.android.material.R.id.responsive_pane_drawer))
             if (open) drawer.openDrawer(androidx.core.view.GravityCompat.START, animate)
             else drawer.closeDrawer(androidx.core.view.GravityCompat.START, animate)
             return

@@ -39,6 +39,7 @@
  <FrameLayout android:id="@id/responsive_pane_drawer"
   android:layout_width="@dimen/sesl_responsive_pane_navigation_drawer_width"
   android:layout_height="match_parent" android:layout_gravity="start"
-  android:layout_marginStart="8dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
+  android:layout_marginTop="@dimen/dashboard_drawer_surface_gap"
+  android:layout_marginBottom="@dimen/dashboard_drawer_surface_gap"
   android:clipToOutline="true" android:background="@drawable/sesl_menu_popup_background" />
 </androidx.drawerlayout.widget.DrawerLayout>

@@ -29,8 +29,13 @@ internal object SeslToolbarCompatibility {
             (group.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
                 ?: group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel))?.let { panel ->
                 val params = panel.layoutParams as? ViewGroup.MarginLayoutParams
-                if (params != null && params.bottomMargin != bottom) {
-                    params.bottomMargin = bottom
+                // DrawerLayout ignores root padding when measuring its sliding
+                // child. Keep navigation clearance on the inset surface itself.
+                val gap = if (panel.id == com.google.android.material.R.id.responsive_pane_drawer)
+                    group.resources.getDimensionPixelSize(com.tjg.twidget.R.dimen.dashboard_drawer_surface_gap) else 0
+                val target = bottom + gap + if (group is androidx.drawerlayout.widget.DrawerLayout) group.paddingBottom else 0
+                if (params != null && params.bottomMargin != target) {
+                    params.bottomMargin = target
                     panel.layoutParams = params
                 }
             }
@@ -53,8 +58,11 @@ internal object SeslToolbarCompatibility {
             (group.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
                 ?: group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel))?.let { panel ->
                 val params = panel.layoutParams as? ViewGroup.MarginLayoutParams
-                if (params != null && params.topMargin != drawerTop) {
-                    params.topMargin = drawerTop
+                val target = if (panel.id == com.google.android.material.R.id.responsive_pane_drawer)
+                    top + group.resources.getDimensionPixelSize(com.tjg.twidget.R.dimen.dashboard_drawer_surface_gap)
+                    else drawerTop
+                if (params != null && params.topMargin != target) {
+                    params.topMargin = target
                     panel.layoutParams = params
                 }
             }

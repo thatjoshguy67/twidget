@@ -21,7 +21,8 @@ internal class DashboardPostMediaLayout(context: Context, private val stacked: B
             (child.layoutParams as LayoutParams).apply {
                 width = dp(112)
                 height = thumbnailHeight
-                gravity = Gravity.CENTER
+                gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
+                bottomMargin = overhang
             }
             child.translationX = if (stacked) dp(if (index == 0) -4 else 4).toFloat() else 0f
         }

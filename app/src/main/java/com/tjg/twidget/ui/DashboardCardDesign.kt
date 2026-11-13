@@ -13,6 +13,11 @@ import kotlin.math.roundToInt
 
 /** Figma's 214-unit row, measured with real Android children rather than scaling a rendered card. */
 internal object DashboardCardDesign {
+    fun cornerRadius(drawable: Drawable?): Float? = when (drawable) {
+        is GradientDrawable -> drawable.cornerRadius
+        is LayerDrawable -> (0 until drawable.numberOfLayers).firstNotNullOfOrNull { cornerRadius(drawable.getDrawable(it)) }
+        else -> null
+    }
     interface Scalable { fun applyCardDesignScale(scale: Float) }
     private data class Baseline(val width: Int, val height: Int, val margins: IntArray?, val padding: IntArray,
         val minimumWidth: Int, val minimumHeight: Int, val textSp: Float?, val autoSizes: IntArray,
@@ -90,6 +95,9 @@ internal object DashboardCardDesign {
                     view.setTextSize(TypedValue.COMPLEX_UNIT_SP, baseline.textSp * textScale)
                     lineHeight()
                 }
+            }
+            if (nativePostSpacing && view is DashboardShadowLayout) {
+                view.setCornerRadiusPx((cornerRadius(root.background) ?: 28f * density) - root.paddingEnd)
             }
             (view as? Scalable)?.applyCardDesignScale(if (nativePostSpacing && view is DashboardShadowLayout) 1f else scale)
             fun radius(drawable: Drawable?, cardSurface: Boolean) {

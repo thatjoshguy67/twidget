@@ -66,10 +66,13 @@ internal object DashboardCardDensity {
             root.findViewById<View>(R.id.dashboard_view_report)?.setPadding(dp(10f), dp(4f), dp(10f), dp(4f))
             root.findViewById<View>(R.id.dashboard_post_body)?.setPadding(0, 0, 0, 0)
             root.findViewById<DashboardPostMediaLayout>(R.id.dashboard_post_media)?.let { media ->
-                val gap = dp(12f)
+                val gap = dp(16f)
                 (media.layoutParams as ViewGroup.MarginLayoutParams).apply {
                     width = media.preferredWidth
                     marginStart = gap
+                    // Card design reapplies margins during measurement. Resolve
+                    // the relative gutter before LinearLayout measures the text.
+                    resolveLayoutDirection(root.layoutDirection)
                 }
                 val copyWidth = widthPx - inset * 2 - media.preferredWidth - gap
                 media.visibility = if (copyWidth >= dp(208f)) View.VISIBLE else View.GONE

@@ -131,11 +131,16 @@ class DashboardCardVariantsInstrumentedTest {
                         listOf(post), cachedAt = System.currentTimeMillis()).copy(best = post)
                     val tile = activity.postAnalyticsBinder.createGridCard(DashboardCardType.BEST_POST, account)
                     com.tjg.twidget.ui.TwidgetFonts.applyTo(tile)
-                    for (widthDp in listOf(392, 284, 392)) {
+                    for (widthDp in listOf(454, 392, 284, 392)) {
                         val width = activity.dp(widthDp)
                         val height = activity.dp(160)
                         repeat(2) {
                             com.tjg.twidget.ui.DashboardCardDesign.apply(tile, height, width)
+                            fun forceMeasure(view: View) {
+                                view.forceLayout()
+                                if (view is ViewGroup) for (i in 0 until view.childCount) forceMeasure(view.getChildAt(i))
+                            }
+                            forceMeasure(tile)
                             tile.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
                             tile.layout(0, 0, width, height)
@@ -166,7 +171,8 @@ class DashboardCardVariantsInstrumentedTest {
                         assertEquals("The two shadowed previews remain stacked without a badge", 2, media.childCount)
                         if (media.visibility == View.VISIBLE) {
                             assertEquals("Preview shares the right inset", width - inset, bounds(media).right)
-                            assertEquals("Text and preview use a regular column gap", inset, bounds(media).left - bounds(body).right)
+                            val mediaGap = (16f * activity.resources.displayMetrics.density).roundToInt()
+                            assertEquals("Text keeps its clear media gutter through remeasurement", mediaGap, bounds(media).left - bounds(body).right)
                             assertTrue("Thumbnail fits inside the content row", media.getChildAt(0).height <= media.height)
                         }
                         assertTrue("The post itself remains actionable", tile.hasOnClickListeners())
@@ -196,6 +202,86 @@ class DashboardCardVariantsInstrumentedTest {
                     } finally { instrumentation.removeMonitor(monitor) }
                 } finally { activity.analytics = previous }
             }
+        }
+    }
+
+    @Test fun tweetMediaShadowFadesIntoCardPaddingInBothThemes() = withLayout { context ->
+        val originalMode = com.tjg.twidget.ui.AppAppearance.mode(context)
+        try {
+            for (mode in listOf(androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO,
+                androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES)) {
+                instrumentation.runOnMainSync { com.tjg.twidget.ui.AppAppearance.setMode(context, mode) }
+                ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                    scenario.onActivity { activity ->
+                        val previous = activity.analytics
+                        try {
+                            val account = activity.selectedAccount
+                            val post = com.tjg.twidget.analytics.PostSummary("https://x.com/$account/status/1",
+                                "Exclusive - Here's the Galaxy S27 series' wallpapers! We have rich blues, vibrant pinks, a classy white, and burgundy. Very fruity Download them from @sammygurus below 👇",
+                                100, 5, 1, 1, 0, 7, 0, "", "Fixture", account, "",
+                                media = listOf(com.tjg.twidget.analytics.PostMedia("photo", "", "Fixture", 128, 100)))
+                            activity.analytics = com.tjg.twidget.analytics.AnalyticsClient.analyticsFromPosts(account,
+                                100, 1, false, listOf(post), cachedAt = System.currentTimeMillis()).copy(best = post)
+                            val tile = activity.postAnalyticsBinder.createGridCard(DashboardCardType.BEST_POST, account) as ViewGroup
+                            com.tjg.twidget.ui.TwidgetFonts.applyTo(tile)
+                            val width = activity.dp(454)
+                            val height = activity.dp(160)
+                            repeat(2) {
+                                com.tjg.twidget.ui.DashboardCardDesign.apply(tile, height, width)
+                                tile.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                    View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                                tile.layout(0, 0, width, height)
+                            }
+                            val media = tile.findViewById<ViewGroup>(R.id.dashboard_post_media)
+                            val frame = media.getChildAt(0) as ViewGroup
+                            val image = frame.getChildAt(0) as android.widget.ImageView
+                            image.visibility = View.VISIBLE
+                            image.setImageDrawable(android.graphics.drawable.GradientDrawable().apply {
+                                setColor(0xff447799.toInt())
+                                cornerRadius = activity.dp(16).toFloat()
+                            })
+                            tile.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                            tile.layout(0, 0, width, height)
+                            fun bounds(view: View) = android.graphics.Rect(0, 0, view.width, view.height).also {
+                                tile.offsetDescendantRectToMyCoords(view, it)
+                            }
+                            val imageBounds = bounds(image)
+                            val gap = width - imageBounds.right
+                            assertEquals("Thumbnail has equal right and bottom insets", gap, height - imageBounds.bottom)
+                            val body = tile.findViewById<TextView>(R.id.dashboard_post_body)
+                            val gutter = imageBounds.left - bounds(body).right
+                            assertEquals("Single-photo tweet keeps the full text-to-image gutter",
+                                (16f * activity.resources.displayMetrics.density).roundToInt(), gutter)
+                            val outline = android.graphics.Outline().also { image.outlineProvider.getOutline(image, it) }
+                            val outerRadius = com.tjg.twidget.ui.DashboardCardDesign.cornerRadius(tile.background)!!
+                            assertEquals("Image corners are concentric with the card", outerRadius - gap, outline.radius, 1f)
+                            fun draw() = android.graphics.Bitmap.createBitmap(width, height,
+                                android.graphics.Bitmap.Config.ARGB_8888).also { tile.draw(android.graphics.Canvas(it)) }
+                            val fixed = draw()
+                            val bodyBounds = bounds(body)
+                            assertTrue("Text ink stays out of the visible image gutter", (bodyBounds.top until bodyBounds.bottom).all { y ->
+                                (bodyBounds.right until imageBounds.left).none { x -> fixed.getPixel(x, y) == body.currentTextColor }
+                            })
+                            // Reproduce the old parent clipping against the same real card.
+                            tile.clipChildren = true
+                            tile.clipToPadding = true
+                            val clipped = draw()
+                            try {
+                                val y = bounds(media).bottom + activity.dp(2)
+                                val x = bounds(frame).centerX()
+                                assertTrue("The soft shadow reaches into the bottom inset in theme $mode",
+                                    android.graphics.Color.red(fixed.getPixel(x, y)) < android.graphics.Color.red(clipped.getPixel(x, y)))
+                                java.io.File(context.filesDir, "tweet-shadow-$mode.png").outputStream().use {
+                                    fixed.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                                }
+                            } finally { fixed.recycle(); clipped.recycle() }
+                        } finally { activity.analytics = previous }
+                    }
+                }
+            }
+        } finally {
+            instrumentation.runOnMainSync { com.tjg.twidget.ui.AppAppearance.setMode(context, originalMode) }
         }
     }
 

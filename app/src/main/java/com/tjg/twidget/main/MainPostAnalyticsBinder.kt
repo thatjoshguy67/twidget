@@ -81,6 +81,9 @@ internal class MainPostAnalyticsBinder(
         val surface = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(cardDp(12), cardDp(12), cardDp(12), cardDp(12))
+            // Let thumbnail shadows fade into the inset; the card outline owns clipping.
+            clipChildren = false
+            clipToPadding = false
             clipToOutline = true
             val opensPost = post?.url?.isNotBlank() == true
             background = AppCompatResources.getDrawable(
@@ -150,19 +153,22 @@ internal class MainPostAnalyticsBinder(
                 setPadding(0, 0, 0, 0)
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             contentRow.addView(copy, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+            val mediaRadius = ((com.tjg.twidget.ui.DashboardCardDesign.cornerRadius(background) ?: cardDp(28).toFloat())
+                - paddingEnd).coerceAtLeast(0f)
             post?.media?.takeIf { it.isNotEmpty() }?.let { media ->
                 contentRow.addView(com.tjg.twidget.ui.DashboardPostMediaLayout(activity, media.size > 1).apply {
                     id = R.id.dashboard_post_media
                     clipChildren = false
                     clipToPadding = false
                     media.take(if (media.size > 1) 2 else 1).forEachIndexed { index, item ->
-                        addView(com.tjg.twidget.ui.DashboardShadowLayout(activity).apply {
+                        addView(com.tjg.twidget.ui.DashboardShadowLayout(activity,
+                            radius = mediaRadius / resources.displayMetrics.density).apply {
                             rotation = if (media.size > 1) if (index == 0) -3f else 3f else 0f
                             translationX = if (media.size > 1) cardDp(if (index == 0) -5 else 5).toFloat() else 0f
                             addView(ImageView(activity).apply {
                                 scaleType = ImageView.ScaleType.CENTER_CROP
                                 contentDescription = item.alt.ifBlank { activity.getString(R.string.post_media) }
-                                ProfileImageLoader.loadMediaInto(activity, this, item.url, cardDp(8))
+                                ProfileImageLoader.loadMediaInto(activity, this, item.url, mediaRadius.roundToInt())
                             }, android.widget.FrameLayout.LayoutParams(-1, -1))
                         }, android.widget.FrameLayout.LayoutParams(cardDp(112), cardDp(88), Gravity.CENTER))
                     }

@@ -81,6 +81,14 @@ internal object BriefWidgetArtworkRenderer {
         BriefCardType.POSTING_GUIDE -> OneUiIconR.drawable.ic_oui_star_outline
     }
 
+    /** Shared with the native dashboard card so its state artwork matches the widget. */
+    fun stateIcon(context: Context, type: BriefCardType, account: String, sizePx: Int, tint: Int): Bitmap {
+        val size = sizePx.coerceAtLeast(1)
+        return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
+            drawStateIcon(context, Canvas(bitmap), type, account, 0f, 0f, size.toFloat(), tint, true)
+        }
+    }
+
     fun render(
         context: Context,
         widthPx: Int,

@@ -4,6 +4,13 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Redesign the dashboard with adaptive cards, per-account arrangements, animated
+  resizing with haptics, and the native SESL responsive drawer.
+- Refine graph and tweet previews, including typography, spacing, media stacks,
+  and returning to Twidget after opening a tweet in X.
+- Reorder Settings into the updated Figma groups and keep Widgets' icon readable
+  in light mode. Start the 1.4.0 version series.
+
 - Retry temporary Gemini failures in Tweet Report and recover from invalid
   numerical claims with qualitative advice while keeping measured figures
   in the app’s statistics cards.

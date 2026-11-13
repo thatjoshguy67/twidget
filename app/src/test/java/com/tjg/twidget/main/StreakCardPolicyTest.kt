@@ -21,7 +21,7 @@ class StreakCardPolicyTest {
     fun streakUsesTheStandardOneColumnCardFootprint() {
         assertEquals(DashboardCardSize.HALF, DashboardCardType.DAILY_STREAK.size)
         assertEquals(1, DashboardCardType.DAILY_STREAK.size.span)
-        assertEquals(160, DashboardCardType.DAILY_STREAK.size.heightDp)
+        assertEquals(214, DashboardCardType.DAILY_STREAK.size.heightDp)
     }
 
     @Test

@@ -20,6 +20,7 @@ import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.animation.PathInterpolator
 import android.widget.ListView
 import androidx.appcompat.widget.SeslProgressBar
 import androidx.core.view.children
@@ -32,10 +33,22 @@ import com.google.android.material.oneui.floatingdock.FloatingPaneView
 import com.google.android.material.snackbar.SnackbarContentLayout
 import com.google.android.material.tabs.TabLayout
 import com.tjg.twidget.R
+import kotlin.math.roundToInt
 
 /** The decorative subset of One UI 9.5's SeslStrokeDrawable, on the existing SESL9 geometry. */
 internal object SeslSurfaceHighlight {
-    private data class Foreground(val original: Drawable?, val combined: Drawable, val radius: Float, val light: Boolean)
+    private data class Foreground(val original: Drawable?, val combined: Drawable, val rim: SeslRimDrawable,
+        val radius: Float, val light: Boolean)
+    private val drawerFade = PathInterpolator(.22f, .25f, 0f, 1f)
+
+    /** SESL 9.5's ResponsivePaneElevationConcept fades only the rim as the rail opens. */
+    fun setDrawerSlideOffset(view: View, offset: Float) {
+        view.setTag(R.id.sesl_surface_drawer_offset, offset.coerceIn(0f, 1f))
+        (view.getTag(R.id.sesl_surface_highlight) as? Foreground)?.rim?.alpha = drawerRimAlpha(view)
+    }
+
+    private fun drawerRimAlpha(view: View): Int =
+        (drawerFade.getInterpolation(view.getTag(R.id.sesl_surface_drawer_offset) as? Float ?: 1f) * 255f).roundToInt()
 
     /** Explicit opt-in for app-owned equivalents of the floating SESL capsules. */
     fun mark(view: View, radius: Float) {
@@ -66,7 +79,8 @@ internal object SeslSurfaceHighlight {
                 view.resources.getDimension(androidx.appcompat.R.dimen.sesl_dialog_background_corner_radius)
             view is BottomNavigationView && view.background != null ->
                 view.resources.getDimension(com.google.android.material.R.dimen.sesl_bottom_navigation_icon_only_mode_background_radius)
-            view is DividerButtonLayout || view is ResponsiveDrawerLayout ->
+            view is DividerButtonLayout || view is ResponsiveDrawerLayout ||
+                view.id == com.google.android.material.R.id.responsive_pane_drawer ->
                 view.resources.getDimension(com.google.android.material.R.dimen.sesl_divider_button_layout_background_radius)
             view is FloatingPaneView ->
                 view.resources.getDimension(com.google.android.material.R.dimen.sesl_floating_pane_background_corner_radius)
@@ -145,11 +159,12 @@ internal object SeslSurfaceHighlight {
                 view.findViewById<View>(androidx.appcompat.R.id.search_plate)?.background
             else view.background
         }
+        rim.alpha = drawerRimAlpha(view)
         val combined = if (original == null) rim else LayerDrawable(arrayOf(original, rim)).apply {
             setPaddingMode(LayerDrawable.PADDING_MODE_STACK)
         }
         view.foreground = combined
-        view.setTag(R.id.sesl_surface_highlight, Foreground(original, combined, radius, light))
+        view.setTag(R.id.sesl_surface_highlight, Foreground(original, combined, rim, radius, light))
     }
 
     internal fun remove(view: View) {

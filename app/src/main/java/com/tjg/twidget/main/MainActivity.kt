@@ -41,6 +41,7 @@ import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 class MainActivity : EdgeToEdgeActivity() {
+    internal val dashboardTweetLauncher = DashboardTweetLauncher(this)
 
     internal var accounts = emptyList<String>()
     internal var selectedAccount: String = ""
@@ -107,6 +108,8 @@ class MainActivity : EdgeToEdgeActivity() {
         postAnalyticsBinder = MainPostAnalyticsBinder(this)
 
         setContentView(R.layout.activity_main)
+        if (savedInstanceState == null) findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout)
+            .setExpanded(expanded = false, animate = false)
         accounts = TwidgetStore.accounts(this)
         selectedAccount = savedInstanceState?.getString(STATE_ACCOUNT)
             ?.takeIf { saved -> accounts.any { it.equals(saved, ignoreCase = true) } }
@@ -115,7 +118,7 @@ class MainActivity : EdgeToEdgeActivity() {
             drawerController.renderHeader()
         }
         setupLaunchChrome()
-        applyEdgeToEdgeInsets(findViewById(R.id.main_toolbar_layout))
+        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root))
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         // Bind the saved dashboard before its first frame. Remote refresh and
         // maintenance begin afterwards without replacing the cached cards.
@@ -188,6 +191,7 @@ class MainActivity : EdgeToEdgeActivity() {
     }
 
     override fun onDestroy() {
+        if (::dashboardBinder.isInitialized) dashboardBinder.dispose()
         // Invalidates every queued UI delivery owned by this Activity. The
         // background result may still populate application caches, but can no
         // longer retain or repaint a destroyed window.

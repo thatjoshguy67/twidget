@@ -45,53 +45,50 @@ internal class TopFollowersCardBinder(
 
     private fun notScannedCard(account: String, state: TopFollowersState): View =
         FrameLayout(activity).apply {
-            minimumHeight = dp(233)
+            minimumHeight = 0
             background = rounded(cardColor, 28f)
             clipToOutline = true
 
             repeat(3) { index ->
-                addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(45).apply {
-                    leftMargin = dp(23)
-                    rightMargin = dp(23)
-                    topMargin = dp(110 + index * 54)
+                addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(58).apply {
+                    leftMargin = dp(48)
+                    rightMargin = dp(47)
+                    topMargin = dp(44 + index * 67)
                 })
             }
-            addView(LinearLayout(activity).apply {
+            addView(label(activity.getString(R.string.top_followers_question), 14f, primaryColor, 700).apply {
                 gravity = Gravity.CENTER
-                addView(ImageView(activity).apply {
-                    setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
-                    imageTintList = ColorStateList.valueOf(secondaryColor)
-                    contentDescription = null
-                }, LinearLayout.LayoutParams(dp(16), dp(16)))
-                addView(label(activity.getString(R.string.top_followers_question), 14f, secondaryColor, 700),
-                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                        .apply { marginStart = dp(10) })
-            }, matchFrameParams(19).apply { topMargin = dp(22) })
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) })
             addView(label(activity.getString(R.string.top_followers_hero), 48f, accentColor, 700).apply {
                 gravity = Gravity.CENTER
                 maxLines = 1
                 letterSpacing = -0.02f
                 TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                    this, 34, 48, 1, TypedValue.COMPLEX_UNIT_SP,
+                    this, 32, 48, 1, TypedValue.COMPLEX_UNIT_SP,
                 )
             }, matchFrameParams(64).apply {
                 leftMargin = dp(16)
                 rightMargin = dp(16)
-                topMargin = dp(40)
+                topMargin = dp(38)
             })
-            addView(Button(activity).apply {
+            val action = com.tjg.twidget.ui.DashboardShadowLayout(activity, 28f, 9.5f, 4f).apply {
+                minimumWidth = dp(206)
+                addView(Button(activity).apply {
                 val shareHistory = TwidgetStore.settings(activity).shareHistory
                 text = activity.getString(when {
                     shareHistory -> R.string.top_followers_find_with_bridge
                     else -> R.string.top_followers_enable_shared_history
                 })
                 isAllCaps = false
-                textSize = 14f
+                textSize = 16f
+                minWidth = 0
+                minHeight = 0
+                includeFontPadding = false
                 setTextColor(Color.WHITE)
-                typeface = weightedTypeface(600)
-                setPadding(dp(20), dp(10), dp(20), dp(10))
+                typeface = weightedTypeface(700)
+                setPadding(dp(24), dp(12), dp(24), dp(12))
                 stateListAnimator = null
-                elevation = dp(8).toFloat()
+                elevation = 0f
                 background = rounded(accentColor, 28f)
                 setOnClickListener {
                     when {
@@ -100,35 +97,29 @@ internal class TopFollowersCardBinder(
                     }
                 }
                 contentDescription = if (state.error.isBlank()) text else "${text}. ${state.error}"
-            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(48)).apply {
+                }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            }
+            addView(action, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(60)).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = dp(151)
+                topMargin = dp(140)
             })
         }
 
     private fun resultsCard(account: String, state: TopFollowersState): View {
         TopFollowersArchiveStore.seedFromTop(activity, account, state.top)
-        val canBrowse = state.complete && state.top.isNotEmpty()
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            minimumHeight = dp(384)
+            minimumHeight = 0
             background = rounded(cardColor, 28f)
             clipToOutline = true
+            setPadding(0, 0, 0, dp(12))
             addView(header(activity.getString(R.string.top_followers_results_title), account, openBrowserEnabled = true),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)))
-            state.top.take(5).forEachIndexed { index, follower ->
-                addView(resultRow(index + 1, follower, index < 4),
-                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(68)))
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            state.top.take(3).forEachIndexed { index, follower ->
+                addView(resultRow(index + 1, follower, index < 2),
+                    LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             }
-            if (canBrowse) {
-                addView(label(activity.getString(R.string.top_followers_view_all), 14f, accentColor, 700).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(8), 0, dp(12))
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { openBrowse(account) }
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            }
+
         }
     }
 
@@ -139,7 +130,7 @@ internal class TopFollowersCardBinder(
     ): View {
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), 0, dp(12), 0)
+            setPadding(dp(20), dp(12), dp(20), dp(8))
             if (openBrowserEnabled) {
                 isClickable = true
                 isFocusable = true
@@ -151,19 +142,17 @@ internal class TopFollowersCardBinder(
                 contentDescription = "$title. ${activity.getString(R.string.top_followers_view_all)}"
                 setOnClickListener { openBrowse(account) }
             }
+            addView(label(title, 14f, secondaryColor, 700).apply {
+                com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this)
+                gravity = Gravity.CENTER_VERTICAL or if (openBrowserEnabled) Gravity.START else Gravity.CENTER_HORIZONTAL
+            },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             addView(ImageView(activity).apply {
-                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
-                imageTintList = ColorStateList.valueOf(secondaryColor)
-                contentDescription = null
-            }, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(10) })
-            addView(label(title, 14f, secondaryColor, 700).apply { gravity = Gravity.CENTER_VERTICAL },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
-            addView(ImageView(activity).apply {
+                visibility = if (openBrowserEnabled) View.VISIBLE else View.GONE
                 setImageDrawable(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_keyboard_arrow_right))
                 imageTintList = ColorStateList.valueOf(secondaryColor)
-                setPadding(dp(11), dp(11), dp(11), dp(11))
                 contentDescription = null
-            }, LinearLayout.LayoutParams(dp(40), dp(40)))
+            }, LinearLayout.LayoutParams(dp(16), dp(16)))
         }
     }
 
@@ -189,38 +178,36 @@ internal class TopFollowersCardBinder(
         addView(LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), 0, dp(20), 0)
-            addView(label(rank.toString(), 24f, primaryColor, 200).apply { gravity = Gravity.CENTER },
-                LinearLayout.LayoutParams(dp(24), dp(40)))
+            addView(label(rank.toString(), 20f, primaryColor, 200).apply { gravity = Gravity.CENTER },
+                LinearLayout.LayoutParams(dp(24), LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(ImageView(activity).apply {
                 contentDescription = null
                 ProfileImageLoader.loadInto(activity, this, follower.avatarUrl)
             }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(10) })
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
+            addView(com.tjg.twidget.ui.DashboardFollowerIdentityLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(label(follower.name, 20f, primaryColor, 700).apply {
-                    includeFontPadding = true
+                addView(label(follower.name, 16f, primaryColor, 700).apply {
                     gravity = Gravity.START
                     textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                     textDirection = View.TEXT_DIRECTION_FIRST_STRONG
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-                addView(label("@${follower.username}", 14f, secondaryColor, 400).apply {
-                    includeFontPadding = true
+                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = dp(8)
+                })
+                addView(label("@${follower.username}", 12f, secondaryColor, 400).apply {
                     gravity = Gravity.START
                     textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                     textDirection = View.TEXT_DIRECTION_LTR
                     maxLines = 1; ellipsize = TextUtils.TruncateAt.END
-                }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                    topMargin = dp(2)
-                })
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(10); marginEnd = dp(8)
+                marginStart = dp(10); marginEnd = dp(10)
             })
             addView(communityIcon(primaryColor), LinearLayout.LayoutParams(dp(18), dp(18)))
             addView(label(TwidgetStore.compactNumber(follower.followers), 12f, secondaryColor, 400).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL; maxLines = 1
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(24)).apply { marginStart = dp(4) })
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(4) })
         }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         if (divider) addDivider()
     }
@@ -270,11 +257,7 @@ internal class TopFollowersCardBinder(
         contentDescription = null
     }
 
-    private fun weightedTypeface(weight: Int): Typeface = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        Typeface.create(Typeface.create("sec", Typeface.NORMAL), weight, false)
-    } else {
-        Typeface.create("sec", if (weight >= 600) Typeface.BOLD else Typeface.NORMAL)
-    }
+    private fun weightedTypeface(weight: Int): Typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, weight)
 
     private fun rounded(color: Int, radiusDp: Float) = GradientDrawable().apply {
         setColor(color)
@@ -287,7 +270,7 @@ internal class TopFollowersCardBinder(
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
     private fun dp(value: Float): Int = (value * activity.resources.displayMetrics.density).toInt()
 
-    private val cardColor get() = activity.getColor(R.color.oneui_card_bg)
+    private val cardColor get() = activity.getColor(R.color.dashboard_stat_surface)
     private val primaryColor get() = activity.getColor(R.color.oneui_text_primary)
     private val secondaryColor get() = activity.getColor(R.color.oneui_text_secondary)
     private val accentColor get() = activity.getColor(R.color.oneui_accent)

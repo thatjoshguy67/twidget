@@ -1,0 +1,8 @@
+<resources>
+    <color name="dashboard_stat_surface">#FFFFFF</color>
+    <color name="dashboard_post_surface">#FCFCFF</color>
+    <color name="dashboard_brief_start">#B6DEFF</color>
+    <color name="dashboard_brief_end">#E4F3FF</color>
+    <color name="dashboard_count_delta">#2E7620</color>
+    <color name="dashboard_count_editorial_delta">#0CA256</color>
+</resources>

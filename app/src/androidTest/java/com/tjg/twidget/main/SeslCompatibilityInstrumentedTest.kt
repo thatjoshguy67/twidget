@@ -120,6 +120,70 @@ class SeslCompatibilityInstrumentedTest {
         }
     }
 
+    @Test fun aboutSlowPartialDragDoesNotSnapOnRelease() {
+        ActivityScenario.launch(AboutActivity::class.java).use { scenario ->
+            // Exercise both direct app-bar dragging and the nested-scroll path
+            // through SwipeRefreshLayout, matching slow gestures in the report.
+            for (targetId in listOf(R.id.about_header_content, R.id.about_scroll)) {
+                scenario.onActivity {
+                    it.findViewById<AppBarLayout>(R.id.about_app_bar).setExpanded(true, false)
+                }
+                settle()
+                var x = 0f
+                var y = 0f
+                var distance = 0f
+                var range = 0
+                var diagnostics = ""
+                scenario.onActivity { activity ->
+                    val appBar = activity.findViewById<AppBarLayout>(R.id.about_app_bar)
+                    range = appBar.totalScrollRange
+                    val target = activity.findViewById<View>(targetId)
+                    val location = IntArray(2).also(target::getLocationInWindow)
+                    x = location[0] + target.width * .85f
+                    val visibleHeight = minOf(target.height,
+                        activity.window.decorView.height - location[1])
+                    y = location[1] + visibleHeight * .65f
+                    distance = range * .2f
+                    diagnostics = "target=${activity.resources.getResourceEntryName(targetId)} " +
+                        "start=($x,$y) targetSize=${target.width}x${target.height} " +
+                        "appBar=${appBar.left},${appBar.top},${appBar.right},${appBar.bottom} " +
+                        "decor=${activity.window.decorView.width}x${activity.window.decorView.height}"
+                }
+                val downTime = SystemClock.uptimeMillis()
+                fun dispatch(action: Int, dragFraction: Float) {
+                    val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(),
+                        action, x, y - distance * dragFraction, 0)
+                    scenario.onActivity { it.dispatchTouchEvent(event) }
+                    event.recycle()
+                }
+                dispatch(MotionEvent.ACTION_DOWN, 0f)
+                for (step in 1..20) {
+                    SystemClock.sleep(30)
+                    dispatch(MotionEvent.ACTION_MOVE, step / 20f)
+                }
+                // Release at rest so velocity cannot disguise a snap as a fling.
+                SystemClock.sleep(180)
+                dispatch(MotionEvent.ACTION_MOVE, 1f)
+                var draggedOffset = 0
+                scenario.onActivity { activity ->
+                    draggedOffset = activity.findViewById<AppBarLayout>(R.id.about_app_bar).top
+                    assertTrue("Slow drag must move the header: $draggedOffset / $range; $diagnostics",
+                        -draggedOffset > range * .08f && -draggedOffset < range * .4f)
+                    val alpha = activity.findViewById<View>(R.id.about_content).alpha
+                    assertTrue("Credits must begin appearing during a short drag: $alpha",
+                        alpha > 0f && alpha < 1f)
+                }
+                dispatch(MotionEvent.ACTION_UP, 1f)
+                settle()
+                scenario.onActivity { activity ->
+                    val releasedOffset = activity.findViewById<AppBarLayout>(R.id.about_app_bar).top
+                    assertEquals("Releasing a slow drag must preserve its progress", draggedOffset.toDouble(),
+                        releasedOffset.toDouble(), 2.0)
+                }
+            }
+        }
+    }
+
     @Test fun estimateTipAppearsOnlyForEstimatesAndStaysDismissedAfterRecreation() {
         context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
             .putString("username", account)
@@ -348,25 +412,24 @@ class SeslCompatibilityInstrumentedTest {
             // on drawer_panel alone works on phones but is ignored by SlidingPaneLayout.
             listOf(false, true, false).forEach { open ->
                 scenario.onActivity { activity ->
-                    activity.findViewById<dev.oneuiproject.oneui.layout.NavDrawerLayout>(R.id.main_toolbar_layout)
-                        .setDrawerOpen(open, false)
+                    activity.drawerController.setDrawerOpen(open, false)
                 }
                 settle()
                 capture("DrawerSafeHeader-${if (open) "Expanded" else "Collapsed"}")
                 scenario.onActivity { activity ->
-                    val drawer = activity.findViewById<dev.oneuiproject.oneui.layout.NavDrawerLayout>(R.id.main_toolbar_layout)
-                    if (open || drawer.isLargeScreenMode) {
-                        val panel = activity.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel)
+                    val largeScreen = activity.resources.configuration.screenWidthDp >= 600
+                    if (open || largeScreen) {
+                        val panel = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
                         val safe = ViewCompat.getRootWindowInsets(panel)!!.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).top
                         val y = IntArray(2).also(panel::getLocationOnScreen)[1]
-                        assertTrue("Drawer surface must begin below the status bar (open=$open, tablet=${drawer.isLargeScreenMode}, y=$y, inset=$safe)", y >= safe)
+                        assertTrue("Drawer surface must begin below the status bar (open=$open, tablet=${largeScreen}, y=$y, inset=$safe)", y >= safe)
                         val bottomInset = ViewCompat.getRootWindowInsets(panel)!!
                             .getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()).bottom
                         val window = panel.rootView
                         val windowY = IntArray(2).also(window::getLocationOnScreen)[1]
                         val safeBottom = windowY + window.height - bottomInset
                         assertTrue(
-                            "Drawer surface must end above navigation (open=$open, tablet=${drawer.isLargeScreenMode}, bottom=${y + panel.height}, safeBottom=$safeBottom)",
+                            "Drawer surface must end above navigation (open=$open, tablet=${largeScreen}, bottom=${y + panel.height}, safeBottom=$safeBottom)",
                             y + panel.height <= safeBottom,
                         )
                         val button = if (open) dev.oneuiproject.oneui.design.R.id.oui_des_drawer_header_button

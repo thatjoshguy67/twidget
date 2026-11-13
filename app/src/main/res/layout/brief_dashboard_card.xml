@@ -1,29 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.tjg.twidget.ui.BriefDashboardCardLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="112dp"
+    android:layout_height="match_parent"
     android:clipToOutline="true"
     android:foreground="@drawable/brief_card_ripple"
     android:gravity="center_vertical"
-    android:minHeight="112dp"
-    android:orientation="horizontal"
-    android:paddingStart="14dp"
-    android:paddingEnd="18dp">
+    android:minHeight="0dp"
+    android:orientation="vertical"
+    android:paddingStart="21dp"
+    android:paddingEnd="21dp">
 
     <ImageView
         android:id="@+id/brief_dashboard_icon"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="12dp"
         android:contentDescription="@null"
-        android:padding="10dp"
-        android:visibility="gone" />
+        android:scaleType="fitCenter" />
 
     <LinearLayout
         android:id="@+id/brief_dashboard_copy"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="0dp"
-        android:layout_weight="1"
         android:orientation="vertical">
 
         <TextView
@@ -33,21 +31,21 @@
             android:ellipsize="end"
             android:fontFamily="sec"
             android:includeFontPadding="false"
-            android:maxLines="1"
+            android:maxLines="2"
             android:textColor="@color/oneui_text_primary"
-            android:textSize="24sp"
+            android:textSize="30sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/brief_dashboard_message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="12dp"
             android:ellipsize="end"
             android:fontFamily="sec"
             android:includeFontPadding="false"
             android:maxLines="2"
             android:textColor="@color/oneui_text_primary"
-            android:textSize="14sp" />
+            android:textSize="20sp" />
     </LinearLayout>
-</LinearLayout>
+</com.tjg.twidget.ui.BriefDashboardCardLayout>

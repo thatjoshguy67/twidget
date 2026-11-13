@@ -1,0 +1,14 @@
+<resources>
+    <item name="dashboard_card_span" type="id" />
+    <item name="dashboard_card_content" type="id" />
+    <item name="dashboard_design_baseline" type="id" />
+    <item name="dashboard_design_line_height" type="id" />
+    <item name="dashboard_design_proportional_text" type="id" />
+    <item name="dashboard_stat_streak" type="id" />
+    <item name="dashboard_post_media" type="id" />
+    <item name="dashboard_header_platform_icon" type="id" />
+    <item name="dashboard_post_heading" type="id" />
+    <item name="dashboard_post_divider" type="id" />
+    <item name="dashboard_post_body" type="id" />
+    <item name="drawer_nav" type="id" />
+</resources>

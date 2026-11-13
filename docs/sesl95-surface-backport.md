@@ -25,6 +25,15 @@ Active Samsung theme packages suppress the rim, as in the reference helper.
 App theme changes recreate the window, refreshing its theme-dependent colors.
 This does not add the newer capsule-slot layout engine or change backdrop blur.
 
+The dashboard now uses the native responsive drawer surface on large screens
+and the native translated DrawerLayout surface on phones. Both receive the rim
+on `responsive_pane_drawer`, rather than on the reused, transparent drawer-content
+host. The responsive rail follows the reference elevation concept's foreground
+fade with `PathInterpolator(.22, .25, 0, 1)` and the native slide offset, leaving
+the collapsed rail transparent. Only the decorative rim fades; existing ripple
+and focus foregrounds retain their own alpha. The phone surface translates at
+full width and keeps its rim throughout the slide.
+
 The other confirmed correction is theme-aware MODE_CIRCLE progress tracks.
 The compatibility layer recognizes the private circular background layer and
 sets its tint through SESL's public API. R8 preserves that class name for this
@@ -64,7 +73,8 @@ Ordinary content cards and focus-only control outlines retain their own styling.
 The notices reader's `notice_detail_back` is a full-width transparent host for a
 native floating toolbar, so only its projection background receives a rim. The
 older design wrapper's drawer panel retains its native fill and corner masking,
-without an added outline. It is not the newer ResponsiveDrawerLayout surface.
+without an added outline. The dashboard's native drawer container surrounding
+that reused content owns the rim.
 
 `SeslSurfaceHighlightInstrumentedTest` checks light/dark rim pixels, resizing,
 inset ovals and asymmetric corners, blur-panel radius fallback, foreground

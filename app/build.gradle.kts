@@ -105,6 +105,11 @@ configurations.configureEach {
 }
 
 dependencies {
+    constraints {
+        // SESL's annotation dependency and ML Kit's runtime must use the split annotation layout.
+        implementation("androidx.compose.runtime:runtime-android:1.9.0")
+    }
+
     implementation(libs.oneui.design)
     implementation(libs.lottie)
     implementation(libs.androidx.dynamicanimation)

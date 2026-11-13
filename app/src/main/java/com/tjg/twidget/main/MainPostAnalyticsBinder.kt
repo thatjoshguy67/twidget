@@ -22,17 +22,19 @@ import com.tjg.twidget.banger.BangerClient
 import com.tjg.twidget.banger.BangerScanWorker
 import com.tjg.twidget.brief.BriefReviewTarget
 import com.tjg.twidget.brief.BriefTweetReviewActivity
-import com.tjg.twidget.core.AppLocales
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import java.text.NumberFormat
+import kotlin.math.roundToInt
 import dev.oneuiproject.oneui.R as OneUiIconR
 
 internal class MainPostAnalyticsBinder(
     private val activity: MainActivity,
 ) {
+    private fun cardDp(value: Int) = (value * activity.resources.displayMetrics.density).roundToInt()
+
     fun createGridCard(card: DashboardCardType, account: String): View {
         val data = activity.analytics
         return when (card) {
@@ -78,7 +80,8 @@ internal class MainPostAnalyticsBinder(
     private fun postAnalyticsShell(label: String, body: String, post: PostSummary?, account: String = ""): View {
         val surface = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(activity.dp(14), activity.dp(14), activity.dp(14), activity.dp(14))
+            setPadding(cardDp(12), cardDp(12), cardDp(12), cardDp(12))
+            clipToOutline = true
             val opensPost = post?.url?.isNotBlank() == true
             background = AppCompatResources.getDrawable(
                 activity,
@@ -89,72 +92,86 @@ internal class MainPostAnalyticsBinder(
             contentDescription = if (post == null) label else activity.getString(R.string.open_post)
             post?.url?.takeIf { it.isNotBlank() }?.let { postUrl ->
                 setOnClickListener {
-                    activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(postUrl)))
+                    activity.dashboardTweetLauncher.open(postUrl)
                 }
             }
 
 
             addView(LinearLayout(activity).apply {
                 gravity = Gravity.CENTER_VERTICAL
-                addView(ImageView(activity).apply {
-                    setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
-                    imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_secondary))
-                    contentDescription = null
-                }, LinearLayout.LayoutParams(activity.dp(16), activity.dp(16)))
+                isBaselineAligned = false
+                minimumHeight = cardDp(24)
                 addView(TextView(activity).apply {
+                    id = R.id.dashboard_post_heading
                     text = label
                     includeFontPadding = false
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                     textSize = 14f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
+                    TwidgetFonts.dashboardHeading(this)
+                    gravity = Gravity.CENTER_VERTICAL or if (post == null) Gravity.CENTER_HORIZONTAL else Gravity.START
                     setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = activity.dp(10)
-                })
+                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
+                if (post != null) {
+                    val button = LayoutInflater.from(activity).inflate(R.layout.view_dashboard_report_button, this, false)
+                    button.setTag(R.id.dashboard_design_line_height, 16f)
+                    (button as? TextView)?.typeface = TwidgetFonts.forApp(activity, 700)
+                    button.setOnClickListener {
+                        activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity,
+                            BriefReviewTarget(account, postUrl = post.url, fromDashboard = true)))
+                    }
+                    addView(button)
+                }
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(View(activity).apply {
+                id = R.id.dashboard_post_divider
                 background = android.graphics.drawable.ColorDrawable(activity.getColor(R.color.oneui_divider))
             }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, activity.dp(1),
-            ).apply { topMargin = activity.dp(10); bottomMargin = activity.dp(10) })
+                LinearLayout.LayoutParams.MATCH_PARENT, cardDp(1),
+            ).apply { topMargin = cardDp(8); bottomMargin = cardDp(8) })
 
 
-            post?.let { addView(tweetAuthorRow(it), LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )) }
-
-            addView(TextView(activity).apply {
+            val contentRow = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                clipChildren = false
+                clipToPadding = false
+            }
+            val copy = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+            copy.addView(com.tjg.twidget.ui.DashboardFadingTextView(activity).apply {
+                id = R.id.dashboard_post_body
                 text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
                 setTextColor(activity.getColor(R.color.oneui_text_primary))
-                textSize = 14f
-                setLineSpacing(activity.dp(2).toFloat(), 1f)
-                linksClickable = true
-                movementMethod = LinkMovementMethod.getInstance()
-            }, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = activity.dp(10)
-            })
-
+                textSize = 13f
+                typeface = TwidgetFonts.forApp(activity, 400)
+                maxLines = Int.MAX_VALUE
+                ellipsize = null
+                setTag(R.id.dashboard_design_line_height, 18f)
+                setPadding(0, 0, 0, 0)
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            contentRow.addView(copy, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
             post?.media?.takeIf { it.isNotEmpty() }?.let { media ->
-                addView(com.tjg.twidget.ui.TweetMediaView.create(activity, media), LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = activity.dp(10) })
+                contentRow.addView(com.tjg.twidget.ui.DashboardPostMediaLayout(activity, media.size > 1).apply {
+                    id = R.id.dashboard_post_media
+                    clipChildren = false
+                    clipToPadding = false
+                    media.take(if (media.size > 1) 2 else 1).forEachIndexed { index, item ->
+                        addView(com.tjg.twidget.ui.DashboardShadowLayout(activity).apply {
+                            rotation = if (media.size > 1) if (index == 0) -3f else 3f else 0f
+                            translationX = if (media.size > 1) cardDp(if (index == 0) -5 else 5).toFloat() else 0f
+                            addView(ImageView(activity).apply {
+                                scaleType = ImageView.ScaleType.CENTER_CROP
+                                contentDescription = item.alt.ifBlank { activity.getString(R.string.post_media) }
+                                ProfileImageLoader.loadMediaInto(activity, this, item.url, cardDp(8))
+                            }, android.widget.FrameLayout.LayoutParams(-1, -1))
+                        }, android.widget.FrameLayout.LayoutParams(cardDp(112), cardDp(88), Gravity.CENTER))
+                    }
+                    contentDescription = activity.getString(R.string.post_media) + ": " + media.size
+                },
+                    LinearLayout.LayoutParams(cardDp(151), LinearLayout.LayoutParams.MATCH_PARENT))
             }
+            addView(contentRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
 
-            post?.let {
-                addView(tweetFooter(it, account), LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = activity.dp(10)
-                })
-            }
         }
 
         // Expand the hit area into the card's existing padding instead of making the stats row taller.
@@ -162,7 +179,7 @@ internal class MainPostAnalyticsBinder(
             surface.findViewById<View>(R.id.dashboard_view_report)?.let { button ->
                 val bounds = android.graphics.Rect(0, 0, button.width, button.height)
                 surface.offsetDescendantRectToMyCoords(button, bounds)
-                bounds.inset(0, -maxOf(0, (activity.dp(48) - bounds.height()) / 2))
+                bounds.inset(0, -maxOf(0, (cardDp(48) - bounds.height()) / 2))
                 bounds.top = bounds.top.coerceAtLeast(0)
                 bounds.bottom = bounds.bottom.coerceAtMost(surface.height)
                 surface.touchDelegate = android.view.TouchDelegate(bounds, button)
@@ -222,45 +239,21 @@ internal class MainPostAnalyticsBinder(
         }
     }
 
-    private fun tweetAuthorRow(post: PostSummary): View =
-        LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-
-            addView(ImageView(activity).apply {
-                ProfileImageLoader.loadInto(activity, this, post.authorAvatar)
-            }, LinearLayout.LayoutParams(activity.dp(40), activity.dp(40)))
-
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(activity.dp(10), 0, 0, 0)
-                addView(TextView(activity).apply {
-                    text = post.authorName.ifBlank { post.authorUserName.ifBlank { activity.getString(R.string.app_name) } }
-                    includeFontPadding = false
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_primary))
-                    textSize = 14f
-                    typeface = Typeface.create("sec", Typeface.BOLD)
-                })
-                addView(TextView(activity).apply {
-                    text = activity.getString(
-                        R.string.tweet_handle_and_date,
-                        post.authorUserName.ifBlank { "x" },
-                        postDate(post),
-                    )
-                    includeFontPadding = false
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    setTextColor(activity.getColor(R.color.oneui_text_secondary))
-                    textSize = 12f
-                    setPadding(0, activity.dp(3), 0, 0)
-                })
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        }
-
     private fun formattedPostText(post: PostSummary): CharSequence {
-        val spannable = SpannableString(post.text.ifBlank { post.url })
+        val paragraphs = post.text.ifBlank { post.url }.replace(Regex("\n[ \t]*\n+"), "\u2029")
+        val spannable = SpannableString(paragraphs.replace('\u2029', '\n'))
+        paragraphs.forEachIndexed { index, char ->
+            if (char == '\u2029') spannable.setSpan(object : android.text.style.LineHeightSpan.WithDensity {
+                override fun chooseHeight(text: CharSequence, start: Int, end: Int, spanstartv: Int, v: Int,
+                    fm: android.graphics.Paint.FontMetricsInt) = Unit
+                override fun chooseHeight(text: CharSequence, start: Int, end: Int, spanstartv: Int, v: Int,
+                    fm: android.graphics.Paint.FontMetricsInt, paint: android.text.TextPaint) {
+                    val gap = (paint.textSize * 4f / 14f).toInt()
+                    fm.descent += gap
+                    fm.bottom += gap
+                }
+            }, index, index + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
         post.links.forEach { link ->
             val start = spannable.indexOf(link.display)
             if (start < 0) return@forEach
@@ -307,11 +300,5 @@ internal class MainPostAnalyticsBinder(
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
     }
 
-    private fun postDate(post: PostSummary): String =
-        if (post.timestamp > 0L) {
-            AppLocales.formatDate(post.timestamp, "MMMdjm")
-        } else {
-            post.createdAt
-        }
 
 }

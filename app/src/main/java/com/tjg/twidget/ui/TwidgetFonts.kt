@@ -63,12 +63,20 @@ object TwidgetFonts {
     internal fun cardValueTypeface(context: Context, width: Int): Typeface =
         googleAppTypeface(context, 400, false, width, 100)
 
-    enum class Role { LABEL, SUMMARY, DASHBOARD_VALUE, STREAK_VALUE, CHART_DELTA, CODE }
+    internal fun editorialTypeface(context: Context, weight: Int, width: Int, italic: Boolean = false,
+        roundness: Int = 0): Typeface = googleAppTypeface(context, weight, italic, width, roundness)
+
+    enum class Role { LABEL, SUMMARY, DASHBOARD_VALUE, DASHBOARD_EDITORIAL, STREAK_VALUE, CHART_VALUE, CHART_DELTA, CODE }
     private var codeTypeface: Typeface? = null
 
     fun setRole(view: TextView, role: Role) {
         view.setTag(R.id.app_font_role, role)
         applyTo(view)
+    }
+
+    fun dashboardHeading(view: TextView, weight: Int = 700) {
+        if (view.getTag(R.id.app_font_role) != Role.LABEL) view.typeface = forApp(view.context, weight)
+        setRole(view, Role.LABEL)
     }
 
     private data class TextBaseline(
@@ -220,8 +228,13 @@ object TwidgetFonts {
             val desired = if (view.getTag(R.id.app_font_role) == Role.CODE)
                 codeTypeface ?: (ResourcesCompat.getFont(view.context, R.font.google_sans_code)
                     ?: Typeface.MONOSPACE).also { codeTypeface = it }
+                else if (view.getTag(R.id.app_font_role) == Role.DASHBOARD_EDITORIAL)
+                if (google) googleAppTypeface(view.context, 400, false, 100, 0)
+                else forApp(view.context, font, 400, false)
                 else if (view.getTag(R.id.app_font_role) == Role.CHART_DELTA)
                 forApp(view.context, font, 400, baseline.italic)
+                else if (view.getTag(R.id.app_font_role) == Role.CHART_VALUE)
+                forApp(view.context, font, 700, false)
                 else if (view.getTag(R.id.app_font_role) in setOf(Role.DASHBOARD_VALUE, Role.STREAK_VALUE))
                 googleAppTypeface(view.context, 400, false, if (view.getTag(R.id.app_font_role) == Role.STREAK_VALUE) 130 else 124, 100)
                 else if (google && section) googleAppTypeface(view.context, 700, baseline.italic, 60, 100)
@@ -229,7 +242,13 @@ object TwidgetFonts {
             // Retain the size already resolved by TextView/SESL. Recomputing it
             // from scaledDensity overrides per-view sizes and Android's nonlinear
             // accessibility font scaling when the font family changes.
-            if (current !== desired) view.typeface = desired
+            if (current !== desired) {
+                view.typeface = desired
+                // Preserve the configured variable face after TextView resolves its inherited style.
+                // In particular, a 500/600 face must not be replaced by a normal/bold cut.
+                view.paint.typeface = desired
+            }
+            if (view.getTag(R.id.app_font_role) == Role.CHART_VALUE) view.paint.isFakeBoldText = false
             baseline.appliedFace = view.typeface
             baseline.appliedSize = view.textSize
             baseline.binding = binding

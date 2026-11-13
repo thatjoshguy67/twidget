@@ -2,4 +2,5 @@
 <resources>
     <item name="sesl_surface_highlight" type="id" />
     <item name="sesl_surface_radius" type="id" />
+    <item name="sesl_surface_drawer_offset" type="id" />
 </resources>

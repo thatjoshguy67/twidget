@@ -26,7 +26,8 @@ internal object SeslToolbarCompatibility {
             // A margin on drawer_panel alone is ignored by this container.
             slidingDrawer.seslSetDrawerMarginBottom(bottom)
         } else {
-            group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel)?.let { panel ->
+            (group.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
+                ?: group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel))?.let { panel ->
                 val params = panel.layoutParams as? ViewGroup.MarginLayoutParams
                 if (params != null && params.bottomMargin != bottom) {
                     params.bottomMargin = bottom
@@ -49,7 +50,8 @@ internal object SeslToolbarCompatibility {
             // native sliding container; child layout margins are ignored there.
             slidingDrawer.seslSetDrawerMarginTop(drawerTop)
         } else {
-            group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel)?.let { panel ->
+            (group.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
+                ?: group.findViewById<View>(dev.oneuiproject.oneui.design.R.id.drawer_panel))?.let { panel ->
                 val params = panel.layoutParams as? ViewGroup.MarginLayoutParams
                 if (params != null && params.topMargin != drawerTop) {
                     params.topMargin = drawerTop

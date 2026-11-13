@@ -17,6 +17,7 @@ class SettingsIconsInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val icons = listOf(
         R.drawable.settings_icon_accounts, R.drawable.settings_icon_appearance,
+        R.drawable.settings_icon_widgets,
         R.drawable.settings_icon_data, R.drawable.settings_icon_brief,
         R.drawable.settings_icon_notifications,
         R.drawable.settings_icon_language, R.drawable.settings_icon_about,
@@ -41,6 +42,10 @@ class SettingsIconsInstrumentedTest {
         }
         assertEquals(0xFF387AFF.toInt(), render(SettingsIcons.load(context,
             R.drawable.settings_icon_accounts, null)).getPixel(48, 6))
+        val widget = render(SettingsIcons.load(context, R.drawable.settings_icon_widgets, null))
+        assertTrue("Widgets keeps its white glyph without a palette", (24 until 72).any { y ->
+            (24 until 72).any { x -> widget.getPixel(x, y) == Color.WHITE }
+        })
     }
 
     private fun render(drawable: Drawable): Bitmap =

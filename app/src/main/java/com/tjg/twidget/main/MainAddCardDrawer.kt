@@ -35,7 +35,7 @@ internal enum class DashboardCardGroup(val title: Int, val icon: Int, val color:
 
 internal fun DashboardCardType.catalogueGroup(): DashboardCardGroup = when (this) {
     DashboardCardType.MILESTONE -> DashboardCardGroup.BRIEF
-    DashboardCardType.FOLLOWERS, DashboardCardType.FOLLOWING, DashboardCardType.FOLLOWER_RATIO,
+    DashboardCardType.FOLLOWERS, DashboardCardType.FOLLOWER_COUNT, DashboardCardType.FOLLOWING, DashboardCardType.FOLLOWER_RATIO,
     DashboardCardType.AUDIENCE_BALANCE, DashboardCardType.TOP_FOLLOWERS -> DashboardCardGroup.METRICS
     DashboardCardType.DAILY_STREAK, DashboardCardType.GROWTH_PACE, DashboardCardType.BEST_DAY,
     DashboardCardType.MOMENTUM, DashboardCardType.ACCOUNT_HEALTH -> DashboardCardGroup.GROWTH
@@ -212,7 +212,7 @@ internal class MainAddCardDrawer(
         sections.clear()
         pendingPanels.clear()
         content.removeAllViews()
-        val current = TwidgetStore.dashboardCards(activity).toSet()
+        val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount).toSet()
         val eligible = controller.availableDashboardCards()
         DashboardCardGroup.entries.forEach { group ->
             val cards = eligible.filter { it.catalogueGroup() == group }
@@ -296,107 +296,112 @@ internal class MainAddCardDrawer(
         animateSections(startHeights)
     }
 
-    private fun cardPanel(card: DashboardCardType): View {
-        val panel = object : LinearLayout(activity) {
-            var holdFeedback: com.tjg.twidget.ui.CardHoldFeedback? = null
-            override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean =
-                holdFeedback?.onTouch(event) == true || super.dispatchTouchEvent(event)
-            override fun onDetachedFromWindow() {
-                holdFeedback?.detach()
-                super.onDetachedFromWindow()
-            }
-        }.apply {
-            transitionName = "catalogue_panel_${card.id}"
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            clipChildren = false
-            clipToPadding = false
-            setPadding(activity.dp(14), activity.dp(21), activity.dp(14), activity.dp(21))
-            background = rounded(activity.getColor(R.color.card_catalogue_preview_bg), 16)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = activity.dp(20)
-                marginEnd = activity.dp(20)
-                bottomMargin = activity.dp(10)
-            }
+    private fun cardPanel(card: DashboardCardType): View = LinearLayout(activity).apply {
+        transitionName = "catalogue_panel_${card.id}"
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        clipChildren = false
+        clipToPadding = false
+        setPadding(activity.dp(12), activity.dp(21), activity.dp(12), activity.dp(21))
+        background = rounded(activity.getColor(R.color.card_catalogue_preview_bg), 16)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            marginStart = activity.dp(20)
+            marginEnd = activity.dp(20)
+            bottomMargin = activity.dp(10)
         }
-        panel.addView(label(activity.getString(card.labelRes), 14, true).apply {
+        addView(label(activity.getString(card.labelRes), 14, true).apply {
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = activity.dp(10) })
-        val cardView = activity.dashboardBinder.createCardPreview(card)
-        // SESL rounded layouts paint the dashboard background into their corners.
-        // A thumbnail has a different surround; its Canvas clip supplies the outline.
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = activity.dp(10)
+        })
+        // Keep variants together under one card heading, as in the Figma catalogue.
+        card.previewSpans.forEachIndexed { index, span ->
+            val option = cardOption(card, span)
+            (option.layoutParams as LinearLayout.LayoutParams).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                if (index > 0) topMargin += activity.dp(20)
+            }
+            addView(option)
+        }
+    }
+
+    private fun cardOption(card: DashboardCardType, span: Int): View {
+        val cardView = activity.dashboardBinder.createCardPreview(card, span, catalogue = true)
         (cardView as? dev.oneuiproject.oneui.delegates.ViewRoundedCorner)?.roundedCorners = 0
         TwidgetFonts.applyTo(cardView)
-        // Render the actual card without exposing its buttons or links inside the catalogue.
-        val sourceWidth = activity.dp(if (card.size.span == 1) 189 else 392)
-        val sourceHeight = if (card.size == DashboardCardSize.POST) View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            else View.MeasureSpec.makeMeasureSpec(activity.dp(if (card == DashboardCardType.MILESTONE) 160 else card.size.heightDp), View.MeasureSpec.EXACTLY)
-        cardView.measure(View.MeasureSpec.makeMeasureSpec(sourceWidth, View.MeasureSpec.EXACTLY), sourceHeight)
-        cardView.layout(0, 0, sourceWidth, cardView.measuredHeight)
-        val availableWidth = minOf(activity.resources.displayMetrics.widthPixels, activity.dp(392)) - activity.dp(68)
-        val scale = minOf(if (card.size.span == 1) 1f else 318f / 392f,
-            activity.dp(260).toFloat() / cardView.height.coerceAtLeast(1), availableWidth.toFloat() / sourceWidth)
+        // Both source variants use the dashboard's same row height and column unit.
+        val countPreview = card == DashboardCardType.FOLLOWER_COUNT
+        val sourceWidth = activity.dp(if (countPreview) if (span == 1) 187 else 327 else if (span == 1) 189 else 392)
+        val sourceHeight = if (countPreview) activity.dp(if (span == 1) 152 else 130) else activity.dp(392) * 214 / 538
+        if (!countPreview && (card.size != DashboardCardSize.CHART || card == DashboardCardType.FOLLOWERS))
+            com.tjg.twidget.ui.DashboardCardDesign.apply(cardView, sourceHeight)
+        cardView.measure(View.MeasureSpec.makeMeasureSpec(sourceWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(sourceHeight, View.MeasureSpec.EXACTLY))
+        cardView.layout(0, 0, sourceWidth, sourceHeight)
+        val availableWidth = minOf(sheetWidth(), activity.dp(392)) - activity.dp(64)
+        val scale = minOf(if (countPreview || span == 1) 1f else 327f / 392f, availableWidth.toFloat() / sourceWidth)
+        val radius = (cardView.background as? GradientDrawable)?.cornerRadius?.takeIf { it > 0f }
+            ?: activity.dp(28).toFloat()
         val preview = object : View(activity) {
             override fun onDraw(canvas: Canvas) {
                 super.onDraw(canvas)
                 val saved = canvas.save()
                 canvas.scale(scale, scale)
-                val radius = (cardView.background as? GradientDrawable)?.cornerRadius?.takeIf { it > 0f }
-                    ?: activity.dp(if (card == DashboardCardType.TOP_FOLLOWERS || card == DashboardCardType.MILESTONE) 28 else 22).toFloat()
                 canvas.clipPath(Path().apply {
-                    addRoundRect(0f, 0f, sourceWidth.toFloat(), cardView.height.toFloat(),
-                        radius, radius, Path.Direction.CW)
+                    addRoundRect(0f, 0f, sourceWidth.toFloat(), sourceHeight.toFloat(), radius, radius, Path.Direction.CW)
                 })
                 cardView.draw(canvas)
                 canvas.restoreToCount(saved)
             }
-        }.apply {
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }
+        }.apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
         val shadowPadding = activity.dp(com.tjg.twidget.ui.CardShadow.PADDING_DP)
         val previewWidth = (sourceWidth * scale).toInt()
-        val previewHeight = (cardView.height * scale).toInt()
-        val previewRadius = ((cardView.background as? GradientDrawable)?.cornerRadius?.takeIf { it > 0f }
-            ?: activity.dp(if (card == DashboardCardType.TOP_FOLLOWERS || card == DashboardCardType.MILESTONE) 28 else 22).toFloat()) * scale
-        val shadow = object : FrameLayout(activity) {
-            private val renderer = com.tjg.twidget.ui.CardShadow.renderer(activity, previewRadius)
+        val previewHeight = (sourceHeight * scale).toInt()
+        val option = object : FrameLayout(activity) {
+            private val renderer = com.tjg.twidget.ui.CardShadow.renderer(activity, radius * scale)
+            private val holdFeedback = com.tjg.twidget.ui.CardHoldFeedback(this, preview)
             override fun dispatchDraw(canvas: Canvas) {
-                renderer.draw(canvas, width, height)
+                val checkpoint = canvas.save()
+                canvas.translate(-shadowPadding.toFloat(), -shadowPadding.toFloat())
+                renderer.draw(canvas, width + shadowPadding * 2, height + shadowPadding * 2)
+                canvas.restoreToCount(checkpoint)
                 super.dispatchDraw(canvas)
             }
-        }.apply {
-            addView(preview, FrameLayout.LayoutParams(previewWidth, previewHeight).apply {
-                leftMargin = shadowPadding
-                topMargin = shadowPadding
-            })
-        }
-        panel.addView(shadow, LinearLayout.LayoutParams(previewWidth + shadowPadding * 2, previewHeight + shadowPadding * 2).apply {
-            topMargin = -shadowPadding
-            bottomMargin = -shadowPadding
-        })
-        panel.addView(label(activity.getString(if (card.size.span == 1) R.string.card_catalogue_half_width else R.string.card_catalogue_full_width), 14).apply {
-            gravity = Gravity.CENTER
-            setTextColor(activity.getColor(R.color.oneui_text_secondary))
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = activity.dp(10) })
-        panel.holdFeedback = com.tjg.twidget.ui.CardHoldFeedback(panel, shadow)
-        // The entire preview panel is a generous tap target, including the thumbnail.
-        panel.isFocusable = true
-        panel.contentDescription = activity.getString(R.string.card_catalogue_add_named, activity.getString(card.labelRes))
-        panel.setOnLongClickListener(object : View.OnLongClickListener {
-            override fun onLongClick(view: View): Boolean {
-                if (!controller.startDrawerCardDrag(card, panel, preview)) return true
-                dialog.setDismissWithAnimation(false)
-                dialog.dismiss()
-                return true
+            override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean =
+                holdFeedback.onTouch(event) || super.dispatchTouchEvent(event)
+            override fun onDetachedFromWindow() {
+                holdFeedback.detach()
+                super.onDetachedFromWindow()
             }
-            override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
-        })
-        panel.setOnClickListener {
-            controller.addDashboardCard(card)
-            content.announceForAccessibility(activity.getString(R.string.card_catalogue_added, activity.getString(card.labelRes)))
-            rebuild()
+        }.apply {
+            transitionName = "catalogue_variant_${card.id}_$span"
+            clipChildren = false
+            clipToPadding = false
+            addView(preview, FrameLayout.LayoutParams(previewWidth, previewHeight))
+            minimumWidth = previewWidth
+            minimumHeight = previewHeight
+            isFocusable = true
+            val size = activity.getString(if (span == 1) R.string.card_catalogue_half_width else R.string.card_catalogue_full_width)
+            contentDescription = if (card.supportsSizeVariants)
+                activity.getString(R.string.card_catalogue_add_size, activity.getString(card.labelRes), size)
+                else activity.getString(R.string.card_catalogue_add_named, activity.getString(card.labelRes))
+            setOnLongClickListener(object : View.OnLongClickListener {
+                override fun onLongClick(view: View): Boolean {
+                    if (!controller.startDrawerCardDrag(card, this@apply, preview, span)) return true
+                    dialog.setDismissWithAnimation(false)
+                    dialog.dismiss()
+                    return true
+                }
+                override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
+            })
+            setOnClickListener {
+                controller.addDashboardCard(card, span)
+                content.announceForAccessibility(activity.getString(R.string.card_catalogue_added, activity.getString(card.labelRes)))
+                rebuild()
+            }
         }
-        return panel
+        option.layoutParams = LinearLayout.LayoutParams(option.minimumWidth, option.minimumHeight)
+        return option
     }
 
     private fun label(textValue: String, size: Int, bold: Boolean = false) = TextView(activity).apply {

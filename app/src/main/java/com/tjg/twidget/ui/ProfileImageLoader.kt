@@ -87,6 +87,7 @@ object ProfileImageLoader {
                 if (imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null) {
                     applyCircleClip(imageView)
                     imageView.setPadding(0, 0, 0, 0)
+                    imageView.background = null
                     imageView.imageTintList = null
                     imageView.setImageBitmap(bitmap)
                 }

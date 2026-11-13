@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="dashboard_remove_button_bg">#FCFCFF</color>
-    <color name="card_preview_shadow">#29000000</color>
+    <color name="card_preview_shadow">#26000000</color>
     <color name="dashboard_edit_shadow">#18000000</color>
     <color name="dashboard_edit_border">#33000000</color>
     <color name="dashboard_edit_button_bg">#eaeaea</color>

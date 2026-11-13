@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<dev.oneuiproject.oneui.layout.NavDrawerLayout
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+ xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/dashboard_root" android:saveEnabled="false"
+ android:layout_width="match_parent" android:layout_height="match_parent">
+<dev.oneuiproject.oneui.layout.ToolbarLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/main_toolbar_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    app:drawerBackAnimation="true"
-    app:expanded="true"
+    app:expanded="false"
     app:handleInsets="false"
     app:mainRoundedCorners="top"
     app:title="@string/app_name">
-
-    <!-- Drawer panel: account list + actions, filled at runtime -->
-    <dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
-        android:id="@+id/drawer_nav"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_location="drawer_panel" />
 
     <!-- Main content: the selected account's dashboard and scheduling action -->
     <FrameLayout
@@ -40,4 +35,10 @@
     </FrameLayout>
 
 
-</dev.oneuiproject.oneui.layout.NavDrawerLayout>
+</dev.oneuiproject.oneui.layout.ToolbarLayout>
+ <FrameLayout android:id="@id/responsive_pane_drawer"
+  android:layout_width="@dimen/sesl_responsive_pane_navigation_drawer_width"
+  android:layout_height="match_parent" android:layout_gravity="start"
+  android:layout_marginStart="8dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
+  android:clipToOutline="true" android:background="@drawable/sesl_menu_popup_background" />
+</androidx.drawerlayout.widget.DrawerLayout>

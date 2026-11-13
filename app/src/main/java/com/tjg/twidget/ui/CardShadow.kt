@@ -17,7 +17,7 @@ internal object CardShadow {
     private val patches = object : android.util.LruCache<String, Bitmap>(4 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
     }
-    fun paint(context: Context, blurDp: Float = 30f, offsetDp: Float = 6f,
+    fun paint(context: Context, blurDp: Float = 29.1f, offsetDp: Float = 4f,
               shadowColor: Int = context.getColor(R.color.card_preview_shadow)) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_card_bg)
         val density = context.resources.displayMetrics.density
@@ -25,7 +25,7 @@ internal object CardShadow {
     }
 
     /** Blur one small rounded patch once; stretch only its straight edges on the GPU. */
-    fun renderer(context: Context, radius: Float, blurDp: Float = 30f, offsetDp: Float = 6f,
+    fun renderer(context: Context, radius: Float, blurDp: Float = 29.1f, offsetDp: Float = 4f,
                  shadowColor: Int = context.getColor(R.color.card_preview_shadow)): Renderer {
         val padding = PADDING_DP * context.resources.displayMetrics.density
         val edge = kotlin.math.ceil(padding + radius).toInt()
@@ -74,8 +74,15 @@ internal fun Drawable.setCardCornerRadius(radius: Float) {
 }
 
 internal class CardShadowView(context: Context, private val radius: Float) : View(context) {
-    private val renderer = CardShadow.renderer(context, radius, blurDp = 8f, offsetDp = 2f,
+    private var currentRadius = radius
+    private var renderer = CardShadow.renderer(context, radius, blurDp = 8f, offsetDp = 2f,
         shadowColor = context.getColor(R.color.dashboard_edit_shadow))
+    fun setCornerRadius(radius: Float) {
+        if (radius == currentRadius) return
+        currentRadius = radius
+        renderer = CardShadow.renderer(context, radius, blurDp = 8f, offsetDp = 2f,
+            shadowColor = context.getColor(R.color.dashboard_edit_shadow))
+    }
     override fun onDraw(canvas: Canvas) {
         renderer.draw(canvas, width, height)
     }

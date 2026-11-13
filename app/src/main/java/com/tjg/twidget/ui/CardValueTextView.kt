@@ -12,6 +12,8 @@ class CardValueTextView @JvmOverloads constructor(
 ) : AppCompatTextView(context, attrs, defStyleAttr) {
     private var preferredSizeSp = 60f
     private var preferredWidth = 124
+    private var minimumWidthAxis = 25
+    private var designScale = 1f
     var fittedWidth: Int = preferredWidth
         private set
 
@@ -21,16 +23,20 @@ class CardValueTextView @JvmOverloads constructor(
         includeFontPadding = false
     }
 
-    fun configure(sizeSp: Float, width: Int) {
+    fun configure(sizeSp: Float, width: Int, minimumWidth: Int = 25) {
+        if (preferredSizeSp == sizeSp && preferredWidth == width && minimumWidthAxis == minimumWidth) return
         preferredSizeSp = sizeSp
         preferredWidth = width
+        minimumWidthAxis = minimumWidth.coerceIn(25, width)
         requestLayout()
     }
+
+    internal fun applyDesignScale(scale: Float) { designScale = scale }
 
     /** Intrinsic width at the preferred axes, including the fitting inset used below. */
     internal fun preferredContentWidth(): Int {
         val preferred = android.graphics.Paint(paint).apply {
-            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, preferredSizeSp, resources.displayMetrics)
+            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, preferredSizeSp * designScale, resources.displayMetrics)
             typeface = TwidgetFonts.cardValueTypeface(context, preferredWidth)
         }
         return kotlin.math.ceil(preferred.measureText(text.toString()) / 0.95f).toInt() + compoundPaddingLeft + compoundPaddingRight
@@ -52,12 +58,12 @@ class CardValueTextView @JvmOverloads constructor(
     private fun fit(availableWidth: Int, availableHeight: Int) {
         if (availableWidth <= 0 || availableHeight <= 0) return
         textScaleX = 1f
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, preferredSizeSp)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, preferredSizeSp * designScale)
         val value = text.toString()
         // Preserve the normal width unless the value crowds the card's edges.
         val widthLimit = availableWidth * 0.95f
         // Width axes are discrete to share cached typefaces and avoid per-frame font allocations.
-        var low = 25
+        var low = minimumWidthAxis
         var high = preferredWidth
         var best = low
         while (low <= high) {

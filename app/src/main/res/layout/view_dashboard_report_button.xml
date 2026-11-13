@@ -8,6 +8,8 @@
     android:minHeight="0dp"
     android:insetTop="0dp"
     android:insetBottom="0dp"
+    android:insetLeft="0dp"
+    android:insetRight="0dp"
     android:paddingStart="10dp"
     android:paddingEnd="10dp"
     android:paddingTop="4dp"

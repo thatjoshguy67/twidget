@@ -165,6 +165,35 @@ class SeslSurfaceHighlightInstrumentedTest {
         }
     }
 
+    @Test fun nativeDrawerRimFollowsExpansionWithoutFadingItsExistingForeground() {
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            // The same surface ID is a ResponsiveDrawerLayout on tablets and a
+            // full-width FrameLayout translated by the native phone DrawerLayout.
+            for (drawer in listOf(ResponsiveDrawerLayout(context), FrameLayout(context))) {
+                drawer.id = com.google.android.material.R.id.responsive_pane_drawer
+                drawer.background = GradientDrawable().apply { cornerRadius = 32f }
+                val original = ColorDrawable(Color.RED)
+                drawer.foreground = original
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, 0f)
+                SeslSurfaceHighlight.applyTo(drawer)
+                val foreground = drawer.foreground as LayerDrawable
+                val rim = foreground.getDrawable(1)
+                assertEquals("Transparent closed rail has no rim", 0, rim.alpha)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, .5f)
+                assertTrue("The rim fades in during the native transition", rim.alpha in 1..254)
+                assertEquals("Existing ripple/focus foreground stays unchanged", 255, original.alpha)
+                SeslSurfaceHighlight.applyTo(drawer)
+                assertSame("Discovery never stacks or replaces the animated rim", foreground, drawer.foreground)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, 1f)
+                assertEquals(255, rim.alpha)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, 0f)
+                assertEquals(0, rim.alpha)
+                assertEquals(255, original.alpha)
+            }
+        }
+    }
+
 
     @SdkSuppress(minSdkVersion = 29)
     @Test fun platformSettingsDropdownGetsWholeWindowSurfaceRim() {

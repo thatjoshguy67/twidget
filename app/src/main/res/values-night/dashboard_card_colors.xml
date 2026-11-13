@@ -1,0 +1,8 @@
+<resources>
+    <color name="dashboard_stat_surface">@color/oneui_card_bg</color>
+    <color name="dashboard_post_surface">@color/oneui_card_bg</color>
+    <color name="dashboard_brief_start">#002F52</color>
+    <color name="dashboard_brief_end">@color/oneui_card_bg</color>
+    <color name="dashboard_count_delta">#70C886</color>
+    <color name="dashboard_count_editorial_delta">#41CE89</color>
+</resources>

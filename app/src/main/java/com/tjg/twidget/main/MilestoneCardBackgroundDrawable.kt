@@ -10,13 +10,16 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import kotlin.math.max
+import com.tjg.twidget.ui.DashboardCardDesign
 
 internal class MilestoneCardBackgroundDrawable(
     private val glowColor: Int,
     private val surfaceColor: Int,
     private val radiusPx: Float,
-) : Drawable() {
+) : Drawable(), DashboardCardDesign.Scalable {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var designScale = 1f
+    override fun applyCardDesignScale(scale: Float) { designScale = scale }
 
     override fun draw(canvas: Canvas) {
         val rect = bounds
@@ -24,17 +27,21 @@ internal class MilestoneCardBackgroundDrawable(
             rect.left.toFloat(),
             rect.exactCenterY(),
             max(rect.width().toFloat(), 1f),
-            intArrayOf(glowColor, blend(glowColor, surfaceColor, 0.5f), surfaceColor),
-            floatArrayOf(0f, 0.5f, 1f),
+            intArrayOf(glowColor, surfaceColor),
+            floatArrayOf(0f, 1f),
             Shader.TileMode.CLAMP,
-        )
+        ).apply {
+            setLocalMatrix(android.graphics.Matrix().apply {
+                setScale(1f, 361.96f / 538f, rect.left.toFloat(), rect.exactCenterY())
+            })
+        }
         canvas.drawRoundRect(
             rect.left.toFloat(),
             rect.top.toFloat(),
             rect.right.toFloat(),
             rect.bottom.toFloat(),
-            radiusPx,
-            radiusPx,
+            radiusPx * designScale,
+            radiusPx * designScale,
             paint,
         )
     }
@@ -50,7 +57,7 @@ internal class MilestoneCardBackgroundDrawable(
     }
 
     override fun getOutline(outline: Outline) {
-        outline.setRoundRect(bounds, radiusPx)
+        outline.setRoundRect(bounds, radiusPx * designScale)
     }
 
     @Suppress("DEPRECATION")

@@ -42,6 +42,7 @@ internal object SettingsIcons {
                 ColorUtils.calculateContrast(Color.BLACK, accent)) Color.WHITE else Color.BLACK
             layers.getDrawable(1).setTint(foreground)
         } else if (widgets) {
+            // The coloured disc requires a white glyph in light mode too.
             (drawable as LayerDrawable).getDrawable(1).setTint(Color.WHITE)
         }
         return drawable

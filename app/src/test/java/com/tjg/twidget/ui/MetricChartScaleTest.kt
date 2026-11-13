@@ -5,6 +5,17 @@ import org.junit.Test
 
 class MetricChartScaleTest {
     @Test
+    fun largeAxisLabelsUseAtMostOneDecimal() {
+        assertEquals(listOf("8.1k", "8k", "7.9k"), MetricChartScale.axisLabels(7_903, 8_053, 3))
+        assertEquals(listOf("1.3m", "1.2m", "1.2m"), MetricChartScale.axisLabels(1_234_000, 1_256_000, 3))
+    }
+
+    @Test
+    fun narrowChartsKeepEndpointsAndTheCorrectMiddleTick() {
+        assertEquals(listOf("232", "229", "226"), MetricChartScale.axisLabels(226, 232, 3))
+    }
+
+    @Test
     fun screenshotRangeUsesRealMaximumAsTopGridline() {
         val bounds = MetricChartScale.axisBounds(listOf(229, 232, 232, 232, 231, 231))
 

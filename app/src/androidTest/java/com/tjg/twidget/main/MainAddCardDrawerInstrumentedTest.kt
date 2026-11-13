@@ -126,7 +126,7 @@ class MainAddCardDrawerInstrumentedTest {
                             button.compoundPaddingRight <= button.width + 1)
                 }
                 scenario.onActivity { activity ->
-                    activity.findViewById<dev.oneuiproject.oneui.layout.NavDrawerLayout>(R.id.main_toolbar_layout)
+                    activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout)
                         .setExpanded(false, animate = false)
                 }
                 SystemClock.sleep(150)
@@ -176,7 +176,7 @@ class MainAddCardDrawerInstrumentedTest {
                     val heading = allViews(toolbar).filterIsInstance<TextView>().first { it.text == toolbar.title }
                     assertEquals("Closing overflow keeps the tablet heading hidden", 0f, heading.alpha, 0.01f)
                     activity.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollTo(0, 0)
-                    activity.findViewById<dev.oneuiproject.oneui.layout.NavDrawerLayout>(R.id.main_toolbar_layout)
+                    activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout)
                         .setExpanded(false, animate = false)
                 }
                 SystemClock.sleep(150)
@@ -202,7 +202,7 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(250)
                 scenario.onActivity { activity ->
                     assertFalse("Leaving edit mode preserves the compact header",
-                        activity.findViewById<dev.oneuiproject.oneui.layout.NavDrawerLayout>(R.id.main_toolbar_layout).isExpanded)
+                        activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout).isExpanded)
                 }
                 var editContentClicks = 0
                 val editTapBounds = Rect()
@@ -276,7 +276,7 @@ class MainAddCardDrawerInstrumentedTest {
                     catalogueScroll.scrollTo(0, (240 * context.resources.displayMetrics.density).toInt())
                     captureDrawer("figma-drawer-scrolled-edges.png")
                     catalogueScroll.scrollTo(0, 0)
-                    val preview = windowViews().first { it.contentDescription?.toString() == "Add Followers" }
+                    val preview = windowViews().first { it.contentDescription?.toString() == "Add Follower graph" }
                     assertTrue("Preview panel is visible", preview.isShown)
                     val thumbnail = ((preview as ViewGroup).getChildAt(1) as ViewGroup).getChildAt(0)
                     val bitmap = Bitmap.createBitmap(thumbnail.width, thumbnail.height, Bitmap.Config.ARGB_8888)
@@ -289,7 +289,7 @@ class MainAddCardDrawerInstrumentedTest {
                     val updatedRow = windowViews().first { it.contentDescription?.toString()?.startsWith("Account and audience,") == true } as ViewGroup
                     assertEquals("1", (updatedRow.getChildAt(updatedRow.childCount - 1) as android.widget.TextView).text.toString())
                     assertFalse("Added card disappears from the catalogue", windowViews().any {
-                        it.contentDescription?.toString() == "Add Followers"
+                        it.contentDescription?.toString() == "Add Follower graph"
                     })
                 }
                 SystemClock.sleep(500)

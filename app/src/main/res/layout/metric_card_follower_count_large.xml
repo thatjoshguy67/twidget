@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.appcompat.widget.AppCompatTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/followers_value"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:padding="12dp" android:background="@drawable/dashboard_card_bg"
+    android:gravity="center_vertical" android:maxLines="3" android:includeFontPadding="false"
+    android:textColor="@color/oneui_text_primary" android:textSize="51sp"
+    android:breakStrategy="simple" android:hyphenationFrequency="none"
+    app:autoSizeTextType="uniform" app:autoSizeMinTextSize="14sp"
+    app:autoSizeMaxTextSize="51sp" app:autoSizeStepGranularity="1sp" />

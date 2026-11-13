@@ -31,6 +31,7 @@ class DashboardSnapshotInstrumentedTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 instrumentation.waitForIdleSync()
                 scenario.onActivity { activity ->
+                    activity.selectedAccount = account
                     activity.dashboardBinder.bindContent()
                     val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
                     val wrappers = (0 until grid.childCount).map { grid.getChildAt(it) }

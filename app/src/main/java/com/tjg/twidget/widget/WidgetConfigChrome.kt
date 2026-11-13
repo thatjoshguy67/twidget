@@ -28,7 +28,7 @@ internal object WidgetConfigChrome {
         // hiding the wallpaper opening until the edge bounce has settled.
         scroll.overScrollMode = View.OVER_SCROLL_NEVER
         val buttons = DividerButtonLayout(root.context).apply {
-            inflateMenu(R.menu.widget_config_actions)
+            android.view.MenuInflater(context).inflate(R.menu.widget_config_actions, getMenu())
         }
         val floating = FloatingBottomLayout(root.context).apply {
             id = R.id.config_button_bar

@@ -248,7 +248,7 @@ class SettingsNavigationInstrumentedTest {
             val keys = (0 until main.preferenceScreen.preferenceCount).mapNotNull {
                 main.preferenceScreen.getPreference(it).key
             }
-            assertEquals(listOf("main_account", "accounts", "appearance", "widgets", "data_sources", "brief_settings_pref",
+            assertEquals(listOf("main_account", "accounts", "appearance", "widgets", "brief_settings_pref", "data_sources",
                 "notifications", "app_language_pref", "about_twidget"),
                 keys.filter { it != "bottom_inset" && it != "debug_menu" && it != "update_suggestion" })
             assertNull(main.findPreference<Preference>("refresh_interval_pref"))
@@ -260,7 +260,7 @@ class SettingsNavigationInstrumentedTest {
                 assertTrue(fragment(category).preferenceScreen.preferenceCount > 1)
                 if (page == SettingsPage.ACCOUNTS) {
                     assertNotNull(fragment(category).findPreference<Preference>("analytics_import"))
-                    assertNotNull(fragment(category).findPreference<Preference>("buffer_settings"))
+                    assertNull(fragment(category).findPreference<Preference>("buffer_settings"))
                     assertNotNull(fragment(category).findPreference<Preference>("add_account"))
                     assertTrue(AccountPopupAction.DELETE in accountPopupActions(true))
                 }

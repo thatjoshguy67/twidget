@@ -53,19 +53,17 @@ class SettingsPreferenceFragment : InsetPreferenceFragment() {
             openCategory(SettingsPage.WIDGETS)
         })
         screen.addPreference(InsetPreferenceCategory(context))
-        screen.addPreference(destination("data_sources", R.string.settings_data_sources, R.drawable.settings_icon_data) {
-            openCategory(SettingsPage.DATA)
-        })
-        screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(destination("brief_settings_pref", R.string.settings_your_brief, R.drawable.settings_icon_brief, badge = com.tjg.twidget.brief.BriefSettingsStore.showSettingsBadge(context)) {
             open(BriefSettingsActivity::class.java)
+        })
+        screen.addPreference(destination("data_sources", R.string.settings_data_sources, R.drawable.settings_icon_data) {
+            openCategory(SettingsPage.DATA)
         })
         screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(destination("notifications", R.string.settings_notifications, R.drawable.settings_icon_notifications) {
             startActivity(Intent(AndroidSettings.ACTION_APP_NOTIFICATION_SETTINGS)
                 .putExtra(AndroidSettings.EXTRA_APP_PACKAGE, context.packageName))
         })
-        screen.addPreference(InsetPreferenceCategory(context))
         screen.addPreference(destination("app_language_pref", R.string.language, R.drawable.settings_icon_language) {
             SettingsLanguage.open(requireActivity())
         })

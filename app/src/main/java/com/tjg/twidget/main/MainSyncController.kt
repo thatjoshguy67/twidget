@@ -10,7 +10,7 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.providers.RettiwtClient
 import com.tjg.twidget.widget.TwidgetWidget
 import com.tjg.twidget.ui.TwidgetHaptics
-import dev.oneuiproject.oneui.layout.NavDrawerLayout
+import dev.oneuiproject.oneui.layout.ToolbarLayout
 import java.util.Locale
 
 internal class MainSyncController(
@@ -51,7 +51,7 @@ internal class MainSyncController(
     }
 
     fun handlePullRefresh() {
-        val toolbarLayout = activity.findViewById<NavDrawerLayout>(R.id.main_toolbar_layout)
+        val toolbarLayout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
         if (!toolbarLayout.isExpanded) {
             toolbarLayout.setExpanded(true, animate = true)
             activity.findViewById<SwipeRefreshLayout>(R.id.main_refresh).isRefreshing = false

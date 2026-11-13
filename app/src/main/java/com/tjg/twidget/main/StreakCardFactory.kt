@@ -47,7 +47,7 @@ internal object StreakCardFactory {
             }
             findViewById<TextView>(R.id.brief_streak_state).apply {
                 text = context.getString(label(state))
-                typeface = com.tjg.twidget.ui.TwidgetFonts.oneUiSans(context, 700)
+                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(context, 700)
                 setTextColor(Color.rgb(132, 132, 135))
             }
             contentDescription = "${context.getString(label(state))}. $title"
@@ -102,42 +102,35 @@ internal object StreakCardFactory {
         return (existing ?: android.view.LayoutInflater.from(context).inflate(
             R.layout.metric_card_small_stat, null, false,
         ) as LinearLayout).apply {
-            minimumHeight = dp(context, DashboardCardSize.HALF.heightDp)
+            minimumHeight = 0
+            setTag(R.id.dashboard_stat_streak, true)
             background = background(context, state)
             findViewById<ImageView>(R.id.metric_platform_icon).apply {
                 setImageResource(R.drawable.ic_streak_fire)
                 imageTintList = ColorStateList.valueOf(Color.rgb(132, 132, 135))
             }
             findViewById<TextView>(R.id.metric_label).apply {
-                text = context.getString(labelRes)
+                text = context.getString(R.string.dashboard_tweet_streak)
                 setTextColor(Color.rgb(132, 132, 135))
-                typeface = com.tjg.twidget.ui.TwidgetFonts.oneUiSans(context, 700)
+                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(context, 700)
                 maxLines = 1
-                ellipsize = null
-                layoutParams.height = dp(context, 19)
-                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                    this, 10, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP,
-                )
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeWithDefaults(this,
+                    androidx.core.widget.TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE)
+                textSize = 14f
             }
             (findViewById<ImageView>(R.id.metric_platform_icon).layoutParams as LinearLayout.LayoutParams)
                 .marginEnd = dp(context, 6)
             findViewById<com.tjg.twidget.ui.CardValueTextView>(R.id.followers_value).apply {
                 text = dayCount.toString()
                 setPadding(0, 0, 0, 0)
-                configure(80f, 130)
+                configure(64f, 100, minimumWidth = 85)
                 setTextColor(if (night) Color.WHITE else Color.BLACK)
             }
             findViewById<TextView>(R.id.stat_detail).apply {
                 text = context.resources.getQuantityString(R.plurals.dashboard_streak_days, dayCount)
                 setTextColor(Color.rgb(132, 132, 135))
-            }
-            if (existing == null) addOnLayoutChangeListener { _, left, _, right, _, oldLeft, _, oldRight, _ ->
-                if (right - left != oldRight - oldLeft) {
-                    findViewById<TextView>(R.id.metric_label).apply {
-                        val available = (right - left - paddingLeft - paddingRight - dp(context, 22)).coerceAtLeast(1)
-                        maxWidth = available
-                    }
-                }
             }
             contentDescription = "${context.getString(labelRes)}. $title. $detail"
         }

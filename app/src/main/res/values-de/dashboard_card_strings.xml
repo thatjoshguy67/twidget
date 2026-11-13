@@ -1,0 +1,8 @@
+<resources>
+    <string name="follower_count">Followerzahl</string>
+    <string name="follower_graph">Followerdiagramm</string>
+    <string name="dashboard_expand_card">%1$s vergrößern</string>
+    <string name="dashboard_shrink_card">%1$s verkleinern</string>
+    <string name="card_catalogue_add_size">%1$s hinzufügen, %2$s</string>
+    <string name="dashboard_tweet_streak">Tweet-Serie</string>
+</resources>

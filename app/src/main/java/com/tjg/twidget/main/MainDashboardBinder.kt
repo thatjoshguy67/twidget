@@ -51,15 +51,14 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-// Two grid footprints only: half-width and full-width. Charts are
-// full-width cards with extra height.
+// Cards share one row height and occupy one or two grid columns.
 internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
-    HALF(1, 160),
-    MILESTONE(2, 112),
-    FULL(2, 160),
-    CHART(2, 263),
-    TOP_FOLLOWERS(2, 430),
-    POST(2, 360),
+    HALF(1, 214),
+    MILESTONE(2, 214),
+    FULL(2, 214),
+    CHART(2, 214),
+    TOP_FOLLOWERS(2, 214),
+    POST(2, 214),
 }
 
 internal enum class DashboardCardType(val id: String, val labelRes: Int, val size: DashboardCardSize) {
@@ -86,10 +85,16 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     ALL_TIME_POST("all_time_post", R.string.all_time_banger, DashboardCardSize.POST),
     BEST_POST("best_post_card", R.string.best_post, DashboardCardSize.POST),
     WORST_POST("worst_post_card", R.string.worst_post, DashboardCardSize.POST),
-    FOLLOWERS("followers", R.string.followers, DashboardCardSize.CHART),
+    FOLLOWER_COUNT("follower_count", R.string.follower_count, DashboardCardSize.HALF),
+    FOLLOWERS("followers", R.string.follower_graph, DashboardCardSize.CHART),
     FOLLOWING("following", R.string.following, DashboardCardSize.CHART),
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
     LIKES("likes", R.string.likes, DashboardCardSize.CHART);
+
+    val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF && this != DAILY_STREAK
+    val previewSpans: List<Int> get() = if (supportsSizeVariants) listOf(1, 2) else listOf(size.span)
+    fun span(context: android.content.Context, account: String = TwidgetStore.settings(context).username): Int =
+        if (supportsSizeVariants && TwidgetStore.isDashboardCardExpanded(context, id, account)) 2 else size.span
 
     companion object {
         fun fromId(id: String): DashboardCardType? = entries.firstOrNull { it.id == id }
@@ -117,15 +122,10 @@ internal data class ChartBinding(
 internal class MainDashboardBinder(
     private val activity: MainActivity,
 ) {
-    private val heavyTypeface: Typeface by lazy {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Typeface.create(Typeface.create("sec", Typeface.NORMAL), 700, false)
-        } else {
-            Typeface.create("sec", Typeface.BOLD)
-        }
-    }
-
     private val editModeController get() = activity.editModeController
+    private val cardResize = DashboardCardResize(activity)
+    internal fun resizeCard(card: DashboardCardType) = cardResize.toggle(card)
+    internal fun dispose() = cardResize.dispose()
     private var editTransitionGeneration = 0
 
     fun animateEditModeChange(enabled: Boolean, onTransitionStart: () -> Unit, render: () -> Unit) {
@@ -223,6 +223,7 @@ internal class MainDashboardBinder(
     }
 
     fun bindContent(refreshRemote: Boolean = true) {
+        if (cardResize.isActive) return
         val host = activity.findViewById<FrameLayout>(R.id.main_content_host)
         val page = host.findViewById<View>(R.id.main_account_page)
             ?: LayoutInflater.from(activity).inflate(R.layout.main_account_page, host, false)
@@ -230,7 +231,7 @@ internal class MainDashboardBinder(
         bindPage(page, activity.selectedAccount, refreshRemote)
     }
 
-    private data class Structure(val account: String, val cards: List<DashboardCardType>, val editing: Boolean)
+    private data class Structure(val account: String, val cards: List<DashboardCardType>, val spans: List<Int>, val editing: Boolean)
     private val structures = java.util.WeakHashMap<View, Structure>()
     private var reusableContent: View? = null
     private fun inflateCard(layout: Int): View = reusableContent ?: LayoutInflater.from(activity).inflate(layout, null, false)
@@ -254,7 +255,7 @@ internal class MainDashboardBinder(
         bindPrivateAccountNotice(page, stats)
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
-        container.columnCount = DASHBOARD_GRID_COLUMNS
+        container.columnCount = if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2
         container.clipChildren = false
         container.clipToPadding = false
         // Soft shadows extend past the grid; its wrapping column must not crop them.
@@ -304,11 +305,11 @@ internal class MainDashboardBinder(
         container.layoutTransition = null
         container.setOnDragListener(editModeController.dashboardDragListener)
         page.findViewById<View>(R.id.dashboard_scroll).setOnDragListener(editModeController.dashboardDragListener)
-        val cards = TwidgetStore.dashboardCards(activity)
+        val cards = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
             .mapNotNull(DashboardCardType::fromId)
             .filter { !it.requiresAnalyticsImport() || editModeController.hasAnalyticsImport() }
             .filter { it != DashboardCardType.MILESTONE || isDefaultAccount(account) }
-        val structure = Structure(account, cards, editModeController.editMode)
+        val structure = Structure(account, cards, cards.map { editModeController.cardSpan(it) }, editModeController.editMode)
         val reuse = !structure.editing && structures[page] == structure && container.childCount == cards.size &&
             cards.indices.all { container.getChildAt(it).tag == cards[it].id }
         if (!reuse) container.removeAllViews()
@@ -319,11 +320,11 @@ internal class MainDashboardBinder(
                 card !in POST_CARD_TYPES && card != DashboardCardType.TOP_FOLLOWERS) previous else null
             val content = try { createCardContent(card, account, stats, history, chartHistory, fullHistory) }
                 finally { reusableContent = null }
+            content.setTag(R.id.dashboard_card_content, true)
             if (wrapper != null) {
                 if (content !== previous) {
-                    val params = previous?.layoutParams
                     wrapper.removeView(previous)
-                    wrapper.addView(content, 0, params)
+                    wrapper.addView(content, 0, FrameLayout.LayoutParams(-1, -1))
                     val listener = object : View.OnLongClickListener {
                         override fun onLongClick(view: View) = handleDashboardCardLongPress(card, wrapper)
                         override fun onLongClickUseDefaultHapticFeedback(view: View) = false
@@ -331,10 +332,10 @@ internal class MainDashboardBinder(
                     attachCardLongPress(content, listener)
                 }
                 wrapper.layoutParams = dashboardCardLayoutParams(card,
-                    content.minimumHeight.takeIf { card == DashboardCardType.TOP_FOLLOWERS && it > 0 })
+                    null)
             } else {
                 container.addView(createDashboardCardWrapper(card, content), dashboardCardLayoutParams(card,
-                    content.minimumHeight.takeIf { card == DashboardCardType.TOP_FOLLOWERS && it > 0 }))
+                    null))
             }
         }
         structures[page] = structure
@@ -381,22 +382,28 @@ internal class MainDashboardBinder(
         return selector(history.last()) - selector(history.first())
     }
 
-    fun createCardPreview(card: DashboardCardType): View {
+    fun createCardPreview(card: DashboardCardType, span: Int = card.span(activity, activity.selectedAccount), catalogue: Boolean = false): View {
         val account = activity.selectedAccount
         val snapshot = TwidgetStore.accountSnapshot(activity, account)
         renderSnapshot = snapshot
+        if (catalogue && card == DashboardCardType.FOLLOWER_COUNT) return FollowerCountCard.create(activity,
+            snapshot.stats, snapshot.todayDelta({ it.followersKnown }) { it.followers }, span, catalogue = true)
         return createCardContent(
             card, account, snapshot.stats,
             TwidgetStore.rangedHistory(snapshot.history, HistoryRange.WEEK),
             TwidgetStore.chartHistory(snapshot.history, HistoryRange.WEEK),
-            snapshot.history,
+            snapshot.history, span,
         )
     }
 
     private fun createCardContent(
         card: DashboardCardType, account: String, stats: ProfileStats,
         history: List<HistorySample>, chartHistory: List<HistorySample>, fullHistory: List<HistorySample>,
+        span: Int = editModeController.cardSpan(card),
     ): View = when {
+        card == DashboardCardType.FOLLOWERS -> createFollowerGraph(account, chartHistory, fullHistory)
+        card == DashboardCardType.FOLLOWER_COUNT -> FollowerCountCard.create(activity, stats,
+            renderSnapshot?.todayDelta({ it.followersKnown }) { it.followers } ?: 0, span, reusableContent)
         card == DashboardCardType.TOP_FOLLOWERS -> createTopFollowersCard(account)
         card in POST_CARD_TYPES -> activity.postAnalyticsBinder.createGridCard(card, account)
         card.size == DashboardCardSize.CHART -> createChartCard(card, account, stats, chartHistory, fullHistory)
@@ -409,18 +416,20 @@ internal class MainDashboardBinder(
         val spec = insightSpec(card, stats, history)
         return inflateCard(R.layout.metric_card_small_stat).apply {
             findViewById<ImageView>(R.id.metric_platform_icon).apply {
-                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(context))
-                imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_secondary))
+                setImageDrawable(null)
+                visibility = View.GONE
             }
             findViewById<TextView>(R.id.metric_label).text = spec.label
             findViewById<TextView>(R.id.followers_value).apply {
                 text = spec.value
+                (this as? com.tjg.twidget.ui.CardValueTextView)?.configure(56f, 100, minimumWidth = 85)
                 com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.DASHBOARD_VALUE)
             }
             findViewById<TextView>(R.id.stat_detail).apply {
                 text = spec.detail
                 visibility = if (spec.detail.isBlank()) View.GONE else View.VISIBLE
             }
+            contentDescription = listOf(spec.label, spec.value, spec.detail).filter(String::isNotBlank).joinToString(". ")
         }
     }
 
@@ -435,36 +444,25 @@ internal class MainDashboardBinder(
                 activity.getString(R.string.brief_widget_empty_body),
             )
         }
-        val hero = snapshot.cards.firstOrNull() ?: com.tjg.twidget.brief.BriefCard(
-            id = "empty",
-            type = BriefCardType.SUMMARY,
-            title = activity.getString(R.string.brief_widget_empty_title),
-            body = activity.getString(R.string.brief_categories_empty_body),
-            score = 0,
-        )
-        val iconRes = when (presentation?.heroType ?: hero.type) {
-            BriefCardType.MILESTONE -> R.drawable.ic_milestone_goals
-            BriefCardType.STREAK -> R.drawable.ic_streak_fire
-            BriefCardType.TOP_FOLLOWER -> OneUiIconR.drawable.ic_oui_community
-            else -> null
-        }
+        val heroType = presentation?.heroType ?: snapshot.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY
         root.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
-            visibility = if (iconRes == null) View.GONE else View.VISIBLE
-            iconRes?.let {
-                setImageDrawable(AppCompatResources.getDrawable(activity, it))
-                imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_primary))
-            }
-        }
-        root.findViewById<LinearLayout>(R.id.brief_dashboard_copy).apply {
-            (layoutParams as LinearLayout.LayoutParams).marginStart = activity.dp(
-                if (iconRes == null) 4 else 12,
-            )
+            setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
+                activity, heroType, account, activity.dp(60), activity.getColor(R.color.oneui_text_primary)))
         }
         root.findViewById<TextView>(R.id.brief_dashboard_title).text = summary.title
-        root.findViewById<TextView>(R.id.brief_dashboard_message).text = summary.shortDescription
+        root.findViewById<TextView>(R.id.brief_dashboard_message).apply {
+            // Both text sizes in the Brief mockup follow its 214-unit row.
+            setTag(R.id.dashboard_design_proportional_text, true)
+            text = android.text.SpannableString(summary.shortDescription).apply {
+                com.tjg.twidget.widget.BriefWidgetArtworkRenderer.emphasisRanges(toString()).forEach { range ->
+                    setSpan(android.text.style.StyleSpan(Typeface.BOLD), range.first, range.last + 1,
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+        }
         root.background = MilestoneCardBackgroundDrawable(
-            glowColor = activity.getColor(R.color.brief_dashboard_glow),
-            surfaceColor = activity.getColor(R.color.oneui_card_bg),
+            glowColor = activity.getColor(R.color.dashboard_brief_start),
+            surfaceColor = activity.getColor(R.color.dashboard_brief_end),
             radiusPx = activity.dp(28).toFloat(),
         )
         root.contentDescription =
@@ -491,6 +489,36 @@ internal class MainDashboardBinder(
         ).create(account)
     }
 
+    private fun createFollowerGraph(account: String, chartHistory: List<HistorySample>, fullHistory: List<HistorySample>): View =
+        inflateCard(R.layout.metric_card_followers).apply {
+            val week = chartHistory.filter { it.followersKnown }
+            val history = fullHistory.filter { it.followersKnown }
+            val stats = renderSnapshot?.stats ?: TwidgetStore.currentStats(activity, account)
+            findViewById<TextView>(R.id.metric_label).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
+            findViewById<TextView>(R.id.dashboard_graph_heading).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
+            findViewById<TextView>(R.id.followers_value).apply {
+                text = if (stats.followersKnown) fullCount(stats.followersCount) else "--"
+                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 700)
+            }
+            val delta = renderSnapshot?.todayDelta({ it.followersKnown }) { it.followers } ?: 0
+            findViewById<com.tjg.twidget.ui.CardValueTextView>(R.id.followers_delta).apply {
+                text = if (stats.followersKnown) TwidgetStore.signedNumber(delta) else "--"
+                configure(24f, 60)
+                setTextColor(activity.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_delta))
+            }
+            contentDescription = listOf(activity.getString(R.string.followers),
+                findViewById<TextView>(R.id.followers_value).text, findViewById<TextView>(R.id.followers_delta).text).joinToString(". ")
+            findViewById<MetricChartView>(R.id.followers_chart).apply {
+                compactCardInsets = true
+                setData(week) { it.followers }
+                setAverageSeries(AccountAverageSeries.values(history, week, { it.followers },
+                    allowSparseHistory = history.any { it.imported }))
+                if (METRIC_HISTORY_DRILL_DOWN_ENABLED) onChartTapListener = {
+                    if (!editModeController.editMode) activity.startActivity(MetricChartActivity.intent(activity, account, "followers"))
+                }
+            }
+        }
+
     private fun createChartCard(
         card: DashboardCardType,
         account: String,
@@ -499,14 +527,6 @@ internal class MainDashboardBinder(
         fullHistory: List<HistorySample>,
     ): View {
         val (layoutRes, valueId, deltaId, chartId, value, known, selector) = when (card) {
-            DashboardCardType.FOLLOWERS -> ChartBinding(
-                R.layout.metric_card_followers,
-                R.id.followers_value,
-                R.id.followers_delta,
-                R.id.followers_chart,
-                if (stats.followersKnown) fullCount(stats.followersCount) else "--",
-                { it.followersKnown },
-            ) { it.followers }
             DashboardCardType.FOLLOWING -> ChartBinding(
                 R.layout.metric_card_following,
                 R.id.following_value,
@@ -534,7 +554,8 @@ internal class MainDashboardBinder(
             else -> error("Compact cards do not have chart layouts.")
         }
         return inflateCard(layoutRes).also { root ->
-            root.findViewById<ImageView>(R.id.metric_platform_icon).setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(activity))
+            root.findViewById<TextView>(R.id.metric_label).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
+            root.findViewById<TextView>(R.id.dashboard_graph_heading).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
             bindMetric(
                 root,
                 valueId,
@@ -545,8 +566,7 @@ internal class MainDashboardBinder(
                 chartHistory.filter(known),
                 fullHistory.filter(known),
                 selector,
-                allowSparseAverage = card == DashboardCardType.FOLLOWERS &&
-                    fullHistory.any { it.imported && it.followersKnown },
+                allowSparseAverage = false,
             )
             if (METRIC_HISTORY_DRILL_DOWN_ENABLED) {
                 val openHistory = {
@@ -574,17 +594,32 @@ internal class MainDashboardBinder(
     private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
         object : FrameLayout(activity) {
             private val holdFeedback = com.tjg.twidget.ui.CardHoldFeedback(this, enabled = { !editModeController.editMode })
-            private var touchingRemoveButton = false
+            private var touchingEditButton = false
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val current = (0 until childCount).map { getChildAt(it) }
+                    .firstOrNull { it.getTag(R.id.dashboard_card_content) == true } ?: content
+                com.tjg.twidget.ui.DashboardCardDesign.apply(current, View.MeasureSpec.getSize(heightMeasureSpec),
+                    View.MeasureSpec.getSize(widthMeasureSpec))
+                val radius = activity.dp(28).toFloat()
+                for (index in 0 until childCount) {
+                    val decoration = getChildAt(index)
+                    if (decoration is com.tjg.twidget.ui.CardShadowView) decoration.setCornerRadius(radius)
+                    else if (decoration.tag == EDIT_BORDER_TAG)
+                        (decoration.background as? GradientDrawable)?.cornerRadius = radius
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            }
             override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
                 if (!editModeController.editMode) return super.onInterceptTouchEvent(event)
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                    val remove = (0 until childCount).map { getChildAt(it) }.filterIsInstance<ImageButton>().firstOrNull()
-                    touchingRemoveButton = remove != null && event.x >= remove.left && event.x < remove.right &&
-                        event.y >= remove.top && event.y < remove.bottom
+                    touchingEditButton = (0 until childCount).map { getChildAt(it) }
+                        .filter { it is ImageButton || it.tag == "dashboard_resize_${card.id}" }.any { button ->
+                            event.x >= button.left && event.x < button.right && event.y >= button.top && event.y < button.bottom
+                        }
                 }
                 // The wrapper owns pickup gestures. Card links, buttons and
                 // charts must never receive this stream while editing.
-                return !touchingRemoveButton
+                return !touchingEditButton
             }
             override fun dispatchTouchEvent(event: MotionEvent): Boolean =
                 holdFeedback.onTouch(event) || super.dispatchTouchEvent(event)
@@ -594,19 +629,17 @@ internal class MainDashboardBinder(
             }
         }.apply {
             tag = card.id
+            setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
             val longPressHandler = object : View.OnLongClickListener {
                 override fun onLongClick(view: View): Boolean = handleDashboardCardLongPress(card, this@apply)
 
                 // API 34+ uses our action-specific feedback; older releases retain automatic pickup.
                 override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
             }
+            content.setTag(R.id.dashboard_card_content, true)
             addView(content, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                if (card.size == DashboardCardSize.POST) {
-                    FrameLayout.LayoutParams.WRAP_CONTENT
-                } else {
-                    FrameLayout.LayoutParams.MATCH_PARENT
-                },
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ))
             if (editModeController.editMode) {
                 content.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
@@ -640,6 +673,8 @@ internal class MainDashboardBinder(
                     topMargin = activity.dp(10)
                     marginEnd = activity.dp(10)
                 })
+                if (card.supportsSizeVariants) addView(cardResize.createHandle(card, this),
+                    FrameLayout.LayoutParams(activity.dp(64), activity.dp(112), Gravity.CENTER_VERTICAL or Gravity.END))
             }
         }
 
@@ -676,7 +711,7 @@ internal class MainDashboardBinder(
             editModeController.setEditMode(true)
         } else {
             editModeController.draggedCardId = card.id
-            editModeController.dragPreviewOrder = TwidgetStore.dashboardCards(activity)
+            editModeController.dragPreviewOrder = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
             editModeController.dragSourceView = dragView
             val dragShadow = object : View.DragShadowBuilder(dragView) {
                 override fun onDrawShadow(canvas: Canvas) {
@@ -765,19 +800,22 @@ internal class MainDashboardBinder(
         selector: (HistorySample) -> Long,
         allowSparseAverage: Boolean,
     ) {
+        root.contentDescription = listOf(root.findViewById<TextView>(R.id.metric_label).text, value,
+            if (value == "--") "--" else TwidgetStore.signedNumber(delta)).joinToString(". ")
         root.findViewById<TextView>(valueId)?.apply {
             text = value
             // textStyle="bold" renders Samsung's lighter bold cut; force the
             // same true 700 weight the insight cards use.
-            typeface = heavyTypeface
+            typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 700)
         }
         root.findViewById<TextView>(deltaId)?.apply {
-            com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.CHART_DELTA)
-            text = if (delta == 0L) "" else TwidgetStore.signedNumber(delta)
-            setTextColor(if (delta < 0) activity.getColor(R.color.metric_red) else activity.getColor(R.color.metric_green))
-            visibility = if (delta == 0L) View.GONE else View.VISIBLE
+            (this as? com.tjg.twidget.ui.CardValueTextView)?.configure(24f, 60)
+            text = if (value == "--") "--" else TwidgetStore.signedNumber(delta)
+            setTextColor(activity.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_delta))
+            visibility = View.VISIBLE
         }
         root.findViewById<MetricChartView>(chartId)?.apply {
+            compactCardInsets = true
             setData(history, selector)
             setAverageSeries(AccountAverageSeries.values(fullHistory, history, selector, allowSparseAverage))
         }
@@ -1105,6 +1143,7 @@ internal class MainDashboardBinder(
         val container = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         val placeholder = editModeController.dragPlaceholderView ?: FrameLayout(activity).apply {
             tag = DRAG_PLACEHOLDER_TAG
+            setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
             addView(createDropPlaceholder(card), FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1161,11 +1200,10 @@ internal class MainDashboardBinder(
             width = 0
             height = when {
                 dragHeight != null && dragHeight > 0 -> dragHeight
-                card.size == DashboardCardSize.POST -> ViewGroup.LayoutParams.WRAP_CONTENT
                 else -> activity.dp(card.size.heightDp)
             }
-            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, card.size.span, 1f)
-            setMargins(activity.dp(5), activity.dp(5), activity.dp(5), activity.dp(5))
+            columnSpec = GridLayout.spec(GridLayout.UNDEFINED, editModeController.cardSpan(card), 1f)
+            setMargins(activity.dp(7), activity.dp(7), activity.dp(7), activity.dp(7))
         }
 
     private fun decimal(value: Double, suffix: String): String =
@@ -1174,8 +1212,7 @@ internal class MainDashboardBinder(
     private companion object {
         private const val EDIT_BORDER_TAG = "dashboard_edit_border"
         private const val EDIT_CARD_SCALE = 0.97f
-        private const val DASHBOARD_GRID_COLUMNS = 2
-        private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+                private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
         private const val DRAG_PLACEHOLDER_TAG = "dashboard_drop_placeholder"
         private val POST_CARD_TYPES = setOf(
             DashboardCardType.ALL_TIME_POST,

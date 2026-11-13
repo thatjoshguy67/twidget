@@ -1,3 +1,5 @@
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package com.tjg.twidget.main
 
 import android.content.Intent
@@ -21,16 +23,28 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.settings.SettingsActivity
 import com.tjg.twidget.ui.EdgeToEdgeActivity
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.SeslSurfaceHighlight
 import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startAddAccountActivity
 import com.tjg.twidget.ui.startLeftSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import dev.oneuiproject.oneui.design.R as OneUiDesignR
 import dev.oneuiproject.oneui.layout.Badge
-import dev.oneuiproject.oneui.layout.DrawerLayout
-import dev.oneuiproject.oneui.layout.NavDrawerLayout
-import dev.oneuiproject.oneui.navigation.widget.DrawerNavigationView
+import dev.oneuiproject.oneui.layout.ToolbarLayout
+import com.google.android.material.oneui.responsivepane.ResponsivePaneLayout
+import com.google.android.material.oneui.responsivepane.ResponsiveDrawerLayout
+import com.google.android.material.oneui.responsivepane.model.PaneState
+import com.google.android.material.oneui.responsivepane.helper.ResponsiveConfigBuilder
+import com.google.android.material.oneui.responsivepane.helper.ResponsivePaneLayoutMode
+import dev.oneuiproject.oneui.navigation.menu.DrawerMenuPresenter
+import dev.oneuiproject.oneui.navigation.widget.DrawerMenuView
+import androidx.appcompat.view.menu.MenuBuilder
+import android.widget.FrameLayout
+import android.view.LayoutInflater
 
+
+// These pinned library internals supply the actual One UI drawer rows and their rail state.
+@android.annotation.SuppressLint("RestrictedApi")
 internal class MainDrawerController(
     private val activity: EdgeToEdgeActivity,
     private val drawerLayoutId: Int,
@@ -51,34 +65,132 @@ internal class MainDrawerController(
     private var lastRenderedTitle: String? = null
     private var lastDrawerClosedState: Boolean? = null
 
+    private lateinit var menu: MenuBuilder
+    private lateinit var presenter: DrawerMenuPresenter
+    private lateinit var menuView: DrawerMenuView
+    private val root get() = activity.findViewById<View>(R.id.dashboard_root)
+    private val phoneDrawer get() = root as? androidx.drawerlayout.widget.DrawerLayout
+    private val pane get() = root as ResponsivePaneLayout
+    private val isPhoneDrawer get() = phoneDrawer != null
+    internal val isDrawerOpen get() = phoneDrawer?.isDrawerOpen(androidx.core.view.GravityCompat.START) ?: pane.isOpen
+
     fun setupDrawerChrome() {
-        activity.findViewById<NavDrawerLayout>(drawerLayoutId).apply {
-            closeNavRailOnBack = true
-            setHideNavRailDrawerOnCollapse(false)
-            viewTreeObserver.addOnPreDrawListener {
-                val drawerClosed = !isOpen
-                if (drawerClosed != lastDrawerClosedState) {
-                    lastDrawerClosedState = drawerClosed
-                    applyNavigationBadge(this, drawerClosed)
-                }
-                true
+        val nativeDrawer = activity.findViewById<FrameLayout>(com.google.android.material.R.id.responsive_pane_drawer)
+        val night = activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        nativeDrawer.setBackgroundResource(if (night) androidx.appcompat.R.drawable.sesl_menu_popup_background_dark
+            else androidx.appcompat.R.drawable.sesl_menu_popup_background)
+        (nativeDrawer.background?.mutate() as? android.graphics.drawable.LayerDrawable)?.let { surface ->
+            for (index in 0 until surface.numberOfLayers) {
+                (surface.getDrawable(index) as? android.graphics.drawable.GradientDrawable)
+                    ?.setStroke(0, android.graphics.Color.TRANSPARENT)
             }
         }
-        activity.findViewById<DrawerNavigationView>(drawerNavigationId)
-            .setNavigationItemSelectedListener { item -> handleDrawerItemSelected(item) }
-        activity.findViewById<DrawerLayout>(drawerLayoutId).setupHeaderButton(
-            requireNotNull(AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_settings_outline)),
-            activity.getColor(R.color.oneui_text_secondary),
-            activity.getString(R.string.settings),
-        ) {
-            closeDrawerOnCompactScreens()
-            activity.startLeftSidePopOverActivity(Intent(activity, SettingsActivity::class.java))
+        // The phone drawer slides as one surface. The tablet rail's rim instead
+        // follows SESL 9.5's elevation concept, keeping the closed rail transparent.
+        SeslSurfaceHighlight.setDrawerSlideOffset(nativeDrawer, if (isPhoneDrawer) 1f else 0f)
+        val panel = LayoutInflater.from(activity).inflate(OneUiDesignR.layout.oui_des_layout_drawer_panel, nativeDrawer, false)
+        // The SESL container owns the surface; reuse the library header and menu content.
+        panel.background = null
+        (panel.layoutParams as ViewGroup.MarginLayoutParams).topMargin = 0
+        nativeDrawer.addView(panel, FrameLayout.LayoutParams(-1, -1))
+        var slideRange = 0
+        if (isPhoneDrawer) {
+            val drawer = requireNotNull(phoneDrawer)
+            drawer.setScrimColor(android.graphics.Color.TRANSPARENT)
+            var moving = false
+            drawer.addDrawerListener(object : androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
+                override fun onDrawerStateChanged(newState: Int) {
+                    // Canvas blur is captured once per native sliding transition, not per frame.
+                    if (newState != androidx.drawerlayout.widget.DrawerLayout.STATE_IDLE && !moving) {
+                        drawer.seslSetDrawerViewFloatingBlur(activity, nativeDrawer)
+                    }
+                    moving = newState != androidx.drawerlayout.widget.DrawerLayout.STATE_IDLE
+                }
+            })
+        } else {
+            val mode = if (activity.resources.configuration.screenWidthDp >= 960) ResponsivePaneLayoutMode.LARGE else ResponsivePaneLayoutMode.MEDIUM
+            val large = activity.resources.configuration.screenWidthDp >= 600
+            val closed = ResponsiveConfigBuilder.create(activity, mode, PaneState.CLOSED)
+                .widthPx(if (large) activity.resources.getDimensionPixelSize(
+                    com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width_closed) else 0).build()
+            pane.setOutsideTouchEnabled(false)
+            pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 0f))
+            pane.setPaneConfig(PaneState.OPENED, ResponsiveConfigBuilder.create(activity, mode, PaneState.OPENED)
+                .widthPx(activity.resources.getDimensionPixelSize(com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width)).build())
+            val opened = pane.getPaneConfig(PaneState.OPENED)
+            (nativeDrawer.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams).apply {
+                matchConstraintMinWidth = closed.width
+                matchConstraintMaxWidth = opened.width
+                nativeDrawer.layoutParams = this
+            }
+            (nativeDrawer as ResponsiveDrawerLayout).maxWidth = opened.width
+            nativeDrawer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                if (!nativeDrawer.isBlurApplied()) nativeDrawer.applyBlurInfo(activity)
+            }
+            val content = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_content)
+            (content.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams).apply {
+                marginStart = if (large) closed.width + dp(8) else 0
+                content.layoutParams = this
+            }
+            slideRange = opened.width - closed.width
         }
+        presenter = DrawerMenuPresenter { slideRange }
+        menu = MenuBuilder(activity).apply {
+            setGroupDividerEnabled(true)
+            addMenuPresenter(presenter)
+            setCallback(object : MenuBuilder.Callback {
+                override fun onMenuItemSelected(menu: MenuBuilder, item: MenuItem) = handleDrawerItemSelected(item)
+                override fun onMenuModeChange(menu: MenuBuilder) = Unit
+            })
+        }
+        val host = panel.findViewById<FrameLayout>(OneUiDesignR.id.drawer_items_container)
+        menuView = presenter.getMenuView(host)
+        menuView.id = drawerNavigationId
+        host.addView(menuView)
+        val hamburger = panel.findViewById<View>(OneUiDesignR.id.navRailDrawerButton)
+        hamburger.visibility = View.VISIBLE
+        hamburger.contentDescription = activity.getString(OneUiDesignR.string.oui_des_navigation_drawer)
+        hamburger.setOnClickListener { setDrawerOpen(!isDrawerOpen) }
+        panel.findViewById<ImageView>(OneUiDesignR.id.oui_des_drawer_header_button).apply {
+            setImageResource(OneUiIconR.drawable.ic_oui_settings_outline)
+            contentDescription = activity.getString(R.string.settings)
+            setOnClickListener {
+                closeDrawerOnCompactScreens()
+                activity.startLeftSidePopOverActivity(Intent(activity, SettingsActivity::class.java))
+            }
+        }
+        if (!isPhoneDrawer) pane.addResponsivePaneListener(object : ResponsivePaneLayout.ResponsivePaneListener {
+            override fun onDrawerSlide(drawer: View, slideOffset: Float) {
+                presenter.adapter?.updateOffset(slideOffset)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, slideOffset)
+            }
+            override fun onDrawerOpened(drawer: View) {
+                presenter.adapter?.updateOffset(1f)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, 1f)
+            }
+            override fun onDrawerClosed(drawer: View) {
+                presenter.adapter?.updateOffset(0f)
+                SeslSurfaceHighlight.setDrawerSlideOffset(drawer, 0f)
+            }
+        })
+        // A phone drawer translates at full width, so its labels stay fully laid out.
+        presenter.adapter?.updateOffset(if (isPhoneDrawer) 1f else 0f)
+        setDrawerOpen(false, false)
+        activity.findViewById<ToolbarLayout>(drawerLayoutId).setAdaptiveMarginProvider(
+            dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ZERO)
+    }
+
+    internal fun setDrawerOpen(open: Boolean, animate: Boolean = true) {
+        phoneDrawer?.let { drawer ->
+            if (open) drawer.openDrawer(androidx.core.view.GravityCompat.START, animate)
+            else drawer.closeDrawer(androidx.core.view.GravityCompat.START, animate)
+            return
+        }
+        if (open) pane.open(animate) else pane.close(animate)
     }
 
     fun buildDrawer() {
-        val drawerNav = activity.findViewById<DrawerNavigationView>(drawerNavigationId)
-        val menu = drawerNav.drawerMenu()
+        val drawerNav = menuView
         val drawerAccounts = accounts()
 
         drawerAccountItemIds.clear()
@@ -113,7 +225,7 @@ internal class MainDrawerController(
             setIcon(OneUiIconR.drawable.ic_oui_add)
             contentDescription = activity.getString(R.string.add_account)
         }
-        drawerNav.refreshDrawerMenu()
+        presenter.updateMenuView(false)
         drawerNav.post {
             applyDrawerIconTints(drawerNav)
             attachDrawerAccountLongPresses(drawerNav)
@@ -122,7 +234,7 @@ internal class MainDrawerController(
 
     fun renderHeader() {
         val stats = TwidgetStore.currentStats(activity, selectedAccount())
-        activity.findViewById<DrawerLayout>(drawerLayoutId).apply {
+        activity.findViewById<ToolbarLayout>(drawerLayoutId).apply {
             if (isEditMode()) {
                 renderEditModeNavigation(this)
                 val header = listOf(activity.getString(R.string.edit_dashboard), "")
@@ -154,21 +266,19 @@ internal class MainDrawerController(
 
     fun updateNavigationBadge(drawerClosed: Boolean? = null) {
         if (!isEditMode()) {
-            val layout = activity.findViewById<DrawerLayout>(drawerLayoutId)
+            val layout = activity.findViewById<ToolbarLayout>(drawerLayoutId)
             renderDrawerNavigation(layout)
-            applyNavigationBadge(layout, drawerClosed ?: !layout.isOpen)
+            applyNavigationBadge(layout, drawerClosed ?: !isDrawerOpen)
         }
     }
 
-    private fun applyNavigationBadge(layout: DrawerLayout, drawerClosed: Boolean) {
+    private fun applyNavigationBadge(layout: ToolbarLayout, drawerClosed: Boolean) {
         lastDrawerClosedState = drawerClosed
-        layout.setHeaderButtonBadge(
-            if (TwidgetStore.updateAvailable(activity)) Badge.DOT else Badge.NONE,
-        )
+        layout.setNavigationButtonBadge(if (TwidgetStore.updateAvailable(activity)) Badge.DOT else Badge.NONE)
         layout.post { applyDrawerButtonAppearance(layout) }
     }
 
-    private fun renderEditModeNavigation(layout: DrawerLayout) {
+    private fun renderEditModeNavigation(layout: ToolbarLayout) {
         if (!showingEditNavigation) {
             expandedBeforeEditing = layout.isExpanded
             hiddenBeforeEditing = layout.appBarLayout.seslIsHided()
@@ -183,25 +293,15 @@ internal class MainDrawerController(
         }
         layout.showNavigationButton = true
         val closeIcon = AppCompatResources.getDrawable(activity, OneUiIconR.drawable.ic_oui_close)
-        if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
-            layout.setNavigationButtonIcon(
-                AppCompatResources.getDrawable(activity, OneUiDesignR.drawable.oui_des_ic_ab_drawer),
-            )
-            layout.setNavigationButtonTooltip(
-                activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
-            )
-            layout.findViewById<ImageView>(OneUiDesignR.id.navRailDrawerButton)?.alpha = 1f
-        } else {
-            layout.setNavigationButtonIcon(closeIcon)
-            layout.setNavigationButtonTooltip(activity.getString(R.string.done))
-        }
+        layout.setNavigationButtonIcon(closeIcon)
+        layout.setNavigationButtonTooltip(activity.getString(R.string.done))
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
             navigationIcon = closeIcon
             setNavigationOnClickListener { exitEditMode() }
         }
     }
 
-    private fun renderDrawerNavigation(layout: DrawerLayout) {
+    private fun renderDrawerNavigation(layout: ToolbarLayout) {
         if (showingEditNavigation) {
             layout.appBarLayout.seslAllowStartNestedScroll(true)
             val scrollY = activity.findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)?.scrollY ?: 0
@@ -209,22 +309,15 @@ internal class MainDrawerController(
             if (hiddenBeforeEditing && scrollY > 0) layout.appBarLayout.seslSetHide(true, false)
             showingEditNavigation = false
         }
-        layout.showNavigationButton = true
+        layout.showNavigationButton = activity.resources.configuration.screenWidthDp < 600
         layout.setNavigationButtonIcon(drawerIcon())
         layout.setNavigationButtonTooltip(
             activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
         )
         applyDrawerButtonAppearance(layout)
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
-            if (layout is NavDrawerLayout && layout.isLargeScreenMode) {
-                // NavDrawerLayout renders the drawer affordance in the navigation rail on
-                // large screens. Restoring it here as well leaves two hamburger buttons.
-                navigationIcon = null
-                setNavigationOnClickListener(null)
-            } else {
-                navigationIcon = drawerIcon()
-                setNavigationOnClickListener { layout.setDrawerOpen(true, true) }
-            }
+            navigationIcon = if (activity.resources.configuration.screenWidthDp < 600) drawerIcon() else null
+            setNavigationOnClickListener { setDrawerOpen(true) }
         }
     }
 
@@ -235,7 +328,7 @@ internal class MainDrawerController(
         )
     }
 
-    private fun applyDrawerButtonAppearance(layout: DrawerLayout) {
+    private fun applyDrawerButtonAppearance(layout: ToolbarLayout) {
         val primary = activity.getColor(R.color.oneui_text_primary)
         layout.findViewById<ImageView>(OneUiDesignR.id.navRailDrawerButton)?.apply {
             alpha = 1f
@@ -247,7 +340,7 @@ internal class MainDrawerController(
             ?.setTint(primary)
     }
 
-    private fun attachDrawerAccountLongPresses(drawerNav: DrawerNavigationView) {
+    private fun attachDrawerAccountLongPresses(drawerNav: DrawerMenuView) {
         drawerAccountItemIds.forEach { (itemId, account) ->
             drawerNav.findViewById<View>(itemId)?.setOnLongClickListener {
                 closeDrawerOnCompactScreens()
@@ -294,7 +387,7 @@ internal class MainDrawerController(
         }
     }
 
-    private fun applyDrawerIconTints(drawerNav: DrawerNavigationView) {
+    private fun applyDrawerIconTints(drawerNav: DrawerMenuView) {
         val normalTint = AppCompatResources.getColorStateList(
             activity,
             OneUiDesignR.color.oui_des_drawer_menu_item_text_color_selector,
@@ -415,29 +508,11 @@ internal class MainDrawerController(
     }
 
     private fun closeDrawerOnCompactScreens() {
-        val drawer = activity.findViewById<NavDrawerLayout>(drawerLayoutId)
-        if (!drawer.isLargeScreenMode) {
-            drawer.setDrawerOpen(false, animate = true)
-        }
+        if (isPhoneDrawer) setDrawerOpen(false)
     }
 
     private fun dp(value: Int): Int =
         (value * activity.resources.displayMetrics.density).toInt()
-
-    private fun DrawerNavigationView.drawerMenu(): Menu {
-        val field = DrawerNavigationView::class.java.getDeclaredField("navDrawerMenu")
-        field.isAccessible = true
-        return field.get(this) as Menu
-    }
-
-    private fun DrawerNavigationView.refreshDrawerMenu() {
-        val field = DrawerNavigationView::class.java.getDeclaredField("menuPresenter")
-        field.isAccessible = true
-        val presenter = field.get(this)
-        val method = presenter.javaClass.getDeclaredMethod("updateMenuView", Boolean::class.javaPrimitiveType)
-        method.isAccessible = true
-        method.invoke(presenter, false)
-    }
 
     private companion object {
         private const val DRAWER_GROUP_ACCOUNTS = 1

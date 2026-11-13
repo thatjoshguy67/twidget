@@ -21,6 +21,10 @@ internal class MainEditModeController(
 
     var draggedCardId: String? = null
     var dragPreviewOrder: List<String>? = null
+    private var draggedCardSpan: Int? = null
+
+    fun cardSpan(card: DashboardCardType): Int =
+        if (card.id == draggedCardId) draggedCardSpan ?: card.span(activity, activity.selectedAccount) else card.span(activity, activity.selectedAccount)
     var dragPlaceholderView: android.view.View? = null
     var dragSourceView: android.view.View? = null
 
@@ -86,7 +90,7 @@ internal class MainEditModeController(
             if (x < location[0] - margin || x > location[0] + child.width + margin ||
                 y < location[1] - margin || y > location[1] + child.height + margin) continue
             // Half-width tiles use left/right zones; full-width tiles use top/bottom.
-            val after = if (card.size.span == 1) {
+            val after = if (cardSpan(card) == 1) {
                 val right = x > location[0] + child.width / 2f
                 if (grid.layoutDirection == View.LAYOUT_DIRECTION_RTL) !right else right
             } else y > location[1] + child.height / 2f
@@ -142,7 +146,10 @@ internal class MainEditModeController(
         if (editMode == enabled) return
         editMode = enabled
         exitEditModeOnBack.isEnabled = enabled
-        if (!enabled) clearDragPreview()
+        if (!enabled) {
+            activity.dashboardBinder.dispose()
+            clearDragPreview()
+        }
         activity.invalidateOptionsMenu()
         activity.dashboardBinder.animateEditModeChange(enabled, onTransitionStart = {
             val grid = activity.findViewById<android.view.View>(R.id.dashboard_content)
@@ -155,7 +162,7 @@ internal class MainEditModeController(
             .setMessage(R.string.reset_layout_confirm)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.reset_layout) { _, _ ->
-                TwidgetStore.resetDashboardCards(activity)
+                TwidgetStore.resetDashboardCards(activity, activity.selectedAccount)
                 TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
                 activity.render()
             }
@@ -163,13 +170,13 @@ internal class MainEditModeController(
     }
 
     fun removeDashboardCard(cardId: String) {
-        val current = TwidgetStore.dashboardCards(activity)
+        val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (current.size <= 1) {
             TwidgetHaptics.reject(activity.findViewById(R.id.dashboard_content))
             Toast.makeText(activity, R.string.cannot_remove_last_card, Toast.LENGTH_SHORT).show()
             return
         }
-        TwidgetStore.saveDashboardCards(activity, current.filterNot { it == cardId })
+        TwidgetStore.saveDashboardCards(activity, current.filterNot { it == cardId }, activity.selectedAccount)
         TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
         activity.render()
     }
@@ -187,11 +194,12 @@ internal class MainEditModeController(
             )
         }
 
-    fun startDrawerCardDrag(card: DashboardCardType, source: View, preview: View): Boolean {
-        val current = TwidgetStore.dashboardCards(activity)
+    fun startDrawerCardDrag(card: DashboardCardType, source: View, preview: View, span: Int = card.span(activity, activity.selectedAccount)): Boolean {
+        val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (draggedCardId != null || card !in availableDashboardCards() || card.id in current) return false
         if (!editMode) setEditMode(true)
         draggedCardId = card.id
+        draggedCardSpan = span
         // Keep the new card provisional until it lands on the dashboard.
         dragPreviewOrder = current + card.id
         dragSourceView = null
@@ -209,16 +217,22 @@ internal class MainEditModeController(
         return started
     }
 
-    fun addDashboardCard(card: DashboardCardType) {
-        val current = TwidgetStore.dashboardCards(activity)
+    fun addDashboardCard(card: DashboardCardType, span: Int = card.span(activity, activity.selectedAccount)) {
+        val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (card !in availableDashboardCards() || card.id in current) return
-        TwidgetStore.saveDashboardCards(activity, current + card.id)
+        if (card.supportsSizeVariants) TwidgetStore.setDashboardCardExpanded(activity, card.id, span == 2, activity.selectedAccount)
+        TwidgetStore.saveDashboardCards(activity, current + card.id, activity.selectedAccount)
         TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
         activity.render()
     }
 
+    fun resizeDashboardCard(card: DashboardCardType) {
+        if (!editMode || !card.supportsSizeVariants || draggedCardId != null) return
+        activity.dashboardBinder.resizeCard(card)
+    }
+
     fun previewMoveDashboardCard(draggedId: String, targetId: String, after: Boolean) {
-        val cards = (dragPreviewOrder ?: TwidgetStore.dashboardCards(activity)).toMutableList()
+        val cards = (dragPreviewOrder ?: TwidgetStore.dashboardCards(activity, activity.selectedAccount)).toMutableList()
         val from = cards.indexOf(draggedId)
         val to = cards.indexOf(targetId)
         if (from == -1 || to == -1 || from == to) return
@@ -235,8 +249,11 @@ internal class MainEditModeController(
         val droppedId = draggedCardId ?: return
         if (commit) {
             dragPreviewOrder?.let { order ->
-                val changed = order != TwidgetStore.dashboardCards(activity)
-                TwidgetStore.saveDashboardCards(activity, order)
+                val changed = order != TwidgetStore.dashboardCards(activity, activity.selectedAccount)
+                DashboardCardType.fromId(droppedId)?.takeIf { it.supportsSizeVariants }?.let { card ->
+                    draggedCardSpan?.let { TwidgetStore.setDashboardCardExpanded(activity, card.id, it == 2, activity.selectedAccount) }
+                }
+                TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
                 if (changed) TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
             }
         }
@@ -254,6 +271,7 @@ internal class MainEditModeController(
         }
         dragSourceView?.visibility = android.view.View.VISIBLE
         draggedCardId = null
+        draggedCardSpan = null
         dragPreviewOrder = null
         dragPlaceholderView = null
         dragSourceView = null

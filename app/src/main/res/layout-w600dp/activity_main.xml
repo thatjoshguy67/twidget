@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.oneui.responsivepane.ResponsivePaneLayout xmlns:android="http://schemas.android.com/apk/res/android"
+ xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/dashboard_root" android:saveEnabled="false" android:layout_width="match_parent" android:layout_height="match_parent">
+ <FrameLayout android:id="@id/responsive_pane_content" android:layout_width="0dp" android:layout_height="0dp"
+  android:layout_marginStart="80dp" app:layout_constraintStart_toStartOf="parent" app:layout_constraintEnd_toEndOf="parent"
+  app:layout_constraintTop_toTopOf="parent" app:layout_constraintBottom_toBottomOf="parent">
+
+<dev.oneuiproject.oneui.layout.ToolbarLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_toolbar_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:expanded="false"
+    app:handleInsets="false"
+    app:mainRoundedCorners="top"
+    app:title="@string/app_name">
+
+    <!-- Main content: the selected account's dashboard and scheduling action -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?roundedCornerColor"
+        app:layout_location="main_content">
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/main_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <FrameLayout
+                android:id="@+id/main_content_host"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+
+    </FrameLayout>
+
+
+</dev.oneuiproject.oneui.layout.ToolbarLayout>
+
+ </FrameLayout>
+ <com.google.android.material.oneui.responsivepane.ResponsiveDrawerLayout android:id="@id/responsive_pane_drawer"
+  android:layout_width="0dp" android:layout_height="0dp" android:layout_margin="8dp"
+  android:background="@drawable/sesl_menu_popup_background" />
+</com.google.android.material.oneui.responsivepane.ResponsivePaneLayout>

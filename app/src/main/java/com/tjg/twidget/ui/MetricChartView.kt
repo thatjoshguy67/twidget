@@ -26,11 +26,22 @@ class MetricChartView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), DashboardCardDesign.Scalable {
+    private var cardDesignScale = 1f
+    override fun applyCardDesignScale(scale: Float) {
+        cardDesignScale = scale
+        fun sp(value: Float) = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+            value, resources.displayMetrics)
+        axisLabelPaint.textSize = sp(14f)
+        dateLabelPaint.textSize = sp(10f)
+        tooltipTextPaint.textSize = sp(12f)
+        areaStripePaint.strokeWidth = 2f * resources.displayMetrics.density * scale
+        linePaint.strokeWidth = 2f * resources.displayMetrics.density * scale
+    }
     private val axisLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
         textSize = 14f * resources.displayMetrics.scaledDensity
-        typeface = TwidgetFonts.forApp(context, 200)
+        typeface = TwidgetFonts.forApp(context, 400)
     }
     private val dateLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
@@ -106,6 +117,12 @@ class MetricChartView @JvmOverloads constructor(
     private var downY = 0f
     private var touchMoved = false
     var onChartTapListener: (() -> Unit)? = null
+    /** Standalone dashboard graphs already receive their outer inset from the card. */
+    var compactCardInsets: Boolean = false
+        set(value) { field = value; invalidate() }
+    /** The compact dashboard hides its summary and gives the plot a native, full-width inset. */
+    internal var graphOnlyLayout: Boolean = false
+        set(value) { if (field != value) { field = value; invalidate() } }
 
     init {
         // Paint shadows on custom shapes require software rendering. The view
@@ -151,15 +168,15 @@ class MetricChartView @JvmOverloads constructor(
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
-        val density = resources.displayMetrics.density
-        val top = 12f * density
+        val density = resources.displayMetrics.density * if (compactCardInsets && !graphOnlyLayout) cardDesignScale else 1f
+        val top = (if (graphOnlyLayout) 0f else if (compactCardInsets) 10f else 12f) * density
         val accent = context.getColor(R.color.oneui_accent)
         barGradient = LinearGradient(
             0f,
             top,
             0f,
-            (height - 30f * density).coerceAtLeast(top + 1f),
-            intArrayOf(accent, ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
+            (height - (if (graphOnlyLayout) 22f else if (compactCardInsets) 23f else 30f) * density).coerceAtLeast(top + 1f),
+            intArrayOf(accent, if (compactCardInsets) 0xff85a3de.toInt() else ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
             null,
             Shader.TileMode.CLAMP,
         )
@@ -169,11 +186,16 @@ class MetricChartView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (labels.isEmpty()) return
 
-        val density = resources.displayMetrics.density
-        val labelInset = 20f * density
-        val right = 20f * density
-        val top = 12f * density
-        val bottomLabels = 34f * density
+        val density = resources.displayMetrics.density * if (compactCardInsets && !graphOnlyLayout) cardDesignScale else 1f
+        val narrow = graphOnlyLayout || (compactCardInsets && width / resources.displayMetrics.density < 190f)
+        axisLabelPaint.textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+            if (narrow && !graphOnlyLayout) 12f else 14f, resources.displayMetrics)
+        dateLabelPaint.textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
+            if (graphOnlyLayout) 12f else if (compactCardInsets) 10f else 12f, resources.displayMetrics)
+        val labelInset = (if (compactCardInsets) 0f else 20f) * density
+        val right = (if (compactCardInsets) 0f else 20f) * density
+        val top = (if (graphOnlyLayout) 0f else if (compactCardInsets) 10f else 12f) * density
+        val bottomLabels = (if (graphOnlyLayout) 22f else if (compactCardInsets) 23f else 34f) * density
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         // The numbered axis belongs to the current week's bars. Including the
@@ -181,13 +203,18 @@ class MetricChartView @JvmOverloads constructor(
         // differences and makes every current bar appear maxed out.
         val (scaleMin, scaleMax) = MetricChartScale.primaryAxisBounds(values, averageValues)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
-        val axisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
+        val fullAxisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
+        val axisLabels = if (compactCardInsets && fullAxisLabels.distinct().size < fullAxisLabels.size)
+            MetricChartScale.axisLabels(scaleMin, scaleMax, 3) else fullAxisLabels
         // Reserve a real gutter after the widest formatted Y label. A fixed
         // plot origin collapses this gap as soon as values gain commas/digits.
-        val left = labelInset + axisLabels.maxOf(axisLabelPaint::measureText) + 8f * density
+        val left = labelInset + axisLabels.maxOf(axisLabelPaint::measureText) + (if (narrow) 6f else if (compactCardInsets) 10f else 8f) * density
         val widthAvailable = width - left - right
+        if (widthAvailable <= 0f) return
         val barSlot = widthAvailable / labels.size
-        val barWidth = (barSlot * 0.54f).coerceIn(6f * density, 24f * density)
+        val stride = barSlot
+        val barWidth = (barSlot * 0.54f).coerceIn(6f * density,
+            (if (compactCardInsets) 23f * resources.displayMetrics.density * cardDesignScale else 24f * density))
         fun heightFor(value: Long): Float {
             val normalized = (value - scaleMin).coerceAtLeast(0)
             return if (value <= 0) {
@@ -197,29 +224,30 @@ class MetricChartView @JvmOverloads constructor(
             }
         }
         fun yFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
-        val averageBounds = MetricChartScale.axisBounds(averageValues)
-        fun averageYFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(
-            value,
-            averageBounds.first,
-            averageBounds.second,
-        )
+        // Both series share the labelled axis. Stretching the historical average
+        // to its own range makes an older, lower total appear above today's bars.
+        fun averageYFor(value: Long): Float = yFor(value)
 
         // Draw only as many x-labels as actually fit, keeping the newest one.
         val maxLabelWidth = labels.maxOf { dateLabelPaint.measureText(it) } + 2f * density
-        val labelStep = kotlin.math.ceil(maxLabelWidth / barSlot).toInt().coerceAtLeast(1)
+        val labelStep = kotlin.math.ceil(maxLabelWidth / stride).toInt().coerceAtLeast(1)
+        val allDatesFit = stride >= maxLabelWidth + 4f * resources.displayMetrics.density
+        val dateIndices = if (graphOnlyLayout && !allDatesFit) setOf(0, labels.lastIndex / 2, labels.lastIndex)
+            else labels.indices.filter { (labels.lastIndex - it) % labelStep == 0 }.toSet()
 
         // Keep the plot as one softly rounded surface while axes and dates
         // remain outside the clipped region, matching the compact Figma card.
         plotRect.set(left, top, width - right, chartBottom)
         val plotCheckpoint = canvas.save()
         plotClipPath.reset()
-        plotClipPath.addRoundRect(plotRect, 10f * density, 10f * density, Path.Direction.CW)
+        val plotRadius = if (graphOnlyLayout) 18f * resources.displayMetrics.density * cardDesignScale else 10f * density
+        plotClipPath.addRoundRect(plotRect, plotRadius, plotRadius, Path.Direction.CW)
         canvas.clipPath(plotClipPath)
 
         // The Figma graph uses four alternating rear columns rather than
         // horizontal rules, keeping the average line and bars easy to scan.
         labels.indices.filter { it % 2 == 0 }.forEach { index ->
-            val columnLeft = left + index * barSlot
+            val columnLeft = left + index * stride
             canvas.drawRect(columnLeft, top, columnLeft + barSlot, chartBottom, gridPaint)
         }
 
@@ -233,12 +261,12 @@ class MetricChartView @JvmOverloads constructor(
             areaPath.moveTo(left, firstY)
         }
         averageValues.forEachIndexed { index, value ->
-            val x = left + index * barSlot + barSlot / 2f
+            val x = left + index * stride + barSlot / 2f
             val y = averageYFor(value)
             linePath.lineTo(x, y)
             areaPath.lineTo(x, y)
         }
-        if (averageValues.size > 1) {
+        if (averageValues.size > 1 && averageValues.max() > scaleMin && averageValues.min() < scaleMax) {
             val plotRight = width - right
             val lastY = averageYFor(averageValues.last())
             linePath.lineTo(plotRight, lastY)
@@ -250,6 +278,9 @@ class MetricChartView @JvmOverloads constructor(
             val checkpoint = canvas.save()
             canvas.clipPath(areaPath)
             val stripeGap = 6f * density
+            areaStripePaint.strokeWidth = (if (graphOnlyLayout) 1f else 2f) * density
+            linePaint.strokeWidth = (if (graphOnlyLayout) 1f else 2f) * density
+            linePaint.alpha = if (graphOnlyLayout) 65 else 105
             var stripeX = left - chartHeight
             while (stripeX < width - right) {
                 canvas.drawLine(stripeX, chartBottom, stripeX + chartHeight, top, areaStripePaint)
@@ -264,9 +295,9 @@ class MetricChartView @JvmOverloads constructor(
         labels.forEachIndexed { index, _ ->
             val value = values[index]
             val barHeight = heightFor(value)
-            val x = left + index * barSlot + (barSlot - barWidth) / 2f
+            val x = left + index * stride + (barSlot - barWidth) / 2f
             barRect.set(x, chartBottom - barHeight, x + barWidth, chartBottom)
-            barHitBounds[index].set(left + index * barSlot, top, left + (index + 1) * barSlot, chartBottom)
+            barHitBounds[index].set(left + index * stride, top, left + index * stride + barSlot, chartBottom)
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
             barPaint.alpha = if (estimated[index]) 80 else 255
@@ -287,13 +318,20 @@ class MetricChartView @JvmOverloads constructor(
             }
             canvas.drawText(label, labelInset, baseline, axisLabelPaint)
         }
-        labels.forEachIndexed { index, label ->
-            if ((labels.lastIndex - index) % labelStep == 0) {
-                val x = left + index * barSlot + (barSlot - barWidth) / 2f
+        var nextLabelLeft = Float.POSITIVE_INFINITY
+        // Place newest-first and check the final clamped bounds. Even when the
+        // nominal step fits, right-edge clamping can push the last date into its neighbour.
+        labels.indices.reversed().forEach { index ->
+            val label = labels[index]
+            if (index in dateIndices) {
+                val x = left + index * stride + (barSlot - barWidth) / 2f
                 val labelWidth = dateLabelPaint.measureText(label)
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
-                canvas.drawText(label, labelX, height - 8f * density, dateLabelPaint)
+                if (labelX + labelWidth + 4f * resources.displayMetrics.density <= nextLabelLeft) {
+                    canvas.drawText(label, labelX, height - (if (compactCardInsets) 4f else 8f) * density, dateLabelPaint)
+                    nextLabelLeft = labelX
+                }
             }
         }
 
@@ -302,7 +340,7 @@ class MetricChartView @JvmOverloads constructor(
         if (activeIndex in labels.indices) {
             val label = labels[activeIndex]
             val value = values[activeIndex]
-            val x = left + activeIndex * barSlot + (barSlot - barWidth) / 2f
+            val x = left + activeIndex * stride + (barSlot - barWidth) / 2f
             drawTooltip(
                 canvas = canvas,
                 label = "$label  ${if (estimated[activeIndex]) "~" else ""}${numberFormat.format(value)}",
@@ -469,15 +507,21 @@ internal object MetricChartScale {
         return min to rawMax
     }
 
-    fun axisLabels(min: Long, max: Long): List<String> {
-        val values = listOf(max, min + (max - min) * 2 / 3, min + (max - min) / 3, min)
-        val compact = values.map { TwidgetStore.compactNumber(it) }
-        // If compacting collapses distinct gridlines into the same label
-        // (175.7K == 175.7K), fall back to full grouped numbers.
-        return if (compact.distinct().size < values.distinct().size) {
-            values.map { java.text.NumberFormat.getIntegerInstance(AppLocales.applicationLocale()).format(it) }
-        } else {
-            compact
+    fun axisLabels(min: Long, max: Long, tickCount: Int = 4): List<String> {
+        val values = if (tickCount == 3) listOf(max, min + (max - min) / 2, min)
+            else listOf(max, min + (max - min) * 2 / 3, min + (max - min) / 3, min)
+        val format = NumberFormat.getNumberInstance(AppLocales.applicationLocale()).apply {
+            maximumFractionDigits = 1
+            minimumFractionDigits = 0
+            isGroupingUsed = false
+        }
+        return values.map { value ->
+            when {
+                value >= 1_000_000_000 -> format.format(value / 1_000_000_000.0) + "b"
+                value >= 1_000_000 -> format.format(value / 1_000_000.0) + "m"
+                value >= 1_000 -> format.format(value / 1_000.0) + "k"
+                else -> format.format(value)
+            }
         }
     }
 

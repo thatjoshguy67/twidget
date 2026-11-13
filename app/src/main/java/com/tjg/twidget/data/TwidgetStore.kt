@@ -143,6 +143,8 @@ object TwidgetStore {
     private const val KEY_ONBOARDED = "onboarded"
     private const val KEY_ACCOUNTS = "accounts"
     private const val KEY_DASHBOARD_CARDS = "dashboard_cards"
+    private const val KEY_DASHBOARD_LARGE_CARDS = "dashboard_large_cards"
+    private const val KEY_DASHBOARD_FOLLOWER_SPLIT = "dashboard_follower_split_v1"
     private const val KEY_DASHBOARD_CARDS_MIGRATED = "dashboard_cards_migrated_v6"
     private const val KEY_DASHBOARD_BRIEF_FIRST_MIGRATED = "dashboard_brief_first_migrated_v1"
     private const val KEY_HISTORY_MIGRATION_VERSION = "history_migration_version"
@@ -164,6 +166,7 @@ object TwidgetStore {
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "milestone",
         "followers",
+        "follower_count",
         "top_followers",
         "daily_streak",
         "follower_ratio",
@@ -640,7 +643,7 @@ object TwidgetStore {
         BangerScanWorker.enqueue(context, next)
     }
 
-    fun dashboardCards(context: Context): List<String> {
+    private fun legacyDashboardCards(context: Context): List<String> {
         val store = prefs(context)
         val saved = store.getString(KEY_DASHBOARD_CARDS, null)?.let { encoded ->
             runCatching {
@@ -655,7 +658,7 @@ object TwidgetStore {
                     .filter { it in DEFAULT_DASHBOARD_CARDS }
                     .distinct()
                 if (merged != resolved) {
-                    saveDashboardCards(context, merged)
+                    saveLegacyDashboardCards(context, merged)
                     resolved = merged
                 }
             }
@@ -665,24 +668,73 @@ object TwidgetStore {
             if (saved != null) {
                 val reordered = prioritizeDashboardCard(resolved, "milestone")
                 if (reordered != resolved) {
-                    saveDashboardCards(context, reordered)
+                    saveLegacyDashboardCards(context, reordered)
                     resolved = reordered
                 }
             }
             store.edit().putBoolean(KEY_DASHBOARD_BRIEF_FIRST_MIGRATED, true).apply()
         }
+        if (!store.getBoolean(KEY_DASHBOARD_FOLLOWER_SPLIT, false)) {
+            if (saved != null && "followers" in resolved && "follower_count" !in resolved) {
+                resolved = resolved.toMutableList().apply { add(indexOf("followers") + 1, "follower_count") }
+                saveLegacyDashboardCards(context, resolved)
+            }
+            store.edit().putBoolean(KEY_DASHBOARD_FOLLOWER_SPLIT, true).apply()
+        }
         return resolved
     }
 
-    fun saveDashboardCards(context: Context, cards: List<String>) {
-        val clean = cards.filter { it in DEFAULT_DASHBOARD_CARDS }.distinct()
-        prefs(context).edit()
-            .putString(KEY_DASHBOARD_CARDS, JSONArray(clean).toString())
-            .apply()
+    private fun dashboardProfileKey(context: Context, key: String, username: String): String =
+        "$key:${normalizeUsername(username).ifBlank { settings(context).username }.lowercase(Locale.US)}"
+
+    private fun ensureDashboardProfile(context: Context, username: String) {
+        val store = prefs(context)
+        val cardKey = dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username)
+        if (store.contains(cardKey)) return
+        val initial = legacyDashboardCards(context)
+        store.edit().putString(cardKey, JSONArray(initial).toString())
+            .putStringSet(dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username),
+                store.getStringSet(KEY_DASHBOARD_LARGE_CARDS, emptySet()).orEmpty().toSet()).apply()
     }
 
-    fun resetDashboardCards(context: Context) {
-        prefs(context).edit().remove(KEY_DASHBOARD_CARDS).apply()
+    fun dashboardCards(context: Context, username: String = settings(context).username): List<String> {
+        ensureDashboardProfile(context, username)
+        val saved = prefs(context).getString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), null)?.let { encoded ->
+            runCatching { JSONArray(encoded).let { array -> List(array.length()) { array.getString(it) } } }.getOrNull()
+        }
+        return resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS)
+    }
+
+    fun isDashboardCardExpanded(context: Context, cardId: String, username: String = settings(context).username): Boolean {
+        ensureDashboardProfile(context, username)
+        return cardId in prefs(context).getStringSet(dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username), emptySet()).orEmpty()
+    }
+
+    fun setDashboardCardExpanded(context: Context, cardId: String, expanded: Boolean,
+        username: String = settings(context).username) {
+        if (cardId !in DEFAULT_DASHBOARD_CARDS) return
+        ensureDashboardProfile(context, username)
+        val key = dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username)
+        val cards = prefs(context).getStringSet(key, emptySet()).orEmpty().toMutableSet()
+        if (expanded) cards.add(cardId) else cards.remove(cardId)
+        prefs(context).edit().putStringSet(key, cards).apply()
+    }
+
+    fun saveDashboardCards(context: Context, cards: List<String>, username: String = settings(context).username) {
+        ensureDashboardProfile(context, username)
+        val clean = cards.filter { it in DEFAULT_DASHBOARD_CARDS }.distinct()
+        prefs(context).edit().putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(clean).toString()).apply()
+    }
+
+    fun resetDashboardCards(context: Context, username: String = settings(context).username) {
+        prefs(context).edit()
+            .putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(DEFAULT_DASHBOARD_CARDS).toString())
+            .putStringSet(dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username), emptySet()).apply()
+    }
+
+    private fun saveLegacyDashboardCards(context: Context, cards: List<String>) {
+        prefs(context).edit().putString(KEY_DASHBOARD_CARDS,
+            JSONArray(cards.filter { it in DEFAULT_DASHBOARD_CARDS }.distinct()).toString()).apply()
     }
 
     fun currentStats(context: Context, username: String = settings(context).username): ProfileStats {

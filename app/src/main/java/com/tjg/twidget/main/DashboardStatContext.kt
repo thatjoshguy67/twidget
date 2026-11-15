@@ -66,7 +66,7 @@ internal object DashboardStatContext {
             if (values.isEmpty() || values.all { it == null } || activity.resources.configuration.fontScale >= 1.6f) return
             panel.addView(MiniBars(activity, values, activity.getColor(R.color.oneui_accent)).apply {
                 contentDescription = labels.zip(values).joinToString(". ") { (label, v) -> "$label: ${v?.let { count(it.toLong()) } ?: "--"}" }
-            }, LinearLayout.LayoutParams(-1, dp(32)).apply { bottomMargin = dp(6) })
+            }, LinearLayout.LayoutParams(-1, dp(if (activity.resources.configuration.fontScale >= 1.3f) 32 else 40)).apply { bottomMargin = dp(6) })
         }
         val data = activity.analytics
         val posts = data?.recentPosts.orEmpty().sortedBy { it.timestamp }
@@ -86,7 +86,7 @@ internal object DashboardStatContext {
                     if (known && activity.resources.configuration.fontScale < 1.6f) {
                         group.addView(ComparisonBar(activity, amount.toFloat() / maximum,
                             activity.getColor(R.color.oneui_accent)).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO },
-                            LinearLayout.LayoutParams(-1, dp(6)).apply { topMargin = dp(6) })
+                            LinearLayout.LayoutParams(-1, dp(10)).apply { topMargin = dp(6) })
                     }
                     panel.addView(group, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
                 }

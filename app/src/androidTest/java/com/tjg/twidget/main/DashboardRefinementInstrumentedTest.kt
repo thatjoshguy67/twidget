@@ -87,6 +87,7 @@ class DashboardRefinementInstrumentedTest {
                         val bitmap = Bitmap.createBitmap(graph.width, graph.height, Bitmap.Config.ARGB_8888)
                         graph.draw(Canvas(bitmap))
                         val chart = descendants(graph).filterIsInstance<com.tjg.twidget.ui.MetricChartView>().first()
+                        assertEquals("Graph uses concentric card/plot corners", (28f - 12f) * graph.resources.displayMetrics.density, chart.plotCornerRadiusPx, 1f)
                         val plot = com.tjg.twidget.ui.MetricChartView::class.java.getDeclaredField("plotRect").apply { isAccessible = true }
                             .get(chart) as android.graphics.RectF
                         val origin = android.graphics.Rect(0, 0, chart.width, chart.height)

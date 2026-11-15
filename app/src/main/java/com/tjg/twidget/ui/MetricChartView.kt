@@ -120,6 +120,9 @@ class MetricChartView @JvmOverloads constructor(
     /** Standalone dashboard graphs already receive their outer inset from the card. */
     var compactCardInsets: Boolean = false
         set(value) { field = value; invalidate() }
+    /** Card radius minus its outer inset, supplied by the shared dashboard shell. */
+    internal var plotCornerRadiusPx: Float = 16f * resources.displayMetrics.density
+        set(value) { if (field != value) { field = value; invalidate() } }
     /** The compact dashboard hides its summary and gives the plot a native, full-width inset. */
     internal var graphOnlyLayout: Boolean = false
         set(value) { if (field != value) { field = value; invalidate() } }
@@ -252,7 +255,7 @@ class MetricChartView @JvmOverloads constructor(
         plotRect.set(left, top, width - right, chartBottom)
         val plotCheckpoint = canvas.save()
         plotClipPath.reset()
-        val plotRadius = if (graphOnlyLayout) 18f * resources.displayMetrics.density * cardDesignScale else 10f * density
+        val plotRadius = if (compactCardInsets) plotCornerRadiusPx.coerceAtLeast(0f) else 10f * density
         plotClipPath.addRoundRect(plotRect, plotRadius, plotRadius, Path.Direction.CW)
         canvas.clipPath(plotClipPath)
 

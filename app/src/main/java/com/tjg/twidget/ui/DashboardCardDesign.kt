@@ -137,6 +137,7 @@ internal object DashboardCardDesign {
             (summary.parent as? ViewGroup)?.let { body ->
                 (0 until body.childCount).map { body.getChildAt(it) }.filterIsInstance<MetricChartView>().firstOrNull()?.let { chart ->
                     chart.graphOnlyLayout = compact
+                    chart.plotCornerRadiusPx = ((cornerRadius(root.background) ?: 28f * density) - root.paddingEnd).coerceAtLeast(0f)
                     val headingGravity = if (root.hasOnClickListeners() || chart.onChartTapListener != null)
                         android.view.Gravity.START else android.view.Gravity.CENTER_HORIZONTAL
                     root.findViewById<TextView>(R.id.dashboard_graph_heading)?.gravity =

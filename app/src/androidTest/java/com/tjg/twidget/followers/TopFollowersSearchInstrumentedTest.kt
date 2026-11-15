@@ -143,6 +143,7 @@ class TopFollowersSearchInstrumentedTest {
                         assertFalse("Search must not autofocus on opening", search.hasFocus())
                         assertFalse("Idle mic uses the outline icon", search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected)
                         compactWidth = search.width
+                        (search as com.tjg.twidget.ui.Sesl95SearchView).expand(showKeyboard = false, animate = false)
                         assertEquals("First row must meet the rounded list edge", 0,
                             activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).paddingTop)
                         assertTrue("Idle search should be compact", search.width < activity.window.decorView.width)
@@ -257,11 +258,11 @@ class TopFollowersSearchInstrumentedTest {
                     settle()
                     scenario.onActivity { activity ->
                         val search = activity.findViewById<SearchView>(R.id.top_followers_browse_search)
-                        assertTrue("Keyboard dismissal must retain focus for this regression", search.hasFocus())
-                        assertEquals("Search must shrink with a nonempty query after keyboard dismissal", compactWidth, search.width)
-                        assertEquals("no such follower", search.query.toString())
-                        assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.top_followers_browse_empty).visibility)
-                        activity.findViewById<SearchView>(R.id.top_followers_browse_search).setQuery("", false)
+                        assertFalse("Keyboard dismissal collapses search", (search as com.tjg.twidget.ui.Sesl95SearchView).isFloatingExpanded)
+                        assertFalse(search.hasFocus())
+                        assertEquals(compactWidth, search.width)
+                        assertEquals("", search.query.toString())
+                        search.expand(showKeyboard = false, animate = false)
                     }
                     val voiceMonitor = instrumentation.addMonitor(
                         IntentFilter(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),

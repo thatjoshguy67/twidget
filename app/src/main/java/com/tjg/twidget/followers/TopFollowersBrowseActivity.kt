@@ -12,6 +12,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.util.TypedValue
+import android.view.KeyEvent
+import com.tjg.twidget.ui.Sesl95SearchView
+import androidx.activity.OnBackPressedCallback
+import com.tjg.twidget.ui.SeslKeyboardFocus
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -60,18 +64,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     private lateinit var listView: RecyclerView
     private lateinit var refreshView: SwipeRefreshLayout
     private lateinit var toolbarLayout: ToolbarLayout
-    private lateinit var searchFab: ImageButton
-    private lateinit var searchContainer: FrameLayout
-    private lateinit var searchView: SearchView
-    private var searchExpanded = false
-    private var imeBottomInset = 0
-    private var imeAnimating = false
-    private var searchMorphAnimator: ValueAnimator? = null
-    private val collapseSearchOnBack = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() {
-            collapseSearch(clearQuery = true)
-        }
-    }
+    private lateinit var searchView: Sesl95SearchView
     private var refreshItem: MenuItem? = null
     private var refreshGeneration = 0
     private var refreshing = false
@@ -144,47 +137,30 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         searchFab = findViewById(R.id.top_followers_browse_search_fab)
         searchContainer = findViewById(R.id.top_followers_browse_search_container)
         searchView = findViewById(R.id.top_followers_browse_search)
-        searchFab.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                outline.setOval(0, 0, view.width, view.height)
-            }
+        val closeSearch = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() { searchView.collapse() }
         }
-        com.tjg.twidget.ui.SeslSurfaceHighlight.attach(searchFab, dp(28).toFloat())
-        searchView.findViewById<View>(androidx.appcompat.R.id.search_plate)?.apply {
-            elevation = dp(4).toFloat()
-            outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, dp(26).toFloat())
-                }
-            }
-            (parent as? ViewGroup)?.let { frame ->
-                for (i in 0 until frame.childCount) {
-                    val sibling = frame.getChildAt(i)
-                    if (sibling !== this) sibling.elevation = 0f
-                }
-            }
-        }
-        val sviEnabled = searchView.seslSetSviEnabled(true)
+        onBackPressedDispatcher.addCallback(this, closeSearch)
+        searchView.onExpansionChanged = { closeSearch.isEnabled = it }
         searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
         searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).setOnClickListener {
-            launchVoiceSearch(sviEnabled)
-        }
-        searchFab.setOnClickListener { expandSearch() }
-        searchView.setOnQueryTextFocusChangeListener { _, hasFocus ->
-            if (!hasFocus && query.isBlank() && imeBottomInset == 0) {
-                collapseSearch(clearQuery = false)
+            try {
+                voiceSearch.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.top_followers_browser_search))
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                })
+            } catch (_: ActivityNotFoundException) {
+                // A recognizer can be removed after SESL checks its availability.
+                searchView.requestFocus()
             }
         }
-        ViewCompat.setOnApplyWindowInsetsListener(searchContainer) { _, insets ->
-            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            imeBottomInset = if (imeVisible) insets.getInsets(WindowInsetsCompat.Type.ime()).bottom else 0
-            searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected = imeVisible
-            if (!imeAnimating) {
-                searchContainer.translationY = imeTranslationY(insets)
-            }
-            if (!imeVisible && searchExpanded && query.isBlank() && !searchView.hasFocus()) {
-                collapseSearch(clearQuery = false)
-            }
+        searchView.setOnQueryTextFocusChangeListener { _, _ -> updateSearchWidth() }
+        // Read the delivered insets, rather than the previous root snapshot while it is dispatching.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(searchView) { _, insets ->
+            val imeVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+            searchView.onImeVisibilityChanged(imeVisible)
+            updateSearchWidth(imeVisible)
             insets
         }
         ViewCompat.setWindowInsetsAnimationCallback(
@@ -216,6 +192,9 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         )
         query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
         searchView.setQuery(query, false)
+        if (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true) {
+            searchView.expand(showKeyboard = false, animate = false)
+        }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(value: String?): Boolean {
                 updateQuery(value)
@@ -319,6 +298,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_QUERY, query)
+        outState.putBoolean("search_expanded", searchView.isFloatingExpanded)
         super.onSaveInstanceState(outState)
     }
 
@@ -429,147 +409,24 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         listView.visibility = if (empty) View.GONE else View.VISIBLE
     }
 
-    private fun setSearchExpandedImmediate(expanded: Boolean) {
-        cancelSearchMorph()
-        searchExpanded = expanded
-        collapseSearchOnBack.isEnabled = expanded
-        searchFab.animate().cancel()
-        searchContainer.animate().cancel()
-        searchFab.visibility = if (expanded) View.GONE else View.VISIBLE
-        searchFab.alpha = 1f
-        searchContainer.visibility = if (expanded) View.VISIBLE else View.GONE
-        searchContainer.alpha = 1f
-    }
-
-    private fun expandSearch() {
-        if (searchExpanded) return
-        searchExpanded = true
-        collapseSearchOnBack.isEnabled = true
-        val morphHost = findViewById<ViewGroup>(android.R.id.content) ?: return
-        val fabRect = rectInHost(morphHost, searchFab)
-        cancelSearchMorph()
-        searchFab.visibility = View.INVISIBLE
-        searchContainer.alpha = 0f
-        searchContainer.visibility = View.VISIBLE
-        searchView.isIconified = false
-        searchView.requestFocus()
-        val plate = searchView.findViewById<View>(androidx.appcompat.R.id.search_plate) ?: searchView
-        val vto = searchContainer.viewTreeObserver
-        vto.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                if (vto.isAlive) vto.removeOnPreDrawListener(this)
-                val src = searchView.findViewById<View>(androidx.appcompat.R.id.search_src_text) ?: searchView
-                src.requestFocus()
-                getSystemService(InputMethodManager::class.java)?.showSoftInput(src, InputMethodManager.SHOW_IMPLICIT)
-                if (!searchExpanded) return true
-                val plateRect = rectInHost(morphHost, plate)
-                if (fabRect.isEmpty || plateRect.isEmpty) {
-                    searchFab.visibility = View.GONE
-                    searchContainer.alpha = 1f
-                    return true
-                }
-                searchMorphAnimator = SearchFabMorphTransition.start(
-                    host = morphHost,
-                    fromView = searchFab,
-                    toView = plate,
-                    translationView = searchContainer,
-                    entering = true,
-                    fromRect = RectF(fabRect),
-                    toRect = RectF(plateRect),
-                    fromElevation = searchFab.elevation,
-                    toElevation = plate.elevation,
-                    pillColor = getColor(R.color.follower_search_bar_bg),
-                    plateBackgroundSource = plate,
-                ) {
-                    searchMorphAnimator = null
-                    if (searchExpanded) {
-                        searchFab.visibility = View.GONE
-                        searchContainer.alpha = 1f
-                    }
-                }
-                return false
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (::searchView.isInitialized && event.action == KeyEvent.ACTION_DOWN) {
+            if (event.keyCode == KeyEvent.KEYCODE_F && event.isCtrlPressed) {
+                searchView.expand()
+                return true
             }
-        })
-    }
-
-    private fun collapseSearch(clearQuery: Boolean) {
-        if (clearQuery && query.isNotEmpty()) {
-            searchView.setQuery("", false)
-            updateQuery("")
-        }
-        if (!searchExpanded) return
-        searchExpanded = false
-        collapseSearchOnBack.isEnabled = false
-        searchView.clearFocus()
-        getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(searchView.windowToken, 0)
-        cancelSearchMorph()
-        val morphHost = findViewById<ViewGroup>(android.R.id.content)
-        val plate = searchView.findViewById<View>(androidx.appcompat.R.id.search_plate) ?: searchView
-        val plateRect = if (morphHost != null) rectInHost(morphHost, plate) else Rect()
-        val fabRect = if (morphHost != null) fabTargetRect(morphHost) else Rect()
-        if (morphHost == null || plateRect.isEmpty || fabRect.isEmpty) {
-            setSearchExpandedImmediate(false)
-            return
-        }
-        searchContainer.alpha = 0f
-        searchFab.visibility = View.INVISIBLE
-        searchMorphAnimator = SearchFabMorphTransition.start(
-            host = morphHost,
-            fromView = plate,
-            toView = searchFab,
-            translationView = searchContainer,
-            entering = false,
-            fromRect = RectF(plateRect),
-            toRect = RectF(fabRect),
-            fromElevation = plate.elevation,
-            toElevation = searchFab.elevation,
-            pillColor = getColor(R.color.follower_search_fab_bg),
-            plateBackgroundSource = plate,
-        ) {
-            searchMorphAnimator = null
-            if (!searchExpanded) {
-                searchContainer.visibility = View.GONE
-                searchContainer.alpha = 1f
-                searchFab.alpha = 1f
-                searchFab.visibility = View.VISIBLE
+            if (event.keyCode == KeyEvent.KEYCODE_ESCAPE && searchView.isFloatingExpanded) {
+                searchView.collapse()
+                listView.requestFocus()
+                return true
             }
         }
+        return super.dispatchKeyEvent(event)
     }
 
-    private fun rectInHost(host: View, view: View): Rect {
-        if (!view.isAttachedToWindow || view.width <= 0 || view.height <= 0) return Rect()
-        val rootLoc = IntArray(2)
-        val viewLoc = IntArray(2)
-        host.getLocationInWindow(rootLoc)
-        view.getLocationInWindow(viewLoc)
-        val left = viewLoc[0] - rootLoc[0]
-        val top = viewLoc[1] - rootLoc[1]
-        return Rect(left, top, left + view.width, top + view.height)
-    }
-
-    private fun fabTargetRect(host: View): Rect {
-        val current = rectInHost(host, searchFab)
-        if (!current.isEmpty) return current
-        val size = dp(56)
-        val lp = searchFab.layoutParams as? ViewGroup.MarginLayoutParams
-        val rightMargin = lp?.marginEnd ?: dp(24)
-        val bottomMargin = lp?.bottomMargin ?: dp(24)
-        val right = (host.width - rightMargin).coerceAtLeast(size)
-        val bottom = (host.height - bottomMargin).coerceAtLeast(size)
-        return Rect(right - size, bottom - size, right, bottom)
-    }
-
-    private fun imeTranslationY(insets: WindowInsetsCompat): Float {
-        val ime = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-        val sys = insets.getInsets(
-            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
-        ).bottom
-        return -(ime - sys).coerceAtLeast(0).toFloat()
-    }
-
-    private fun cancelSearchMorph() {
-        searchMorphAnimator?.cancel()
-        searchMorphAnimator = null
+    private fun updateSearchWidth(keyboardActive: Boolean = androidx.core.view.ViewCompat.getRootWindowInsets(toolbarLayout)
+        ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true) {
+        searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected = keyboardActive
     }
 
     private fun updateQuery(value: String?) {
@@ -627,6 +484,11 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             itemView: View,
             private val onClick: (TopFollower) -> Unit,
         ) : RecyclerView.ViewHolder(itemView) {
+            init {
+                itemView.isFocusable = true
+                SeslKeyboardFocus.install(itemView, 12f)
+            }
+
             private val rank = itemView.findViewById<TextView>(R.id.top_follower_row_rank)
             private val avatar = itemView.findViewById<ImageView>(R.id.top_follower_row_avatar)
             private val name = itemView.findViewById<TextView>(R.id.top_follower_row_name)

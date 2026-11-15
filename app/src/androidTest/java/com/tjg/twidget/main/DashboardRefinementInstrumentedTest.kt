@@ -76,6 +76,11 @@ class DashboardRefinementInstrumentedTest {
                         assertEquals("$card header shares the outer top inset", tile.paddingTop, header.top)
                         assertTrue("$card heading fits in the header", tile.findViewById<TextView>(R.id.metric_label).top >= 0)
                         assertTrue("$card context fits its bounds", (0 until panel.childCount).all { panel.getChildAt(it).bottom <= panel.height + 1 })
+                        if (card == DashboardCardType.AVG_VIEWS) {
+                            val chart = (0 until panel.childCount).map { panel.getChildAt(it) }.first { it.javaClass.simpleName == "MiniBars" }
+                            assertTrue("Expanded plot uses the available vertical space", chart.height >= activity.dp(48))
+                            assertEquals("Median row reaches the shared bottom inset", panel.height, panel.getChildAt(panel.childCount - 1).bottom)
+                        }
                         val bitmap = Bitmap.createBitmap(tile.width, tile.height, Bitmap.Config.ARGB_8888)
                         tile.draw(Canvas(bitmap))
                         java.io.File(activity.filesDir, "refined-${card.id}.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

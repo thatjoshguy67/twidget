@@ -66,7 +66,7 @@ internal object DashboardStatContext {
             if (values.isEmpty() || values.all { it == null } || activity.resources.configuration.fontScale >= 1.6f) return
             panel.addView(MiniBars(activity, values, activity.getColor(R.color.oneui_accent)).apply {
                 contentDescription = labels.zip(values).joinToString(". ") { (label, v) -> "$label: ${v?.let { count(it.toLong()) } ?: "--"}" }
-            }, LinearLayout.LayoutParams(-1, dp(if (activity.resources.configuration.fontScale >= 1.3f) 32 else 40)).apply { bottomMargin = dp(6) })
+            }, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(6) })
         }
         val data = activity.analytics
         val posts = data?.recentPosts.orEmpty().sortedBy { it.timestamp }
@@ -153,6 +153,9 @@ internal object DashboardStatContext {
                 } else caption(string(R.string.dashboard_no_comparison))
             }
         }
+        // The last evidence row shares the card's bottom inset. Weighted plots
+        // consume the remaining height rather than leaving a fixed-height gap.
+        (panel.getChildAt(panel.childCount - 1)?.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = 0
         root.contentDescription = listOfNotNull(root.contentDescription?.toString(), descriptions.joinToString(". ")).joinToString(". ")
     }
 

@@ -67,6 +67,24 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         buildScreen()
     }
 
+    override val useSeparatePreferenceCards: Boolean
+        get() = page == SettingsPage.WIDGETS && !TwidgetFonts.hasSystemOneUiSans
+
+    override fun onCreateLayoutManager(): RecyclerView.LayoutManager {
+        if (!useSeparatePreferenceCards) return super.onCreateLayoutManager()
+        return WidgetSettingsLayoutManager(requireContext())
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        if (useSeparatePreferenceCards) listView.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(outRect: android.graphics.Rect, child: View, parent: RecyclerView, state: RecyclerView.State) {
+                val gap = dp(8)
+                outRect.set(gap, gap, gap, gap)
+            }
+        })
+    }
+
     override fun onPause() {
         dismissFontTip()
         super.onPause()
@@ -157,7 +175,7 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
             SettingsPage.APPEARANCE -> appearance(screen)
             SettingsPage.WIDGETS -> WidgetSettingsCards.populate(this, screen)
         }
-        screen.addBottomInset()
+        if (!useSeparatePreferenceCards) screen.addBottomInset()
         preferenceScreen = screen
     }
 

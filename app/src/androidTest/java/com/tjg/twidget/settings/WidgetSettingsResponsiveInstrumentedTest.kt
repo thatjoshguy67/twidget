@@ -2,7 +2,6 @@ package com.tjg.twidget.settings
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Rect
 import android.view.View
 import android.view.ViewGroup
@@ -40,7 +39,7 @@ class WidgetSettingsResponsiveInstrumentedTest {
         root.offsetDescendantRectToMyCoords(view, it)
     }
 
-    @Test fun materialCardsStayCompactAndKeepControlsReadableAcrossScreenSizes() {
+    @Test fun framesStayBoundedAndActionsRemainReadableAcrossCellSizes() {
         instrumentation.runOnMainSync {
             for (night in listOf(false, true)) for (fontScale in listOf(1f, 1.6f)) {
                 val context = ContextThemeWrapper(base.createConfigurationContext(Configuration(base.resources.configuration).apply {
@@ -55,24 +54,24 @@ class WidgetSettingsResponsiveInstrumentedTest {
                     var adds = 0
                     val card = WidgetSettingsCard(context, kind, true, { edits++ }, { adds++ }, oneUi = false)
                     TwidgetFonts.applyTo(card)
-                    for (rtl in listOf(false, true)) for (width in listOf(320, 540, 720, 1100)) {
+                    for (rtl in listOf(false, true)) for (width in listOf(288, 352, 392, 720)) {
                         card.layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
                         layout(card, width)
-                        val image = descendants(card).filterIsInstance<ImageView>().single { it.visibility == View.VISIBLE }
-                        val preview = bounds(image, card)
-                        assertTrue("Preview stays at native widget size", image.width <= 352 && image.height <= 176)
-                        assertTrue("The widget preserves its 2:1 proportions", kotlin.math.abs(image.width - image.height * 2) <= 1)
-                        assertTrue("No enlarged phone mockup remains", descendants(card).filterIsInstance<ImageView>().count { it.visibility == View.VISIBLE } == 1)
-                        assertTrue("The whole settings card is bounded on wide pages", card.height <= if (fontScale == 1f) 360 else 440)
+                        val images = descendants(card).filterIsInstance<ImageView>().filter { it.visibility == View.VISIBLE }
+                        assertEquals("The device frame and live artwork are retained", 2, images.size)
+                        assertNotNull(images.first().drawable)
+                        assertTrue("The device never grows beyond its native design", images.first().width <= 306 && images.first().height <= 650)
+                        assertTrue("The widget remains inside the device frame", images.last().width <= 262 && images.last().height <= 131)
+                        assertTrue("A wide cell cannot magnify the card vertically", card.height <= 480)
+                        val preview = bounds(images.last(), card)
                         val buttons = descendants(card).filterIsInstance<AppCompatButton>()
                         assertEquals(2, buttons.size)
                         for (button in buttons) {
                             val rect = bounds(button, card)
-                            assertTrue("Native touch target stays at least 48dp", rect.height() >= 48)
-                            assertTrue("Actions remain inside the card", rect.left >= 16 && rect.right <= width - 16 && rect.top >= 16 && rect.bottom <= card.height - 16)
-                            assertFalse("Actions never cover the widget preview", Rect.intersects(preview, rect))
-                            assertEquals("Action lettering stays native sized", android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 16f, context.resources.displayMetrics), button.textSize, 1f)
-                            assertEquals("The complete action label is visible", button.text.length, button.layout.getLineEnd(button.lineCount - 1))
+                            assertTrue("Actions retain native touch targets", rect.height() >= 48)
+                            assertTrue("Actions stay within the card", rect.left >= 0 && rect.right <= width && rect.bottom <= card.height)
+                            assertFalse("Controls do not cover the widget", Rect.intersects(preview, rect))
+                            assertEquals("Complete action labels remain visible", button.text.length, button.layout.getLineEnd(button.lineCount - 1))
                             assertTrue((0 until button.lineCount).all { button.layout.getEllipsisCount(it) == 0 })
                             button.performClick()
                         }
@@ -83,14 +82,22 @@ class WidgetSettingsResponsiveInstrumentedTest {
                 val unavailable = WidgetSettingsCard(context, WidgetKind.LOCK_SCREEN, false,
                     { fail("Unsupported edit") }, { fail("Unsupported add") }, oneUi = false)
                 layout(unavailable, 720)
-                assertTrue("Unavailable widgets use a compact explanatory row", unavailable.height < 180)
-                assertTrue(descendants(unavailable).filterIsInstance<ImageView>().none { it.visibility == View.VISIBLE })
+                assertTrue("Unavailable widgets retain the device frame", descendants(unavailable).filterIsInstance<ImageView>().any { it.drawable != null })
                 assertTrue(descendants(unavailable).filterIsInstance<AppCompatButton>().isEmpty())
-                assertTrue(descendants(unavailable).filterIsInstance<TextView>().any {
-                    it.visibility == View.VISIBLE && it.text == context.getString(R.string.widget_one_ui_only)
-                })
+                assertTrue(descendants(unavailable).filterIsInstance<TextView>().any { it.text == context.getString(R.string.widget_one_ui_only) })
             }
         }
+    }
+
+    @Test fun phonesAndOneUiAlwaysUseASingleColumn() {
+        for (width in listOf(360, 540, 720, 1100)) {
+            assertEquals(1, WidgetSettingsLayoutManager.columns(width, 411, false, 1f))
+            assertEquals(1, WidgetSettingsLayoutManager.columns(width, 800, true, 1f))
+        }
+        assertEquals(1, WidgetSettingsLayoutManager.columns(540, 800, false, 1f))
+        assertEquals(2, WidgetSettingsLayoutManager.columns(720, 800, false, 1f))
+        assertEquals(3, WidgetSettingsLayoutManager.columns(1100, 800, false, 1f))
+        assertEquals("Large text receives wider cells", 1, WidgetSettingsLayoutManager.columns(800, 800, false, 1.6f))
     }
 
     @Test fun oneUiCardsKeepTheirExistingDeviceComposition() {
@@ -107,7 +114,7 @@ class WidgetSettingsResponsiveInstrumentedTest {
         }
     }
 
-    @Test fun unfoldedMaterialSettingsShowsBothWidgetKindsWithoutAnOversizedPreview() {
+    @Test fun materialSettingsUsesGridOnlyForWideLargeScreenWindows() {
         assumeFalse(TwidgetFonts.hasSystemOneUiSans)
         ActivityScenario.launch<SettingsCategoryActivity>(SettingsCategoryActivity.intent(base, SettingsPage.WIDGETS)).use { scenario ->
             instrumentation.waitForIdleSync()
@@ -116,22 +123,27 @@ class WidgetSettingsResponsiveInstrumentedTest {
                 val cards = WidgetKind.entries.map { kind ->
                     fragment.findPreference<LayoutPreference>("widget_card_${kind.name.lowercase()}")!!.getView()!!
                 }
-                val widthDp = cards.first().width / activity.resources.displayMetrics.density
-                if (widthDp >= 600) {
-                    cards.take(2).forEach { assertTrue("Wide supported cards stay under 240dp", it.height < activity.dp(240)) }
-                    assertTrue("Both supported cards are visible without scrolling", cards.take(2).all { card ->
-                        val rect = Rect()
-                        card.getGlobalVisibleRect(rect) && rect.height() >= card.height - 1
-                    })
+                val manager = fragment.listView.layoutManager as WidgetSettingsLayoutManager
+                val list = fragment.listView
+                val density = activity.resources.displayMetrics.density
+                val config = activity.resources.configuration
+                val expected = WidgetSettingsLayoutManager.columns(((list.width - list.paddingLeft - list.paddingRight) / density).toInt(),
+                    config.smallestScreenWidthDp, false, config.fontScale)
+                assertEquals(expected, manager.spanCount)
+                if (expected >= 2) {
+                    val first = Rect().also { cards[0].getGlobalVisibleRect(it) }
+                    val second = Rect().also { cards[1].getGlobalVisibleRect(it) }
+                    assertEquals("Supported widget cards share a row", first.top, second.top)
+                    assertTrue("Cells remain separate", first.right <= second.left || second.right <= first.left)
+                    cards.take(2).forEach { assertTrue("Both framed cards are visible", it.getGlobalVisibleRect(Rect())) }
                 }
-                assertTrue("Unsupported lock-screen row stays compact", cards.last().measuredHeight < activity.dp(180))
+                cards.forEach { assertTrue("Card artwork stays bounded", it.measuredHeight <= 480 * density) }
             }
             val bitmap = instrumentation.uiAutomation.takeScreenshot()
-            File(base.cacheDir, "widget-settings-material-responsive.png").outputStream().use {
+            File(base.cacheDir, "widget-settings-material-grid.png").outputStream().use {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
             }
             bitmap.recycle()
         }
     }
-    private fun android.content.Context.dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

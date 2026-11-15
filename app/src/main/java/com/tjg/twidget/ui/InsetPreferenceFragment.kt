@@ -19,6 +19,9 @@ import dev.oneuiproject.oneui.preference.InsetPreferenceCategory
  * helper uses — so the list never cuts off flush with the screen edge.
  */
 abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
+    /** Pages whose items own complete rounded surfaces expose the page in their gutters. */
+    protected open val useSeparatePreferenceCards: Boolean get() = false
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         // The trailing inset draws the bottom rounding instead.
@@ -36,7 +39,8 @@ abstract class InsetPreferenceFragment : PreferenceFragmentCompat() {
         val leftPadding = listView.paddingLeft
         val topPadding = listView.paddingTop
         val rightPadding = listView.paddingRight
-        val cardBackground = listView.background
+        val cardBackground = if (useSeparatePreferenceCards) android.graphics.drawable.ColorDrawable(
+            requireContext().getColor(com.tjg.twidget.R.color.oneui_bg)) else listView.background
         listView.clipToPadding = false
         // Keep the scrolling surface behind navigation, while allowing the last
         // row to scroll clear of gestures, buttons, and a bottom display cutout.

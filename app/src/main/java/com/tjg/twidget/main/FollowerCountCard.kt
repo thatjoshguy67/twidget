@@ -24,26 +24,31 @@ internal object FollowerCountCard {
             .format(stats.followersCount) else "--"
         val change = if (stats.followersKnown) TwidgetStore.signedNumber(delta) else "--"
         val color = context.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_editorial_delta)
-        val root = existing ?: LayoutInflater.from(context).inflate(if (span == 2)
+        val root = existing
+            ?: LayoutInflater.from(context).inflate(if (span == 2)
             R.layout.metric_card_follower_count_large else R.layout.metric_card_follower_count, null, false)
         root.findViewById<TextView>(R.id.followers_value).apply {
             val compact = span == 1
-            text = editorialCopy(context, stats, change, color, compact, catalogue)
-            // Let the compact paragraph use the whole tile even when the number
-            // contains fewer words; the previous 35sp cap left a large empty band.
-            val size = if (catalogue) if (compact) 25f else 30f else if (compact) 60f else 51f
-            val lineHeight = if (compact && !catalogue) null else if (catalogue) if (compact) 28f else 36f else 57f
-            maxLines = if (compact) 5 else 3
-            setTag(R.id.dashboard_design_line_height, lineHeight)
-            if (lineHeight == null) setLineSpacing(0f, 1f)
+            text = editorialCopy(context, stats, change, color, compact, catalogue, includeFooter = false)
+            // The words share a bounded value zone; the label/delta have a stable footer.
+            val size = if (compact) 56f else 88f
+            maxLines = 3
+            setTag(R.id.dashboard_design_line_height, null)
+            setLineSpacing(0f, 1f)
             fontFeatureSettings = "'dlig' 1, 'lnum' 1, 'pnum' 1"
             com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.DASHBOARD_EDITORIAL)
             androidx.core.widget.TextViewCompat.setAutoSizeTextTypeWithDefaults(this, androidx.core.widget.TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE)
             textSize = size
-            if (catalogue && lineHeight != null) androidx.core.widget.TextViewCompat.setLineHeight(this,
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, lineHeight, resources.displayMetrics).toInt())
             androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
                 this, if (compact) 10 else 14, size.toInt(), 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+        }
+        root.findViewById<TextView>(R.id.dashboard_count_footer)?.apply {
+            text = android.text.SpannableStringBuilder().apply {
+                appendStyled(context.getString(R.string.followers), TwidgetFonts.editorialTypeface(context, 400, 69),
+                    context.getColor(R.color.oneui_text_secondary), 4f / 35f)
+                appendStyled(change, TwidgetFonts.editorialTypeface(context, 400, 57, roundness = 100), color, 4f / 35f)
+            }
+            TwidgetFonts.setRole(this, TwidgetFonts.Role.DASHBOARD_EDITORIAL)
         }
         if (catalogue) root.setPadding(dp(context, 10), dp(context, 10), dp(context, 10), dp(context, 10))
         root.contentDescription = "${context.getString(R.string.follower_count)}. $count. $change"
@@ -52,7 +57,7 @@ internal object FollowerCountCard {
 
     private fun dp(context: Context, value: Int) = (value * context.resources.displayMetrics.density).toInt()
 
-    private fun editorialCopy(context: Context, stats: ProfileStats, delta: String, deltaColor: Int, compact: Boolean, catalogue: Boolean): CharSequence {
+    private fun editorialCopy(context: Context, stats: ProfileStats, delta: String, deltaColor: Int, compact: Boolean, catalogue: Boolean, includeFooter: Boolean = true): CharSequence {
         val locale = AppLocales.applicationLocale()
         val spelled = when {
             !stats.followersKnown -> "--"
@@ -79,9 +84,9 @@ internal object FollowerCountCard {
                 val label = if (conjunction) word else word.replaceFirstChar { it.titlecase(locale) }
                 appendStyled(label, TwidgetFonts.editorialTypeface(context, weight, width, scaleWord && key != "hundred"), gapRatio = gapRatio)
             }
-            appendStyled(context.getString(R.string.followers), TwidgetFonts.editorialTypeface(context, 400, 69),
+            if (includeFooter) appendStyled(context.getString(R.string.followers), TwidgetFonts.editorialTypeface(context, 400, 69),
                 context.getColor(R.color.oneui_text_secondary), gapRatio)
-            appendStyled(delta, TwidgetFonts.editorialTypeface(context, 400, 57, roundness = 100), deltaColor, gapRatio)
+            if (includeFooter) appendStyled(delta, TwidgetFonts.editorialTypeface(context, 400, 57, roundness = 100), deltaColor, gapRatio)
         }
     }
 

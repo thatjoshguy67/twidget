@@ -26,12 +26,13 @@ class ResponsiveDashboardGridInstrumentedTest {
                         setMargins(5, 5, 5, 5)
                     })
             }
-            listOf(2 to 400, 4 to 900, 4 to 600, 4 to 800, 2 to 360).forEach { (columns, widthDp) ->
+            listOf(2 to 400, 4 to 900, 4 to 600, 4 to 800, 4 to 1600, 2 to 360).forEach { (columns, widthDp) ->
                 val width = (widthDp * grid.resources.displayMetrics.density).toInt()
                 grid.columnCount = columns
                 grid.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-                grid.layout(0, 0, width, grid.measuredHeight)
+                grid.layout(0, 0, grid.measuredWidth, grid.measuredHeight)
+                assertTrue("Desktop content stays within the readable maximum width", grid.width <= (1200 * grid.resources.displayMetrics.density).toInt())
                 val wide = grid.getChildAt(0)
                 val small = grid.getChildAt(1)
                 assertEquals("Four columns are retained at portrait Fold widths", columns, grid.columnCount)

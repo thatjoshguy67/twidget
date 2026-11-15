@@ -122,7 +122,9 @@ class MainActivity : EdgeToEdgeActivity() {
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         // Bind the saved dashboard before its first frame. Remote refresh and
         // maintenance begin afterwards without replacing the cached cards.
+        editModeController.restoreState(savedInstanceState?.getBoolean("dashboard_editing") == true)
         render(refreshRemote = false)
+        restoreDashboardPosition(savedInstanceState)
         skipNextResumeRender = true
         val decor = window.decorView
         decor.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
@@ -258,7 +260,48 @@ class MainActivity : EdgeToEdgeActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_ACCOUNT, selectedAccount)
+        outState.putBoolean("dashboard_editing", ::editModeController.isInitialized && editModeController.editMode)
+        outState.putBoolean("dashboard_drawer_open", ::drawerController.isInitialized && drawerController.isDrawerOpen)
+        val scroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)
+        val grid = findViewById<android.view.ViewGroup>(R.id.dashboard_content)
+        if (scroll != null && grid != null) {
+            val viewport = android.graphics.Rect()
+            scroll.getGlobalVisibleRect(viewport)
+            for (index in 0 until grid.childCount) {
+                val card = grid.getChildAt(index)
+                val position = IntArray(2).also(card::getLocationOnScreen)
+                if (position[1] + card.height > viewport.top && card.visibility == View.VISIBLE) {
+                    outState.putString("dashboard_scroll_anchor", card.tag?.toString())
+                    outState.putFloat("dashboard_scroll_offset", (position[1] - viewport.top) / resources.displayMetrics.density)
+                    break
+                }
+            }
+        }
         super.onSaveInstanceState(outState)
+    }
+
+    private fun restoreDashboardPosition(state: Bundle?) {
+        if (state == null) return
+        val root = findViewById<View>(R.id.dashboard_root)
+        root.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                if (root.width == 0) return
+                root.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                state.getString("dashboard_scroll_anchor")?.let { id ->
+                    val scroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)
+                    val card = findViewById<android.view.ViewGroup>(R.id.dashboard_content)?.findViewWithTag<View>(id)
+                    if (scroll != null && card != null) {
+                        val viewport = android.graphics.Rect()
+                        scroll.getGlobalVisibleRect(viewport)
+                        val position = IntArray(2).also(card::getLocationOnScreen)
+                        val offset = (state.getFloat("dashboard_scroll_offset") * resources.displayMetrics.density).toInt()
+                        scroll.scrollBy(0, position[1] - viewport.top - offset)
+                    }
+                }
+                if (state.getBoolean("dashboard_drawer_open") && !editModeController.editMode)
+                    drawerController.setDrawerOpen(true, false)
+            }
+        })
     }
 
     // Show one native update dot. One UI moves it from the collapsed drawer

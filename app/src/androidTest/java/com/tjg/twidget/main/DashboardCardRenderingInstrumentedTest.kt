@@ -13,6 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.tjg.twidget.R
 import com.tjg.twidget.data.StreakSnapshot
 import com.tjg.twidget.ui.TwidgetFonts
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -119,8 +120,11 @@ class DashboardCardRenderingInstrumentedTest {
                     assertTrue("Primary values remain complete", number.paint.measureText(number.text.toString()) <=
                         number.width - number.compoundPaddingLeft - number.compoundPaddingRight + 1f)
                     val detail = root.findViewById<TextView>(R.id.stat_detail)
-                    if (detail.visibility == View.VISIBLE) assertTrue("Secondary copy is shown only when readable in full",
-                        detail.paint.measureText(detail.text.toString()) <= detail.width + 1f)
+                    if (detail.visibility == View.VISIBLE) {
+                        assertTrue("Secondary copy wraps within two complete lines", detail.lineCount <= 2)
+                        assertTrue("Secondary lines retain their full height", detail.layout.height <= detail.height + 1)
+                        assertTrue("Secondary copy stays inside the card inset", detail.bottom <= root.height - root.paddingBottom + 1)
+                    }
                     assertTrue("Stats no longer carry a redundant platform mark", root.findViewById<View>(R.id.metric_platform_icon).visibility == View.GONE)
                 }
                 val identity = com.tjg.twidget.ui.DashboardFollowerIdentityLayout(context).apply {
@@ -152,14 +156,13 @@ class DashboardCardRenderingInstrumentedTest {
                 val density = context.resources.displayMetrics.density
                 val width = (189 * density).toInt()
                 val height = (160 * density).toInt()
-                // Match the new icon-above-copy Brief design at phone/fold widths.
+                // Brief retains its identifying icon above the title at phone/fold widths.
                 for (cardWidth in listOf(284, 340, 392)) {
                     val brief = LayoutInflater.from(context).inflate(R.layout.brief_dashboard_card, null, false)
                     val title = brief.findViewById<TextView>(R.id.brief_dashboard_title).apply {
                         text = "Your posts get 34.1k views."
                     }
                     val message = brief.findViewById<TextView>(R.id.brief_dashboard_message).apply {
-                        setTag(R.id.dashboard_design_proportional_text, true)
                         text = "Your posting rhythm is active with 8052 followers."
                     }
                     val icon = brief.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
@@ -175,16 +178,16 @@ class DashboardCardRenderingInstrumentedTest {
                     render(brief, (cardWidth * density).toInt(), cardHeight, File(context.filesDir, "brief-$night-$cardWidth.png"))
                     assertTrue("Shared widget state artwork remains available", icon.drawable != null)
                     val copy = brief.findViewById<View>(R.id.brief_dashboard_copy)
-                    if (cardWidth == 284) assertTrue("Long portrait copy gives its space priority over the icon", icon.visibility == View.GONE)
-                    if (icon.visibility == View.VISIBLE) {
-                        assertTrue("Brief artwork sits above the copy without overlap", icon.bottom < copy.top)
-                        assertTrue("The complete icon stays inside the card", icon.top >= 0)
-                    }
+                    assertTrue("Brief icon remains visible at every width", icon.visibility == View.VISIBLE)
+                    assertTrue("Brief artwork sits above the editorial copy", icon.bottom <= copy.top)
                     assertTrue("Brief text stays inside the row", copy.bottom <= cardHeight - brief.paddingBottom + 1)
-                    for ((text, size) in listOf(title to 30f, message to 20f)) {
+                    assertEquals("Brief title uses an explicit 700 weight", 700, title.typeface.weight)
+                    assertTrue("Brief avoids synthetic bold", !title.paint.isFakeBoldText)
+                    assertTrue("Brief retains the widget's title/body weight hierarchy", title.typeface.weight > message.typeface.weight)
+                    for ((text, size) in listOf(title to if (cardWidth < 340) 22f else 24f, message to 16f)) {
                         val nativeSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
-                            size * cardHeight / (214f * density), context.resources.displayMetrics)
-                        assertTrue("Brief typography follows the mockup's row proportions", kotlin.math.abs(text.textSize - nativeSize) < 1f)
+                            size, context.resources.displayMetrics)
+                        assertTrue("Brief typography remains at its native readable size", kotlin.math.abs(text.textSize - nativeSize) < 1f)
                         assertTrue("Brief lines retain their full height", text.layout.height <= text.height + 1)
                     }
                     title.text = "Getting attention"
@@ -284,12 +287,13 @@ class DashboardCardRenderingInstrumentedTest {
                     assertTrue("No count words are ellipsized", (0 until text.lineCount).all { text.layout.getEllipsisCount(it) == 0 })
                 }
                 for (count in listOf(7671L, 8051L)) {
-                    val compact = FollowerCountCard.create(context,
-                        com.tjg.twidget.data.ProfileStats("That Josh Guy", "mock", count, 1265, 12, 500), 21, 1) as TextView
-                    render(compact, width, height, File(context.filesDir, "compact-count-$count-$night.png"))
+                    val countCard = FollowerCountCard.create(context,
+                        com.tjg.twidget.data.ProfileStats("That Josh Guy", "mock", count, 1265, 12, 500), 21, 1)
+                    render(countCard, width, height, File(context.filesDir, "compact-count-$count-$night.png"))
+                    val compact = countCard.findViewById<TextView>(R.id.followers_value)
+                    val footer = countCard.findViewById<TextView>(R.id.dashboard_count_footer)
                     val available = compact.height - compact.paddingTop - compact.paddingBottom
-                    assertTrue("Shorter written counts fill the tile rather than leaving empty top/bottom bands",
-                        compact.layout.height >= available * .8f)
+                    assertTrue("Written count leaves a stable footer zone", compact.bottom <= footer.top)
                     assertTrue("Compact count still fits without clipping", compact.layout.height <= available + 1)
                     assertTrue("Every count word remains visible", compact.layout.getLineEnd(compact.lineCount - 1) == compact.text.length &&
                         (0 until compact.lineCount).all { compact.layout.getEllipsisCount(it) == 0 })

@@ -28,6 +28,9 @@ internal object DashboardCardDesign {
         val density = root.resources.displayMetrics.density
         val scale = heightPx / (214f * density)
         val nativeStatSpacing = root.findViewById<View>(R.id.dashboard_stat_header) != null
+        val nativeEditorialSpacing = root.findViewById<View>(R.id.dashboard_count_footer) != null
+        val nativeListSpacing = root.getTag(R.id.dashboard_list_card) == true
+        val nativeBriefSpacing = root is BriefDashboardCardLayout
         val nativePostSpacing = root.findViewById<View>(R.id.dashboard_post_heading) != null
         fun visit(view: View) {
             val params = view.layoutParams
@@ -44,7 +47,7 @@ internal object DashboardCardDesign {
                 (view as? TextView)?.let { TextViewCompat.getAutoSizeTextAvailableSizes(it) } ?: intArrayOf(),
                 view.translationX, view.translationY,
             ).also { view.setTag(R.id.dashboard_design_baseline, it) }
-            fun px(value: Int) = if (nativePostSpacing) value else (value * scale).roundToInt()
+            fun px(value: Int) = if (nativePostSpacing || nativeStatSpacing || nativeListSpacing || nativeEditorialSpacing || nativeBriefSpacing) value else (value * scale).roundToInt()
             params?.apply {
                 if (baseline.width > 0) width = px(baseline.width)
                 if (baseline.height > 0) height = px(baseline.height)
@@ -59,7 +62,7 @@ internal object DashboardCardDesign {
                 (view.getTag(R.id.profile_image_request) as? String)?.startsWith("profile:") == true
             if (!dynamicAvatar) {
                 val editorial = view.getTag(R.id.app_font_role) == TwidgetFonts.Role.DASHBOARD_EDITORIAL
-                val inset = if (editorial) (12f * density).roundToInt() else 0
+                val inset = if (editorial && !nativeEditorialSpacing) (12f * density).roundToInt() else 0
                 fun padding(value: Int) = if (view === root && nativeStatSpacing) value else px(value)
                 view.setPadding(maxOf(inset, padding(baseline.padding[0])), padding(baseline.padding[1]),
                     maxOf(inset, padding(baseline.padding[2])), padding(baseline.padding[3]))
@@ -77,7 +80,7 @@ internal object DashboardCardDesign {
                 // alone fits proportionally to the card's available row height.
                 val textScale = if (baseline.textSp >= 30f ||
                     view.getTag(R.id.dashboard_design_proportional_text) == true ||
-                    view.getTag(R.id.app_font_role) == TwidgetFonts.Role.DASHBOARD_EDITORIAL) scale else 1f
+                    (view.getTag(R.id.app_font_role) == TwidgetFonts.Role.DASHBOARD_EDITORIAL && view.id != R.id.dashboard_count_footer)) scale else 1f
                 fun lineHeight() {
                     (view.getTag(R.id.dashboard_design_line_height) as? Float)?.let { height ->
                         TextViewCompat.setLineHeight(view, TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, height * textScale, metrics).roundToInt())
@@ -116,24 +119,13 @@ internal object DashboardCardDesign {
             if (view is ViewGroup) for (index in 0 until view.childCount) visit(view.getChildAt(index))
         }
         visit(root)
-        root.findViewById<View>(R.id.brief_dashboard_icon)?.let { icon ->
-            val compact = widthPx > 0 && widthPx / density < 340f
-            val iconSize = ((if (compact) 48f else 60f) * density * scale).roundToInt()
-            icon.layoutParams.width = iconSize
-            icon.layoutParams.height = iconSize
-            (icon.layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin =
-                ((if (compact) 8f else 12f) * density * scale).roundToInt()
-            (root.findViewById<View>(R.id.brief_dashboard_message)?.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin =
-                ((if (compact) 8f else 12f) * density * scale).roundToInt()
-        }
         // Keep the count and plot useful when a two-column-wide graph becomes
         // narrower on the portrait Fold. Landscape retains the Figma proportions.
         root.findViewById<View>(R.id.dashboard_graph_summary)?.let { summary ->
             val compact = widthPx > 0 && widthPx / density < 340f
-            if (compact) {
-                val horizontal = (10f * density).roundToInt()
-                root.setPadding(horizontal, (4f * density).roundToInt(), horizontal, (6f * density).roundToInt())
-            }
+            val inset = (12f * density).roundToInt()
+            root.setPadding(inset, inset, inset, inset)
+            summary.setPadding(0, 0, 0, 0)
             summary.layoutParams.width = minOf((158f * density * scale).roundToInt(), (widthPx * .34f).roundToInt())
             summary.visibility = if (compact) View.GONE else View.VISIBLE
             root.findViewById<TextView>(R.id.dashboard_graph_heading)?.apply {
@@ -159,7 +151,7 @@ internal object DashboardCardDesign {
                             }
                         }
                     }
-                    (chart.layoutParams as ViewGroup.MarginLayoutParams).marginStart = if (compact) 0 else (10 * density * scale).roundToInt()
+                    (chart.layoutParams as ViewGroup.MarginLayoutParams).marginStart = if (compact) 0 else (16 * density).roundToInt()
                 }
             }
             root.findViewById<TextView>(R.id.metric_label)?.apply {

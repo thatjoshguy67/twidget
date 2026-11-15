@@ -129,7 +129,7 @@ internal object StreakCardFactory {
                 setTextColor(if (night) Color.WHITE else Color.BLACK)
             }
             findViewById<TextView>(R.id.stat_detail).apply {
-                text = context.resources.getQuantityString(R.plurals.dashboard_streak_days, dayCount)
+                text = if (dayCount == 0) context.getString(R.string.dashboard_streak_start) else context.resources.getQuantityString(R.plurals.dashboard_streak_days, dayCount)
                 setTextColor(Color.rgb(132, 132, 135))
             }
             contentDescription = "${context.getString(labelRes)}. $title. $detail"

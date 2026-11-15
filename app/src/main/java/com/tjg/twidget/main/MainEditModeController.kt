@@ -23,6 +23,27 @@ internal class MainEditModeController(
     var dragPreviewOrder: List<String>? = null
     private var draggedCardSpan: Int? = null
 
+    internal fun moveCard(card: DashboardCardType, offset: Int): Boolean {
+        if (!editMode || draggedCardId != null) return false
+        val order = TwidgetStore.dashboardCards(activity, activity.selectedAccount).toMutableList()
+        val from = order.indexOf(card.id)
+        val target = from + offset
+        if (from < 0 || target !in order.indices) return false
+        order.add(target, order.removeAt(from))
+        TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
+        activity.render(refreshRemote = false)
+        activity.findViewById<View>(R.id.dashboard_content).post {
+            activity.findViewById<android.view.ViewGroup>(R.id.dashboard_content).findViewWithTag<View>(card.id)?.requestFocus()
+        }
+        TwidgetHaptics.selection(activity.findViewById(R.id.dashboard_content))
+        return true
+    }
+
+    internal fun restoreState(enabled: Boolean) {
+        editMode = enabled
+        exitEditModeOnBack.isEnabled = enabled
+    }
+
     fun cardSpan(card: DashboardCardType): Int =
         if (card.id == draggedCardId) draggedCardSpan ?: card.span(activity, activity.selectedAccount) else card.span(activity, activity.selectedAccount)
     var dragPlaceholderView: android.view.View? = null

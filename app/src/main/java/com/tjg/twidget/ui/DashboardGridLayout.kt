@@ -92,17 +92,19 @@ class DashboardGridLayout @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val boundedWidthSpec = if (MeasureSpec.getSize(widthMeasureSpec) > (1200 * resources.displayMetrics.density).toInt())
+            MeasureSpec.makeMeasureSpec((1200 * resources.displayMetrics.density).toInt(), MeasureSpec.EXACTLY) else widthMeasureSpec
         resizeBounds?.let { bounds ->
             bounds.forEach { (view, rect) ->
                 view.measure(MeasureSpec.makeMeasureSpec(rect.width(), MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(rect.height(), MeasureSpec.EXACTLY))
             }
-            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), resolveSize(resizeHeight, heightMeasureSpec))
+            setMeasuredDimension(MeasureSpec.getSize(boundedWidthSpec), resolveSize(resizeHeight, heightMeasureSpec))
             return
         }
-        val available = (MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
-        if (previousWidthSpec != widthMeasureSpec) {
-            previousWidthSpec = widthMeasureSpec
+        val available = (MeasureSpec.getSize(boundedWidthSpec) - paddingLeft - paddingRight).coerceAtLeast(0)
+        if (previousWidthSpec != boundedWidthSpec) {
+            previousWidthSpec = boundedWidthSpec
             // GridLayout can discard its maximum-width constraint when the rail
             // first measures a narrow content pane. Reset its constraint graph
             // for the real width; requestLayout alone only resets cached values.
@@ -120,6 +122,6 @@ class DashboardGridLayout @JvmOverloads constructor(
             params.width = (available * span / columnCount - params.leftMargin - params.rightMargin).coerceAtLeast(0)
             params.height = rowHeight.coerceAtLeast(1)
         }
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        super.onMeasure(boundedWidthSpec, heightMeasureSpec)
     }
 }

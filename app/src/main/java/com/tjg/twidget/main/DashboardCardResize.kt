@@ -164,6 +164,9 @@ internal class DashboardCardResize(private val activity: MainActivity) {
                 interpolate(small.right, large.right), interpolate(small.bottom, large.bottom))
         }
         val height = (state.smallSlots.height + (state.largeSlots.height - state.smallSlots.height) * fraction).roundToInt()
+        (0 until state.view.childCount).map { state.view.getChildAt(it) }
+            .firstOrNull { it.getTag(R.id.dashboard_card_content) == true }
+            ?.setTag(R.id.dashboard_stat_expanded, fraction > .15f)
         state.grid.setResizePreview(bounds, height)
     }
 

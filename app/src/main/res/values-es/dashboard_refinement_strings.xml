@@ -1,0 +1,22 @@
+<resources>
+    <string name="dashboard_activity_week">Actividad esta semana</string>
+    <string name="dashboard_best_streak">Mejor racha</string>
+    <string name="dashboard_net_posts">Publicaciones netas</string>
+    <string name="dashboard_likes">Me gusta</string>
+    <string name="dashboard_replies">Respuestas</string>
+    <string name="dashboard_reposts">Republicaciones y citas</string>
+    <string name="dashboard_median">Mediana</string>
+    <string name="dashboard_post_rank">Publicación %1$d</string>
+    <string name="dashboard_today">Hoy</string>
+    <string name="dashboard_net_growth">Crecimiento neto</string>
+    <string name="dashboard_coverage">Datos disponibles</string>
+    <string name="dashboard_sample">Muestra analizada</string>
+    <string name="dashboard_period_net">Neto %1$s · %2$s</string>
+    <string name="dashboard_recent_posts">Muestra de publicaciones recientes</string>
+    <string name="dashboard_imported">Estadísticas importadas</string>
+    <string name="dashboard_days">Días</string>
+    <string name="dashboard_no_comparison">Se necesita más historial</string>
+    <string name="dashboard_streak_start">Empieza hoy</string>
+    <string name="dashboard_move_earlier">Mover antes</string>
+    <string name="dashboard_move_later">Mover después</string>
+</resources>

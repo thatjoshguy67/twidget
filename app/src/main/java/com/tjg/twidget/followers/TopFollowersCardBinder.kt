@@ -112,10 +112,11 @@ internal class TopFollowersCardBinder(
             minimumHeight = 0
             background = rounded(cardColor, 28f)
             clipToOutline = true
-            setPadding(0, 0, 0, dp(12))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setTag(R.id.dashboard_list_card, true)
             addView(header(activity.getString(R.string.top_followers_results_title), account, openBrowserEnabled = true),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            state.top.take(3).forEachIndexed { index, follower ->
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+            state.top.take(if (activity.resources.configuration.fontScale >= 1.6f) 2 else 3).forEachIndexed { index, follower ->
                 addView(resultRow(index + 1, follower, index < 2),
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             }
@@ -130,7 +131,8 @@ internal class TopFollowersCardBinder(
     ): View {
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(12), dp(20), dp(8))
+            minimumHeight = dp(24)
+            setPadding(0, 0, 0, 0)
             if (openBrowserEnabled) {
                 isClickable = true
                 isFocusable = true
@@ -177,13 +179,13 @@ internal class TopFollowersCardBinder(
         setOnClickListener { openXProfile(follower.username) }
         addView(LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), 0, dp(20), 0)
+            setPadding(0, 0, 0, 0)
             addView(label(rank.toString(), 20f, primaryColor, 200).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(dp(24), LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(ImageView(activity).apply {
                 contentDescription = null
                 ProfileImageLoader.loadInto(activity, this, follower.avatarUrl)
-            }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(10) })
+            }, LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginStart = dp(10) })
             addView(com.tjg.twidget.ui.DashboardFollowerIdentityLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -204,7 +206,6 @@ internal class TopFollowersCardBinder(
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                 marginStart = dp(10); marginEnd = dp(10)
             })
-            addView(communityIcon(primaryColor), LinearLayout.LayoutParams(dp(18), dp(18)))
             addView(label(TwidgetStore.compactNumber(follower.followers), 12f, secondaryColor, 400).apply {
                 gravity = Gravity.END or Gravity.CENTER_VERTICAL; maxLines = 1
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(4) })
@@ -214,8 +215,8 @@ internal class TopFollowersCardBinder(
 
     private fun FrameLayout.addDivider() {
         addView(View(activity).apply { setBackgroundColor(dividerColor) }, matchFrameParams(1).apply {
-            leftMargin = dp(16)
-            rightMargin = dp(16)
+            leftMargin = 0
+            rightMargin = 0
             gravity = Gravity.BOTTOM
         })
     }

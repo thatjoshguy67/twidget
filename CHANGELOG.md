@@ -4,6 +4,11 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Give expanded dashboard stats useful comparisons and sample context, align card
+  insets, and restore Your Brief’s widget artwork and editorial hierarchy.
+  Improve graph space, keyboard/TalkBack rearrangement, and layout restoration
+  across screen changes.
+
 - Redesign the dashboard with adaptive cards, per-account arrangements, animated
   resizing with haptics, and the native SESL responsive drawer.
 - Refine graph and tweet previews, including typography, spacing, media stacks,

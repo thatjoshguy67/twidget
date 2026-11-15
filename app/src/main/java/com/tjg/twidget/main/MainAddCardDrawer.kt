@@ -329,17 +329,19 @@ internal class MainAddCardDrawer(
         val cardView = activity.dashboardBinder.createCardPreview(card, span, catalogue = true)
         (cardView as? dev.oneuiproject.oneui.delegates.ViewRoundedCorner)?.roundedCorners = 0
         TwidgetFonts.applyTo(cardView)
-        // Both source variants use the dashboard's same row height and column unit.
-        val countPreview = card == DashboardCardType.FOLLOWER_COUNT
-        val sourceWidth = activity.dp(if (countPreview) if (span == 1) 187 else 327 else if (span == 1) 189 else 392)
-        val sourceHeight = if (countPreview) activity.dp(if (span == 1) 152 else 130) else activity.dp(392) * 214 / 538
-        if (!countPreview && (card.size != DashboardCardSize.CHART || card == DashboardCardType.FOLLOWERS))
-            com.tjg.twidget.ui.DashboardCardDesign.apply(cardView, sourceHeight)
-        cardView.measure(View.MeasureSpec.makeMeasureSpec(sourceWidth, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(sourceHeight, View.MeasureSpec.EXACTLY))
-        cardView.layout(0, 0, sourceWidth, sourceHeight)
+        // Render at the real dashboard column width before scaling the catalogue tile.
+        val grid = activity.findViewById<android.widget.GridLayout>(R.id.dashboard_content)
+        val columnWidth = ((grid.width - grid.paddingLeft - grid.paddingRight) / grid.columnCount.coerceAtLeast(1)).coerceAtLeast(activity.dp(120))
+        val sourceWidth = (columnWidth * span - activity.dp(14)).coerceAtLeast(activity.dp(100))
+        val sourceHeight = activity.dp(160)
+        repeat(2) {
+            com.tjg.twidget.ui.DashboardCardDesign.apply(cardView, sourceHeight, sourceWidth)
+            cardView.measure(View.MeasureSpec.makeMeasureSpec(sourceWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(sourceHeight, View.MeasureSpec.EXACTLY))
+            cardView.layout(0, 0, sourceWidth, sourceHeight)
+        }
         val availableWidth = minOf(sheetWidth(), activity.dp(392)) - activity.dp(64)
-        val scale = minOf(if (countPreview || span == 1) 1f else 327f / 392f, availableWidth.toFloat() / sourceWidth)
+        val scale = minOf(1f, availableWidth.toFloat() / sourceWidth)
         val radius = (cardView.background as? GradientDrawable)?.cornerRadius?.takeIf { it > 0f }
             ?: activity.dp(28).toFloat()
         val preview = object : View(activity) {

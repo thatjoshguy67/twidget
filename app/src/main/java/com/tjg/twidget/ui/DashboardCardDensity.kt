@@ -24,6 +24,7 @@ internal object DashboardCardDensity {
             header.minimumHeight = dp(24f)
             val label = root.findViewById<TextView>(R.id.metric_label)
             TextViewCompat.setAutoSizeTextTypeWithDefaults(label, TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE)
+            label.maxLines = if (root.resources.configuration.fontScale > 1.3f) 2 else 1
             label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             TwidgetFonts.dashboardHeading(label)
             val streak = root.getTag(R.id.dashboard_stat_streak) == true
@@ -33,18 +34,13 @@ internal object DashboardCardDensity {
                 layoutParams.height = dp(16f)
                 (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(8f)
             }
-            val ordinary = ((widthDp - 144f) / 48f).coerceIn(0f, 1f)
-            val expanded = ((widthDp - 220f) / 140f).coerceIn(0f, 1f)
             val value = root.findViewById<CardValueTextView>(R.id.followers_value)
             value.applyDesignScale(1f)
-            value.configure(if (streak) 64f else 48f + 8f * ordinary + 8f * expanded,
-                (100f + 10f * expanded).roundToInt(), minimumWidth = 85)
+            value.configure(if (streak) 64f else 56f, 100, minimumWidth = 85)
             root.findViewById<TextView>(R.id.stat_detail).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
                 layoutParams.height = maxOf(dp(20f), paint.fontMetricsInt.bottom - paint.fontMetricsInt.top)
-                val available = widthPx - root.paddingLeft - root.paddingRight
-                visibility = if (text.isNotBlank() && paint.measureText(text.toString()) <= available)
-                    View.VISIBLE else View.INVISIBLE
+                visibility = if (text.isNotBlank()) View.VISIBLE else View.GONE
             }
         }
 

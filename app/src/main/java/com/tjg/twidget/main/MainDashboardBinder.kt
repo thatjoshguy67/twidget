@@ -91,7 +91,7 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
     LIKES("likes", R.string.likes, DashboardCardSize.CHART);
 
-    val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF && this != DAILY_STREAK
+    val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF
     val previewSpans: List<Int> get() = if (supportsSizeVariants) listOf(1, 2) else listOf(size.span)
     fun span(context: android.content.Context, account: String = TwidgetStore.settings(context).username): Int =
         if (supportsSizeVariants && TwidgetStore.isDashboardCardExpanded(context, id, account)) 2 else size.span
@@ -255,6 +255,7 @@ internal class MainDashboardBinder(
         bindPrivateAccountNotice(page, stats)
         bindHistoryNotice(page, chartHistory)
         val container = page.findViewById<GridLayout>(R.id.dashboard_content) ?: return
+        (container.layoutParams as? LinearLayout.LayoutParams)?.gravity = Gravity.CENTER_HORIZONTAL
         container.columnCount = if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2
         container.clipChildren = false
         container.clipToPadding = false
@@ -386,8 +387,6 @@ internal class MainDashboardBinder(
         val account = activity.selectedAccount
         val snapshot = TwidgetStore.accountSnapshot(activity, account)
         renderSnapshot = snapshot
-        if (catalogue && card == DashboardCardType.FOLLOWER_COUNT) return FollowerCountCard.create(activity,
-            snapshot.stats, snapshot.todayDelta({ it.followersKnown }) { it.followers }, span, catalogue = true)
         return createCardContent(
             card, account, snapshot.stats,
             TwidgetStore.rangedHistory(snapshot.history, HistoryRange.WEEK),
@@ -410,6 +409,10 @@ internal class MainDashboardBinder(
         card == DashboardCardType.MILESTONE -> createBriefCard(stats, account)
         card == DashboardCardType.DAILY_STREAK -> createStreakCard(stats)
         else -> createInsightCard(card, stats, history)
+    }.also { root ->
+        if (root.findViewById<View>(R.id.dashboard_stat_context) != null) {
+            DashboardStatContext.bind(activity, card, root, stats, history, span == 2)
+        }
     }
 
     private fun createInsightCard(card: DashboardCardType, stats: ProfileStats, history: List<HistorySample>): View {
@@ -449,11 +452,11 @@ internal class MainDashboardBinder(
             setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
                 activity, heroType, account, activity.dp(60), activity.getColor(R.color.oneui_text_primary)))
         }
-        root.findViewById<TextView>(R.id.brief_dashboard_title).text = summary.title
+        val headline = summary.title
+        val description = summary.shortDescription
+        root.findViewById<TextView>(R.id.brief_dashboard_title).text = headline
         root.findViewById<TextView>(R.id.brief_dashboard_message).apply {
-            // Both text sizes in the Brief mockup follow its 214-unit row.
-            setTag(R.id.dashboard_design_proportional_text, true)
-            text = android.text.SpannableString(summary.shortDescription).apply {
+            text = android.text.SpannableString(description).apply {
                 com.tjg.twidget.widget.BriefWidgetArtworkRenderer.emphasisRanges(toString()).forEach { range ->
                     setSpan(android.text.style.StyleSpan(Typeface.BOLD), range.first, range.last + 1,
                         android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -466,7 +469,7 @@ internal class MainDashboardBinder(
             radiusPx = activity.dp(28).toFloat(),
         )
         root.contentDescription =
-            "${activity.getString(R.string.brief_title)}. ${summary.title}. ${summary.shortDescription}"
+            "${activity.getString(R.string.brief_title)}. $headline. $description"
         root.setOnClickListener {
             if (!editModeController.editMode && isDefaultAccount(account)) {
                 BriefSettingsStore.setEnabled(activity, true)
@@ -642,6 +645,26 @@ internal class MainDashboardBinder(
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ))
             if (editModeController.editMode) {
+                isFocusable = true
+                contentDescription = activity.getString(card.labelRes)
+                for ((actionId, label, offset) in listOf(
+                    Triple(R.id.dashboard_move_earlier_action, R.string.dashboard_move_earlier, -1),
+                    Triple(R.id.dashboard_move_later_action, R.string.dashboard_move_later, 1))) {
+                    androidx.core.view.ViewCompat.replaceAccessibilityAction(this,
+                        androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat(actionId, activity.getString(label)),
+                        activity.getString(label)) { _, _ -> editModeController.moveCard(card, offset) }
+                }
+                setOnKeyListener { _, key, event ->
+                    if (event.action == android.view.KeyEvent.ACTION_DOWN && event.isCtrlPressed) {
+                        val direction = when (key) {
+                            android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_UP -> -1
+                            android.view.KeyEvent.KEYCODE_DPAD_RIGHT, android.view.KeyEvent.KEYCODE_DPAD_DOWN -> 1
+                            else -> 0
+                        }
+                        val horizontal = key == android.view.KeyEvent.KEYCODE_DPAD_LEFT || key == android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+                        direction != 0 && editModeController.moveCard(card, if (horizontal && layoutDirection == View.LAYOUT_DIRECTION_RTL) -direction else direction)
+                    } else false
+                }
                 content.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
                 clipChildren = false
                 clipToPadding = false
@@ -843,12 +866,12 @@ internal class MainDashboardBinder(
             }
             DashboardCardType.POST_RATE -> InsightSpec(
                 label = activity.getString(R.string.post_rate),
-                value = history.filter { it.postsKnown }.let { known ->
+                value = history.filter { it.postsKnown && !it.estimated }.let { known ->
                     if (known.size >= 2) decimal(dailyAverage(known) { it.posts }.coerceAtLeast(0.0), "") else "--"
                 },
-                detail = history.filter { it.postsKnown }.let { known ->
+                detail = history.filter { it.postsKnown && !it.estimated }.let { known ->
                     if (known.size >= 2) {
-                        activity.getString(R.string.per_range, TwidgetStore.signedNumber(rangeDelta(known) { it.posts }))
+                        activity.getString(R.string.dashboard_period_net, TwidgetStore.signedNumber(rangeDelta(known) { it.posts }), DashboardPeriods.label(known))
                     } else activity.getString(R.string.unknown_profile_status)
                 },
                 accent = activity.getColor(R.color.metric_green),

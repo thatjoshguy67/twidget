@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.appcompat.widget.AppCompatTextView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/followers_value"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="6dp" android:paddingBottom="6dp"
-    android:background="@drawable/dashboard_card_bg"
-    android:gravity="center_vertical" android:maxLines="5" android:includeFontPadding="false"
-    android:textColor="@color/oneui_text_primary" android:textSize="60sp"
-    android:breakStrategy="simple" android:hyphenationFrequency="none"
-    app:autoSizeTextType="uniform" app:autoSizeMinTextSize="10sp"
-    app:autoSizeMaxTextSize="60sp" app:autoSizeStepGranularity="1sp" />
+    android:orientation="horizontal" android:padding="12dp" android:background="@drawable/dashboard_card_bg"
+    android:baselineAligned="false">
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent"
+        android:orientation="vertical">
+        <androidx.appcompat.widget.AppCompatTextView android:id="@+id/followers_value"
+            android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+            android:gravity="center_vertical" android:maxLines="3" android:includeFontPadding="false"
+            android:textColor="@color/oneui_text_primary" android:textSize="60sp"
+            android:breakStrategy="simple" android:hyphenationFrequency="none" />
+        <TextView android:id="@+id/dashboard_count_footer" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:minHeight="24dp" android:gravity="center_vertical"
+            android:includeFontPadding="false" android:maxLines="1" android:textSize="20sp"
+            android:textColor="@color/oneui_text_secondary" />
+    </LinearLayout>
+</LinearLayout>

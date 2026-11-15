@@ -166,16 +166,28 @@ class MetricChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    // The dashboard owns its single outer inset. Only the date glyphs and their
+    // six-dp separation from the plot need space inside this view.
+    private fun bottomLabelSpace(density: Float): Float {
+        if (!compactCardInsets) return 34f * density
+        val bounds = android.graphics.Rect()
+        val glyphHeight = labels.maxOfOrNull { label ->
+            dateLabelPaint.getTextBounds(label, 0, label.length, bounds)
+            bounds.height()
+        } ?: 0
+        return glyphHeight + 6f * density
+    }
+
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         super.onSizeChanged(width, height, oldWidth, oldHeight)
-        val density = resources.displayMetrics.density * if (compactCardInsets && !graphOnlyLayout) cardDesignScale else 1f
-        val top = (if (graphOnlyLayout) 0f else if (compactCardInsets) 10f else 12f) * density
+        val density = resources.displayMetrics.density
+        val top = if (compactCardInsets) 0f else 12f * density
         val accent = context.getColor(R.color.oneui_accent)
         barGradient = LinearGradient(
             0f,
             top,
             0f,
-            (height - (if (graphOnlyLayout) 22f else if (compactCardInsets) 23f else 30f) * density).coerceAtLeast(top + 1f),
+            (height - bottomLabelSpace(density)).coerceAtLeast(top + 1f),
             intArrayOf(accent, if (compactCardInsets) 0xff85a3de.toInt() else ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
             null,
             Shader.TileMode.CLAMP,
@@ -186,7 +198,7 @@ class MetricChartView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (labels.isEmpty()) return
 
-        val density = resources.displayMetrics.density * if (compactCardInsets && !graphOnlyLayout) cardDesignScale else 1f
+        val density = resources.displayMetrics.density
         val narrow = graphOnlyLayout || (compactCardInsets && width / resources.displayMetrics.density < 190f)
         axisLabelPaint.textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
             if (narrow && !graphOnlyLayout) 12f else 14f, resources.displayMetrics)
@@ -194,8 +206,8 @@ class MetricChartView @JvmOverloads constructor(
             if (graphOnlyLayout) 12f else if (compactCardInsets) 10f else 12f, resources.displayMetrics)
         val labelInset = (if (compactCardInsets) 0f else 20f) * density
         val right = (if (compactCardInsets) 0f else 20f) * density
-        val top = (if (graphOnlyLayout) 0f else if (compactCardInsets) 10f else 12f) * density
-        val bottomLabels = (if (graphOnlyLayout) 22f else if (compactCardInsets) 23f else 34f) * density
+        val top = if (compactCardInsets) 0f else 12f * density
+        val bottomLabels = bottomLabelSpace(density)
         val chartBottom = height - bottomLabels
         val chartHeight = chartBottom - top
         // The numbered axis belongs to the current week's bars. Including the
@@ -326,10 +338,11 @@ class MetricChartView @JvmOverloads constructor(
             if (index in dateIndices) {
                 val x = left + index * stride + (barSlot - barWidth) / 2f
                 val labelWidth = dateLabelPaint.measureText(label)
+                val dateTextBounds = android.graphics.Rect().also { dateLabelPaint.getTextBounds(label, 0, label.length, it) }
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
                 if (labelX + labelWidth + 4f * resources.displayMetrics.density <= nextLabelLeft) {
-                    canvas.drawText(label, labelX, height - (if (compactCardInsets) 4f else 8f) * density, dateLabelPaint)
+                    canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() else height - 8f * density, dateLabelPaint)
                     nextLabelLeft = labelX
                 }
             }

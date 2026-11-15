@@ -114,6 +114,56 @@ class WidgetSettingsResponsiveInstrumentedTest {
         }
     }
 
+    @Test fun lockPreviewScalesItsClockAndKeepsWidgetSamplesSeparate() {
+        instrumentation.runOnMainSync {
+            for (night in listOf(false, true)) for (oneUi in listOf(false, true)) for (fontScale in listOf(1f, 1.6f)) {
+                val context = ContextThemeWrapper(base.createConfigurationContext(Configuration(base.resources.configuration).apply {
+                    densityDpi = 160
+                    this.fontScale = fontScale
+                    uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                        if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+                }), R.style.Theme_Twidget)
+                val card = WidgetSettingsCard(context, WidgetKind.LOCK_SCREEN, true, {}, {}, oneUi)
+                val clock = descendants(card).filterIsInstance<android.widget.TextClock>().single()
+                clock.text = "19:14"
+                val date = descendants(card).filterIsInstance<TextView>().single {
+                    it !is android.widget.TextClock && it.importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+                for (width in listOf(288, 352, 392)) {
+                    layout(card, width)
+                    TwidgetFonts.applyTo(card)
+                    layout(card, width)
+                    val scale = width / 392f
+                    assertEquals("Clock follows the illustrated phone size", 56f * scale, clock.textSize, .01f)
+                    assertEquals("Date follows the illustrated phone size", 14f * scale, date.textSize, .01f)
+                    assertTrue("Date has its own clear line", date.bottom <= clock.top)
+                    assertTrue("Clock lettering is not clipped", clock.layout.height <= clock.height)
+                    val samples = descendants(card).filterIsInstance<ImageView>().filter { it.scaleType == ImageView.ScaleType.FIT_CENTER }
+                    assertEquals(2, samples.size)
+                    val wide = samples.maxBy { it.width }
+                    val small = samples.minBy { it.width }
+                    assertTrue("Space separates the clock from the widget samples", clock.bottom + 8 * scale <= wide.top)
+                    assertEquals("Samples share a top edge", wide.top, small.top)
+                    assertEquals("Samples share a bottom edge", wide.bottom, small.bottom)
+                    assertEquals("The 1x1 sample is a circle", small.width, small.height)
+                    assertTrue("Samples have a clear gutter", small.left - wide.right >= 10 * scale)
+                    for (sample in samples) {
+                        val radius = (sample.background as android.graphics.drawable.GradientDrawable).cornerRadius
+                        assertEquals("Capsules scale with the phone", sample.height / 2f, radius, 1f)
+                    }
+                    if (oneUi && fontScale == 1f && width == 352) {
+                        val bitmap = Bitmap.createBitmap(card.width, card.height, Bitmap.Config.ARGB_8888)
+                        card.draw(android.graphics.Canvas(bitmap))
+                        File(base.cacheDir, "lock-preview-clean-${if (night) "dark" else "light"}.png").outputStream().use {
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                        bitmap.recycle()
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun materialSettingsUsesGridOnlyForWideLargeScreenWindows() {
         assumeFalse(TwidgetFonts.hasSystemOneUiSans)
         ActivityScenario.launch<SettingsCategoryActivity>(SettingsCategoryActivity.intent(base, SettingsPage.WIDGETS)).use { scenario ->

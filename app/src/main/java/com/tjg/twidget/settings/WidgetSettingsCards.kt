@@ -107,22 +107,28 @@ internal class WidgetSettingsCard(
                 artwork.scaleType = ImageView.ScaleType.FIT_CENTER
                 clock.format12Hour = "h:mm"
                 clock.format24Hour = "HH:mm"
-                clock.textSize = 60f
+                clock.textSize = 56f
+                clock.typeface = TwidgetFonts.forApp(context, 300)
+                clock.includeFontPadding = false
+                clock.maxLines = 1
+                clock.fontFeatureSettings = "'tnum' 1"
                 clock.setTextColor(Color.WHITE)
                 clock.gravity = Gravity.CENTER
                 clock.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 addView(clock)
                 date.text = com.tjg.twidget.core.AppLocales.formatDate(System.currentTimeMillis(), "EMMMd",
                     com.tjg.twidget.core.AppLocales.resolve(settings.language), context)
-                date.textSize = 16f
+                date.textSize = 14f
+                date.includeFontPadding = false
+                date.maxLines = 1
                 date.setTextColor(Color.WHITE)
                 date.gravity = Gravity.CENTER
                 date.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 addView(date)
-                artwork.background = surface(0x66FFFFFF, 18f)
+                artwork.background = surface(0x40FFFFFF, 26f)
                 artwork.setImageBitmap(LockScreenFollowerViews.previewArt(context, true, settings))
                 smallLockArtwork.setImageBitmap(LockScreenFollowerViews.previewArt(context, false, settings))
-                smallLockArtwork.background = surface(0x66FFFFFF, 18f)
+                smallLockArtwork.background = surface(0x40FFFFFF, 26f)
                 smallLockArtwork.scaleType = ImageView.ScaleType.FIT_CENTER
                 smallLockArtwork.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 addView(smallLockArtwork)
@@ -202,6 +208,8 @@ internal class WidgetSettingsCard(
                 topMargin = (y * scale).toInt()
             }
         }
+        var minimumHeight = (384 * scale).toInt()
+        var messageTop = (312 * scale).toInt()
         place(phone, 43, 67, 306, 650)
         place(title, 10, 10, 372, 42)
         if (kind == WidgetKind.LOCK_SCREEN) {
@@ -209,17 +217,44 @@ internal class WidgetSettingsCard(
                 (8 * scale).toInt(), (5 * scale).toInt())
             smallLockArtwork.setPadding((5 * scale).toInt(), (5 * scale).toInt(),
                 (5 * scale).toInt(), (5 * scale).toInt())
-            place(date, 66, 133, 260, 28)
-            place(clock, 56, 147, 280, 80)
-            place(artwork, 105, 235, 113, 50)
-            place(smallLockArtwork, 229, 235, 57, 50)
+            // These are part of the device illustration, so text and shapes
+            // scale with its artwork rather than the surrounding settings UI.
+            clock.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 56f * scale)
+            date.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 14f * scale)
+            (artwork.background as? GradientDrawable)?.cornerRadius = 26f * scale
+            (smallLockArtwork.background as? GradientDrawable)?.cornerRadius = 26f * scale
+            place(date, 66, 127, 260, 24)
+            place(clock, 56, 155, 280, 68)
+            // Account for the chosen font's actual line metrics. Some app fonts
+            // need a taller line even at the same illustrated text size.
+            fun fitText(view: TextView) {
+                view.measure(MeasureSpec.makeMeasureSpec(view.layoutParams.width, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+                view.layoutParams.height = maxOf(view.layoutParams.height, view.measuredHeight)
+            }
+            fitText(date)
+            fitText(clock)
+            val dateParams = date.layoutParams as LayoutParams
+            val clockParams = clock.layoutParams as LayoutParams
+            clockParams.topMargin = maxOf(clockParams.topMargin, dateParams.topMargin + dateParams.height + (4 * scale).toInt())
+            val sampleTop = maxOf((239 * scale).toInt(), clockParams.topMargin + clockParams.height + (16 * scale).toInt())
+            place(artwork, 105, 239, 118, 52)
+            place(smallLockArtwork, 235, 239, 52, 52)
+            (artwork.layoutParams as LayoutParams).topMargin = sampleTop
+            (smallLockArtwork.layoutParams as LayoutParams).topMargin = sampleTop
             place(actions, 133, 315, 126, 52)
+            val actionParams = actions.layoutParams as LayoutParams
+            actionParams.topMargin = maxOf(actionParams.topMargin, sampleTop + artwork.layoutParams.height + (24 * scale).toInt())
+            messageTop = maxOf(messageTop, sampleTop + artwork.layoutParams.height + (24 * scale).toInt())
+            minimumHeight = maxOf(minimumHeight, if (supported) actionParams.topMargin + actionParams.height + (17 * scale).toInt()
+                else messageTop + (72 * scale).toInt())
         } else {
             place(artwork, 65, 146, 262, 131)
             place(actions, 65, 315, 262, 52)
         }
         place(unavailable, 0, 312, 392, 72)
-        var height = (384 * scale).toInt()
+        (unavailable.layoutParams as LayoutParams).topMargin = messageTop
+        var height = minimumHeight
         if (!oneUi) {
             fun naturalHeight(view: View): Int {
                 view.measure(MeasureSpec.makeMeasureSpec(view.layoutParams.width, MeasureSpec.EXACTLY),

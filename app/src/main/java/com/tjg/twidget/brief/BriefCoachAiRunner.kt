@@ -63,7 +63,9 @@ internal object BriefCoachAiRunner {
                                 BriefReviewDebugLog.record(context, "CLOUD_RETRY", JSONObject().put("status", code))
                             },
                             accepts = { true }) { prompt, selected ->
-                            runInterruptible(Dispatchers.IO) { cloudRequest(key, prompt, selected, BriefCoachAi.languageInstruction(prepared)) { data ->
+                            runInterruptible(Dispatchers.IO) {
+                                if (BriefOpenAi.method(context) != "gemini") return@runInterruptible BriefOpenAi.request(context, prompt, BriefCoachAi.languageInstruction(prepared), selected, review = true)
+                                cloudRequest(context, key, prompt, selected, BriefCoachAi.languageInstruction(prepared)) { data ->
                                 BriefReviewDebugLog.record(context, "CLOUD_HTTP", data)
                             } }
                         }
@@ -201,7 +203,7 @@ internal object BriefCoachAiRunner {
         return BriefCoachGeneration.Unavailable
     }
 
-    private fun cloudRequest(key: String, prompt: String, images: List<BriefCoachImage>, languageRules: String,
+    private fun cloudRequest(context: Context, key: String, prompt: String, images: List<BriefCoachImage>, languageRules: String,
         diagnostics: (JSONObject) -> Unit): String? {
         val parts = JSONArray()
         images.forEach { item ->
@@ -215,11 +217,12 @@ internal object BriefCoachAiRunner {
         parts.put(JSONObject().put("text", prompt))
         val request = JSONObject().put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", languageRules))))
-            .put("generationConfig", JSONObject().put("maxOutputTokens", 2048).put("temperature", 0.4)
-                .put("responseMimeType", "application/json"))
+            .put("generationConfig", JSONObject().put("maxOutputTokens", 4096).put("temperature", 0.4)
+                .put("responseMimeType", "application/json")
+                .put("thinkingConfig", JSONObject().put("thinkingLevel", "MEDIUM")))
         val started = android.os.SystemClock.elapsedRealtime()
-        val response = HttpTransport.post(GeminiCloudBriefProvider.ENDPOINT, request.toString(),
-            headers = mapOf("Content-Type" to "application/json", "x-goog-api-key" to key), readTimeoutMs = 30_000)
+        val response = HttpTransport.post("https://generativelanguage.googleapis.com/v1beta/models/${BriefModelPolicy.geminiModel(context, true)}:generateContent", request.toString(),
+            headers = mapOf("Content-Type" to "application/json", "x-goog-api-key" to key), readTimeoutMs = 45_000)
         // Only bounded transport metadata; never retain server messages or request/response content.
         val metadata = JSONObject().put("status", response.code)
             .put("durationMs", android.os.SystemClock.elapsedRealtime() - started)

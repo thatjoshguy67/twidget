@@ -4,6 +4,17 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Generate Your Brief and tweet reviews using a ChatGPT subscription or OpenAI
+  API key, with separate fixed model defaults and model overrides in debug settings.
+  Simplify provider settings and add a one-time ChatGPT linking card for Gemini users.
+
+- Add compact Brief insights for audience momentum, conversations, content patterns,
+  weekly recaps, hashtags and experiments, with charts and debug previews.
+
+- Refresh Brief descriptions independently and keep unchanged copy through the day.
+  Share the heading across the Brief, dashboard and widget, and replay the reveal
+  whenever the Brief opens.
+
 - Give Top Followers more vertical space and keep its row edges aligned.
   Simplify drag landing previews to a plain shape and inset graph pill ends
   slightly from the plot edges.

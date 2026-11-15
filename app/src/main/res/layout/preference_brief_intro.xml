@@ -16,16 +16,6 @@
         android:text="@string/brief_settings_intro"
         android:textColor="@color/oneui_text_primary"
         android:lineSpacingExtra="2dp"
-        android:textSize="16sp" />
+        android:textSize="14sp" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:fontFamily="sec"
-        android:includeFontPadding="false"
-        android:text="@string/brief_settings_ai_intro"
-        android:textColor="@color/oneui_text_primary"
-        android:lineSpacingExtra="2dp"
-        android:textSize="16sp" />
 </LinearLayout>

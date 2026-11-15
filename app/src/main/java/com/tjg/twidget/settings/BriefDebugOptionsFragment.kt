@@ -1,5 +1,7 @@
 package com.tjg.twidget.settings
 
+import androidx.appcompat.app.AlertDialog
+import kotlinx.coroutines.runInterruptible
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -83,6 +85,12 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         row(screen, "components", R.string.debug_component_library, enabled = username.isNotBlank()) {
             startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.COMPONENTS))
         }
+        row(screen, "insights_preview", R.string.debug_insights_preview, arrow = true, enabled = username.isNotBlank()) {
+            startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS))
+        }
+        row(screen, "chatgpt_card_preview", R.string.debug_chatgpt_card_preview, arrow = true, enabled = username.isNotBlank()) {
+            startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.CHATGPT_LINK))
+        }
         row(screen, "onboarding", R.string.debug_show_onboarding, enabled = username.isNotBlank()) { startActivity(BriefOnboardingActivity.intent(context, username)) }
         row(screen, "review_preview", R.string.debug_show_review_preview) { preview() }
         gap(screen)
@@ -124,6 +132,54 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
 
     private fun ai(screen: PreferenceScreen) {
         val context = requireContext()
+        if (TwidgetStore.debugMenuUnlocked(context)) {
+            if (BriefOpenAi.method(context) != "gemini") {
+            for (review in listOf(false, true)) screen.addPreference(Preference(context).apply {
+                title = if (review) "OpenAI tweet review model" else "OpenAI Brief model"
+                val modelKey = BriefOpenAi.modelKey(context, review)
+                summary = BriefOpenAi.selectedModel(context, review)
+                setOnPreferenceClickListener {
+                    lifecycleScope.launch {
+                        try {
+                            val models = runInterruptible(Dispatchers.IO) { BriefOpenAi.models(context) }
+                            if (!isAdded) return@launch
+                            AlertDialog.Builder(context).setTitle(if (review) "Tweet review model" else "Brief model").setItems(models.map { it.second }.toTypedArray()) { _, i ->
+                                BriefOpenAi.prefs(context).edit().putString(modelKey, models[i].first).apply()
+                                BriefStore.resetAi(context, username); buildScreen()
+                            }.setNeutralButton("Use default") { _, _ ->
+                                BriefOpenAi.prefs(context).edit().remove(modelKey).apply()
+                                BriefStore.resetAi(context, username); buildScreen()
+                            }.show()
+                        } catch (error: Exception) {
+                            if (error is kotlinx.coroutines.CancellationException) throw error
+                            if (isAdded) AlertDialog.Builder(context).setMessage("Could not load models. Check your connection and sign in again if needed.").setPositiveButton(android.R.string.ok, null).show()
+                        }
+                    }; true
+                }
+            })
+
+            }
+            for (review in listOf(false, true)) screen.addPreference(Preference(context).apply {
+                title = if (review) "Gemini tweet review model" else "Gemini Brief model"
+                summary = BriefModelPolicy.geminiModel(context, review)
+                setOnPreferenceClickListener {
+                    val input = android.widget.EditText(context).apply { setText(BriefModelPolicy.geminiModel(context, review)) }
+                    AlertDialog.Builder(context).setTitle(title).setView(input)
+                        .setNeutralButton("Use default") { _, _ ->
+                            BriefOpenAi.prefs(context).edit().remove("gemini_model_$review").apply()
+                            BriefStore.resetAi(context, username); buildScreen()
+                        }
+                        .setPositiveButton(R.string.save) { _, _ ->
+                            val model = input.text.toString().trim()
+                            if (model.matches(Regex("gemini-[a-zA-Z0-9.-]+"))) {
+                                BriefOpenAi.prefs(context).edit().putString("gemini_model_$review", model).apply()
+                                BriefStore.resetAi(context, username); buildScreen()
+                            }
+                        }.setNegativeButton(android.R.string.cancel, null).show()
+                    true
+                }
+            })
+        }
         val mode = BriefAiCoordinator.nanoModelMode(context)
         screen.addPreference(ListPreference(context).apply {
             key = "nano_config"; title = getString(R.string.debug_nano_config); isPersistent = false

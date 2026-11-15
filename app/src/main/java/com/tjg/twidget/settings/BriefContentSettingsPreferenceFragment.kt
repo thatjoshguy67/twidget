@@ -92,6 +92,13 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
+        screen.addPreference(spacerCategory())
+        screen.addPreference(categorySwitch(BriefContentCategory.CONVERSATIONS, R.string.brief_content_conversations))
+        screen.addPreference(categorySwitch(BriefContentCategory.CONTENT_PATTERNS, R.string.brief_content_patterns))
+        screen.addPreference(categorySwitch(BriefContentCategory.AUDIENCE_MOMENTUM, R.string.brief_content_momentum))
+        screen.addPreference(categorySwitch(BriefContentCategory.WEEKLY_RECAP, R.string.brief_content_recap))
+        screen.addPreference(categorySwitch(BriefContentCategory.TOPICS, R.string.brief_content_topics))
+        screen.addPreference(categorySwitch(BriefContentCategory.EXPERIMENTS, R.string.brief_content_experiments))
         screen.addBottomInset()
         preferenceScreen = screen
     }
@@ -173,6 +180,9 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun iconColor(category: BriefContentCategory): Int = when (category) {
+        BriefContentCategory.TOPICS, BriefContentCategory.EXPERIMENTS,
+        BriefContentCategory.CONVERSATIONS, BriefContentCategory.CONTENT_PATTERNS,
+        BriefContentCategory.AUDIENCE_MOMENTUM, BriefContentCategory.WEEKLY_RECAP -> R.color.oneui_accent
         BriefContentCategory.TOP_TWEET -> R.color.brief_icon_top_tweet
         BriefContentCategory.WORST_TWEET -> R.color.metric_red
         BriefContentCategory.TOP_FOLLOWERS,
@@ -191,6 +201,9 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun categoryIcon(category: BriefContentCategory): Int = when (category) {
+        BriefContentCategory.TOPICS, BriefContentCategory.EXPERIMENTS,
+        BriefContentCategory.CONVERSATIONS, BriefContentCategory.CONTENT_PATTERNS,
+        BriefContentCategory.AUDIENCE_MOMENTUM, BriefContentCategory.WEEKLY_RECAP -> com.tjg.twidget.brief.BriefVisuals.categoryIcon(category)
         BriefContentCategory.TWEET_REVIEWS -> R.drawable.ic_review_settings_ai
         BriefContentCategory.TOP_TWEET -> R.drawable.ic_settings_top_post
         BriefContentCategory.WORST_TWEET -> R.drawable.ic_settings_delete

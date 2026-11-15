@@ -29,7 +29,7 @@ internal object BriefRunCache {
         run.language, run.contextFingerprint, run.sourceSyncedAt, run.analyticsCachedAt,
         run.followerScanCompletedAt, run.followers, run.following, run.posts,
         run.followersToday, run.followersWeek, run.upcomingTweets, run.topFollowerRanks,
-        run.cards.map { listOf(it.id, it.type, it.action, it.actionData, it.metrics, it.sourceAttribution) },
+        run.cards.map { listOf(it.id, it.type, it.action, it.actionData, it.metrics, it.sourceAttribution, it.chartPoints, it.activityPoints) },
         if (includeProvider) run.providerUsed.name else "",
     )
 }

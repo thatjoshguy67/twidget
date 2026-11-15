@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Associe ton compte ChatGPT pour des analyses plus détaillées avec le quota de ton abonnement</string>
+    <string name="brief_chatgpt_link_title">Associer ton compte ChatGPT</string>
+    <string name="brief_chatgpt_link_dismiss">Ignorer</string>
+    <string name="debug_chatgpt_card_preview">Aperçu de la carte de connexion ChatGPT</string>
+    <string name="debug_chatgpt_card_preview_summary">Aperçu uniquement · Aucune connexion ni modification de l’invite unique.</string>
+</resources>

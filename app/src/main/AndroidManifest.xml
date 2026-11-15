@@ -89,6 +89,15 @@
                 tools:node="remove" />
         </provider>
 
+        <activity android:name=".brief.BriefOAuthReturnActivity" android:exported="true" android:theme="@style/Theme.Twidget.OAuth">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${applicationId}.oauth" android:host="return" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".brief.BriefChatGptActivity" android:exported="false" android:theme="@style/Theme.Twidget.OAuth" />
         <activity
             android:name=".main.MainActivity"
             android:exported="true"

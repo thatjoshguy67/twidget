@@ -78,6 +78,9 @@ object BriefSettingsStore {
     }
 
     fun cloudApiKey(context: Context): String =
+        if (BriefOpenAi.method(context) == "gemini") geminiApiKey(context) else BriefOpenAi.configured(context)
+
+    fun geminiApiKey(context: Context): String =
         SecureCredentialStore.read(context, SecureCredentialStore.GEMINI_API_KEY)
 
     fun setCloudApiKey(context: Context, apiKey: String) {

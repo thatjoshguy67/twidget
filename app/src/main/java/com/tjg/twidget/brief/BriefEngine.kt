@@ -34,9 +34,9 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 23
+    private const val ENGINE_VERSION = 26
 
-    fun rebuild(context: Context, username: String, force: Boolean = false): BriefSnapshot {
+    fun rebuild(context: Context, username: String, force: Boolean = false, reuseNarrative: Boolean = true): BriefSnapshot {
         val clean = username.trim().trimStart('@')
         val stats = TwidgetStore.currentStats(context, clean)
         val analytics = AnalyticsClient.cached(context, clean)
@@ -45,7 +45,7 @@ object BriefEngine {
         val previous = BriefStore.read(context, clean)
         val strings = BriefStrings.from(context)
         val fingerprint = contextFingerprint(context, clean, strings)
-        if (!force && previous != null &&
+        if (!force && reuseNarrative && previous != null &&
             previous.engineVersion == ENGINE_VERSION &&
             BriefAiCachePolicy.isFresh(previous) &&
             previous.contextFingerprint == fingerprint &&
@@ -69,7 +69,7 @@ object BriefEngine {
             followersWeek = evaluation.report.followersWeek,
             upcomingTweets = 0,
         )
-        val rebuilt = BriefSnapshot(
+        val measured = BriefSnapshot(
             username = clean,
             generatedAt = System.currentTimeMillis(),
             sourceSyncedAt = stats.syncedAt,
@@ -92,8 +92,12 @@ object BriefEngine {
             providerMessage = strings.text(R.string.brief_provider_note_template),
             language = strings.languageTag,
         )
-        val snapshot = BriefStore.cachedRun(context, rebuilt)
-            ?: BriefAiCachePolicy.retain(previous, rebuilt, strings)
+        val scope = listOf(BriefSettingsStore.provider(context), BriefAiCoordinator.nanoModelMode(context),
+            BriefOpenAi.method(context), BriefOpenAi.selectedModel(context, false),
+            BriefModelPolicy.geminiModel(context, false)).joinToString("|")
+        val rebuilt = BriefIncrementalPolicy.prepare(measured, strings, scope)
+        val snapshot = if (reuseNarrative) BriefStore.cachedRun(context, rebuilt)
+            ?: BriefAiCachePolicy.retain(previous, rebuilt, strings) else rebuilt
         BriefStore.write(context, snapshot)
         BriefDebugLog.record(context, if (force) "forced rebuild" else "rebuild", evaluation.report)
         return snapshot
@@ -113,6 +117,12 @@ object BriefEngine {
             upcomingTweets = emptyList(),
         ).report
     }
+
+    internal fun inputsMatch(context: Context, source: BriefSnapshot): Boolean =
+        source.sourceSyncedAt == TwidgetStore.currentStats(context, source.username).syncedAt &&
+            source.analyticsCachedAt == (AnalyticsClient.cached(context, source.username)?.cachedAt ?: 0L) &&
+            source.followerScanCompletedAt == TopFollowersStore.read(context, source.username).completedAt &&
+            source.contextFingerprint == contextFingerprint(context, source.username, BriefStrings.from(context))
 
     private data class Evaluation(
         val report: BriefEngineReport,
@@ -173,6 +183,14 @@ object BriefEngine {
         if (BriefContentCategory.POSTING_GUIDANCE in content) {
             BriefGuidePolicy.postingCard(analytics, strings, now)?.let(candidates::add)
         }
+
+        if (BriefContentCategory.CONVERSATIONS in content) BriefInsightPolicy.conversation(analytics, strings, now)?.let(candidates::add)
+        if (BriefContentCategory.CONTENT_PATTERNS in content) BriefInsightPolicy.contentPattern(analytics, strings, now)?.let(candidates::add)
+        if (BriefContentCategory.AUDIENCE_MOMENTUM in content) BriefInsightPolicy.momentum(stats, history, strings, now)?.let(candidates::add)
+        if (BriefContentCategory.WEEKLY_RECAP in content) BriefInsightPolicy.recap(stats, history, analytics, strings, now)?.let(candidates::add)
+
+        if (BriefContentCategory.TOPICS in content) BriefInsightPolicy.topic(analytics, strings, now)?.let(candidates::add)
+        if (BriefContentCategory.EXPERIMENTS in content) BriefInsightPolicy.experiment(analytics, strings, now)?.let(candidates::add)
 
         if (candidates.isEmpty() && BriefContentCategory.FOLLOWERS in content) {
             candidates += BriefCard(
@@ -529,9 +547,10 @@ object BriefEngine {
             streak.activeToday,
             streak.lastActiveDay,
             streak.activityCheckedAt,
-            BriefRankingPolicy.contextBucket(now),
+            "${Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()}:${BriefRankingPolicy.contextBucket(now)}",
             BriefSettingsStore.contentFingerprint(context),
-            BriefSettingsStore.provider(context).storageId,
+            "${BriefSettingsStore.provider(context).storageId}:${BriefOpenAi.method(context)}:" +
+                "${BriefOpenAi.selectedModel(context, false)}:${BriefModelPolicy.geminiModel(context, false)}",
             BriefAiCoordinator.nanoModelMode(context).storageId,
             strings.languageTag,
         ).joinToString("|")
@@ -709,12 +728,15 @@ internal object BriefRankingPolicy {
     }
 
     private fun theme(type: BriefCardType): Theme = when (type) {
+        BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP,
         BriefCardType.SUMMARY,
         BriefCardType.FOLLOWER_CONTEXT,
         BriefCardType.GROWTH,
         BriefCardType.SLOWDOWN,
         BriefCardType.MILESTONE,
         -> Theme.PROGRESS
+        BriefCardType.TOPIC_SPOTLIGHT,
+        BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN,
         BriefCardType.POST,
         BriefCardType.POST_CONTEXT,
         BriefCardType.WORST_POST,
@@ -724,6 +746,7 @@ internal object BriefRankingPolicy {
         BriefCardType.STREAK,
         BriefCardType.INACTIVITY,
         -> Theme.RHYTHM
+        BriefCardType.CONTENT_EXPERIMENT,
         BriefCardType.SCHEDULE_GUIDE,
         BriefCardType.POSTING_GUIDE,
         -> Theme.PLAN

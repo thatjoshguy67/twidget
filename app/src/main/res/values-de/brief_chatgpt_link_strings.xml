@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Verknüpfe dein ChatGPT-Konto für ausführlichere Einblicke mit deinem Abo-Kontingent</string>
+    <string name="brief_chatgpt_link_title">Dein ChatGPT-Konto verknüpfen</string>
+    <string name="brief_chatgpt_link_dismiss">Schließen</string>
+    <string name="debug_chatgpt_card_preview">ChatGPT-Verknüpfungskarte ansehen</string>
+    <string name="debug_chatgpt_card_preview_summary">Nur Vorschau · Keine Anmeldung oder Änderung am einmaligen Hinweis.</string>
+</resources>

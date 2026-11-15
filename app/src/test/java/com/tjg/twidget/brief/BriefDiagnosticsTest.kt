@@ -29,7 +29,7 @@ class BriefDiagnosticsTest {
 
     @Test
     fun `synthetic scenarios create one template card without an AI request`() {
-        BriefDebugScenario.entries.filterNot { it == BriefDebugScenario.REAL || it == BriefDebugScenario.COMPONENTS }.forEach { scenario ->
+        BriefDebugScenario.entries.filterNot { it == BriefDebugScenario.REAL || it == BriefDebugScenario.COMPONENTS || it == BriefDebugScenario.INSIGHTS || it == BriefDebugScenario.CHATGPT_LINK }.forEach { scenario ->
             val snapshot = scenario.snapshot(strings, base)
             assertEquals(1, snapshot.cards.size)
             assertEquals(BriefProviderUsed.TEMPLATE, snapshot.providerUsed)

@@ -9,6 +9,7 @@ data class BriefPresentation(
     val language: String,
     val contentFingerprint: String,
     val generatedAt: Long,
+    val evidenceKey: String = "",
 ) {
     fun summary() = BriefEditorialSummary(title, body, shortDescription)
 
@@ -19,7 +20,9 @@ data class BriefPresentation(
 
     companion object {
         internal fun from(snapshot: BriefSnapshot, strings: BriefStrings, content: String): BriefPresentation? {
-            if (!snapshot.hasGeneratedNarrative) return null
+            if (snapshot.summaryEvidenceKey.isNotBlank()) {
+                if (!snapshot.summaryGenerated || snapshot.providerUsed == BriefProviderUsed.TEMPLATE) return null
+            } else if (!snapshot.hasGeneratedNarrative) return null
             val summary = BriefEditorialSummary.from(snapshot, strings)
             // Older persisted snapshots include the content switches near the end of their context key.
             val legacyContent = snapshot.contextFingerprint.split('|').dropLast(3).lastOrNull()
@@ -27,7 +30,8 @@ data class BriefPresentation(
             return BriefPresentation(summary.title, summary.body, summary.shortDescription,
                 snapshot.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY,
                 strings.languageTag, snapshot.contentSettingsFingerprint.ifBlank { legacyContent ?: content },
-                snapshot.aiGeneratedAt.takeIf { it > 0 } ?: snapshot.generatedAt)
+                snapshot.summaryGeneratedAt.takeIf { it > 0 } ?: snapshot.aiGeneratedAt.takeIf { it > 0 } ?: snapshot.generatedAt,
+                snapshot.summaryEvidenceKey)
         }
     }
 }

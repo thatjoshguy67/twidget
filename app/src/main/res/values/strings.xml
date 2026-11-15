@@ -631,7 +631,7 @@
     <string name="brief_settings_off">Off</string>
     <string name="brief_settings_preview_description">Preview of a personalised Your Brief</string>
     <string name="brief_settings_intro">Get a personalised daily briefing based on your Twitter activity, recent tweets, your goals and tweeting schedule. It changes as your day does, and appears in your dashboard and as a home screen widget.</string>
-    <string name="brief_settings_ai_intro">It uses a data aggregation engine, as well as your choice of local or cloud powered models. Local uses Gemini Nano on supported devices, while cloud uses the Google AI Studio API for use with Gemini models.</string>
+    <string name="brief_settings_ai_intro">Your Brief combines your account statistics with your choice of AI provider. Use Gemini Nano on supported devices, Gemini with an AI Studio API key, or ChatGPT with your account or an OpenAI API key.</string>
     <string name="brief_manage_content">Manage content to include</string>
     <string name="brief_content_top_tweet">Top tweet this week</string>
     <string name="brief_content_worst_tweet">Worst tweet this week</string>

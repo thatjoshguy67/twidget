@@ -47,6 +47,8 @@ object SecureCredentialStore {
         LEGACY_POSTPONE_API_KEY,
         TWITTERAPIS_API_KEY,
         GEMINI_API_KEY,
+        "openai_api_key",
+        "chatgpt_accounts",
         PRIMARY_PROFILE_BRIDGE_TOKEN,
     )
     private val lock = Any()

@@ -43,17 +43,25 @@ object BriefStore {
         }
     }
 
-    /** Last successful copy survives data refreshes, expiry, failed attempts and explicit regeneration. */
+    /** Legacy display memory survives failures; scoped summaries must still match current evidence. */
     fun presentation(context: Context, username: String, source: BriefSnapshot? = null,
         strings: BriefStrings = BriefStrings.from(context)): BriefPresentation? {
         val account = com.tjg.twidget.data.TwidgetStore.canonicalAccount(context, username)
         val content = BriefSettingsStore.contentFingerprint(context)
         if (source != null && source.username.trim().trimStart('@').equals(account, true)) {
             BriefPresentation.from(source, strings, content)?.takeIf { it.matches(strings, content) }?.let { return it }
+            if (source.summaryEvidenceKey.isNotBlank()) return measuredPresentation(source, strings, content)
+                ?.takeIf { it.matches(strings, content) }
         }
         val root = prefs(context).getString(key(account), null)?.let { runCatching { JSONObject(it) }.getOrNull() }
             ?: return null
         if (!root.optString("username").trim().trimStart('@').equals(account, true)) return null
+        if (root.optString("summaryEvidenceKey").isNotBlank()) {
+            return runCatching { decode(root) }.getOrNull()?.let {
+                BriefPresentation.from(it, strings, content) ?: measuredPresentation(it, strings, content)
+            }
+                ?.takeIf { it.matches(strings, content) }
+        }
         readPresentation(root)?.takeIf { it.matches(strings, content) }?.let { return it }
         return recentRuns(root).filter { it.language.equals(strings.languageTag, true) &&
             com.tjg.twidget.data.TwidgetStore.canonicalAccount(context, it.username).equals(account, true) }
@@ -61,9 +69,29 @@ object BriefStore {
             .firstNotNullOfOrNull { BriefPresentation.from(it, strings, content)?.takeIf { memory -> memory.matches(strings, content) } }
     }
 
+    // While a changed summary is rewritten, show its current measured overview.
+    // This is display-only: it never marks a template as a successful AI result.
+    private fun measuredPresentation(source: BriefSnapshot, strings: BriefStrings, content: String): BriefPresentation? {
+        if (source.providerUsed == BriefProviderUsed.TEMPLATE || !source.language.equals(strings.languageTag, true)) return null
+        val summary = BriefEditorialSummary.from(source, strings)
+        return BriefPresentation(summary.title, summary.body, summary.shortDescription,
+            source.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY, source.language,
+            source.contentSettingsFingerprint.ifBlank { content },
+            source.generatedAt, source.summaryEvidenceKey)
+    }
+
+    private fun readPoints(array: JSONArray?): List<BriefChartPoint> = buildList {
+        if (array != null) for (i in 0 until minOf(array.length(), 64)) {
+            val point = array.optJSONObject(i) ?: continue
+            add(BriefChartPoint(point.optString("label"), if (point.isNull("value")) null else point.optLong("value"),
+                point.optLong("timestamp"), point.optInt("samples").coerceAtLeast(0)))
+        }
+    }
+
     private fun encodePresentation(value: BriefPresentation) = JSONObject().put("title", value.title)
         .put("body", value.body).put("shortDescription", value.shortDescription).put("heroType", value.heroType.name)
         .put("language", value.language).put("contentFingerprint", value.contentFingerprint).put("generatedAt", value.generatedAt)
+        .put("evidenceKey", value.evidenceKey)
 
     private fun readPresentation(root: JSONObject?): BriefPresentation? = runCatching {
         val value = root?.optJSONObject("lastPresentation") ?: return null
@@ -71,7 +99,7 @@ object BriefStore {
             BriefVoicePolicy.withoutEmDashes(value.getString("body")),
             BriefVoicePolicy.withoutEmDashes(value.getString("shortDescription")),
             BriefCardType.valueOf(value.getString("heroType")), value.getString("language"),
-            value.getString("contentFingerprint"), value.getLong("generatedAt"))
+            value.getString("contentFingerprint"), value.getLong("generatedAt"), value.optString("evidenceKey"))
     }.getOrNull()
 
     internal fun cachedRun(context: Context, source: BriefSnapshot): BriefSnapshot? {
@@ -98,6 +126,9 @@ object BriefStore {
                         providerUsed = BriefProviderUsed.TEMPLATE,
                         providerMessage = context.getString(R.string.brief_provider_note_template),
                         aiGeneratedAt = 0L,
+                        summaryGenerated = false,
+                        summaryGeneratedAt = 0L,
+                        cards = snapshot.cards.map { it.copy(narrativeGenerated = false, narrativeGeneratedAt = 0L) },
                         headline = "",
                         subheading = "",
                         shortDescription = "",
@@ -128,6 +159,9 @@ object BriefStore {
         put("providerMessage", snapshot.providerMessage)
         put("language", snapshot.language)
         put("summaryGenerated", snapshot.summaryGenerated)
+        put("summaryEvidence", snapshot.summaryEvidence)
+        put("summaryEvidenceKey", snapshot.summaryEvidenceKey)
+        put("summaryGeneratedAt", snapshot.summaryGeneratedAt)
         put("aiGeneratedAt", snapshot.aiGeneratedAt)
         put("cards", JSONArray().apply {
             snapshot.cards.forEach { card ->
@@ -142,6 +176,14 @@ object BriefStore {
                     put("actionData", card.actionData)
                     put("sourceAttribution", card.sourceAttribution)
                     put("narrativeGenerated", card.narrativeGenerated)
+                    put("evidenceKey", card.evidenceKey)
+                    put("narrativeGeneratedAt", card.narrativeGeneratedAt)
+                    fun points(values: List<BriefChartPoint>) = JSONArray().apply { values.forEach { point ->
+                        put(JSONObject().put("label", point.label).put("value", point.value ?: JSONObject.NULL)
+                            .put("timestamp", point.timestamp).put("samples", point.samples))
+                    } }
+                    put("chartPoints", points(card.chartPoints))
+                    put("activityPoints", points(card.activityPoints))
                     put("metrics", JSONArray(card.metrics.map { metric ->
                         JSONObject().put("label", metric.label).put("value", metric.value)
                     }))
@@ -197,6 +239,10 @@ object BriefStore {
                         actionData = card.optString("actionData"),
                         sourceAttribution = card.optString("sourceAttribution"),
                         narrativeGenerated = card.optBoolean("narrativeGenerated"),
+                        evidenceKey = card.optString("evidenceKey"),
+                        narrativeGeneratedAt = card.optLong("narrativeGeneratedAt"),
+                        chartPoints = readPoints(card.optJSONArray("chartPoints")),
+                        activityPoints = readPoints(card.optJSONArray("activityPoints")),
                         metrics = buildList {
                             val metrics = card.optJSONArray("metrics") ?: JSONArray()
                             for (i in 0 until metrics.length()) {
@@ -228,6 +274,9 @@ object BriefStore {
             providerMessage = root.optString("providerMessage"),
             language = root.optString("language"),
             summaryGenerated = root.optBoolean("summaryGenerated"),
+            summaryEvidence = root.optString("summaryEvidence"),
+            summaryEvidenceKey = root.optString("summaryEvidenceKey"),
+            summaryGeneratedAt = root.optLong("summaryGeneratedAt"),
             aiGeneratedAt = root.optLong("aiGeneratedAt").takeIf { it > 0L }
                 ?: if (root.optString("providerUsed") != BriefProviderUsed.TEMPLATE.name) {
                     root.optLong("generatedAt")

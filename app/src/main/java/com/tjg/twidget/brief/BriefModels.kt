@@ -20,6 +20,8 @@ enum class BriefProviderMode(val storageId: String) {
 enum class BriefProviderUsed { TEMPLATE, LOCAL, CLOUD }
 
 enum class BriefCardType {
+    TOPIC_SPOTLIGHT, CONTENT_EXPERIMENT,
+    CONVERSATION_PULSE, CONTENT_PATTERN, AUDIENCE_MOMENTUM, WEEKLY_RECAP,
     SUMMARY,
     GROWTH,
     SLOWDOWN,
@@ -58,6 +60,9 @@ data class BriefRankSignals(
 )
 
 enum class BriefContentCategory(val storageId: String) {
+    TOPICS("topics"), EXPERIMENTS("experiments"),
+    CONVERSATIONS("conversations"), CONTENT_PATTERNS("content_patterns"),
+    AUDIENCE_MOMENTUM("audience_momentum"), WEEKLY_RECAP("weekly_recap"),
     TWEET_REVIEWS("tweet_reviews"),
     TOP_TWEET("top_tweet"),
     WORST_TWEET("worst_tweet"),
@@ -71,6 +76,12 @@ enum class BriefContentCategory(val storageId: String) {
     ACCOUNT_GOALS("account_goals");
 
     fun includes(type: BriefCardType): Boolean = when (this) {
+        TOPICS -> type == BriefCardType.TOPIC_SPOTLIGHT
+        EXPERIMENTS -> type == BriefCardType.CONTENT_EXPERIMENT
+        CONVERSATIONS -> type == BriefCardType.CONVERSATION_PULSE
+        CONTENT_PATTERNS -> type == BriefCardType.CONTENT_PATTERN
+        AUDIENCE_MOMENTUM -> type == BriefCardType.AUDIENCE_MOMENTUM
+        WEEKLY_RECAP -> type == BriefCardType.WEEKLY_RECAP
         TWEET_REVIEWS -> false
         TOP_TWEET -> type in setOf(BriefCardType.POST, BriefCardType.POST_CONTEXT)
         WORST_TWEET -> type == BriefCardType.WORST_POST
@@ -100,6 +111,9 @@ enum class BriefContentCategory(val storageId: String) {
 
 data class BriefMetric(val label: String, val value: String)
 
+/** Numeric chart evidence stays independent of localized labels and AI-written copy. */
+data class BriefChartPoint(val label: String, val value: Long?, val timestamp: Long = 0L, val samples: Int = 0)
+
 data class BriefCard(
     val id: String,
     val type: BriefCardType,
@@ -113,6 +127,10 @@ data class BriefCard(
     val rankingScore: Int = -1,
     val metrics: List<BriefMetric> = emptyList(),
     val narrativeGenerated: Boolean = false,
+    val chartPoints: List<BriefChartPoint> = emptyList(),
+    val activityPoints: List<BriefChartPoint> = emptyList(),
+    val evidenceKey: String = "",
+    val narrativeGeneratedAt: Long = 0L,
 )
 
 /** Legacy snapshot shape only. New Briefs never collect or render queued tweets. */
@@ -357,7 +375,13 @@ data class BriefSnapshot(
     /** BCP-47 tag of the app language the template copy was written in. */
     val language: String = "",
     val summaryGenerated: Boolean = false,
+    val summaryEvidence: String = "",
+    val summaryEvidenceKey: String = "",
+    val summaryGeneratedAt: Long = 0L,
 ) {
+    val hasPartialNarrative: Boolean
+        get() = providerUsed != BriefProviderUsed.TEMPLATE && (summaryGenerated || cards.any { it.narrativeGenerated })
+
     val hasGeneratedNarrative: Boolean
         get() = providerUsed != BriefProviderUsed.TEMPLATE && summaryGenerated &&
             headline.isNotBlank() && subheading.isNotBlank() && shortDescription.isNotBlank() && cards.all { it.narrativeGenerated }

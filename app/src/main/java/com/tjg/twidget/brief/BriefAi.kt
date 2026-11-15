@@ -146,9 +146,9 @@ object BriefAiCoordinator {
             val strings = BriefStrings.from(context)
             // A foreground prewarm may have completed while this caller waited
             // for the model. Re-read measured inputs and reuse that exact run.
-            val currentSource = if (force) source else BriefEngine.rebuild(context, source.username)
+            val currentSource = BriefEngine.rebuild(context, source.username, force = force, reuseNarrative = !force)
             val cached = if (force) {
-                source
+                currentSource
             } else {
                 BriefStore.cachedRun(context, currentSource)
                     ?: BriefAiCachePolicy.retain(BriefStore.read(context, source.username), currentSource, strings)
@@ -166,10 +166,12 @@ object BriefAiCoordinator {
             }
             val localProbe = GeminiNanoBriefProvider.probe(context)
             val localStatus = localProbe.status
-            val generated = when (mode) {
+            val reusable = if (force || !cachedProviderMatches(mode, cached.providerUsed)) currentSource else cached
+            val requestSource = if (force) currentSource else BriefIncrementalPolicy.pending(reusable)
+            val response = when (mode) {
                 BriefProviderMode.LOCAL -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    val local = GeminiNanoBriefProvider.generate(context, currentSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
+                    val local = GeminiNanoBriefProvider.generate(context, requestSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
                     if (local == null) trace?.event("NANO · ${BriefAiDiagnosticsStore.lastLocalFailure(context) ?: "no validated response"}")
                     local?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_nano),
@@ -177,29 +179,33 @@ object BriefAiCoordinator {
                 }
                 BriefProviderMode.CLOUD -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
-                    GeminiCloudBriefProvider.generate(context, currentSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
-                        providerMessage = strings.text(R.string.brief_provider_note_cloud),
+                    GeminiCloudBriefProvider.generate(context, requestSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
+                        providerMessage = if (BriefOpenAi.method(context) == "gemini") strings.text(R.string.brief_provider_note_cloud) else "Generated with OpenAI",
                     )
                 }
                 BriefProviderMode.AUTO -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    val local = GeminiNanoBriefProvider.generate(context, currentSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
-                    if (local == null) trace?.event("NANO · ${BriefAiDiagnosticsStore.lastLocalFailure(context) ?: "no validated response"}")
-                    local?.copy(
+                    val local = GeminiNanoBriefProvider.generate(context, requestSource, strings, onFieldAttempt = trace?.let { it::localAttempt })?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_nano),
-                    ) ?: run {
+                    )
+                    if (local?.hasGeneratedNarrative == true) local else run {
                         BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
-                        GeminiCloudBriefProvider.generate(context, currentSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
-                            providerMessage = strings.text(R.string.brief_provider_note_nano_then_cloud),
+                        val cloud = GeminiCloudBriefProvider.generate(context,
+                            local?.let(BriefIncrementalPolicy::pending) ?: requestSource, strings,
+                            trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
+                            providerMessage = if (BriefOpenAi.method(context) == "gemini") strings.text(R.string.brief_provider_note_nano_then_cloud) else "Generated with OpenAI after Gemini Nano was unavailable",
                         )
+                        if (cloud != null && local != null) BriefIncrementalPolicy.merge(local, cloud) else cloud ?: local
                     }
                 }
-            } ?: currentSource.copy(
-                providerUsed = BriefProviderUsed.TEMPLATE,
-                summaryGenerated = false,
-                providerMessage = fallbackMessage(mode, localStatus, context, strings),
-            )
-
+            }
+            val candidate = response?.let { BriefIncrementalPolicy.merge(reusable, it) } ?: reusable
+            // A sync may finish while a provider is writing. Never attach older
+            // wording to the measurements that arrived during that request.
+            val generated = if (BriefEngine.inputsMatch(context, candidate)) candidate else {
+                val latest = BriefEngine.rebuild(context, source.username, force = true, reuseNarrative = false)
+                BriefAiCachePolicy.retain(candidate, latest, strings)
+            }
             BriefAiDiagnosticsStore.outcome(context, generated.providerUsed, generated.providerMessage)
             trace?.event("OUTCOME · ${generated.providerUsed} · ${generated.providerMessage}")
             BriefStore.write(context, generated)
@@ -377,12 +383,19 @@ internal object GeminiNanoBriefProvider {
                         BriefAiDiagnosticsStore.localDetail(context, "stage=$stage · model=$baseName · input=$input · totalLimit=$totalLimit · input-budget-exhausted")
                         return null
                     }
+                    var busyRetriesRemaining = 1
                     while (true) {
                         val response = try {
                             model.generateContent(build(budget!!))
                         } catch (error: Exception) {
                             if (error is kotlinx.coroutines.CancellationException) throw error
                             val code = (error as? GenAiException)?.errorCode
+                            if (code == GenAiException.ErrorCode.BUSY && busyRetriesRemaining > 0) {
+                                busyRetriesRemaining--
+                                BriefAiDiagnosticsStore.localDetail(context, "stage=$stage · model-busy · retrying")
+                                kotlinx.coroutines.delay(1_000L)
+                                continue
+                            }
                             if (code == GenAiException.ErrorCode.BUSY || code == GenAiException.ErrorCode.PER_APP_BATTERY_USE_QUOTA_EXCEEDED) {
                                 val failures = (prefs.getInt("busyFailures", 0) + 1).coerceAtMost(5)
                                 val delay = if (code == GenAiException.ErrorCode.PER_APP_BATTERY_USE_QUOTA_EXCEEDED) 900_000L else (30_000L shl (failures - 1)).coerceAtMost(300_000L)
@@ -601,8 +614,14 @@ internal object GeminiCloudBriefProvider {
             onDiagnostic?.invoke("CLOUD · API key is missing")
             return null
         }
+        var validatedPartial: BriefSnapshot? = null
         return try {
             fun requestText(prompt: String, label: String): String {
+                if (BriefOpenAi.method(context) != "gemini") {
+                    return BriefOpenAi.request(context, prompt, SYSTEM_INSTRUCTION).also {
+                        onDiagnostic?.invoke("CLOUD · $label OpenAI response=${it.length} chars")
+                    }
+                }
                 val request = JSONObject().apply {
                     put("systemInstruction", JSONObject().put(
                         "parts",
@@ -618,7 +637,7 @@ internal object GeminiCloudBriefProvider {
                     })
                 }
                 val response = HttpTransport.post(
-                    ENDPOINT,
+                    "https://generativelanguage.googleapis.com/v1beta/models/${BriefModelPolicy.geminiModel(context, false)}:generateContent",
                     request.toString(),
                     headers = mapOf(
                         "Content-Type" to "application/json",
@@ -639,6 +658,7 @@ internal object GeminiCloudBriefProvider {
 
             val initialText = requestText(promptFor(source, strings), "initial")
             val initial = BriefAiCardResponse.apply(source, initialText, BriefProviderUsed.CLOUD, strings)
+            validatedPartial = initial.snapshot?.takeIf { it.hasPartialNarrative }
             val initialSnapshot = initial.snapshot?.takeIf { it.hasGeneratedNarrative }
             if (initialSnapshot != null) {
                 onDiagnostic?.invoke("CLOUD · initial response validated")
@@ -648,13 +668,16 @@ internal object GeminiCloudBriefProvider {
                 if (!isRepairableCloudFailure(failure)) {
                     onRawResponse?.invoke(initialText)
                     onDiagnostic?.invoke("CLOUD · response rejected · appliedCards=${initial.appliedCards} · reason=${failure ?: "incomplete narrative"}")
-                    null
+                    initial.snapshot?.takeIf { it.hasPartialNarrative }
                 } else {
                     onRawResponse?.invoke("Initial response rejected:\n$initialText")
                     onDiagnostic?.invoke("CLOUD · validation failed · requesting one repair · reason=$failure")
-                    val repairedText = requestText(cloudNumericRepairPrompt(source, strings), "repair")
-                    val repaired = BriefAiCardResponse.apply(source, repairedText, BriefProviderUsed.CLOUD, strings)
-                    val snapshot = repaired.snapshot?.takeIf { it.hasGeneratedNarrative }
+                    val repairSource = initial.snapshot?.let(BriefIncrementalPolicy::pending) ?: source
+                    val repairedText = requestText(cloudNumericRepairPrompt(repairSource, strings), "repair")
+                    val repaired = BriefAiCardResponse.apply(repairSource, repairedText, BriefProviderUsed.CLOUD, strings)
+                    val snapshot = repaired.snapshot?.let { result ->
+                        initial.snapshot?.let { BriefIncrementalPolicy.merge(it, result) } ?: result
+                    }?.takeIf { it.hasPartialNarrative } ?: initial.snapshot?.takeIf { it.hasPartialNarrative }
                     if (snapshot == null) {
                         onRawResponse?.invoke("Repair response rejected:\n$repairedText")
                         onDiagnostic?.invoke("CLOUD · repair rejected · appliedCards=${repaired.appliedCards} · reason=${repaired.failure ?: "incomplete narrative"}")
@@ -665,12 +688,13 @@ internal object GeminiCloudBriefProvider {
                 }
             }
         } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
             val detail = when (error) {
                 is HttpTransport.HttpException -> "HTTP ${error.code}: ${error.message.orEmpty().take(500)}"
                 else -> "${error.javaClass.simpleName}: ${error.message.orEmpty().take(500)}"
             }
             onDiagnostic?.invoke("CLOUD · request failed · $detail")
-            null
+            validatedPartial
         }
     }
 }
@@ -724,10 +748,11 @@ internal fun languageInstruction(strings: BriefStrings): String =
 internal fun promptFor(source: BriefSnapshot, strings: BriefStrings): String {
     val summary = BriefEditorialSummary.from(source, strings)
     val input = JSONArray().apply {
-        put(JSONObject().apply {
+        if (!source.summaryGenerated) put(JSONObject().apply {
             put("id", SUMMARY_ID)
             put("evidence", summary.body)
             put("compactEvidence", summary.shortDescription)
+            if (source.summaryEvidence.isNotBlank()) put("summaryEvidence", JSONObject(source.summaryEvidence))
             put("kind", "brief_summary")
         })
         source.cards.forEach { card ->
@@ -742,11 +767,11 @@ internal fun promptFor(source: BriefSnapshot, strings: BriefStrings): String {
             })
         }
     }
-    val accountContext = JSONObject()
+    val accountContext = if (source.summaryEvidenceKey.isNotBlank()) JSONObject() else JSONObject()
         .put("followers", source.followers).put("followersToday", source.followersToday)
-        .put("followersWeek", source.followersWeek).put("generatedAt", source.generatedAt)
+        .put("followersWeek", source.followersWeek)
         .put("upcomingPosts", source.upcomingTweets.size)
-    return "Account context: $accountContext. Write the Brief summary and all ordered card descriptions from their evidence and metrics. Keep each id unchanged. " +
+    return "Account context: $accountContext. Write only the requested objects. For the summary use only its summaryEvidence and overview; for each card use only that card’s evidence and metrics. Never output unrequested ids. Keep each id unchanged. " +
         languageInstruction(strings) +
         BriefVoicePolicy.INSTRUCTION +
         "The brief_summary title is shared everywhere, body is for the expanded page, and shortDescription is " +
@@ -845,22 +870,25 @@ internal object BriefAiCardResponse {
         val originals = source.cards.associateBy(BriefCard::id)
         val originalSummary = BriefEditorialSummary.from(source, strings)
         val copy = BriefCopyPolicy.forLanguage(strings)
-        val summaryFacts =
+        val summaryFacts = source.summaryEvidence.ifBlank {
             "${originalSummary.title} ${originalSummary.body} ${originalSummary.shortDescription} " +
                 "${source.followers} ${source.followersToday} ${source.followersWeek} " +
                 source.cards.joinToString { card -> card.body + " " + card.metrics.joinToString { it.label + " " + it.value } }
+        }
         val seen = mutableSetOf<String>()
         val replacements = mutableMapOf<String, BriefCard>()
         var headline = originalSummary.title
         var subheading = originalSummary.body
         var shortDescription = originalSummary.shortDescription
-        var summaryApplied = false
+        var summaryApplied = source.summaryGenerated
+        var summaryWritten = false
         var applied = 0
         val rejected = linkedSetOf<String>()
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
             val id = item.optString("id").ifBlank { item.optString("i") }
             if (id == SUMMARY_ID && seen.add(id)) {
+                if (source.summaryGenerated) continue
                 val title = item.optString("title").ifBlank { item.optString("t") }.trim()
                 val body = item.optString("body").ifBlank { item.optString("b") }.trim()
                 val shortBody = fitCompactCopy(item.optString("shortDescription").ifBlank { item.optString("s") })
@@ -875,6 +903,7 @@ internal object BriefAiCardResponse {
                     subheading = copy.body(body)
                     shortDescription = copy.body(shortBody)
                     summaryApplied = true
+                    summaryWritten = true
                 } else rejected += "summary_numeric"
                 continue
             }
@@ -897,19 +926,19 @@ internal object BriefAiCardResponse {
                         else copy.title(title, "${original.title} ${original.body}"),
                     body = copy.body(body),
                     narrativeGenerated = true,
+                    narrativeGeneratedAt = System.currentTimeMillis(),
                 )
             } else {
                 original.copy(narrativeGenerated = false)
             }
             applied++
         }
+        val rewritten = source.cards.map { replacements[it.id] ?: it }
         if (!summaryApplied && rejected.none { it.startsWith("summary_") }) rejected += "summary_missing"
-        if (source.cards.any { replacements[it.id]?.narrativeGenerated != true } &&
-            rejected.none { it.startsWith("card_") }
-        ) rejected += "card_missing"
-        val rewritten = source.cards.map { replacements[it.id] ?: it.copy(narrativeGenerated = false) }
-        if (!summaryApplied && applied == 0) {
-            return Result(null, 0, rejected.joinToString(",").ifBlank { "Response contained no recognised ids" })
+        if (rewritten.any { !it.narrativeGenerated } && rejected.none { it.startsWith("card_") }) rejected += "card_missing"
+        if ((!summaryWritten && applied == 0) || (source.summaryEvidenceKey.isNotBlank() &&
+                !summaryWritten && replacements.values.none { it.narrativeGenerated })) {
+            return Result(null, 0, rejected.joinToString(",").ifBlank { "Response contained no valid requested fields" })
         }
         val generatedAt = System.currentTimeMillis()
         return Result(
@@ -920,6 +949,7 @@ internal object BriefAiCardResponse {
                 subheading = subheading,
                 shortDescription = shortDescription,
                 summaryGenerated = summaryApplied,
+                summaryGeneratedAt = if (source.summaryGenerated) source.summaryGeneratedAt else if (summaryApplied) generatedAt else 0L,
                 providerUsed = provider,
                 aiGeneratedAt = generatedAt,
             ),
@@ -1003,6 +1033,7 @@ internal object BriefAiCachePolicy {
     const val CLOUD_TTL_MS = 2 * 60 * 60 * 1000L
 
     fun isFresh(snapshot: BriefSnapshot, now: Long = System.currentTimeMillis()): Boolean {
+        if (snapshot.summaryEvidenceKey.isNotBlank()) return BriefIncrementalPolicy.isFresh(snapshot, now)
         if (snapshot.providerUsed == BriefProviderUsed.TEMPLATE) return true
         val generatedAt = snapshot.aiGeneratedAt.takeIf { it > 0L } ?: snapshot.generatedAt
         val ttl = when (snapshot.providerUsed) {
@@ -1020,6 +1051,7 @@ internal object BriefAiCachePolicy {
         now: Long = System.currentTimeMillis(),
     ): BriefSnapshot {
         previous ?: return refreshed
+        if (refreshed.summaryEvidenceKey.isNotBlank()) return BriefIncrementalPolicy.retain(previous, refreshed, now)
         if (!previous.username.equals(refreshed.username, ignoreCase = true)) return refreshed
         if (previous.engineVersion != refreshed.engineVersion) return refreshed
         if (previous.contextFingerprint != refreshed.contextFingerprint) return refreshed
@@ -1029,6 +1061,8 @@ internal object BriefAiCachePolicy {
         // copy (e.g. "more replies" becomes insufficient data). Numeric-fact
         // matching cannot validate these claims against a new analytics snapshot.
         val postEvidenceTypes = setOf(
+            BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT,
+            BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN, BriefCardType.WEEKLY_RECAP,
             BriefCardType.POST, BriefCardType.WORST_POST, BriefCardType.POST_CONTEXT,
             BriefCardType.POST_FOLLOW_THROUGH, BriefCardType.POSTING_GUIDE,
         )

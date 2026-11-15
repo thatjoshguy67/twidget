@@ -30,9 +30,36 @@ object BriefApiKeyDialog {
         required: Boolean,
         onSaved: (String) -> Unit,
     ): AlertDialog {
+        if (BriefOpenAi.method(activity) != "gemini") {
+            if (BriefOpenAi.method(activity) == "chatgpt") {
+                return AlertDialog.Builder(activity).setTitle("Connect ChatGPT")
+                    .setMessage("Sign in to ChatGPT to use your plan for Briefs and tweet reviews.")
+                    .setPositiveButton("Continue with ChatGPT") { _, _ -> activity.startActivity(Intent(activity, BriefChatGptActivity::class.java)) }
+                    .setNegativeButton(android.R.string.cancel, null).show()
+            }
+            val input = EditText(activity).apply {
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                setText(com.tjg.twidget.data.SecureCredentialStore.read(activity, BriefOpenAi.KEY))
+            }
+            val dialog = AlertDialog.Builder(activity).setTitle("OpenAI API key")
+                .setMessage("API usage is billed separately from ChatGPT subscriptions.")
+                .setView(input).setNegativeButton(android.R.string.cancel, null).setPositiveButton(R.string.save, null).create()
+            dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val key = input.text.toString().trim()
+                    if (required && key.isBlank()) input.error = activity.getString(R.string.brief_api_key_required_error)
+                    else {
+                        com.tjg.twidget.data.SecureCredentialStore.write(activity, mapOf(BriefOpenAi.KEY to key))
+                        onSaved(key); dialog.dismiss()
+                    }
+                }
+            }
+            dialog.show()
+            return dialog
+        }
         val content = LayoutInflater.from(activity).inflate(R.layout.dialog_brief_api_key, null)
         val input = content.findViewById<EditText>(R.id.brief_api_key_input).apply {
-            setText(BriefSettingsStore.cloudApiKey(activity))
+            setText(BriefSettingsStore.geminiApiKey(activity))
         }
         fun openLink(url: String, error: Int) {
             runCatching { activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }

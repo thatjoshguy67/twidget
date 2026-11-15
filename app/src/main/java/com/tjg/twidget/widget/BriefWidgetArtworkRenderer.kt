@@ -68,6 +68,8 @@ internal object BriefWidgetArtworkRenderer {
 
     @DrawableRes
     fun supportingIcon(type: BriefCardType): Int = when (type) {
+        BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT,
+        BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN, BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP -> OneUiIconR.drawable.ic_oui_equalizer_2
         BriefCardType.SUMMARY -> R.drawable.ic_twidget_notification
         BriefCardType.GROWTH, BriefCardType.FOLLOWER_CONTEXT -> R.drawable.ic_import_analytics
         BriefCardType.SLOWDOWN -> OneUiIconR.drawable.ic_oui_time_outline
@@ -400,6 +402,8 @@ internal object BriefWidgetArtworkRenderer {
     }
 
     private fun iconGradient(type: BriefCardType): Pair<Int, Int> = when (type) {
+        BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT,
+        BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN, BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP -> Color.rgb(77, 162, 255) to Color.rgb(139, 92, 246)
         BriefCardType.GROWTH -> Color.rgb(46, 204, 113) to Color.rgb(42, 139, 242)
         BriefCardType.SLOWDOWN -> Color.rgb(255, 177, 66) to Color.rgb(235, 84, 96)
         BriefCardType.INACTIVITY -> Color.rgb(139, 92, 246) to Color.rgb(77, 162, 255)

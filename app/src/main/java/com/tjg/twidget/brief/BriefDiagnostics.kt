@@ -132,6 +132,8 @@ object BriefDebugLog {
 enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: Int) {
     REAL("real", R.string.brief_debug_scenario_real),
     COMPONENTS("components", R.string.debug_component_library),
+    INSIGHTS("insights", R.string.debug_insights_preview),
+    CHATGPT_LINK("chatgpt_link", R.string.debug_chatgpt_card_preview),
     POST("post", R.string.brief_debug_scenario_post),
     WORST_POST("worst_post", R.string.brief_debug_scenario_worst_post),
     GROWTH("growth", R.string.brief_debug_scenario_growth),
@@ -150,6 +152,11 @@ enum class BriefDebugScenario(val storageId: String, @StringRes val labelRes: In
 
     internal fun snapshot(strings: BriefStrings, base: BriefSnapshot): BriefSnapshot = when (this) {
         REAL -> base
+        INSIGHTS -> BriefInsightPreview.snapshot(strings, base)
+        CHATGPT_LINK -> fixture(strings, base, BriefCard("debug-link", BriefCardType.SUMMARY, "", "", 0)).copy(
+            cards = emptyList(), headline = strings.text(R.string.debug_chatgpt_card_preview),
+            subheading = strings.text(R.string.debug_chatgpt_card_preview_summary),
+            shortDescription = strings.text(R.string.debug_chatgpt_card_preview_summary))
         COMPONENTS -> fixture(strings, base, BriefCard("debug-library", BriefCardType.SUMMARY,
             strings.text(R.string.debug_component_library), strings.text(R.string.brief_debug_synthetic_provider_message), 0)).copy(
             cards = entries.filterNot { it == REAL || it == COMPONENTS }.flatMap { it.snapshot(strings, base).cards })

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Link your ChatGPT account for richer insights, using your subscription usage</string>
+    <string name="brief_chatgpt_link_title">Link your ChatGPT account</string>
+    <string name="brief_chatgpt_link_dismiss">Dismiss</string>
+    <string name="debug_chatgpt_card_preview">Preview ChatGPT link card</string>
+    <string name="debug_chatgpt_card_preview_summary">Preview only · No sign-in or changes to your one-time prompt.</string>
+</resources>

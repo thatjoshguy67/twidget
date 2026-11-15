@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Vincula el teu compte de ChatGPT per obtenir informació més detallada amb l’ús de la teva subscripció</string>
+    <string name="brief_chatgpt_link_title">Vincula el teu compte de ChatGPT</string>
+    <string name="brief_chatgpt_link_dismiss">Descarta</string>
+    <string name="debug_chatgpt_card_preview">Previsualitza la targeta de ChatGPT</string>
+    <string name="debug_chatgpt_card_preview_summary">Només previsualització · No inicia sessió ni canvia l’avís que es mostra una vegada.</string>
+</resources>

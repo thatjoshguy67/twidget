@@ -78,6 +78,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var reloadOnResume = false
     private var checkContentOnResume = false
     private var entranceSections: List<View> = emptyList()
+    private val cardEntranceAnimations = mutableListOf<AnimatorSet>()
     private var backgroundAnimator: ValueAnimator? = null
     private var loadingStatusIndex = 0
     private var loadingStatusRunnable: Runnable? = null
@@ -140,10 +141,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     AnalyticsClient.cached(this@TwidgetBriefActivity, username))
             }
             val cached = if (!forceRefresh && debugScenario == BriefDebugScenario.REAL &&
-                initial.first.hasGeneratedNarrative && BriefAiCachePolicy.isFresh(initial.first) &&
+                (initial.first.hasGeneratedNarrative || canUpdateIncrementally(initial.first)) &&
                 BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), initial.first.providerUsed))
                 initial.first to initial.third else null
-            if (cached != null && cached.first.hasGeneratedNarrative) {
+            if (cached != null) {
                 if (contentChanged) BriefSettingsStore.clearContentRegenerationPending(this@TwidgetBriefActivity)
                 render(cached.first, cached.second)
                 prepareBriefEntrance()
@@ -213,6 +214,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     BriefAiResult(source, BriefLocalStatus.UNAVAILABLE)
                 }
                 localStatus = result.localStatus
+                if (canUpdateIncrementally(result.snapshot) && result.snapshot != renderedSnapshot) render(result.snapshot)
                 if (showProviderSetupIfRequired(result)) return@launch
                 render(result.snapshot)
                 prepareBriefEntrance()
@@ -226,6 +228,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onResume() {
         super.onResume()
+        findViewById<LinearLayout>(R.id.brief_cards)?.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.let {
+            if (debugScenario == BriefDebugScenario.REAL && !BriefChatGptLinkCard.canRemainVisible(this)) it.visibility = View.GONE
+        }
         if (reloadOnResume) {
             reloadOnResume = false
             val contentChanged = debugScenario == BriefDebugScenario.REAL &&
@@ -234,7 +239,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 forceEngine = true,
                 forceAi = false,
                 showSpinner = contentChanged,
-                animateOnComplete = contentChanged,
+                animateOnComplete = true,
                 clearContentPendingOnSuccess = contentChanged,
             )
             return
@@ -252,8 +257,17 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     clearContentPendingOnSuccess = true,
                 )
             } else {
-                renderedSnapshot?.let { render(it) }
+                renderedSnapshot?.let {
+                    render(it)
+                    prepareBriefEntrance()
+                    startPreparedBriefEntrance()
+                }
             }
+            return
+        }
+        if (renderedSnapshot != null) {
+            prepareBriefEntrance()
+            startPreparedBriefEntrance()
         }
     }
 
@@ -283,7 +297,13 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
                 val ready = !forceAi && source.hasGeneratedNarrative && BriefAiCachePolicy.isFresh(source) &&
                     BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), source.providerUsed)
-                if (debugScenario == BriefDebugScenario.REAL && !ready) {
+                val incremental = !forceAi && debugScenario == BriefDebugScenario.REAL && canUpdateIncrementally(source)
+                if (incremental) {
+                    // A cached opening has already prepared its reveal. Rebinding
+                    // identical content clears that motion and replaces its cards.
+                    if (source != renderedSnapshot) render(source)
+                    setLoading(false)
+                } else if (debugScenario == BriefDebugScenario.REAL && !ready) {
                     val remembered = withContext(Dispatchers.IO) { BriefStore.presentation(this@TwidgetBriefActivity, username, source) }
                     if (remembered != null) {
                         if (renderedSnapshot == null) showRememberedPresentation(remembered)
@@ -292,7 +312,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                         renderedSnapshot = null
                     }
                 }
-                if (!ready) setLoading(true)
+                if (!ready && !incremental) setLoading(true)
                 val result = if (debugScenario == BriefDebugScenario.REAL && !ready) {
                     BriefAiCoordinator.enrich(
                         this@TwidgetBriefActivity,
@@ -303,6 +323,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     BriefAiResult(source, if (source.providerUsed == BriefProviderUsed.LOCAL) BriefLocalStatus.AVAILABLE else BriefLocalStatus.UNAVAILABLE)
                 }
                 localStatus = result.localStatus
+                if (canUpdateIncrementally(result.snapshot) && result.snapshot != renderedSnapshot) render(result.snapshot)
                 if (showProviderSetupIfRequired(result)) return@launch
                 if (result.snapshot != renderedSnapshot) render(result.snapshot)
                 if (clearContentPendingOnSuccess) {
@@ -319,7 +340,13 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
+    private fun canUpdateIncrementally(source: BriefSnapshot): Boolean =
+        source.summaryEvidenceKey.isNotBlank() && source.providerUsed != BriefProviderUsed.TEMPLATE &&
+            BriefRunCache.providerMatches(BriefSettingsStore.provider(this), source.providerUsed)
+
     override fun onDestroy() {
+        cardEntranceAnimations.forEach { it.cancel() }
+        cardEntranceAnimations.clear()
         apiKeyDialog?.dismiss()
         apiKeyDialog = null
         backgroundAnimator?.cancel()
@@ -331,7 +358,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun showRememberedPresentation(presentation: BriefPresentation) {
         visiblePresentation = presentation
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
-            .showStaticText(getString(R.string.brief_summary_title_week))
+            .showStaticText(presentation.title)
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(presentation.body)
         findViewById<LinearLayout>(R.id.brief_cards).removeAllViews()
         entranceSections = emptyList()
@@ -543,7 +570,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 setOnClickListener {
                     if (required) showRequiredApiKeyDialog() else {
                         providerSetupRequired = false
-                        loadBrief(forceEngine = true, forceAi = true, showSpinner = true)
+                        val incremental = renderedSnapshot?.let(::canUpdateIncrementally) == true
+                        loadBrief(forceEngine = true, forceAi = !incremental, showSpinner = !incremental)
                     }
                 }
             }
@@ -704,26 +732,35 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     ) {
         renderedSnapshot = snapshot
         visiblePresentation = BriefStore.presentation(this, username, snapshot)
-        val summary = BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
+        val summary = visiblePresentation?.summary() ?: BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
-            .showStaticText(getString(R.string.brief_summary_title_week))
+            .showStaticText(summary.title)
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(summary.body)
         val columns = configureResponsiveLayout()
         val container = findViewById<LinearLayout>(R.id.brief_cards)
+        val keepLinkCard = container.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.visibility == View.VISIBLE &&
+            BriefChatGptLinkCard.canRemainVisible(this)
         container.removeAllViews()
         // Keep every review preview independent so masonry can balance unequal tweet heights.
-        val reviews = if (debugScenario == BriefDebugScenario.REAL && snapshot.hasGeneratedNarrative) {
+        val reviews = if (debugScenario == BriefDebugScenario.REAL &&
+            (snapshot.hasGeneratedNarrative || canUpdateIncrementally(snapshot))) {
             BriefPostCoachSection.create(this, username, analytics,
                 excludedPostUrls = snapshot.cards.mapNotNull { resolveBriefPost(it, analytics)?.url }.toSet())
         } else null
         refreshReviewPreviews = reviews?.refreshDescriptions
         val sections = buildList {
+            if (debugScenario == BriefDebugScenario.CHATGPT_LINK) {
+                add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity, preview = true) {} to 20)
+            }
+            if (debugScenario == BriefDebugScenario.REAL && (keepLinkCard || BriefChatGptLinkCard.shouldShow(this@TwidgetBriefActivity))) {
+                add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity) { checkContentOnResume = true } to 20)
+            }
+            snapshot.cards.forEach { card -> add(cardSection(card, analytics) to 20) }
             reviews?.let { items ->
                 items.previews.forEach { add(it to 20) }
                 add(items.libraryCard to 20)
             }
 
-            snapshot.cards.forEach { card -> add(cardSection(card, analytics) to 20) }
         }.mapIndexed { index, (section, topMargin) ->
             section to if (index == 0) 32 else topMargin
         }
@@ -798,7 +835,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     ): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         val selectedPost = resolveBriefPost(card, analytics)
-        addView(sectionLabel(card.body.ifBlank { card.title }).apply {
+        val insight = card.type in setOf(BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.CONVERSATION_PULSE,
+            BriefCardType.CONTENT_PATTERN, BriefCardType.WEEKLY_RECAP, BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT)
+        val description = card.body.ifBlank { card.title }.let { text ->
+            if (insight) text.substringBefore(". ").let { if (it.endsWith('.')) it else "$it." } else text
+        }
+        addView(sectionLabel(description).apply {
             setLineSpacing(dp(2).toFloat(), 1f)
         })
         val content = when (card.type) {
@@ -808,6 +850,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 DailyStreakStore.snapshot(this@TwidgetBriefActivity, username),
             )
             BriefCardType.FOLLOWER_CONTEXT, BriefCardType.POST_CONTEXT -> contextStatCard(card)
+            BriefCardType.CONTENT_EXPERIMENT,
+            BriefCardType.TOPIC_SPOTLIGHT,
+            BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN,
+            BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP ->
+                if (card.chartPoints.isEmpty()) contextStatCard(card) else BriefInsightViews.create(this@TwidgetBriefActivity, card) { performCardAction(card) }
             BriefCardType.GROWTH, BriefCardType.SLOWDOWN -> followerChartCard()
             BriefCardType.POST -> selectedPost?.let { postCard(it) }
                 ?: genericCard(card)
@@ -832,7 +879,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             gravity = Gravity.CENTER_VERTICAL
             addView(primaryText(card.title, 16f, bold = true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
             addView(ImageView(context).apply {
-                setImageResource(if (card.type == BriefCardType.FOLLOWER_CONTEXT) OneUiIconR.drawable.ic_oui_community else OneUiIconR.drawable.ic_oui_equalizer_2)
+                setImageResource(if (card.type in setOf(BriefCardType.FOLLOWER_CONTEXT, BriefCardType.AUDIENCE_MOMENTUM)) OneUiIconR.drawable.ic_oui_community else OneUiIconR.drawable.ic_oui_equalizer_2)
                 imageTintList = ColorStateList.valueOf(getColor(R.color.oneui_text_secondary))
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(12) })
@@ -1059,6 +1106,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun prepareBriefEntrance() {
+        cardEntranceAnimations.forEach { it.cancel() }
+        cardEntranceAnimations.clear()
         val title = findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
         val body = findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body)
         title.prepareNowBriefTitleMotion()
@@ -1148,6 +1197,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         AnimatorSet().apply {
             startDelay = delay
             playTogether(alpha, translation)
+            cardEntranceAnimations += this
             start()
         }
     }

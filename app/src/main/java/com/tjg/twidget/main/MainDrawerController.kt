@@ -313,7 +313,7 @@ internal class MainDrawerController(
     private fun renderDrawerNavigation(layout: ToolbarLayout) {
         if (showingEditNavigation) {
             layout.appBarLayout.seslAllowStartNestedScroll(true)
-            val scrollY = activity.findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)?.scrollY ?: 0
+            val scrollY = if (activity.findViewById<View>(R.id.dashboard_content)?.canScrollVertically(-1) == true) 1 else 0
             layout.setExpanded(expanded = expandedBeforeEditing && scrollY == 0, animate = false)
             if (hiddenBeforeEditing && scrollY > 0) layout.appBarLayout.seslSetHide(true, false)
             showingEditNavigation = false

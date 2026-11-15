@@ -69,10 +69,10 @@ class DashboardLaunchLayoutInstrumentedTest {
             if (activity is MainActivity && stage == Stage.CREATED) {
                 val root = activity.window.decorView
                 root.viewTreeObserver.addOnPreDrawListener {
-                    val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
+                    val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                     if (grid != null && frames.size < 30) {
-                        val sizes = (0 until grid.childCount).map { index ->
-                            val card = grid.getChildAt(index) as ViewGroup
+                        val sizes = grid.dashboardCardChildren().map { child ->
+                            val card = child as ViewGroup
                             val content = card.getChildAt(0)
                             if (content.width > card.width || card.right > grid.width - grid.paddingRight) {
                                 violations += "frame=${frames.size}, card=${card.tag}, grid=${grid.width}, " +

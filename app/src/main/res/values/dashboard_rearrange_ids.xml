@@ -1,4 +1,5 @@
 <resources>
+    <item name="dashboard_resize_animating" type="id" />
     <item name="dashboard_preferred_height" type="id" />
     <item name="dashboard_move_to_action" type="id" />
 </resources>

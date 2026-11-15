@@ -22,7 +22,7 @@ class ResponsiveDashboardLaunchInstrumentedTest {
             var cardWidth = 0
             scenario.onActivity { activity ->
                 assertFalse("Dashboard header starts collapsed", activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout).isExpanded)
-                val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
+                val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                 assertNotNull(grid)
                 assertEquals(if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2, grid.columnCount)
                 assertTrue(grid.childCount > 0)
@@ -30,9 +30,9 @@ class ResponsiveDashboardLaunchInstrumentedTest {
                 assertEquals("Accounts, native group divider and add-account item",
                     com.tjg.twidget.data.TwidgetStore.accounts(activity).size + 2, menu.adapter!!.itemCount)
                 width = grid.width
-                cardWidth = grid.getChildAt(0).width
-                val height = grid.getChildAt(0).height
-                for (i in 0 until grid.childCount) assertEquals(height, grid.getChildAt(i).height)
+                cardWidth = grid.dashboardCardChildren().first().width
+                val height = grid.dashboardCardChildren().first().height
+                for (i in grid.dashboardCardChildren().indices) assertEquals(height, grid.dashboardCardChildren()[i].height)
                 if (activity.resources.configuration.screenWidthDp >= 600) {
                     assertTrue(activity.findViewById<View>(dev.oneuiproject.oneui.design.R.id.navRailDrawerButton)
                         .getGlobalVisibleRect(Rect()))
@@ -52,7 +52,7 @@ class ResponsiveDashboardLaunchInstrumentedTest {
             assertTrue("Native expanded drawer must finish layout", expanded.await(5, java.util.concurrent.TimeUnit.SECONDS))
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             scenario.onActivity { activity ->
-                val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
+                val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                 assertTrue(activity.drawerController.isDrawerOpen)
                 val drawer = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_drawer)
                 assertEquals("Expanded drawer shows the complete rim", 255, drawer.foreground.alpha)
@@ -69,7 +69,7 @@ class ResponsiveDashboardLaunchInstrumentedTest {
                 assertTrue("Floating drawer clears navigation with a gap",
                     position[1] + drawer.height <= origin[1] + root.height - safe.bottom - gap)
                 assertEquals(width, grid.width)
-                assertEquals(cardWidth, grid.getChildAt(0).width)
+                assertEquals(cardWidth, grid.dashboardCardChildren().first().width)
                 assertTrue(activity.findViewById<View>(dev.oneuiproject.oneui.design.R.id.oui_des_drawer_header_button)
                     .getGlobalVisibleRect(Rect()))
                 activity.drawerController.setDrawerOpen(false, false)

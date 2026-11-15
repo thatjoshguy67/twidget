@@ -266,13 +266,20 @@ class SeslCompatibilityInstrumentedTest {
                 assertEquals("Cached heading", layout.collapsedTitle.toString())
                 assertEquals("@$account", layout.collapsedSubtitle.toString())
                 assertEquals(TwidgetStore.lastSyncedText(activity, TwidgetStore.currentStats(activity, account)), layout.expandedSubtitle.toString())
-                val grid = activity.findViewById<android.widget.GridLayout>(R.id.dashboard_content)
-                assertEquals(cards, (0 until grid.childCount).map { grid.getChildAt(it).tag })
-                assertEquals(activity.dp(DashboardCardSize.MILESTONE.heightDp), grid.getChildAt(0).layoutParams.height)
-                assertEquals(activity.dp(DashboardCardSize.CHART.heightDp), grid.getChildAt(1).layoutParams.height)
-                assertEquals("7,757", activity.findViewById<android.widget.TextView>(R.id.followers_value).text.toString())
-                assertFalse(activity.findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.main_refresh).isRefreshing)
-                observed.set(true)
+                val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                assertEquals(cards, activity.dashboardBinder.cardIds())
+                grid.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
+                    override fun onPreDraw(): Boolean {
+                        if (grid.dashboardCardChildren().isEmpty()) return true
+                        grid.viewTreeObserver.removeOnPreDrawListener(this)
+                        assertEquals(activity.dp(DashboardCardSize.MILESTONE.heightDp), grid.findViewWithTag<View>("milestone").layoutParams.height)
+                        assertEquals(activity.dp(DashboardCardSize.CHART.heightDp), grid.findViewWithTag<View>("followers").layoutParams.height)
+                        assertEquals("7,757", activity.findViewById<android.widget.TextView>(R.id.followers_value).text.toString())
+                        assertFalse(activity.findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.main_refresh).isRefreshing)
+                        observed.set(true)
+                        return true
+                    }
+                })
             }
         }
         val lifecycle = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
@@ -301,9 +308,9 @@ class SeslCompatibilityInstrumentedTest {
             settle()
             scenario.onActivity { activity ->
                 val layout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
-                val scroll = activity.findViewById<NestedScrollView>(R.id.dashboard_scroll)
-                scroll.scrollTo(0, activity.dp(180))
-                scrollY = scroll.scrollY
+                val scroll = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                scroll.scrollBy(0, activity.dp(180))
+                scrollY = scroll.computeVerticalScrollOffset()
                 height = layout.appBarLayout.height
                 val title = layout.collapsedTitle
                 activity.render()
@@ -315,7 +322,7 @@ class SeslCompatibilityInstrumentedTest {
                 val layout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
                 assertTrue("Edit mode keeps app bar geometry", layout.isExpandable)
                 assertEquals(height, layout.appBarLayout.height)
-                assertEquals(scrollY, activity.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollY)
+                assertEquals(scrollY, activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset())
                 assertEquals(activity.getString(R.string.edit_dashboard), layout.collapsedTitle.toString())
                 activity.editModeController.setEditMode(false)
             }
@@ -325,7 +332,7 @@ class SeslCompatibilityInstrumentedTest {
             scenario.onActivity { activity ->
                 val layout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
                 assertFalse("Leaving a scrolled edit session must not expand the heading", layout.isExpanded)
-                assertEquals(scrollY, activity.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollY)
+                assertEquals(scrollY, activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset())
                 offset = layout.appBarLayout.top
                 title = requireNotNull(layout.collapsedTitle)
                 activity.startActivity(Intent(activity, com.tjg.twidget.settings.SettingsActivity::class.java))
@@ -341,7 +348,7 @@ class SeslCompatibilityInstrumentedTest {
                 val layout = activity.findViewById<ToolbarLayout>(R.id.main_toolbar_layout)
                 assertSame(title, layout.collapsedTitle)
                 assertEquals(offset, layout.appBarLayout.top)
-                assertEquals(scrollY, activity.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollY)
+                assertEquals(scrollY, activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset())
             }
         }
     }

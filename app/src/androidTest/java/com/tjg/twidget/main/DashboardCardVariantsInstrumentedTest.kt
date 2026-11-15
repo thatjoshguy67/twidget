@@ -62,8 +62,8 @@ class DashboardCardVariantsInstrumentedTest {
             scenario.onActivity { activity ->
                 assertEquals(2, card(activity, "follower_count").getTag(R.id.dashboard_card_span))
                 assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "follower_count"))
-                val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
-                for (index in 0 until grid.childCount) assertEquals(grid.getChildAt(0).height, grid.getChildAt(index).height)
+                val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                grid.dashboardCardChildren().groupBy { it.top }.values.forEach { row -> row.forEach { assertEquals(row.first().height, it.height) } }
                 val text = card(activity, "follower_count").findViewById<TextView>(R.id.followers_value)
                 assertEquals("Written count remains complete", text.text.length, text.layout.getLineEnd(text.lineCount - 1))
             }
@@ -349,63 +349,6 @@ class DashboardCardVariantsInstrumentedTest {
         }
     }
 
-    @Test fun dragHandleTracksWidthAndAnimatesTheSnap() = withLayout { context ->
-        TwidgetStore.saveDashboardCards(context, listOf("followers", "follower_count", "follower_ratio"))
-        TwidgetStore.setDashboardCardExpanded(context, "follower_count", false)
-        // Pin the neighbour too: a user's saved wide ratio card already starts
-        // on the next row and would correctly have nowhere to move in this fixture.
-        TwidgetStore.setDashboardCardExpanded(context, "follower_ratio", false)
-        val settled = java.util.concurrent.CountDownLatch(1)
-        var intermediateFrames = 0
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { it.editModeController.setEditMode(true) }
-            SystemClock.sleep(200)
-            scenario.onActivity { activity ->
-                val tile = card(activity, "follower_count")
-                val small = tile.width
-                val large = card(activity, "followers").width
-                val neighbour = card(activity, "follower_ratio")
-                val neighbourStart = neighbour.left to neighbour.top
-                val handle = tile.findViewWithTag<View>("dashboard_resize_follower_count")
-                val start = SystemClock.uptimeMillis()
-                val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
-                val gridOrigin = IntArray(2).also(grid::getLocationOnScreen)
-                // Start just outside the card: the edge target includes its surrounding gutter.
-                val x = tile.right + activity.dp(4).toFloat()
-                val y = tile.top + tile.height / 2f
-                fun touch(action: Int, dx: Float) {
-                    val event = android.view.MotionEvent.obtain(start, SystemClock.uptimeMillis(), action,
-                        gridOrigin[0] + x + dx, gridOrigin[1] + y, 0)
-                    event.offsetLocation(-gridOrigin[0].toFloat(), -gridOrigin[1].toFloat())
-                    grid.dispatchTouchEvent(event)
-                    event.recycle()
-                }
-                touch(android.view.MotionEvent.ACTION_DOWN, 0f)
-                val distance = (large - small) * 0.75f
-                touch(android.view.MotionEvent.ACTION_MOVE, distance)
-                assertTrue("Native card width follows the drag", tile.width > small && tile.width < large)
-                assertNotEquals("Surrounding cards move before the drag is released", neighbourStart, neighbour.left to neighbour.top)
-                grid.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
-                    override fun onPreDraw(): Boolean {
-                        val width = card(activity, "follower_count").width
-                        if (width > small + 1 && width < large - 1) intermediateFrames++
-                        if (intermediateFrames >= 3 && width == large) {
-                            grid.viewTreeObserver.removeOnPreDrawListener(this)
-                            settled.countDown()
-                        }
-                        return true
-                    }
-                })
-                touch(android.view.MotionEvent.ACTION_UP, distance)
-            }
-            assertTrue("Snap animates through several native widths", settled.await(3, java.util.concurrent.TimeUnit.SECONDS))
-            scenario.onActivity { activity ->
-                assertEquals(2, card(activity, "follower_count").getTag(R.id.dashboard_card_span))
-                assertEquals(card(activity, "followers").width, card(activity, "follower_count").width)
-            }
-        }
-    }
-
     @Test fun loadedFollowerAvatarsKeepTheirFullCircularCropAfterRemeasure() = withLayout { context ->
         val account = TwidgetStore.accounts(context).first()
         org.junit.Assume.assumeTrue(com.tjg.twidget.followers.TopFollowersStore.read(context, account).top.isNotEmpty())
@@ -442,12 +385,10 @@ class DashboardCardVariantsInstrumentedTest {
         }
     }
 
-    private fun cardIds(activity: MainActivity): List<String> = activity.findViewById<GridLayout>(R.id.dashboard_content).let { grid ->
-        (0 until grid.childCount).map { grid.getChildAt(it).tag.toString() }
-    }
+    private fun cardIds(activity: MainActivity): List<String> = activity.dashboardBinder.cardIds()
 
     private fun card(activity: MainActivity, id: String): ViewGroup =
-        activity.findViewById<GridLayout>(R.id.dashboard_content).findViewWithTag(id)
+        activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).findViewWithTag(id)
 
     private fun windows(): List<View> = WindowInspector.getGlobalWindowViews().flatMap(::descendants)
     private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)

@@ -7,4 +7,5 @@
     <string name="dashboard_before_card">Avant %1$s</string>
     <string name="dashboard_after_card">Après %1$s</string>
     <string name="dashboard_drop_here">Déplacer %1$s ici</string>
+    <string name="dashboard_card_resized">Taille de la carte modifiée</string>
 </resources>

@@ -131,7 +131,7 @@ class MainAddCardDrawerInstrumentedTest {
                 }
                 SystemClock.sleep(150)
                 scenario.onActivity { activity ->
-                    val scroll = activity.findViewById<NestedScrollView>(R.id.dashboard_scroll)
+                    val scroll = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                     val appBar = allViews(activity.findViewById(android.R.id.content))
                         .filterIsInstance<com.google.android.material.appbar.AppBarLayout>().first()
                     scroll.startNestedScroll(androidx.core.view.ViewCompat.SCROLL_AXIS_VERTICAL)
@@ -152,7 +152,7 @@ class MainAddCardDrawerInstrumentedTest {
                     assertEquals("Scrolled tablet heading is hidden before opening overflow", 0f, heading.alpha, 0.01f)
                     profileIcon = toolbar.menu.findItem(R.id.menu_open_profile).icon
                     noticesIcon = toolbar.menu.findItem(R.id.menu_notices).icon
-                    activity.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).getLocationInWindow(positionBeforeOverflow)
+                    activity.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().getLocationInWindow(positionBeforeOverflow)
                     assertTrue("Overflow opens", toolbar.showOverflowMenu())
                 }
                 SystemClock.sleep(250)
@@ -165,7 +165,7 @@ class MainAddCardDrawerInstrumentedTest {
                     assertSame("Preparing overflow retains the profile icon", profileIcon, toolbar.menu.findItem(R.id.menu_open_profile).icon)
                     assertSame("Preparing overflow retains the notices icon", noticesIcon, toolbar.menu.findItem(R.id.menu_notices).icon)
                     val position = IntArray(2)
-                    activity.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).getLocationInWindow(position)
+                    activity.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().getLocationInWindow(position)
                     assertArrayEquals("Opening overflow does not shift dashboard content", positionBeforeOverflow, position)
                     toolbar.hideOverflowMenu()
                 }
@@ -175,7 +175,7 @@ class MainAddCardDrawerInstrumentedTest {
                         dev.oneuiproject.oneui.design.R.id.toolbarlayout_main_toolbar)
                     val heading = allViews(toolbar).filterIsInstance<TextView>().first { it.text == toolbar.title }
                     assertEquals("Closing overflow keeps the tablet heading hidden", 0f, heading.alpha, 0.01f)
-                    activity.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollTo(0, 0)
+                    activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).scrollToPosition(0)
                     activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout)
                         .setExpanded(false, animate = false)
                 }
@@ -186,7 +186,7 @@ class MainAddCardDrawerInstrumentedTest {
                     assertTrue("Bottom edit button is available in normal mode",
                         it.findViewById<View>(R.id.dashboard_edit_button).isShown)
                     entryObserved = observeTransition(it, appears = true)
-                    val params = it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).layoutParams as ViewGroup.MarginLayoutParams
+                    val params = it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().layoutParams as ViewGroup.MarginLayoutParams
                     normalVerticalMargins = params.topMargin to params.bottomMargin
                     it.findViewById<View>(R.id.dashboard_edit_button).performClick()
                     assertTrue("Bottom button enters edit mode", it.editModeController.editMode)
@@ -195,7 +195,7 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(400)
                 assertTrue("Every card animates size and shadow across several intermediate frames", entryObserved.get())
                 scenario.onActivity {
-                    val params = it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).layoutParams as ViewGroup.MarginLayoutParams
+                    val params = it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().layoutParams as ViewGroup.MarginLayoutParams
                     assertEquals("Edit mode adds no extra vertical spacing", normalVerticalMargins, params.topMargin to params.bottomMargin)
                 }
                 scenario.onActivity { it.editModeController.setEditMode(false) }
@@ -208,14 +208,14 @@ class MainAddCardDrawerInstrumentedTest {
                 val editTapBounds = Rect()
                 scenario.onActivity { activity ->
                     activity.editModeController.setEditMode(true)
-                    val wrapper = activity.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0) as ViewGroup
+                    val wrapper = activity.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first() as ViewGroup
                     val content = wrapper.getChildAt(1)
                     content.setOnClickListener { editContentClicks++ }
                     assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS, content.importantForAccessibility)
                 }
                 SystemClock.sleep(300)
                 scenario.onActivity { activity ->
-                    val wrapper = activity.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0) as ViewGroup
+                    val wrapper = activity.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first() as ViewGroup
                     assertTrue("Edited card has laid out before tapping", wrapper.getChildAt(1).getGlobalVisibleRect(editTapBounds))
                 }
                 touch(MotionEvent.ACTION_DOWN, editTapBounds.centerX().toFloat(), editTapBounds.centerY().toFloat())
@@ -324,7 +324,7 @@ class MainAddCardDrawerInstrumentedTest {
                 }
                 assertFalse("Pickup dismisses the drawer", windowViews().any { it.contentDescription?.toString() == "Add cards" && it.isShown })
                 val firstSlot = Rect()
-                scenario.onActivity { it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).getGlobalVisibleRect(firstSlot) }
+                scenario.onActivity { it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().getGlobalVisibleRect(firstSlot) }
                 val dropX = (firstSlot.left + 16 * context.resources.displayMetrics.density)
                 val dropY = (firstSlot.top + 16 * context.resources.displayMetrics.density)
                 touch(MotionEvent.ACTION_MOVE, dropX, dropY)
@@ -332,7 +332,7 @@ class MainAddCardDrawerInstrumentedTest {
                 touch(MotionEvent.ACTION_UP, dropX, dropY)
                 SystemClock.sleep(100)
                 scenario.onActivity {
-                    val card = it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0) as ViewGroup
+                    val card = it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first() as ViewGroup
                     assertTrue("Dropped card has a landing bounce", kotlin.math.abs(card.scaleX - 1f) > 0.0001f)
                     assertTrue("Edit mode cards have the soft shadow", card.getChildAt(0) is com.tjg.twidget.ui.CardShadowView)
                     val grid = it.findViewById<ViewGroup>(R.id.dashboard_content)
@@ -357,10 +357,10 @@ class MainAddCardDrawerInstrumentedTest {
                 val pickup = Rect()
                 scenario.onActivity { activity ->
                     val dashboard = activity.findViewById<ViewGroup>(R.id.dashboard_content)
-                    val scrollView = activity.findViewById<NestedScrollView>(R.id.dashboard_scroll)
-                    scrollView.scrollTo(0, 0)
+                    val scrollView = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                    scrollView.scrollToPosition(0)
                     scrollView.getGlobalVisibleRect(viewport)
-                    dashboard.getChildAt(0).getGlobalVisibleRect(pickup)
+                    dashboard.dashboardCardChildren().first().getGlobalVisibleRect(pickup)
                 }
                 lateinit var exitObserved: java.util.concurrent.atomic.AtomicBoolean
                 scenario.onActivity {
@@ -370,7 +370,7 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(400)
                 assertTrue("Exit smoothly restores card size", exitObserved.get())
                 scenario.onActivity {
-                    val card = it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0) as ViewGroup
+                    val card = it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first() as ViewGroup
                     assertFalse("Normal mode cards have no shadow", card.getChildAt(0) is com.tjg.twidget.ui.CardShadowView)
                     card.getGlobalVisibleRect(pickup)
                 }
@@ -380,7 +380,7 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(120)
                 scenario.onActivity {
                     assertFalse("Press feedback precedes edit mode", it.editModeController.editMode)
-                    assertTrue("Holding visibly compresses the tile", it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).scaleX < 1f)
+                    assertTrue("Holding visibly compresses the tile", it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().scaleX < 1f)
                 }
                 SystemClock.sleep(300)
                 scenario.onActivity { assertTrue("Holding enters edit mode within 420ms", it.editModeController.editMode) }
@@ -388,7 +388,7 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(250)
                 assertTrue("Unheld cards animate over several frames when a held card enters editing", heldEntryObserved.get())
                 scenario.onActivity {
-                    it.findViewById<ViewGroup>(R.id.dashboard_content).getChildAt(0).getGlobalVisibleRect(pickup)
+                    it.findViewById<ViewGroup>(R.id.dashboard_content).dashboardCardChildren().first().getGlobalVisibleRect(pickup)
                 }
                 touch(MotionEvent.ACTION_DOWN, pickup.centerX().toFloat(), pickup.centerY().toFloat())
                 SystemClock.sleep(750)
@@ -398,13 +398,13 @@ class MainAddCardDrawerInstrumentedTest {
                 SystemClock.sleep(600)
                 var downScroll = 0
                 scenario.onActivity {
-                    downScroll = it.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollY
+                    downScroll = it.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset()
                     assertTrue("Holding still near bottom keeps scrolling", downScroll > 0)
                 }
                 touch(MotionEvent.ACTION_MOVE, x, (viewport.top + 12).toFloat())
                 SystemClock.sleep(350)
                 scenario.onActivity {
-                    assertTrue("Holding near top scrolls back up", it.findViewById<NestedScrollView>(R.id.dashboard_scroll).scrollY < downScroll)
+                    assertTrue("Holding near top scrolls back up", it.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset() < downScroll)
                 }
                 touch(MotionEvent.ACTION_UP, x, (viewport.top + 12).toFloat())
             }

@@ -7,4 +7,5 @@
     <string name="dashboard_before_card">Abans de %1$s</string>
     <string name="dashboard_after_card">Després de %1$s</string>
     <string name="dashboard_drop_here">Mou %1$s aquí</string>
+    <string name="dashboard_card_resized">Mida de la targeta canviada</string>
 </resources>

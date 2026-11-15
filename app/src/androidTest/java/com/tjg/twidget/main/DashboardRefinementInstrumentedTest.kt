@@ -190,8 +190,8 @@ class DashboardRefinementInstrumentedTest {
                 val before = TwidgetStore.dashboardCards(activity, account)
                 assertTrue(card.performAccessibilityAction(R.id.dashboard_move_later_action, null))
                 assertEquals(before.indexOf("avg_views") + 1, TwidgetStore.dashboardCards(activity, account).indexOf("avg_views"))
-                val scroll = activity.findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)
-                scroll.scrollTo(0, activity.dp(300))
+                val scroll = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                scroll.scrollBy(0, activity.dp(300))
             }
             instrumentation.waitForIdleSync()
             scenario.recreate()
@@ -199,7 +199,7 @@ class DashboardRefinementInstrumentedTest {
             scenario.onActivity { activity ->
                 assertEquals(account, activity.selectedAccount)
                 assertTrue("Editing survives recreation", activity.editModeController.editMode)
-                assertTrue("Reading position survives recreation", activity.findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll).scrollY > 0)
+                assertTrue("Reading position survives recreation", activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content).computeVerticalScrollOffset() > 0)
             }
         }
     }

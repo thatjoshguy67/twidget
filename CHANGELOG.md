@@ -4,6 +4,11 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Move the dashboard onto SESL RecyclerView and ItemTouchHelper, with opaque
+  real-view dragging, stable card identity, native edge scrolling and settling.
+  Resize through discrete animated span states with left/right handles,
+  cancellation and profile-scoped Undo instead of morphing the whole grid.
+
 - Generate Your Brief and tweet reviews using a ChatGPT subscription or OpenAI
   API key, with separate fixed model defaults and model overrides in debug settings.
   Simplify provider settings and add a one-time ChatGPT linking card for Gemini users.

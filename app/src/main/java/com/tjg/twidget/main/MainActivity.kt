@@ -118,7 +118,12 @@ class MainActivity : EdgeToEdgeActivity() {
             drawerController.renderHeader()
         }
         setupLaunchChrome()
-        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root))
+        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root)) { bottomInset ->
+            findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)?.let { list ->
+                list.clipToPadding = false
+                list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, dp(96) + bottomInset)
+            }
+        }
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         // Bind the saved dashboard before its first frame. Remote refresh and
         // maintenance begin afterwards without replacing the cached cards.
@@ -185,7 +190,7 @@ class MainActivity : EdgeToEdgeActivity() {
     }
 
     override fun onStop() {
-        editModeController.finishDashboardDrag(commit = false)
+        editModeController.cancelInteractions()
         runCatching { unregisterReceiver(briefUpdateReceiver) }
         runCatching { unregisterReceiver(bangerUpdateReceiver) }
         runCatching { unregisterReceiver(topFollowersUpdateReceiver) }
@@ -262,7 +267,7 @@ class MainActivity : EdgeToEdgeActivity() {
         outState.putString(STATE_ACCOUNT, selectedAccount)
         outState.putBoolean("dashboard_editing", ::editModeController.isInitialized && editModeController.editMode)
         outState.putBoolean("dashboard_drawer_open", ::drawerController.isInitialized && drawerController.isDrawerOpen)
-        val scroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)
+        val scroll = findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
         val grid = findViewById<android.view.ViewGroup>(R.id.dashboard_content)
         if (scroll != null && grid != null) {
             val viewport = android.graphics.Rect()
@@ -270,7 +275,7 @@ class MainActivity : EdgeToEdgeActivity() {
             for (index in 0 until grid.childCount) {
                 val card = grid.getChildAt(index)
                 val position = IntArray(2).also(card::getLocationOnScreen)
-                if (position[1] + card.height > viewport.top && card.visibility == View.VISIBLE) {
+                if (DashboardCardType.fromId(card.tag as? String ?: "") != null && position[1] + card.height > viewport.top && card.visibility == View.VISIBLE) {
                     outState.putString("dashboard_scroll_anchor", card.tag?.toString())
                     outState.putFloat("dashboard_scroll_offset", (position[1] - viewport.top) / resources.displayMetrics.density)
                     break
@@ -288,15 +293,8 @@ class MainActivity : EdgeToEdgeActivity() {
                 if (root.width == 0) return
                 root.viewTreeObserver.removeOnGlobalLayoutListener(this)
                 state.getString("dashboard_scroll_anchor")?.let { id ->
-                    val scroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.dashboard_scroll)
-                    val card = findViewById<android.view.ViewGroup>(R.id.dashboard_content)?.findViewWithTag<View>(id)
-                    if (scroll != null && card != null) {
-                        val viewport = android.graphics.Rect()
-                        scroll.getGlobalVisibleRect(viewport)
-                        val position = IntArray(2).also(card::getLocationOnScreen)
-                        val offset = (state.getFloat("dashboard_scroll_offset") * resources.displayMetrics.density).toInt()
-                        scroll.scrollBy(0, position[1] - viewport.top - offset)
-                    }
+                    val offset = (state.getFloat("dashboard_scroll_offset") * resources.displayMetrics.density).toInt()
+                    dashboardBinder.scrollToCard(id, offset)
                 }
                 if (state.getBoolean("dashboard_drawer_open") && !editModeController.editMode)
                     drawerController.setDrawerOpen(true, false)
@@ -368,7 +366,7 @@ class MainActivity : EdgeToEdgeActivity() {
         }
         val dashboard = findViewById<SwipeRefreshLayout>(R.id.main_refresh)
         dashboard.visibility = View.VISIBLE
-        dashboard.isEnabled = true
+        dashboard.isEnabled = !editModeController.editMode
         if (bindDashboard) dashboardBinder.bindContent(refreshRemote)
         drawerController.buildDrawer()
         drawerController.renderHeader()

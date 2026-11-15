@@ -32,4 +32,41 @@ class DashboardResizePolicyTest {
         assertEquals(-1, DashboardResizeEdge.LEFT.direction)
         assertEquals(1, DashboardResizeEdge.RIGHT.direction)
     }
+    @Test fun discretePreviewsHaveABufferBetweenExpandAndShrink() {
+        assertEquals(1, DashboardResizePolicy.previewSpan(.55f, 1))
+        assertEquals(2, DashboardResizePolicy.previewSpan(.56f, 1))
+        assertEquals(2, DashboardResizePolicy.previewSpan(.50f, 2))
+        assertEquals(1, DashboardResizePolicy.previewSpan(.44f, 2))
+        assertEquals(1, DashboardResizePolicy.previewSpan(.50f, 1))
+    }
+    @Test fun inwardExpansionKeepsTheOuterEdgeInTwoAndFourColumns() {
+        for (columns in listOf(2, 4)) for (rtl in listOf(false, true)) {
+            val order = (0 until columns + 2).map { "$it" }
+            val id = order[columns - 1]
+            val spans = order.associateWith { 1 }
+            val edge = if (rtl) DashboardResizeEdge.RIGHT else DashboardResizeEdge.LEFT
+            val result = DashboardResizePolicy.orderForResize(order, spans, id, 2, edge, rtl, columns)
+            val packed = DashboardDragPolicy.pack(result.map { DashboardDragPolicy.Tile(it, if (it == id) 2 else 1) }, columns)
+            assertEquals(columns, packed.getValue(id).column + 2)
+            assertEquals(0, packed.getValue(id).row)
+            assertEquals(order.toSet(), result.toSet())
+        }
+    }
+    @Test fun mixedWideNeighboursUseAFillerWithoutLosingCards() {
+        val order = listOf("wide", "resizing", "filler", "other")
+        val spans = order.associateWith { if (it == "wide") 2 else 1 }
+        val result = DashboardResizePolicy.orderForResize(order, spans, "resizing", 2, DashboardResizeEdge.LEFT, false, 4)
+        assertEquals(listOf("filler", "resizing", "wide", "other"), result)
+        val packed = DashboardDragPolicy.pack(result.map { DashboardDragPolicy.Tile(it, if (it == "wide" || it == "resizing") 2 else 1) }, 4)
+        assertEquals(1, packed.getValue("resizing").column)
+        assertEquals(order.toSet(), result.toSet())
+    }
+    @Test fun shrinkFromTheStartKeepsTheOppositeEdgeAndFlowEndPreservesOrder() {
+        val order = listOf("a", "resizing", "filler", "other")
+        val spans = order.associateWith { if (it == "resizing") 2 else 1 }
+        val shrunk = DashboardResizePolicy.orderForResize(order, spans, "resizing", 1, DashboardResizeEdge.LEFT, false, 4)
+        assertEquals(listOf("a", "filler", "resizing", "other"), shrunk)
+        assertEquals(order, DashboardResizePolicy.orderForResize(order, spans, "resizing", 1, DashboardResizeEdge.RIGHT, false, 4))
+        assertEquals(order, DashboardResizePolicy.orderForResize(order, spans, "resizing", 2, DashboardResizeEdge.LEFT, false, 4))
+    }
 }

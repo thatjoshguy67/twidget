@@ -330,7 +330,7 @@ internal class MainAddCardDrawer(
         (cardView as? dev.oneuiproject.oneui.delegates.ViewRoundedCorner)?.roundedCorners = 0
         TwidgetFonts.applyTo(cardView)
         // Render at the real dashboard column width before scaling the catalogue tile.
-        val grid = activity.findViewById<android.widget.GridLayout>(R.id.dashboard_content)
+        val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
         val columnWidth = ((grid.width - grid.paddingLeft - grid.paddingRight) / grid.columnCount.coerceAtLeast(1)).coerceAtLeast(activity.dp(120))
         val sourceWidth = (columnWidth * span - activity.dp(14)).coerceAtLeast(activity.dp(100))
         val sourceHeight = activity.dp(card.preferredHeightDp)

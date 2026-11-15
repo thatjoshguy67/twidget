@@ -33,8 +33,8 @@ class DashboardSnapshotInstrumentedTest {
                 scenario.onActivity { activity ->
                     activity.selectedAccount = account
                     activity.dashboardBinder.bindContent()
-                    val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
-                    val wrappers = (0 until grid.childCount).map { grid.getChildAt(it) }
+                    val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
+                    val wrappers = grid.dashboardCardChildren()
                     val content = wrappers.map { (it as android.view.ViewGroup).getChildAt(0) }
                     val timings = (1..10).map {
                         val start = SystemClock.elapsedRealtimeNanos()
@@ -42,9 +42,9 @@ class DashboardSnapshotInstrumentedTest {
                         (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
                     }
                     wrappers.forEachIndexed { index, wrapper ->
-                        assertSame("Data refresh retains wrapper/focus", wrapper, grid.getChildAt(index))
+                        assertSame("Data refresh retains wrapper/focus", wrapper, grid.dashboardCardChildren()[index])
                         assertSame("Metric and streak views remain bound", content[index],
-                            (grid.getChildAt(index) as android.view.ViewGroup).getChildAt(0))
+                            (grid.dashboardCardChildren()[index] as android.view.ViewGroup).getChildAt(0))
                     }
                     File(context.cacheDir, "dashboard-warm-bind-ms.txt").writeText(timings.toString())
                 }

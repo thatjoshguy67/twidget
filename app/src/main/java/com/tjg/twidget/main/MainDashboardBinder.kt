@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.tjg.twidget.ui.DashboardRecyclerView
+import com.tjg.twidget.ui.TwidgetHaptics
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -123,6 +124,8 @@ internal class MainDashboardBinder(
 ) {
     private val editModeController get() = activity.editModeController
     private val cardResize = DashboardCardResize(activity)
+    private val cardMenu = DashboardCardMenu(activity)
+    internal fun dismissCardMenu() = cardMenu.dismissIfShowing()
     internal fun resizeCard(card: DashboardCardType) = cardResize.toggle(card)
     private val nativeCards = DashboardRecyclerController(activity, this)
     internal val isResizing get() = cardResize.isActive
@@ -134,7 +137,14 @@ internal class MainDashboardBinder(
     internal fun previewCardResize(card: DashboardCardType, span: Int, order: List<String>) = nativeCards.previewResize(card, span, order)
     internal fun finishCardResize(card: DashboardCardType, order: List<String>) { nativeCards.finishResize(card, order); applyDeferredBinding() }
     internal fun scrollToCard(id: String, offset: Int = 0) = nativeCards.scrollToCard(id, offset)
-    internal fun dispose() { cardResize.dispose() }
+    internal fun dispose() {
+        cardMenu.dismiss()
+        activity.findViewById<ViewGroup>(R.id.dashboard_content)?.let { grid ->
+            for (index in 0 until grid.childCount)
+                (grid.getChildAt(index).getTag(R.id.dashboard_card_gesture) as? DashboardCardGesture)?.cancel()
+        }
+        cardResize.dispose()
+    }
     private var deferredBinding = false
     private fun applyDeferredBinding() {
         if (deferredBinding) activity.findViewById<View>(R.id.dashboard_content)?.post {
@@ -165,6 +175,7 @@ internal class MainDashboardBinder(
     private fun bindPage(page: View, account: String, refreshRemote: Boolean) {
         if (!editModeController.onDashboardBinding(account)) { deferredBinding = true; return }
         deferredBinding = false
+        cardMenu.validate(account, editModeController.editMode)
         val snapshot = TwidgetStore.accountSnapshot(activity, account)
         renderSnapshot = snapshot
         val stats = snapshot.stats
@@ -499,11 +510,6 @@ internal class MainDashboardBinder(
                 wrapper.removeView(previous)
                 next.setTag(R.id.dashboard_card_content, true)
                 wrapper.addView(next, 0, FrameLayout.LayoutParams(-1, -1))
-                val handler = object : View.OnLongClickListener {
-                    override fun onLongClick(view: View) = handleDashboardCardLongPress(card, wrapper)
-                    override fun onLongClickUseDefaultHapticFeedback(view: View) = false
-                }
-                attachCardLongPress(next, handler)
             }
         }
         updateCardEditing(wrapper, card)
@@ -511,12 +517,31 @@ internal class MainDashboardBinder(
 
     private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
         object : FrameLayout(activity) {
-            private val holdFeedback = com.tjg.twidget.ui.CardHoldFeedback(this, enabled = { !editModeController.editMode })
+            private val gesture = DashboardCardGesture(this,
+                canStart = { event -> (0 until childCount).map(::getChildAt).filterIsInstance<ImageButton>().none {
+                    it.visibility == View.VISIBLE && event.x >= it.left && event.x < it.right && event.y >= it.top && event.y < it.bottom
+                } },
+                onHold = { cancelContentTouch(); handleDashboardCardHold(card, this, pointerHeld = true) },
+                onDrag = { nativeCards.startDrag(card, this) },
+                onRelease = { cardMenu.release() },
+                onCancel = { cardMenu.dismiss() })
+            init { setTag(R.id.dashboard_card_gesture, gesture) }
+            private fun cancelContentTouch() {
+                val now = android.os.SystemClock.uptimeMillis()
+                val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+                // Cancel chart tooltips and child ripples without cancelling
+                // RecyclerView's original pointer used for a subsequent drag.
+                super.dispatchTouchEvent(cancel)
+                cancel.recycle()
+            }
             private var touchingEditButton = false
             override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val measuredHeightSpec = (getTag(R.id.dashboard_drag_height) as? Int)?.let {
+                    View.MeasureSpec.makeMeasureSpec(it, View.MeasureSpec.EXACTLY)
+                } ?: heightMeasureSpec
                 val current = (0 until childCount).map { getChildAt(it) }
                     .firstOrNull { it.getTag(R.id.dashboard_card_content) == true } ?: content
-                com.tjg.twidget.ui.DashboardCardDesign.apply(current, View.MeasureSpec.getSize(heightMeasureSpec),
+                com.tjg.twidget.ui.DashboardCardDesign.apply(current, View.MeasureSpec.getSize(measuredHeightSpec),
                     View.MeasureSpec.getSize(widthMeasureSpec))
                 val radius = activity.dp(28).toFloat()
                 for (index in 0 until childCount) {
@@ -525,7 +550,7 @@ internal class MainDashboardBinder(
                     else if (decoration.tag == EDIT_BORDER_TAG)
                         (decoration.background as? GradientDrawable)?.cornerRadius = radius
                 }
-                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+                super.onMeasure(widthMeasureSpec, measuredHeightSpec)
             }
             private val resizeClip = android.graphics.Path()
             override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -568,7 +593,7 @@ internal class MainDashboardBinder(
                 if (!editModeController.editMode) return super.onInterceptTouchEvent(event)
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                     touchingEditButton = (0 until childCount).map { getChildAt(it) }
-                        .filter { it.visibility == View.VISIBLE && (it is ImageButton || (it.tag as? String)?.startsWith("dashboard_resize_${card.id}") == true) }.any { button ->
+                        .filter { it.visibility == View.VISIBLE && it is ImageButton }.any { button ->
                             event.x >= button.left && event.x < button.right && event.y >= button.top && event.y < button.bottom
                         }
                 }
@@ -577,9 +602,10 @@ internal class MainDashboardBinder(
                 return !touchingEditButton
             }
             override fun dispatchTouchEvent(event: MotionEvent): Boolean =
-                holdFeedback.onTouch(event) || super.dispatchTouchEvent(event)
+                gesture.onTouch(event) || super.dispatchTouchEvent(event)
             override fun onDetachedFromWindow() {
-                holdFeedback.detach()
+                gesture.cancel()
+                DashboardCardMotion.cancel(this)
                 super.onDetachedFromWindow()
             }
         }.apply {
@@ -587,7 +613,7 @@ internal class MainDashboardBinder(
             setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
             setTag(R.id.dashboard_preferred_height, card.preferredHeightDp)
             val longPressHandler = object : View.OnLongClickListener {
-                override fun onLongClick(view: View): Boolean = handleDashboardCardLongPress(card, this@apply)
+                override fun onLongClick(view: View): Boolean = handleDashboardCardHold(card, this@apply, pointerHeld = false)
 
                 // API 34+ uses our action-specific feedback; older releases retain automatic pickup.
                 override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false
@@ -598,7 +624,6 @@ internal class MainDashboardBinder(
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ))
             setOnLongClickListener(longPressHandler)
-            attachCardLongPress(content, longPressHandler)
             updateCardEditing(this, card)
         }
 
@@ -613,6 +638,13 @@ internal class MainDashboardBinder(
         isFocusable = enabled
         contentDescription = if (enabled) activity.getString(card.labelRes) else null
         content.importantForAccessibility = if (enabled) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS else View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        if (enabled && card.supportsSizeVariants) {
+            val label = activity.getString(if (card.span(activity, activity.selectedAccount) == 2)
+                R.string.dashboard_shrink_card else R.string.dashboard_expand_card, activity.getString(card.labelRes))
+            androidx.core.view.ViewCompat.replaceAccessibilityAction(this,
+                androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat(R.id.dashboard_resize_action, label),
+                label) { _, _ -> editModeController.resizeDashboardCard(card); true }
+        }
         if (enabled && !hadControls) {
             isFocusable = true
             contentDescription = activity.getString(card.labelRes)
@@ -658,56 +690,27 @@ internal class MainDashboardBinder(
                 }
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-            scaleX = 0.97f
-            scaleY = 0.97f
             addView(removeCardButton(card), FrameLayout.LayoutParams(activity.dp(30), activity.dp(30), Gravity.TOP or Gravity.END).apply {
                 topMargin = activity.dp(10); marginEnd = activity.dp(10)
             })
-            if (card.supportsSizeVariants) for (edge in DashboardResizeEdge.entries) {
-                addView(cardResize.createHandle(card, wrapper, edge), FrameLayout.LayoutParams(activity.dp(64), activity.dp(112),
-                    Gravity.CENTER_VERTICAL or if (edge == DashboardResizeEdge.LEFT) Gravity.LEFT else Gravity.RIGHT))
-            }
         } else if (!enabled && hadControls) {
             (0 until childCount).map { getChildAt(it) }.filter {
-                it is com.tjg.twidget.ui.CardShadowView || it is ImageButton || it.tag == EDIT_BORDER_TAG ||
-                    (it.tag as? String)?.startsWith("dashboard_resize_") == true
+                it is com.tjg.twidget.ui.CardShadowView || it is ImageButton || it.tag == EDIT_BORDER_TAG
             }.forEach(::removeView)
             setOnKeyListener(null)
-            for (id in listOf(R.id.dashboard_move_earlier_action, R.id.dashboard_move_later_action, R.id.dashboard_move_to_action))
+            for (id in listOf(R.id.dashboard_move_earlier_action, R.id.dashboard_move_later_action, R.id.dashboard_move_to_action, R.id.dashboard_resize_action))
                 androidx.core.view.ViewCompat.removeAccessibilityAction(this, id)
         }
-        if (getTag(R.id.dashboard_resize_animating) != true) {
-            scaleX = if (enabled) EDIT_CARD_SCALE else 1f
-            scaleY = scaleX
-        }
+        DashboardCardMotion.applyBase(this, enabled)
     }
 
-    private fun handleDashboardCardLongPress(card: DashboardCardType, dragView: View): Boolean {
+    private fun handleDashboardCardHold(card: DashboardCardType, wrapper: View, pointerHeld: Boolean): Boolean {
+        wrapper.setTag(R.id.dashboard_card_held, true)
         if (!editModeController.editMode) editModeController.setEditMode(true)
-        else if (activity.getSystemService(android.view.accessibility.AccessibilityManager::class.java)?.isTouchExplorationEnabled == true)
-            editModeController.showMoveCardDialog(card)
-        else nativeCards.startDrag(card, dragView)
+        else TwidgetHaptics.selection(wrapper)
+        DashboardCardMotion.lift(wrapper)
+        cardMenu.show(card, wrapper, pointerHeld)
         return true
-    }
-
-    private fun attachCardLongPress(
-        view: View,
-        listener: View.OnLongClickListener,
-        isContentRoot: Boolean = true,
-    ) {
-        // Making every descendant long-clickable also makes plain TextViews
-        // and ImageViews consume taps before an interactive row can receive
-        // them. Keep edit-mode long press on the card root and on controls
-        // that already own clicks; decorative descendants remain transparent
-        // to their row's touch target.
-        if (isContentRoot || view.isClickable) {
-            view.setOnLongClickListener(listener)
-        }
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                attachCardLongPress(view.getChildAt(index), listener, isContentRoot = false)
-            }
-        }
     }
 
     private fun removeCardButton(card: DashboardCardType): ImageButton =

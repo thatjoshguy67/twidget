@@ -14,8 +14,8 @@ internal class DashboardItemAnimator : DefaultItemAnimator() {
     private val sizes = mutableMapOf<RecyclerView.ViewHolder, ValueAnimator>()
     init {
         supportsChangeAnimations = false
-        moveDuration = 180L
-        addDuration = 120L
+        moveDuration = 250L
+        addDuration = 0L
         removeDuration = 120L
     }
     override fun animatePersistence(holder: RecyclerView.ViewHolder, before: ItemHolderInfo, after: ItemHolderInfo): Boolean =
@@ -46,7 +46,7 @@ internal class DashboardItemAnimator : DefaultItemAnimator() {
         frame(0f)
         val animator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = moveDuration
-            interpolator = PathInterpolator(.2f, 0f, 0f, 1f)
+            interpolator = PathInterpolator(.4f, .6f, 0f, 1f)
             addUpdateListener { frame(it.animatedValue as Float) }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {

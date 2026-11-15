@@ -30,7 +30,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
     private val fixture = listOf("avg_views", "post_rate", "follower_ratio", "daily_streak", "followers", "top_followers")
 
     @Suppress("DEPRECATION")
-    private fun withDashboard(columns: Int, rtl: Boolean = false, block: (ActivityScenario<MainActivity>) -> Unit) {
+    private fun withDashboard(columns: Int, rtl: Boolean = false, editing: Boolean = true, block: (ActivityScenario<MainActivity>) -> Unit) {
         val context = instrumentation.targetContext
         val prefs = context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE)
         fun owned(key: String) = key.startsWith("dashboard_") || key == "refresh_on_launch" || key == "username"
@@ -58,7 +58,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
                     fixture.forEach { TwidgetStore.setDashboardCardExpanded(activity, it, false, activity.selectedAccount) }
                     activity.render(refreshRemote = false)
                     grid(activity).layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
-                    activity.editModeController.setEditMode(true)
+                    activity.editModeController.setEditMode(editing)
                     activeGrid = grid(activity)
                 }
                 settle()
@@ -97,8 +97,6 @@ class DashboardRecyclerInteractionInstrumentedTest {
     }
     private fun grid(activity: MainActivity) = activity.findViewById<DashboardRecyclerView>(R.id.dashboard_content)
     private fun tile(activity: MainActivity, id: String): ViewGroup = grid(activity).findViewWithTag(id)
-    private fun handle(tile: ViewGroup, edge: DashboardResizeEdge): View = tile.findViewWithTag(
-        "dashboard_resize_${tile.tag}" + if (edge == DashboardResizeEdge.LEFT) "_left" else "")
     private class Pointer(private val grid: DashboardRecyclerView, val x: Float, val y: Float) {
         private val down = SystemClock.uptimeMillis()
         fun send(action: Int, dx: Float = 0f, dy: Float = 0f) {
@@ -109,13 +107,6 @@ class DashboardRecyclerInteractionInstrumentedTest {
             grid.dispatchTouchEvent(event)
             event.recycle()
         }
-    }
-    private fun resizePointer(activity: MainActivity, id: String, edge: DashboardResizeEdge): Pointer {
-        val tile = tile(activity, id)
-        val grip = handle(tile, edge)
-        assertEquals("Requested physical grip is visible", View.VISIBLE, grip.visibility)
-        return Pointer(grid(activity), if (edge == DashboardResizeEdge.LEFT) tile.left - activity.dp(3).toFloat()
-            else tile.right + activity.dp(3).toFloat(), tile.top + tile.height / 2f)
     }
     private fun assertSettledGrid(activity: MainActivity) {
         val view = grid(activity)
@@ -129,6 +120,21 @@ class DashboardRecyclerInteractionInstrumentedTest {
                     Rect.intersects(Rect(a.left, a.top, a.right, a.bottom), Rect(b.left, b.top, b.right, b.bottom)))
             }
         }
+    }
+
+    private fun pointer(activity: MainActivity, id: String): Pointer {
+        val card = tile(activity, id)
+        return Pointer(grid(activity), card.left + card.width / 2f, card.top + card.height / 2f)
+    }
+    private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
+        (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
+    private fun menu(): android.widget.ListView? = android.view.inspector.WindowInspector.getGlobalWindowViews()
+        .flatMap(::descendants).filterIsInstance<android.widget.ListView>().firstOrNull { it.isShown && it.adapter != null }
+    private fun choose(activity: MainActivity, action: Int) {
+        val list = requireNotNull(menu()) { "A held card opens native actions" }
+        val index = (0 until list.adapter.count).firstOrNull { list.adapter.getItem(it) == activity.getString(action) }
+        assertNotNull("Requested card action is available", index)
+        list.performItemClick(list.getChildAt(index!!) ?: View(activity), index, list.adapter.getItemId(index))
     }
 
     @Test fun realViewsStayOpaqueDuringNativeDragAndCancellationRestoresOrder() {
@@ -146,7 +152,8 @@ class DashboardRecyclerInteractionInstrumentedTest {
             }
             settle(650)
             scenario.onActivity { activity ->
-                assertEquals("post_rate", activity.editModeController.draggedCardId)
+                assertNull("Holding opens actions before movement begins", activity.editModeController.draggedCardId)
+                assertNotNull(menu())
                 assertSame("The live card stays in RecyclerView", source, tile(activity, "post_rate"))
                 assertSame(grid(activity), source.parent)
             }
@@ -171,81 +178,6 @@ class DashboardRecyclerInteractionInstrumentedTest {
         }
     }
 
-    @Test fun resizePreviewsStayOnValidSlotsAndUseHysteresisBeforeCommit() {
-        for (columns in listOf(2, 4)) for (rtl in listOf(false, true)) withDashboard(columns, rtl) { scenario ->
-            val id = if (columns == 2) "post_rate" else "daily_streak"
-            val edge = if (rtl) DashboardResizeEdge.RIGHT else DashboardResizeEdge.LEFT
-            lateinit var pointer: Pointer
-            lateinit var original: ViewGroup
-            var unit = 0f
-            var oldWidth = 0
-            var oldOuterEdge = 0
-            scenario.onActivity { activity ->
-                original = tile(activity, id)
-                oldWidth = original.width
-                oldOuterEdge = if (rtl) original.left else original.right
-                val view = grid(activity)
-                unit = (view.width - view.paddingLeft - view.paddingRight).toFloat() / columns * original.scaleX * edge.direction
-                pointer = resizePointer(activity, id, edge)
-                pointer.send(MotionEvent.ACTION_DOWN)
-                pointer.send(MotionEvent.ACTION_MOVE, unit * .30f)
-                assertEquals("Content keeps the compact state below the size threshold", oldWidth, original.width)
-                assertEquals(1, original.getTag(R.id.dashboard_card_span))
-                pointer.send(MotionEvent.ACTION_MOVE, unit * .70f)
-            }
-            settle()
-            scenario.onActivity { activity ->
-                val resized = tile(activity, id)
-                assertSame("Resizing preserves the same card wrapper", original, resized)
-                assertTrue(resized.width > oldWidth)
-                assertEquals(2, resized.getTag(R.id.dashboard_card_span))
-                assertEquals("Inward expansion anchors the outer edge", oldOuterEdge, if (rtl) resized.left else resized.right)
-                assertFalse("Preview does not write preferences", TwidgetStore.isDashboardCardExpanded(activity, id, activity.selectedAccount))
-                assertSettledGrid(activity)
-                pointer.send(MotionEvent.ACTION_MOVE, unit * .50f)
-            }
-            settle(80)
-            scenario.onActivity { activity ->
-                assertEquals("Small boundary movement does not flip the layout", 2, tile(activity, id).getTag(R.id.dashboard_card_span))
-                pointer.send(MotionEvent.ACTION_UP, unit * .50f)
-            }
-            settle()
-            scenario.onActivity { activity ->
-                assertTrue(TwidgetStore.isDashboardCardExpanded(activity, id, activity.selectedAccount))
-                assertSettledGrid(activity)
-            }
-        }
-    }
-
-    @Test fun bothInteriorGripsWorkAndCancelRestoresTheOriginalSizeAndOrder() = withDashboard(4) { scenario ->
-        for (edge in DashboardResizeEdge.entries) {
-            lateinit var pointer: Pointer
-            var distance = 0f
-            scenario.onActivity { activity ->
-                val source = tile(activity, "post_rate")
-                assertEquals(View.VISIBLE, handle(source, DashboardResizeEdge.LEFT).visibility)
-                assertEquals(View.VISIBLE, handle(source, DashboardResizeEdge.RIGHT).visibility)
-                pointer = resizePointer(activity, "post_rate", edge)
-                val view = grid(activity)
-                distance = (view.width - view.paddingLeft - view.paddingRight) / 4f * .7f * source.scaleX * edge.direction
-                pointer.send(MotionEvent.ACTION_DOWN)
-                pointer.send(MotionEvent.ACTION_MOVE, distance)
-            }
-            settle()
-            scenario.onActivity { activity ->
-                assertEquals(2, tile(activity, "post_rate").getTag(R.id.dashboard_card_span))
-                assertSettledGrid(activity)
-                pointer.send(MotionEvent.ACTION_CANCEL, distance)
-            }
-            settle()
-            scenario.onActivity { activity ->
-                assertEquals(1, tile(activity, "post_rate").getTag(R.id.dashboard_card_span))
-                assertEquals(fixture, activity.dashboardBinder.cardIds())
-                assertEquals(fixture, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
-                assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
-            }
-        }
-    }
 
     @Test fun nativeDragCommitsOnDropAndUndoRestoresTheOriginalOrder() = withDashboard(4) { scenario ->
         lateinit var pointer: Pointer
@@ -276,89 +208,6 @@ class DashboardRecyclerInteractionInstrumentedTest {
         }
     }
 
-    @Test fun aProfileChangeCancelsAnUncommittedResize() = withDashboard(4) { scenario ->
-        lateinit var pointer: Pointer
-        var originalAccount = ""
-        val other = "native-dashboard-other-profile"
-        scenario.onActivity { activity ->
-            originalAccount = activity.selectedAccount
-            TwidgetStore.saveDashboardCards(activity, listOf("avg_views", "daily_streak"), other)
-            pointer = resizePointer(activity, "post_rate", DashboardResizeEdge.RIGHT)
-            pointer.send(MotionEvent.ACTION_DOWN)
-            pointer.send(MotionEvent.ACTION_MOVE, grid(activity).width / 4f * .7f)
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertEquals(2, tile(activity, "post_rate").getTag(R.id.dashboard_card_span))
-            activity.selectedAccount = other
-            activity.dashboardBinder.bindContent(refreshRemote = false)
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertFalse(activity.dashboardBinder.isResizing)
-            assertEquals(listOf("avg_views", "daily_streak"), activity.dashboardBinder.cardIds())
-            assertEquals(fixture, TwidgetStore.dashboardCards(activity, originalAccount))
-            assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", originalAccount))
-        }
-    }
-
-    @Test fun shrinkingCommitsOnceAndUndoRestoresTheExpandedSize() = withDashboard(4) { scenario ->
-        lateinit var pointer: Pointer
-        var unit = 0f
-        scenario.onActivity { activity ->
-            unit = grid(activity).width / 4f * .7f
-            pointer = resizePointer(activity, "post_rate", DashboardResizeEdge.RIGHT)
-            pointer.send(MotionEvent.ACTION_DOWN)
-            pointer.send(MotionEvent.ACTION_MOVE, unit)
-        }
-        settle()
-        scenario.onActivity { pointer.send(MotionEvent.ACTION_UP, unit) }
-        settle()
-        scenario.onActivity { activity ->
-            assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
-            pointer = resizePointer(activity, "post_rate", DashboardResizeEdge.RIGHT)
-            pointer.send(MotionEvent.ACTION_DOWN)
-            pointer.send(MotionEvent.ACTION_MOVE, -unit)
-            // An asynchronous dashboard refresh must not interrupt the resize.
-            activity.render(refreshRemote = false)
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertEquals(1, tile(activity, "post_rate").getTag(R.id.dashboard_card_span))
-            assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
-            pointer.send(MotionEvent.ACTION_UP, -unit)
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
-            assertSettledGrid(activity)
-            activity.findViewById<View>(com.google.android.material.R.id.snackbar_action).performClick()
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
-            assertEquals(2, tile(activity, "post_rate").getTag(R.id.dashboard_card_span))
-            assertSettledGrid(activity)
-        }
-    }
-
-    @Test fun removeButtonTakesPriorityOverTheResizeGutter() = withDashboard(4) { scenario ->
-        scenario.onActivity { activity ->
-            val view = grid(activity)
-            val card = tile(activity, "avg_views")
-            val button = (0 until card.childCount).map(card::getChildAt).filterIsInstance<android.widget.ImageButton>().first()
-            val point = IntArray(2).also(button::getLocationOnScreen)
-            val origin = IntArray(2).also(view::getLocationOnScreen)
-            val pointer = Pointer(view, point[0] - origin[0] + button.width / 2f, point[1] - origin[1] + button.height / 2f)
-            pointer.send(MotionEvent.ACTION_DOWN)
-            pointer.send(MotionEvent.ACTION_UP)
-        }
-        settle()
-        scenario.onActivity { activity ->
-            assertFalse("Removal remains directly tappable", "avg_views" in TwidgetStore.dashboardCards(activity, activity.selectedAccount))
-            assertFalse(activity.dashboardBinder.isResizing)
-        }
-    }
 
     @Test fun nativeRowsAlignWithTopFollowersAndUndoRestoresProfileScopedMoves() = withDashboard(4) { scenario ->
         val other = "native-dashboard-other-profile"
@@ -380,6 +229,252 @@ class DashboardRecyclerInteractionInstrumentedTest {
         scenario.onActivity { activity ->
             assertEquals(fixture, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
             assertEquals(listOf("daily_streak", "avg_views"), TwidgetStore.dashboardCards(activity, other))
+            assertSettledGrid(activity)
+        }
+    }
+    @Test fun removeButtonTakesPriorityOverTheResizeGutter() = withDashboard(4) { scenario ->
+        scenario.onActivity { activity ->
+            val view = grid(activity)
+            val card = tile(activity, "avg_views")
+            val button = (0 until card.childCount).map(card::getChildAt).filterIsInstance<android.widget.ImageButton>().first()
+            val point = IntArray(2).also(button::getLocationOnScreen)
+            val origin = IntArray(2).also(view::getLocationOnScreen)
+            val pointer = Pointer(view, point[0] - origin[0] + button.width / 2f, point[1] - origin[1] + button.height / 2f)
+            pointer.send(MotionEvent.ACTION_DOWN)
+            pointer.send(MotionEvent.ACTION_UP)
+        }
+        settle()
+        scenario.onActivity { activity ->
+            assertFalse("Removal remains directly tappable", "avg_views" in TwidgetStore.dashboardCards(activity, activity.selectedAccount))
+            assertFalse(activity.dashboardBinder.isResizing)
+        }
+    }
+
+
+    @Test fun holdMenuEnlargesAndShrinksInTwoAndFourColumnsIncludingRtl() {
+        for (columns in listOf(2, 4)) for (rtl in listOf(false, true)) withDashboard(columns, rtl) { scenario ->
+            val id = if (columns == 2) "post_rate" else "daily_streak"
+            lateinit var pointer: Pointer
+            var outerEdge = 0
+            scenario.onActivity { activity ->
+                val card = tile(activity, id)
+                outerEdge = if (rtl) card.left else card.right
+                assertFalse("Resize grips no longer compete with picking up the card",
+                    descendants(card).any { (it.tag as? String)?.startsWith("dashboard_resize_") == true })
+                pointer = pointer(activity, id)
+                pointer.send(MotionEvent.ACTION_DOWN)
+            }
+            settle(650)
+            scenario.onActivity { activity ->
+                assertNull(activity.editModeController.draggedCardId)
+                assertNotNull(menu())
+                pointer.send(MotionEvent.ACTION_UP)
+                choose(activity, R.string.dashboard_size_enlarge)
+            }
+            settle()
+            scenario.onActivity { activity ->
+                val card = tile(activity, id)
+                assertEquals(2, card.getTag(R.id.dashboard_card_span))
+                assertEquals("The trailing card expands inward", outerEdge, if (rtl) card.left else card.right)
+                assertTrue(TwidgetStore.isDashboardCardExpanded(activity, id, activity.selectedAccount))
+                assertSettledGrid(activity)
+                pointer = pointer(activity, id)
+                pointer.send(MotionEvent.ACTION_DOWN)
+            }
+            settle(650)
+            scenario.onActivity { activity ->
+                pointer.send(MotionEvent.ACTION_UP)
+                choose(activity, R.string.dashboard_size_shrink)
+            }
+            settle()
+            scenario.onActivity { activity ->
+                assertEquals(1, tile(activity, id).getTag(R.id.dashboard_card_span))
+                assertFalse(TwidgetStore.isDashboardCardExpanded(activity, id, activity.selectedAccount))
+                activity.findViewById<View>(com.google.android.material.R.id.snackbar_action).performClick()
+            }
+            settle()
+            scenario.onActivity { activity ->
+                assertEquals(2, tile(activity, id).getTag(R.id.dashboard_card_span))
+                assertSettledGrid(activity)
+            }
+        }
+    }
+
+    @Test fun holdFromNormalModeOpensActionsWithoutPickingUpTheCard() = withDashboard(4, editing = false) { scenario ->
+        lateinit var pointer: Pointer
+        scenario.onActivity { activity ->
+            assertFalse(activity.editModeController.editMode)
+            pointer = pointer(activity, "avg_views")
+            pointer.send(MotionEvent.ACTION_DOWN)
+        }
+        settle(650)
+        scenario.onActivity { activity ->
+            assertTrue(activity.editModeController.editMode)
+            assertNull(activity.editModeController.draggedCardId)
+            val actions = requireNotNull(menu())
+            assertFalse("The hold menu does not offer Move to", (0 until actions.adapter.count).any {
+                actions.adapter.getItem(it) == activity.getString(R.string.dashboard_move_to)
+            })
+            pointer.send(MotionEvent.ACTION_UP)
+            choose(activity, R.string.dashboard_size_enlarge)
+        }
+        settle()
+        scenario.onActivity { activity ->
+            assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "avg_views", activity.selectedAccount))
+            assertSettledGrid(activity)
+        }
+    }
+
+    @Test fun movementBeforeTheHoldDoesNotOpenActions() = withDashboard(4, editing = false) { scenario ->
+        lateinit var pointer: Pointer
+        scenario.onActivity { activity ->
+            pointer = pointer(activity, "post_rate")
+            pointer.send(MotionEvent.ACTION_DOWN)
+            pointer.send(MotionEvent.ACTION_MOVE, dy = activity.dp(40).toFloat())
+        }
+        settle(650)
+        scenario.onActivity { activity ->
+            pointer.send(MotionEvent.ACTION_UP, dy = activity.dp(40).toFloat())
+            assertFalse(activity.editModeController.editMode)
+            assertNull(menu())
+            assertNull(activity.editModeController.draggedCardId)
+        }
+    }
+
+    @Test fun changingProfileDismissesTheOldCardsMenu() = withDashboard(4) { scenario ->
+        lateinit var pointer: Pointer
+        var original = ""
+        val other = "native-dashboard-other-profile"
+        scenario.onActivity { activity ->
+            original = activity.selectedAccount
+            TwidgetStore.saveDashboardCards(activity, listOf("avg_views", "daily_streak"), other)
+            pointer = pointer(activity, "avg_views")
+            pointer.send(MotionEvent.ACTION_DOWN)
+        }
+        settle(650)
+        scenario.onActivity { activity ->
+            assertNotNull(menu())
+            activity.selectedAccount = other
+            activity.dashboardBinder.bindContent(refreshRemote = false)
+            pointer.send(MotionEvent.ACTION_CANCEL)
+        }
+        settle()
+        scenario.onActivity { activity ->
+            assertNull(menu())
+            assertEquals(listOf("avg_views", "daily_streak"), activity.dashboardBinder.cardIds())
+            assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "avg_views", original))
+            assertEquals(fixture, TwidgetStore.dashboardCards(activity, original))
+        }
+    }
+
+    @Test fun cancellingAMoveRestoresNestedScrollingAndTheCardsDimensions() = withDashboard(4) { scenario ->
+        lateinit var pointer: Pointer
+        lateinit var source: ViewGroup
+        var height = 0
+        var distance = 0f
+        scenario.onActivity { activity ->
+            source = tile(activity, "post_rate")
+            height = source.height
+            distance = (tile(activity, "avg_views").left - source.left) * 1.15f
+            pointer = pointer(activity, "post_rate")
+            pointer.send(MotionEvent.ACTION_DOWN)
+        }
+        settle(650)
+        repeat(12) { step ->
+            scenario.onActivity { pointer.send(MotionEvent.ACTION_MOVE, distance * (step + 1) / 12) }
+            settle(20)
+        }
+        scenario.onActivity { activity ->
+            assertEquals("post_rate", activity.editModeController.draggedCardId)
+            assertEquals(height, source.height)
+            assertEquals(height, source.getTag(R.id.dashboard_drag_height))
+            assertFalse("The app bar stays fixed while a card is moving", grid(activity).isNestedScrollingEnabled)
+            activity.editModeController.cancelInteractions()
+        }
+        settle(750)
+        scenario.onActivity { activity ->
+            assertNull(activity.editModeController.draggedCardId)
+            assertNull(source.getTag(R.id.dashboard_drag_height))
+            assertTrue(grid(activity).isNestedScrollingEnabled)
+            assertEquals(fixture, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
+            assertSettledGrid(activity)
+            // Cancelling must leave the next hold usable, with no selected
+            // ViewHolder or pointer retained in the native helper.
+            pointer = pointer(activity, "post_rate")
+            pointer.send(MotionEvent.ACTION_DOWN)
+        }
+        settle(650)
+        scenario.onActivity { activity ->
+            assertNotNull(menu())
+            pointer.send(MotionEvent.ACTION_UP)
+            choose(activity, R.string.dashboard_size_enlarge)
+        }
+        settle()
+        scenario.onActivity { activity ->
+            assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "post_rate", activity.selectedAccount))
+            assertSettledGrid(activity)
+        }
+    }
+
+    @Test fun releasingAHeldCardDoesNotRepositionItsMenu() {
+        for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
+            lateinit var pointer: Pointer
+            lateinit var before: Rect
+            scenario.onActivity { activity ->
+                pointer = pointer(activity, "post_rate")
+                pointer.send(MotionEvent.ACTION_DOWN)
+            }
+            settle(650)
+            scenario.onActivity {
+                val list = requireNotNull(menu())
+                val position = IntArray(2).also(list::getLocationOnScreen)
+                before = Rect(position[0], position[1], position[0] + list.width, position[1] + list.height)
+                pointer.send(MotionEvent.ACTION_UP)
+            }
+            settle()
+            scenario.onActivity { activity ->
+                val list = requireNotNull(menu())
+                val position = IntArray(2).also(list::getLocationOnScreen)
+                assertEquals("Press and release keep the same popup bounds", before,
+                    Rect(position[0], position[1], position[0] + list.width, position[1] + list.height))
+                activity.onBackPressedDispatcher.onBackPressed()
+            }
+            settle()
+            scenario.onActivity { activity ->
+                assertNull(menu())
+                assertTrue("Back dismisses actions before leaving editing", activity.editModeController.editMode)
+            }
+        }
+    }
+
+    @Test fun systemPointerCanMoveDirectlyFromTheHoldMenuIntoDragging() = withDashboard(4) { scenario ->
+        var x = 0f; var y = 0f; var distance = 0f
+        scenario.onActivity { activity ->
+            val source = tile(activity, "post_rate")
+            val location = IntArray(2).also(source::getLocationOnScreen)
+            x = location[0] + source.width / 2f; y = location[1] + source.height / 2f
+            distance = (tile(activity, "avg_views").left - source.left) * 1.15f
+        }
+        val down = SystemClock.uptimeMillis()
+        fun send(action: Int, dx: Float = 0f) {
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x + dx, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
+        send(MotionEvent.ACTION_DOWN)
+        settle(650)
+        scenario.onActivity { assertNotNull("Hold opens native actions before movement", menu()) }
+        repeat(16) { step -> send(MotionEvent.ACTION_MOVE, distance * (step + 1) / 16); SystemClock.sleep(24) }
+        scenario.onActivity { activity ->
+            assertEquals("post_rate", activity.editModeController.draggedCardId)
+            assertNull("Dragging dismisses the stationary card menu", menu())
+            assertEquals(1f, tile(activity, "post_rate").alpha, .001f)
+        }
+        send(MotionEvent.ACTION_UP, distance)
+        settle(750)
+        scenario.onActivity { activity ->
+            assertEquals(listOf("post_rate", "avg_views") + fixture.drop(2), TwidgetStore.dashboardCards(activity, activity.selectedAccount))
             assertSettledGrid(activity)
         }
     }

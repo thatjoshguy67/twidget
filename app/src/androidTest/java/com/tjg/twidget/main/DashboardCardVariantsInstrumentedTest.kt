@@ -55,7 +55,7 @@ class DashboardCardVariantsInstrumentedTest {
                 assertNotNull("The revised graph has the Health-style side count", graph.findViewById<View>(R.id.followers_value))
                 assertEquals(1, card(activity, "follower_count").getTag(R.id.dashboard_card_span))
                 activity.editModeController.setEditMode(true)
-                assertTrue(card(activity, "follower_count").findViewWithTag<View>("dashboard_resize_follower_count").performClick())
+                activity.editModeController.resizeDashboardCard(DashboardCardType.FOLLOWER_COUNT)
             }
             SystemClock.sleep(300)
             instrumentation.waitForIdleSync()
@@ -73,7 +73,7 @@ class DashboardCardVariantsInstrumentedTest {
             scenario.onActivity { activity ->
                 assertEquals("Size survives recreation", 2, card(activity, "follower_count").getTag(R.id.dashboard_card_span))
                 activity.editModeController.setEditMode(true)
-                card(activity, "follower_count").findViewWithTag<View>("dashboard_resize_follower_count").performClick()
+                activity.editModeController.resizeDashboardCard(DashboardCardType.FOLLOWER_COUNT)
                 assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "follower_count"))
                 assertFalse("Charts retain their fixed size", DashboardCardType.FOLLOWERS.supportsSizeVariants)
             }

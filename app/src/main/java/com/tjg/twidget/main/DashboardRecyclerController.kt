@@ -29,6 +29,8 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     private var dragging: String? = null
     private var external: String? = null
     private var cancelled = false
+    private val dropTargets = DashboardDropTargetPolicy(activity.dp(6).toFloat())
+    private var nestedScrollBeforeDrag: Boolean? = null
     private var headerAdapter: ChromeAdapter? = null
     private var footerAdapter: ChromeAdapter? = null
     private val cards = CardAdapter()
@@ -65,19 +67,20 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                 makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT, 0) else 0
         override fun isLongPressDragEnabled() = false
         override fun isItemViewSwipeEnabled() = false
+        override fun getAnimationDuration(view: RecyclerView, type: Int, dx: Float, dy: Float) = 200L
         override fun canDropOver(view: RecyclerView, current: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) =
             target is CardHolder && target.cardId != external
         override fun chooseDropTarget(selected: RecyclerView.ViewHolder, targets: MutableList<RecyclerView.ViewHolder>, x: Int, y: Int): RecyclerView.ViewHolder? {
             val view = recycler ?: return null
-            val selectedCard = DashboardCardType.fromId(selected.itemView.tag as? String ?: "") ?: return null
-            val filtered = targets.filter { target ->
-                val targetCard = DashboardCardType.fromId(target.itemView.tag as? String ?: "")
-                targetCard != null && (view.columnCount != 2 || span(selectedCard) == span(targetCard) ||
-                    if (selected.bindingAdapterPosition < target.bindingAdapterPosition)
-                        y + selected.itemView.height / 2 > target.itemView.top + target.itemView.height / 2
-                    else y + selected.itemView.height / 2 < target.itemView.top + target.itemView.height / 2)
-            }.toMutableList()
-            return super.chooseDropTarget(selected, filtered, x, y)
+            val tile = selected.itemView
+            val candidates = targets.filterIsInstance<CardHolder>().filter { it.bindingAdapterPosition >= 0 }
+            val chosen = dropTargets.choose(DashboardDropTargetPolicy.Bounds(x.toFloat(), y.toFloat(),
+                x + tile.width.toFloat(), y + tile.height.toFloat()), candidates.map {
+                    val child = it.itemView
+                    DashboardDropTargetPolicy.Target(it.cardId, DashboardDropTargetPolicy.Bounds(child.left.toFloat(),
+                        child.top.toFloat(), child.right.toFloat(), child.bottom.toFloat()))
+                }, view.computeVerticalScrollOffset())
+            return candidates.firstOrNull { it.cardId == chosen }
         }
         override fun onMove(view: RecyclerView, from: RecyclerView.ViewHolder, to: RecyclerView.ViewHolder): Boolean {
             val source = (from as? CardHolder)?.cardId ?: return false
@@ -89,7 +92,14 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         override fun onSwiped(holder: RecyclerView.ViewHolder, direction: Int) = Unit
         override fun onSelectedChanged(holder: RecyclerView.ViewHolder?, state: Int) {
             super.onSelectedChanged(holder, state)
-            if (state == ItemTouchHelper.ACTION_STATE_DRAG && holder is CardHolder) holder.itemView.alpha = 1f
+            if (state == ItemTouchHelper.ACTION_STATE_DRAG && holder is CardHolder) {
+                dropTargets.begin(holder.itemView.left.toFloat(), holder.itemView.top.toFloat(), recycler?.computeVerticalScrollOffset() ?: 0)
+                holder.itemView.apply {
+                    alpha = 1f
+                    setTag(R.id.dashboard_drag_height, height)
+                    DashboardCardMotion.lift(this)
+                }
+            }
         }
         override fun onChildDraw(canvas: Canvas, view: RecyclerView, holder: RecyclerView.ViewHolder,
             dx: Float, dy: Float, state: Int, active: Boolean) {
@@ -105,7 +115,14 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         }
         override fun clearView(view: RecyclerView, holder: RecyclerView.ViewHolder) {
             super.clearView(view, holder)
-            holder.itemView.alpha = 1f
+            holder.itemView.apply {
+                alpha = 1f
+                setTag(R.id.dashboard_drag_height, null)
+                DashboardCardMotion.release(this)
+                requestLayout()
+            }
+            restoreNestedScroll()
+            dropTargets.reset()
             val id = (holder as? CardHolder)?.cardId
             if (id != null && dragging == id) {
                 dragging = null
@@ -113,7 +130,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             }
         }
     }
-    private val touch = ItemTouchHelper(callback)
+    private var touch = ItemTouchHelper(callback)
 
     fun attach(view: DashboardRecyclerView, header: View, footer: View) {
         if (recycler === view) return
@@ -198,6 +215,11 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         val view = recycler ?: return false
         if (!editing || isDragging || binder.isResizing) return false
         val holder = view.getChildViewHolder(wrapper) as? CardHolder ?: return false
+        view.stopScroll()
+        view.itemAnimator?.endAnimations()
+        dropTargets.reset()
+        nestedScrollBeforeDrag = view.isNestedScrollingEnabled
+        view.isNestedScrollingEnabled = false
         activity.editModeController.beginDashboardDrag(card, wrapper)
         dragging = card.id
         cancelled = false
@@ -240,13 +262,28 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         replace(saved)
         if (added != null) items.indexOfFirst { it.id == added }.takeIf { it >= 0 }?.let { cards.notifyItemChanged(it, DATA) }
     }
+    private fun restoreNestedScroll() {
+        nestedScrollBeforeDrag?.let { recycler?.isNestedScrollingEnabled = it }
+        nestedScrollBeforeDrag = null
+    }
     private fun cancelNativeDrag() {
+        restoreNestedScroll()
+        dropTargets.reset()
         if (dragging == null) return
         dragging = null
         cancelled = true
+        val view = recycler ?: return
+        val now = android.os.SystemClock.uptimeMillis()
+        val cancel = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        view.dispatchTouchEvent(cancel)
+        cancel.recycle()
         touch.attachToRecyclerView(null)
-        recycler?.let(touch::attachToRecyclerView)
+        // A cancelled interaction must not retain the old helper's selected
+        // holder or pointer when the activity resumes or the profile changes.
+        touch = ItemTouchHelper(callback)
+        touch.attachToRecyclerView(view)
     }
+
     fun previewResize(card: DashboardCardType, span: Int, order: List<String>) {
         overrides[card.id] = span
         applyOrder(order)

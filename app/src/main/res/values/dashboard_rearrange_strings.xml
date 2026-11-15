@@ -8,4 +8,7 @@
     <string name="dashboard_after_card">After %1$s</string>
     <string name="dashboard_drop_here">Move %1$s here</string>
     <string name="dashboard_card_resized">Card resized</string>
+    <string name="dashboard_size_enlarge">Enlarge</string>
+    <string name="dashboard_size_shrink">Shrink</string>
+    <string name="dashboard_remove_card">Remove</string>
 </resources>

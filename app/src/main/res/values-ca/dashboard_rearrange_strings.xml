@@ -8,4 +8,7 @@
     <string name="dashboard_after_card">Després de %1$s</string>
     <string name="dashboard_drop_here">Mou %1$s aquí</string>
     <string name="dashboard_card_resized">Mida de la targeta canviada</string>
+    <string name="dashboard_size_enlarge">Amplia</string>
+    <string name="dashboard_size_shrink">Redueix</string>
+    <string name="dashboard_remove_card">Elimina</string>
 </resources>

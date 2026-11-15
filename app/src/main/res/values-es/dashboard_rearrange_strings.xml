@@ -8,4 +8,7 @@
     <string name="dashboard_after_card">Después de %1$s</string>
     <string name="dashboard_drop_here">Mover %1$s aquí</string>
     <string name="dashboard_card_resized">Tamaño de tarjeta cambiado</string>
+    <string name="dashboard_size_enlarge">Ampliar</string>
+    <string name="dashboard_size_shrink">Reducir</string>
+    <string name="dashboard_remove_card">Quitar</string>
 </resources>

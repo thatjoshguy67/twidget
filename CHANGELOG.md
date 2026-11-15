@@ -4,9 +4,15 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Stabilize dashboard dragging with a retained pickup spring, frozen card height,
+  overlap-based drop targets and a fixed app bar during rearranging.
+
+- Hold a dashboard card for Enlarge/Shrink and Remove actions;
+  move after holding to rearrange it without competing resize grips.
+
 - Move the dashboard onto SESL RecyclerView and ItemTouchHelper, with opaque
   real-view dragging, stable card identity, native edge scrolling and settling.
-  Resize through discrete animated span states with left/right handles,
+  Resize through discrete animated span states,
   cancellation and profile-scoped Undo instead of morphing the whole grid.
 
 - Generate Your Brief and tweet reviews using a ChatGPT subscription or OpenAI

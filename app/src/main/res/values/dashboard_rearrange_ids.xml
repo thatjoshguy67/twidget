@@ -1,4 +1,12 @@
 <resources>
+    <item name="dashboard_drag_height" type="id" />
+    <item name="dashboard_spring_x" type="id" />
+    <item name="dashboard_spring_y" type="id" />
+    <item name="dashboard_motion_editing" type="id" />
+    <item name="dashboard_card_held" type="id" />
+
+    <item name="dashboard_resize_action" type="id" />
+    <item name="dashboard_card_gesture" type="id" />
     <item name="dashboard_resize_animating" type="id" />
     <item name="dashboard_preferred_height" type="id" />
     <item name="dashboard_move_to_action" type="id" />

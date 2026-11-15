@@ -159,7 +159,7 @@ internal class MainEditModeController(private val activity: MainActivity) {
     fun cardSpan(card: DashboardCardType): Int = activity.dashboardBinder.previewSpan(card)
     internal fun restoreState(enabled: Boolean) { editMode = enabled; exitEditModeOnBack.isEnabled = enabled }
     val exitEditModeOnBack = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() { setEditMode(false) }
+        override fun handleOnBackPressed() { if (!activity.dashboardBinder.dismissCardMenu()) setEditMode(false) }
     }
     fun setEditMode(enabled: Boolean) {
         if (editMode == enabled) return

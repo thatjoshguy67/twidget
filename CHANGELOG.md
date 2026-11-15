@@ -4,6 +4,9 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Use the same adaptive lettering and fitting rules for compact and expanded
+  follower-count cards, including during live resizing.
+
 - Let Brief headings wrap before allocating the remaining card space to the
   description, using the selected font’s measured height.
 

@@ -28,10 +28,10 @@ internal object FollowerCountCard {
             ?: LayoutInflater.from(context).inflate(if (span == 2)
             R.layout.metric_card_follower_count_large else R.layout.metric_card_follower_count, null, false)
         root.findViewById<TextView>(R.id.followers_value).apply {
-            val compact = span == 1
-            text = editorialCopy(context, stats, change, color, compact, catalogue, includeFooter = false)
-            // The words share a bounded value zone; the label/delta have a stable footer.
-            val size = if (compact) 56f else 88f
+            text = editorialCopy(context, stats, change, color, compact = false, catalogue, includeFooter = false)
+            // Both sizes use the large card's paragraph and fitting range. Actual
+            // width and height drive reflow throughout the drag and after snapping.
+            val size = 88f
             maxLines = 3
             setTag(R.id.dashboard_design_line_height, null)
             setLineSpacing(0f, 1f)
@@ -40,7 +40,7 @@ internal object FollowerCountCard {
             androidx.core.widget.TextViewCompat.setAutoSizeTextTypeWithDefaults(this, androidx.core.widget.TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE)
             textSize = size
             androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
-                this, if (compact) 10 else 14, size.toInt(), 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                this, 14, size.toInt(), 1, android.util.TypedValue.COMPLEX_UNIT_SP)
         }
         root.findViewById<TextView>(R.id.dashboard_count_footer)?.apply {
             text = android.text.SpannableStringBuilder().apply {

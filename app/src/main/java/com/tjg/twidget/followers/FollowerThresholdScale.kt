@@ -1,13 +1,11 @@
 package com.tjg.twidget.followers
 
 import kotlin.math.ceil
-import kotlin.math.expm1
 import kotlin.math.floor
-import kotlin.math.ln1p
 import kotlin.math.log10
 import kotlin.math.pow
 
-/** Logarithmic travel keeps small audiences usable alongside million-follower outliers. */
+/** Discrete population-based stops for the widget-style segmented slider. */
 internal class FollowerThresholdScale(counts: List<Long>, selected: Long = 0) {
     private val sorted = counts.map { it.coerceAtLeast(0) }.sorted()
     val maximum = maxOf(sorted.lastOrNull() ?: 0, selected.coerceAtLeast(0))
@@ -16,9 +14,8 @@ internal class FollowerThresholdScale(counts: List<Long>, selected: Long = 0) {
     val presets = (listOf(0L) + listOf(.5, .8, .95).mapNotNull { fraction ->
         if (sorted.isEmpty()) null else rounded(sorted[(ceil(sorted.size * fraction).toInt() - 1).coerceAtLeast(0)])
     }).distinct()
-    val values: List<Long> = (listOf(0L, maximum, selected.coerceAtLeast(0)) + presets +
-        (1 until 1000).map { rounded(expm1(ln1p(maximum.toDouble()) * it / 1000).toLong()) })
-        .distinct().sorted()
+    // Retain the upper endpoint and any saved custom threshold as exact stops.
+    val values: List<Long> = (presets + maximum + selected.coerceAtLeast(0)).distinct().sorted()
     fun position(value: Long): Int = values.binarySearch(value).let { if (it >= 0) it else (-it - 1).coerceAtMost(values.lastIndex) }
 
     companion object {

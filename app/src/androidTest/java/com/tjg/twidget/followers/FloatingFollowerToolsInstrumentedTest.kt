@@ -7,8 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
 import android.widget.TextView
-import android.widget.LinearLayout
-import android.widget.HorizontalScrollView
 import androidx.appcompat.widget.SeslSeekBar
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
@@ -60,9 +58,10 @@ class FloatingFollowerToolsInstrumentedTest {
                     // Opening a dialog may hide the IME; that is not an exit from search.
                     search.onImeVisibilityChanged(true); search.onImeVisibilityChanged(false)
                     assertTrue(search.isFloatingExpanded)
-                    val presets = a.searchFilters.dialog!!.findViewById<HorizontalScrollView>(R.id.follower_min_presets)!!.getChildAt(0) as LinearLayout
-                    presets.getChildAt(1).performClick()
-                    assertEquals("Preset moves the slider", scale.position(10_000), a.searchFilters.dialog!!.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!.progress)
+                    val slider = a.searchFilters.dialog!!.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!
+                    assertEquals("Three adaptive segments for this archive", 2, slider.max)
+                    slider.progress = scale.position(10_000)
+                    assertEquals("Segment selects its threshold", scale.position(10_000), slider.progress)
                     assertEquals(context.getString(R.string.floating_matching_followers, 1, 3), a.searchFilters.dialog!!.findViewById<TextView>(R.id.follower_min_results)!!.text.toString())
                     assertEquals("Pending selection is not applied yet", FollowerFilters(), a.searchFilters.filters)
                     a.searchFilters.dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).performClick()

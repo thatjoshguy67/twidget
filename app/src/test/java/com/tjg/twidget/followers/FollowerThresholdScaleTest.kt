@@ -5,12 +5,14 @@ import org.junit.Test
 
 class FollowerThresholdScaleTest {
     @Test fun presetsFollowPopulationAndDistribution() {
-        assertEquals(listOf(0L, 50L, 80L, 95L), FollowerThresholdScale((1L..100L).toList()).presets)
+        val ordinary = FollowerThresholdScale((1L..100L).toList())
+        assertEquals(listOf(0L, 50L, 80L, 95L), ordinary.presets)
+        assertEquals(listOf(0L, 50L, 80L, 95L, 100L), ordinary.values)
         assertEquals(listOf(0L, 500L, 800L, 950L), FollowerThresholdScale((1L..100L).map { it * 10 }).presets)
         val skewed = FollowerThresholdScale(List(99) { 20L } + 50_000_000L)
         assertEquals(listOf(0L, 20L), skewed.presets)
         assertEquals(50_000_000L, skewed.maximum)
-        assertTrue("Small counts remain reachable with a large outlier", skewed.values.containsAll(listOf(1L, 10L, 20L)))
+        assertEquals("Only meaningful segments, including the outlier", listOf(0L, 20L, 50_000_000L), skewed.values)
     }
     @Test fun emptyZeroAndSingleFollowerAreUsable() {
         assertEquals(listOf(0L), FollowerThresholdScale(emptyList()).values)

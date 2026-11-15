@@ -1,10 +1,7 @@
 package com.tjg.twidget.followers
 
 import android.content.Context
-import android.view.View
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.SeslSeekBar
 import androidx.core.view.ViewCompat
@@ -25,8 +22,8 @@ internal class FollowerThresholdControl(
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private val valueLabel = AppCompatTextView(context)
     private val resultLabel = AppCompatTextView(context)
-    private val slider = SeslSeekBar(context)
-    private val buttons = mutableListOf<Pair<Long, AppCompatButton>>()
+    private val segments = FollowerSegmentedSlider(context, scale.values.size)
+    private val slider = segments.seekBar
     private var settingValue = false
 
     init {
@@ -41,29 +38,13 @@ internal class FollowerThresholdControl(
             id = R.id.follower_min_value
             setTextAppearance(androidx.appcompat.R.style.TextAppearance_AppCompat_Title)
         })
-        addView(slider.apply {
+        slider.apply {
             id = R.id.follower_min_slider
             max = scale.values.lastIndex
             isEnabled = max > 0
             contentDescription = context.getString(R.string.floating_min_followers)
-        }, LayoutParams(-1, dp(48)))
-        val presets = LinearLayout(context).apply { orientation = HORIZONTAL }
-        scale.presets.forEach { value ->
-            val button = AppCompatButton(context, null, android.R.attr.borderlessButtonStyle).apply {
-                text = if (value == 0L) context.getString(R.string.floating_all) else AppLocales.compact(value) + "+"
-                contentDescription = label(value)
-                isAllCaps = false
-                minHeight = dp(48)
-                setOnClickListener { select(value) }
-            }
-            buttons += value to button
-            presets.addView(button, LayoutParams(-2, -2))
         }
-        addView(HorizontalScrollView(context).apply {
-            id = R.id.follower_min_presets
-            isHorizontalScrollBarEnabled = false
-            addView(presets)
-        }, LayoutParams(-1, -2))
+        addView(segments, LayoutParams(-1, dp(48)))
         addView(resultLabel.apply { id = R.id.follower_min_results; setPadding(0, dp(4), 0, dp(8)) })
         slider.setOnSeekBarChangeListener(object : SeslSeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeslSeekBar, progress: Int, fromUser: Boolean) {
@@ -87,6 +68,7 @@ internal class FollowerThresholdControl(
         else java.text.NumberFormat.getIntegerInstance(AppLocales.applicationLocale()).format(value) + "+"
 
     private fun updateLabels() {
+        segments.updatePosition()
         valueLabel.text = label(minimum)
         ViewCompat.setStateDescription(slider, valueLabel.text)
         // Binary search keeps live previews cheap even for large archived lists.
@@ -97,9 +79,5 @@ internal class FollowerThresholdControl(
             if (matchingCounts[middle] < minimum) low = middle + 1 else high = middle
         }
         resultLabel.text = context.getString(R.string.floating_matching_followers, matchingCounts.size - low, total)
-        buttons.forEach { (value, button) ->
-            button.isSelected = value == minimum
-            button.setTextColor(context.getColor(if (value == minimum) R.color.oneui_accent else R.color.oneui_text_primary))
-        }
     }
 }

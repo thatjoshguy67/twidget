@@ -68,7 +68,7 @@ class FollowerHeroLayoutInstrumentedTest {
             assertTrue(runs[3].paint.fontVariationSettings!!.contains("'wdth' 57"))
             assertTrue(runs[3].paint.fontVariationSettings!!.contains("'ROND' 100"))
             assertTrue(runs[2].paint.fontVariationSettings!!.contains("'wght' 200"))
-            assertTrue(runs[3].paint.fontVariationSettings!!.contains("'wght' 200"))
+            assertTrue(runs[3].paint.fontVariationSettings!!.contains("'wght' 400"))
             assertEquals(runs[0].paint.textSize, runs[3].paint.textSize, 0f)
         }
     }
@@ -83,7 +83,7 @@ class FollowerHeroLayoutInstrumentedTest {
             val weights = runs.map { Regex("'wght' (\\d+)").find(it.paint.fontVariationSettings!!)!!.groupValues[1].toInt() }
             val countWeights = weights.dropLast(2)
             assertTrue("Visible light/bold contrast: $weights", countWeights.max() - countWeights.min() >= 250)
-            assertEquals(listOf(200, 200), weights.takeLast(2))
+            assertEquals("Follower noun stays light; the signed delta keeps its regular weight", listOf(200, 400), weights.takeLast(2))
         }
     }
 

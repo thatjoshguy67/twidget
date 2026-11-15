@@ -20,6 +20,7 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.AttributeSet
 import android.view.View
+import android.view.ViewGroup
 import android.view.KeyEvent
 import android.view.animation.PathInterpolator
 import androidx.appcompat.widget.SearchView
@@ -73,6 +74,17 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
         button.background = RippleDrawable(ColorStateList.valueOf(0x33777777), fill,
             GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(-1) })
         button.elevation = 4f * resources.displayMetrics.density
+        // Both the FAB and expanded plate cast shadows beyond SearchView's tight
+        // internal layout. Keep the circular/capsule ripple masks on the surfaces.
+        clipChildren = false
+        clipToPadding = false
+        for (id in intArrayOf(androidx.appcompat.R.id.search_bar,
+            androidx.appcompat.R.id.search_edit_frame, androidx.appcompat.R.id.search_plate_frame)) {
+            findViewById<ViewGroup>(id).apply {
+                clipChildren = false
+                clipToPadding = false
+            }
+        }
         SeslSurfaceHighlight.mark(button, fabSize / 2f)
         SeslSurfaceHighlight.applyTo(button)
         setOnSearchClickListener { if (!changingMode) expand() }

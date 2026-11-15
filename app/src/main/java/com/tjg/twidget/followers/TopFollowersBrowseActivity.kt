@@ -107,6 +107,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             initialPrefetchItemCount = 0
         }
         listView.adapter = adapter
+        listView.seslSetFillBottomEnabled(false)
         listView.seslSetFastScrollerEnabled(true)
         com.tjg.twidget.ui.SeslFastScrollerTypography.applyTo(listView)
         listView.seslSetGoToTopEnabled(true)
@@ -116,23 +117,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             recycler.seslHideGoToTop()
             true
         }
-        var surfaceTop = 0
-        var surfaceBottom = 0
-        listView.background = object : GradientDrawable() {
-            override fun draw(canvas: android.graphics.Canvas) {
-                setBounds(0, surfaceTop, listView.width, surfaceBottom)
-                super.draw(canvas)
-            }
-        }.apply {
-            cornerRadius = dp(28).toFloat()
-            setColor(getColor(R.color.oneui_card_bg))
-        }
-        listView.outlineProvider = object : android.view.ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, surfaceTop, view.width, surfaceBottom, dp(28).toFloat())
-            }
-        }
-        listView.clipToOutline = true
 
         onBackPressedDispatcher.addCallback(this, collapseSearchOnBack)
         searchFab = findViewById(R.id.top_followers_browse_search_fab)
@@ -242,18 +226,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             val clearance = trackBottom + dp(12)
             if (listView.paddingBottom != clearance) {
                 listView.setPadding(listView.paddingLeft, listView.paddingTop, listView.paddingRight, clearance)
-            }
-            val firstRow = listView.findViewHolderForAdapterPosition(0)?.itemView
-            val lastRow = listView.findViewHolderForAdapterPosition(adapter.itemCount - 1)?.itemView
-            val surface = followerListSurfaceBounds(
-                listView.height, dp(28), adapter.itemCount,
-                firstRow?.top, lastRow?.bottom, dp(4),
-            )
-            if (surfaceTop != surface.top || surfaceBottom != surface.bottom) {
-                surfaceTop = surface.top
-                surfaceBottom = surface.bottom
-                listView.invalidateOutline()
-                listView.invalidate()
             }
             // SESL already applies floating-toolbar offsets and list padding.
             val additionalTop = trackTop - listView.paddingTop - listView.seslGetScrollBarTopOffset()

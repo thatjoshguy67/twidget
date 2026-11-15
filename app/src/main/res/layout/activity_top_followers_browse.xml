@@ -28,7 +28,7 @@
             android:paddingEnd="10dp"
             android:paddingBottom="0dp">
 
-            <androidx.recyclerview.widget.RecyclerView
+            <com.tjg.twidget.followers.FollowerRecyclerView
                 android:id="@+id/top_followers_browse_list"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

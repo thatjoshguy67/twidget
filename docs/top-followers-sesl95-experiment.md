@@ -23,3 +23,8 @@ Validation of this revision: local build, lint and unit tests; the revised devic
 ## Search refinements revision
 
 The standalone filters capsule was removed after device review. The expanded search bar now uses the native overflow-button slot for the One UI list-filter icon and a native dialog with radio groups and OK/Cancel/Reset controls, replacing microphone input. Sorting and follower-count thresholds compose with the text query. Reset clears refinements only; active refinements tint the menu button and collapsed FAB. Dialog focus/IME transitions do not collapse search. Ctrl+Shift+F expands search and opens this dialog. Selections are applied with OK; Cancel or Back discards pending changes. The search overlay coordinator allows shadow overflow while retaining the 8dp popover lift.
+
+
+### Adaptive minimum followers
+
+The minimum threshold now uses a native SESL slider with logarithmic travel, rounded population-based presets and a live query-aware match count. Its range follows the highest follower count in the loaded archive; a previously selected custom threshold remains available even if the archive changes. Presets use the median, 80th and 95th percentiles, rounded down to two significant digits and deduplicated with Any. Empty/zero-count lists disable the slider. Changes stay local to the dialog until OK, and arbitrary nonnegative thresholds survive recreation.

@@ -15,7 +15,7 @@ internal data class FollowerFilters(val sort: FollowerSort = FollowerSort.FOLLOW
     companion object {
         fun restored(sort: String?, minimum: Long) = FollowerFilters(
             FollowerSort.entries.firstOrNull { it.name == sort } ?: FollowerSort.FOLLOWERS,
-            minimum.takeIf { it in listOf(0L, 10_000L, 100_000L) } ?: 0L,
+            minimum.coerceAtLeast(0),
         )
     }
 }

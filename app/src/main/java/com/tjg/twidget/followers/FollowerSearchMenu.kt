@@ -16,6 +16,7 @@ import com.tjg.twidget.ui.Sesl95SearchView
 internal class FollowerSearchMenu(
     private val search: Sesl95SearchView,
     initial: FollowerFilters,
+    private val followers: () -> List<RankedTopFollower>,
     private val changed: (FollowerFilters) -> Unit,
 ) {
     var filters = initial; private set
@@ -60,24 +61,14 @@ internal class FollowerSearchMenu(
             R.id.follower_sort_count to R.string.floating_sort_count,
             R.id.follower_sort_name to R.string.floating_sort_name),
             if (filters.sort == FollowerSort.NAME) R.id.follower_sort_name else R.id.follower_sort_count)
-        val minimum = group(R.string.floating_min_followers, listOf(
-            R.id.follower_min_any to R.string.floating_all,
-            R.id.follower_min_10k to R.string.floating_10k,
-            R.id.follower_min_100k to R.string.floating_100k), when (filters.minimum) {
-                100_000L -> R.id.follower_min_100k
-                10_000L -> R.id.follower_min_10k
-                else -> R.id.follower_min_any
-            })
+        val minimum = FollowerThresholdControl(context, followers(), search.query.toString(), filters.minimum)
+        content.addView(minimum, LinearLayout.LayoutParams(-1, -2))
         val window = builder.setTitle(R.string.floating_filters)
             .setView(ScrollView(context).apply { addView(content) })
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 filters = FollowerFilters(
                     if (sort.checkedRadioButtonId == R.id.follower_sort_name) FollowerSort.NAME else FollowerSort.FOLLOWERS,
-                    when (minimum.checkedRadioButtonId) {
-                        R.id.follower_min_100k -> 100_000L
-                        R.id.follower_min_10k -> 10_000L
-                        else -> 0L
-                    })
+                    minimum.minimum)
                 updateIndicator()
                 changed(filters)
             }
@@ -96,7 +87,7 @@ internal class FollowerSearchMenu(
         window.show()
         window.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
             sort.check(R.id.follower_sort_count)
-            minimum.check(R.id.follower_min_any)
+            minimum.reset()
         }
     }
     fun dismiss() {

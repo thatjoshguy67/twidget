@@ -26,4 +26,5 @@
     <string name="floating_shortcut_inspector">Minimitza / restaura · Ctrl+M</string>
     <string name="floating_expand_filters">Desplega els filtres</string>
     <string name="floating_collapse_filters">Replega els filtres</string>
+    <string name="floating_matching_followers">Coincideixen %1$d de %2$d seguidors carregats</string>
 </resources>

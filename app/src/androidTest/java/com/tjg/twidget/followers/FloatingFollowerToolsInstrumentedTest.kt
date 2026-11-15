@@ -6,6 +6,10 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
+import android.widget.TextView
+import android.widget.LinearLayout
+import android.widget.HorizontalScrollView
+import androidx.appcompat.widget.SeslSeekBar
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
@@ -27,6 +31,7 @@ class FloatingFollowerToolsInstrumentedTest {
             TopFollower("1", "zebra", "Zebra", 100_000, false, ""),
             TopFollower("2", "amy", "Amy", 10_000, false, ""),
             TopFollower("3", "alan", "Alan", 9_999, false, "")))
+        val scale = FollowerThresholdScale(listOf(100_000, 10_000, 9_999))
         fun settle() { SystemClock.sleep(500); instrumentation.waitForIdleSync() }
         try {
             ActivityScenario.launch<TopFollowersBrowseActivity>(Intent(context, TopFollowersBrowseActivity::class.java)
@@ -55,7 +60,10 @@ class FloatingFollowerToolsInstrumentedTest {
                     // Opening a dialog may hide the IME; that is not an exit from search.
                     search.onImeVisibilityChanged(true); search.onImeVisibilityChanged(false)
                     assertTrue(search.isFloatingExpanded)
-                    a.searchFilters.dialog!!.findViewById<RadioButton>(R.id.follower_min_10k)!!.performClick()
+                    val presets = a.searchFilters.dialog!!.findViewById<HorizontalScrollView>(R.id.follower_min_presets)!!.getChildAt(0) as LinearLayout
+                    presets.getChildAt(1).performClick()
+                    assertEquals("Preset moves the slider", scale.position(10_000), a.searchFilters.dialog!!.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!.progress)
+                    assertEquals(context.getString(R.string.floating_matching_followers, 1, 3), a.searchFilters.dialog!!.findViewById<TextView>(R.id.follower_min_results)!!.text.toString())
                     assertEquals("Pending selection is not applied yet", FollowerFilters(), a.searchFilters.filters)
                     a.searchFilters.dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
                 }
@@ -81,8 +89,9 @@ class FloatingFollowerToolsInstrumentedTest {
                 scenario.onActivity { a ->
                     val dialog = a.searchFilters.dialog!!
                     assertTrue(dialog.findViewById<RadioButton>(R.id.follower_sort_name)!!.isChecked)
-                    assertTrue(dialog.findViewById<RadioButton>(R.id.follower_min_10k)!!.isChecked)
-                    dialog.findViewById<RadioButton>(R.id.follower_min_100k)!!.performClick()
+                    assertEquals(scale.position(10_000), dialog.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!.progress)
+                    dialog.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!.progress = scale.position(100_000)
+                    assertEquals(context.getString(R.string.floating_matching_followers, 0, 3), dialog.findViewById<TextView>(R.id.follower_min_results)!!.text.toString())
                     a.onBackPressedDispatcher.onBackPressed()
                     assertNull(a.searchFilters.dialog)
                     assertEquals("Back discards pending changes", FollowerFilters(FollowerSort.NAME, 10_000), a.searchFilters.filters)
@@ -92,7 +101,7 @@ class FloatingFollowerToolsInstrumentedTest {
                 settle()
                 scenario.onActivity { a ->
                     a.searchFilters.dialog!!.getButton(AlertDialog.BUTTON_NEUTRAL).performClick()
-                    assertTrue(a.searchFilters.dialog!!.findViewById<RadioButton>(R.id.follower_min_any)!!.isChecked)
+                    assertEquals(0, a.searchFilters.dialog!!.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!.progress)
                     a.searchFilters.dialog!!.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
                     assertEquals("Cancel discards reset", FollowerFilters(FollowerSort.NAME, 10_000), a.searchFilters.filters)
                 }

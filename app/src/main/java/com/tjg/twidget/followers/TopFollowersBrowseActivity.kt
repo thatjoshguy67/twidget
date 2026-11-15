@@ -123,7 +123,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         onBackPressedDispatcher.addCallback(this, closeSearch)
         filters = FollowerFilters.restored(savedInstanceState?.getString("filter_sort"), savedInstanceState?.getLong("filter_minimum") ?: 0L)
         searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
-        searchFilters = FollowerSearchMenu(searchView, filters) { value -> filters = value; render() }
+        searchFilters = FollowerSearchMenu(searchView, filters, { allFollowers }) { value -> filters = value; render() }
         searchView.onExpansionChanged = {
             closeSearch.isEnabled = it
             if (!it) searchFilters.dismiss()

@@ -26,4 +26,5 @@
     <string name="floating_shortcut_inspector">Réduire / rétablir · Ctrl+M</string>
     <string name="floating_expand_filters">Développer les filtres</string>
     <string name="floating_collapse_filters">Réduire les filtres</string>
+    <string name="floating_matching_followers">%1$d des %2$d abonnés chargés correspondent</string>
 </resources>

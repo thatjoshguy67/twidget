@@ -26,4 +26,5 @@
     <string name="floating_shortcut_inspector">Minimizar / restaurar · Ctrl+M</string>
     <string name="floating_expand_filters">Expandir filtros</string>
     <string name="floating_collapse_filters">Contraer filtros</string>
+    <string name="floating_matching_followers">Coinciden %1$d de %2$d seguidores cargados</string>
 </resources>

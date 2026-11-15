@@ -1,0 +1,10 @@
+<resources>
+    <string name="dashboard_undo">Desfés</string>
+    <string name="dashboard_card_moved">Targeta moguda</string>
+    <string name="dashboard_card_removed">Targeta eliminada</string>
+    <string name="dashboard_card_added">Targeta afegida</string>
+    <string name="dashboard_move_to">Mou a…</string>
+    <string name="dashboard_before_card">Abans de %1$s</string>
+    <string name="dashboard_after_card">Després de %1$s</string>
+    <string name="dashboard_drop_here">Mou %1$s aquí</string>
+</resources>

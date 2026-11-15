@@ -1,0 +1,10 @@
+<resources>
+    <string name="dashboard_undo">Undo</string>
+    <string name="dashboard_card_moved">Card moved</string>
+    <string name="dashboard_card_removed">Card removed</string>
+    <string name="dashboard_card_added">Card added</string>
+    <string name="dashboard_move_to">Move to…</string>
+    <string name="dashboard_before_card">Before %1$s</string>
+    <string name="dashboard_after_card">After %1$s</string>
+    <string name="dashboard_drop_here">Move %1$s here</string>
+</resources>

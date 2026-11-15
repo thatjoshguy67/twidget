@@ -1,0 +1,10 @@
+<resources>
+    <string name="dashboard_undo">Deshacer</string>
+    <string name="dashboard_card_moved">Tarjeta movida</string>
+    <string name="dashboard_card_removed">Tarjeta eliminada</string>
+    <string name="dashboard_card_added">Tarjeta añadida</string>
+    <string name="dashboard_move_to">Mover a…</string>
+    <string name="dashboard_before_card">Antes de %1$s</string>
+    <string name="dashboard_after_card">Después de %1$s</string>
+    <string name="dashboard_drop_here">Mover %1$s aquí</string>
+</resources>

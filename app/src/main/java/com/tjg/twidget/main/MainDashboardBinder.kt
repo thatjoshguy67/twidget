@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Canvas
-import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -125,7 +124,14 @@ internal class MainDashboardBinder(
     private val editModeController get() = activity.editModeController
     private val cardResize = DashboardCardResize(activity)
     internal fun resizeCard(card: DashboardCardType) = cardResize.toggle(card)
-    internal fun dispose() = cardResize.dispose()
+    internal fun dispose() {
+        cardResize.dispose()
+        pendingDropLayout?.let { listener -> pendingDropGrid?.removeOnLayoutChangeListener(listener) }
+        pendingDropLayout = null
+        pendingDropGrid = null
+    }
+    private var pendingDropLayout: View.OnLayoutChangeListener? = null
+    private var pendingDropGrid: GridLayout? = null
     private var editTransitionGeneration = 0
 
     fun animateEditModeChange(enabled: Boolean, onTransitionStart: () -> Unit, render: () -> Unit) {
@@ -239,6 +245,7 @@ internal class MainDashboardBinder(
     private var renderSnapshot: TwidgetStore.AccountSnapshot? = null
 
     private fun bindPage(page: View, account: String, refreshRemote: Boolean) {
+        if (!editModeController.onDashboardBinding(account)) return
         val snapshot = TwidgetStore.accountSnapshot(activity, account)
         renderSnapshot = snapshot
         val stats = snapshot.stats
@@ -584,14 +591,23 @@ internal class MainDashboardBinder(
     }
 
     private fun createDropPlaceholder(card: DashboardCardType): View =
-        FrameLayout(activity).apply {
+        TextView(activity).apply {
             background = GradientDrawable().apply {
-                cornerRadius = activity.dp(22).toFloat()
+                cornerRadius = activity.dp(28).toFloat()
                 val neutral = activity.getColor(R.color.oneui_text_secondary)
+                val accent = activity.getColor(R.color.oneui_accent)
                 setColor((neutral and 0x00ffffff) or 0x18000000)
+                setStroke(activity.dp(1), (accent and 0x00ffffff) or 0x70000000)
             }
-            alpha = 0.75f
-            contentDescription = activity.getString(card.labelRes)
+            scaleX = EDIT_CARD_SCALE
+            scaleY = EDIT_CARD_SCALE
+            gravity = Gravity.CENTER
+            text = activity.getString(card.labelRes)
+            setTextColor(activity.getColor(R.color.oneui_text_secondary))
+            textSize = 14f
+            typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 500)
+            setPadding(activity.dp(12), activity.dp(12), activity.dp(12), activity.dp(12))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
     private fun createDashboardCardWrapper(card: DashboardCardType, content: View): FrameLayout =
@@ -654,6 +670,10 @@ internal class MainDashboardBinder(
                         androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat(actionId, activity.getString(label)),
                         activity.getString(label)) { _, _ -> editModeController.moveCard(card, offset) }
                 }
+                androidx.core.view.ViewCompat.replaceAccessibilityAction(this,
+                    androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                        R.id.dashboard_move_to_action, activity.getString(R.string.dashboard_move_to)),
+                    activity.getString(R.string.dashboard_move_to)) { _, _ -> editModeController.showMoveCardDialog(card) }
                 setOnKeyListener { _, key, event ->
                     if (event.action == android.view.KeyEvent.ACTION_DOWN && event.isCtrlPressed) {
                         val direction = when (key) {
@@ -735,19 +755,19 @@ internal class MainDashboardBinder(
             // Entry feedback is synchronized with the replacement card's first animation frame.
             editModeController.setEditMode(true)
         } else {
-            editModeController.draggedCardId = card.id
-            editModeController.dragPreviewOrder = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
-            editModeController.dragSourceView = dragView
+            editModeController.beginDashboardDrag(card, dragView)
             val dragShadow = object : View.DragShadowBuilder(dragView) {
+                private val inset = activity.dp(16)
+                override fun onProvideShadowMetrics(size: android.graphics.Point, touch: android.graphics.Point) {
+                    size.set(dragView.width + inset * 2, dragView.height + inset * 2)
+                    touch.set(size.x / 2, size.y / 2)
+                }
                 override fun onDrawShadow(canvas: Canvas) {
-                    val layer = canvas.saveLayerAlpha(0f, 0f, dragView.width.toFloat(), dragView.height.toFloat(), 180)
-                    val radius = (0 until ((dragView as? ViewGroup)?.childCount ?: 0))
-                        .mapNotNull { ((dragView as ViewGroup).getChildAt(it).background as? GradientDrawable)?.cornerRadius }
-                        .firstOrNull { it > 0f } ?: activity.dp(28).toFloat()
-                    canvas.clipPath(Path().apply {
-                        addRoundRect(0f, 0f, dragView.width.toFloat(), dragView.height.toFloat(),
-                            radius, radius, Path.Direction.CW)
-                    })
+                    // Include the existing card shadow rather than clipping it
+                    // to the content radius. A nearly opaque copy stays readable.
+                    val layer = canvas.saveLayerAlpha(0f, 0f,
+                        (dragView.width + inset * 2).toFloat(), (dragView.height + inset * 2).toFloat(), 240)
+                    canvas.translate(inset.toFloat(), inset.toFloat())
                     super.onDrawShadow(canvas)
                     canvas.restoreToCount(layer)
                 }
@@ -762,7 +782,6 @@ internal class MainDashboardBinder(
             if (started) {
                 com.tjg.twidget.ui.TwidgetHaptics.dragPickup(dragView)
                 (dragView.parent as? ViewGroup)?.removeView(dragView)
-                editModeController.startDragHoldFeedback()
             } else {
                 editModeController.finishDashboardDrag(commit = false)
             }
@@ -1169,6 +1188,7 @@ internal class MainDashboardBinder(
         val placeholder = editModeController.dragPlaceholderView ?: FrameLayout(activity).apply {
             tag = DRAG_PLACEHOLDER_TAG
             setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
+            contentDescription = activity.getString(R.string.dashboard_drop_here, activity.getString(card.labelRes))
             addView(createDropPlaceholder(card), FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1176,7 +1196,10 @@ internal class MainDashboardBinder(
             setOnDragListener(editModeController.dashboardDragListener)
         }.also { editModeController.dragPlaceholderView = it }
 
-        val previousPositions = if (placeholder.parent === container) {
+        pendingDropLayout?.let { listener -> pendingDropGrid?.removeOnLayoutChangeListener(listener) }
+        pendingDropLayout = null
+        pendingDropGrid = null
+        val previousPositions = if (placeholder.parent === container && android.animation.ValueAnimator.areAnimatorsEnabled()) {
             (0 until container.childCount).map { container.getChildAt(it) }
                 .filter { it !== placeholder && it !== editModeController.dragSourceView }
                 .associateWith { it.x to it.y }
@@ -1199,18 +1222,26 @@ internal class MainDashboardBinder(
             dashboardCardLayoutParams(card, editModeController.dragSourceView?.height),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) container.suppressLayout(false)
-        if (previousPositions.isNotEmpty()) container.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(view: View, left: Int, top: Int, right: Int, bottom: Int,
-                oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
-                container.removeOnLayoutChangeListener(this)
-                previousPositions.forEach { (child, position) ->
-                    child.animate().cancel()
-                    child.translationX = position.first - child.left
-                    child.translationY = position.second - child.top
-                    child.animate().translationX(0f).translationY(0f).setDuration(160).start()
+        if (previousPositions.isNotEmpty()) {
+            val listener = object : View.OnLayoutChangeListener {
+                override fun onLayoutChange(view: View, left: Int, top: Int, right: Int, bottom: Int,
+                    oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                    container.removeOnLayoutChangeListener(this)
+                    pendingDropLayout = null
+                    pendingDropGrid = null
+                    previousPositions.forEach { (child, position) ->
+                        child.animate().cancel()
+                        child.translationX = position.first - child.left
+                        child.translationY = position.second - child.top
+                        child.animate().translationX(0f).translationY(0f).setDuration(180)
+                            .setInterpolator(android.view.animation.PathInterpolator(.2f, 0f, 0f, 1f)).start()
+                    }
                 }
             }
-        })
+            pendingDropLayout = listener
+            pendingDropGrid = container
+            container.addOnLayoutChangeListener(listener)
+        }
     }
 
     private fun ViewGroup.childIndexWithTag(tagValue: String): Int {

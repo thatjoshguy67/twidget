@@ -1,0 +1,10 @@
+<resources>
+    <string name="dashboard_undo">Annuler</string>
+    <string name="dashboard_card_moved">Carte déplacée</string>
+    <string name="dashboard_card_removed">Carte supprimée</string>
+    <string name="dashboard_card_added">Carte ajoutée</string>
+    <string name="dashboard_move_to">Déplacer vers…</string>
+    <string name="dashboard_before_card">Avant %1$s</string>
+    <string name="dashboard_after_card">Après %1$s</string>
+    <string name="dashboard_drop_here">Déplacer %1$s ici</string>
+</resources>

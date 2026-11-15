@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Make dashboard rearrangement use stable two/four-column drop slots, clearer
+  previews and selective haptics. Add Undo for moves/removals and an accessible
+  destination picker while preserving card sizes.
+
 - Use the same adaptive lettering and fitting rules for compact and expanded
   follower-count cards, including during live resizing.
 

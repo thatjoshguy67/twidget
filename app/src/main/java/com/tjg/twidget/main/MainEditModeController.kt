@@ -12,6 +12,7 @@ import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.TwidgetHaptics
+import com.tjg.twidget.ui.TwidgetSnackbar
 
 internal class MainEditModeController(
     private val activity: MainActivity,
@@ -23,20 +24,103 @@ internal class MainEditModeController(
     var dragPreviewOrder: List<String>? = null
     private var draggedCardSpan: Int? = null
 
+    private data class LayoutState(val account: String, val order: List<String>, val expanded: Set<String>)
+    private val snackbar by lazy { TwidgetSnackbar(activity) }
+    private var pendingUndo: Pair<LayoutState, LayoutState>? = null
+    private var dragInitialState: LayoutState? = null
+    private data class DragGeometry(val columns: Int, val peers: List<String>, val targets: List<DashboardDragPolicy.Target>)
+    private var dragGeometry: DragGeometry? = null
+
+    private fun layoutState(): LayoutState {
+        val account = activity.selectedAccount
+        return LayoutState(account, TwidgetStore.dashboardCards(activity, account),
+            DashboardCardType.entries.filter { it.supportsSizeVariants &&
+                TwidgetStore.isDashboardCardExpanded(activity, it.id, account) }.map { it.id }.toSet())
+    }
+
+    private fun forgetUndo() { pendingUndo = null; snackbar.dismiss() }
+
+    private fun offerUndo(before: LayoutState, message: Int) {
+        val after = layoutState()
+        if (before == after || before.account != after.account) return
+        val change = before to after
+        pendingUndo = change
+        snackbar.show(activity.getString(message), actionText = activity.getString(R.string.dashboard_undo)) {
+            if (pendingUndo != change || draggedCardId != null || layoutState() != after) return@show
+            activity.dashboardBinder.dispose()
+            TwidgetStore.saveDashboardCards(activity, before.order, before.account)
+            DashboardCardType.entries.filter { it.supportsSizeVariants }.forEach {
+                TwidgetStore.setDashboardCardExpanded(activity, it.id, it.id in before.expanded, before.account)
+            }
+            forgetUndo()
+            activity.render(refreshRemote = false)
+            TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
+        }
+    }
+
     internal fun moveCard(card: DashboardCardType, offset: Int): Boolean {
-        if (!editMode || draggedCardId != null) return false
-        val order = TwidgetStore.dashboardCards(activity, activity.selectedAccount).toMutableList()
+        val order = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         val from = order.indexOf(card.id)
         val target = from + offset
         if (from < 0 || target !in order.indices) return false
-        order.add(target, order.removeAt(from))
-        TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
+        return moveCardTo(card, order[target], after = offset > 0)
+    }
+
+    private fun moveCardTo(card: DashboardCardType, target: String, after: Boolean): Boolean {
+        if (!editMode || draggedCardId != null) return false
+        val before = layoutState()
+        val order = reorderDashboardCards(before.order, card.id, target, after)
+        if (order == before.order) return false
+        forgetUndo()
+        activity.dashboardBinder.dispose()
+        TwidgetStore.saveDashboardCards(activity, order, before.account)
         activity.render(refreshRemote = false)
         activity.findViewById<View>(R.id.dashboard_content).post {
             activity.findViewById<android.view.ViewGroup>(R.id.dashboard_content).findViewWithTag<View>(card.id)?.requestFocus()
         }
         TwidgetHaptics.selection(activity.findViewById(R.id.dashboard_content))
+        offerUndo(before, R.string.dashboard_card_moved)
         return true
+    }
+
+    internal fun showMoveCardDialog(card: DashboardCardType): Boolean {
+        if (!editMode || draggedCardId != null) return false
+        val account = activity.selectedAccount
+        val grid = activity.findViewById<GridLayout>(R.id.dashboard_content)
+        val visible = (0 until grid.childCount).map { grid.getChildAt(it).tag }.toSet()
+        val peers = TwidgetStore.dashboardCards(activity, account).filter { it != card.id && it in visible }
+            .mapNotNull(DashboardCardType::fromId)
+        if (peers.isEmpty()) return false
+        val labels = peers.map { activity.getString(R.string.dashboard_before_card, activity.getString(it.labelRes)) } +
+            activity.getString(R.string.dashboard_after_card, activity.getString(peers.last().labelRes))
+        AlertDialog.Builder(activity).setTitle(R.string.dashboard_move_to).setItems(labels.toTypedArray()) { _, index ->
+            if (activity.selectedAccount == account) {
+                val target = peers.getOrNull(index) ?: peers.last()
+                moveCardTo(card, target.id, after = index == peers.size)
+            }
+        }.setNegativeButton(R.string.cancel, null).show()
+        return true
+    }
+
+    // Background refreshes must not replace the live drag grid. A changed
+    // profile/layout cancels the provisional state before the new page binds.
+    fun onDashboardBinding(account: String): Boolean {
+        if (pendingUndo?.second?.account?.let { it != account } == true) forgetUndo()
+        val original = dragInitialState ?: return true
+        if (original.account == account && layoutState() == original) return false
+        clearDragPreview()
+        return true
+    }
+
+    fun beginDashboardDrag(card: DashboardCardType, source: View?, span: Int = card.span(activity, activity.selectedAccount)) {
+        forgetUndo()
+        dragInitialState = layoutState()
+        dragGeometry = null
+        draggedCardId = card.id
+        draggedCardSpan = span
+        dragPreviewOrder = dragInitialState!!.order.let { if (card.id in it) it else it + card.id }
+        dragSourceView = source
+        dropHover.clear()
     }
 
     internal fun restoreState(enabled: Boolean) {
@@ -49,41 +133,29 @@ internal class MainEditModeController(
     var dragPlaceholderView: android.view.View? = null
     var dragSourceView: android.view.View? = null
 
-    private var holdFeedbackView: View? = null
-    private val holdFeedback = object : Runnable {
-        override fun run() {
-            val view = holdFeedbackView ?: return
-            if (draggedCardId == null || !view.isAttachedToWindow || !view.hasWindowFocus()) {
-                stopDragHoldFeedback()
-                return
-            }
-            TwidgetHaptics.dragHold(view)
-            view.postDelayed(this, 120L)
-        }
-    }
+    private val dropHover = DashboardDropHover()
+    private var hoverView: View? = null
+    private val matureHover = Runnable { updateDropTarget(dragPointerX, dragPointerY) }
 
-    fun startDragHoldFeedback() {
-        stopDragHoldFeedback()
-        holdFeedbackView = activity.findViewById(R.id.dashboard_content)
-        holdFeedbackView?.postDelayed(holdFeedback, 120L)
+    private fun clearHover() {
+        dropHover.clear()
+        hoverView?.removeCallbacks(matureHover)
+        hoverView = null
     }
-
-    private fun stopDragHoldFeedback() {
-        holdFeedbackView?.removeCallbacks(holdFeedback)
-        holdFeedbackView = null
-    }
-
-    private var hoverTarget: Pair<String, Boolean>? = null
-    private var hoverStartedAt = 0L
 
     val dashboardDragListener = View.OnDragListener { source, event ->
         when (event.action) {
             DragEvent.ACTION_DRAG_STARTED -> editMode && draggedCardId != null &&
                 (event.localState == draggedCardId || event.clipDescription?.label?.toString() == "dashboard_card")
-            DragEvent.ACTION_DRAG_LOCATION, DragEvent.ACTION_DROP -> {
+            DragEvent.ACTION_DRAG_LOCATION -> {
                 updateDashboardDragAutoScroll(source, event)
-                updateDropTarget(dragPointerX, dragPointerY, immediate = event.action == DragEvent.ACTION_DROP)
-                if (event.action == DragEvent.ACTION_DROP) finishDashboardDrag(commit = true)
+                updateDropTarget(dragPointerX, dragPointerY)
+                true
+            }
+            DragEvent.ACTION_DROP -> {
+                // Commit exactly the visible preview, never jump to a pending
+                // destination that the user has not seen on screen yet.
+                finishDashboardDrag(commit = true)
                 true
             }
             DragEvent.ACTION_DRAG_ENDED -> {
@@ -94,40 +166,44 @@ internal class MainEditModeController(
         }
     }
 
-    private fun updateDropTarget(x: Float, y: Float, immediate: Boolean) {
+    private fun updateDropTarget(x: Float, y: Float) {
         val dragged = draggedCardId ?: return
+        if (activity.selectedAccount != dragInitialState?.account) { finishDashboardDrag(false); return }
         val grid = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
-        val gridOrigin = IntArray(2).also(grid::getLocationOnScreen)
-        val margin = activity.dp(5)
-        var candidate: Pair<String, Boolean>? = null
-        for (index in 0 until grid.childCount) {
-            val child = grid.getChildAt(index)
-            if (child.visibility != View.VISIBLE || child === dragPlaceholderView) continue
-            val id = child.tag as? String ?: continue
-            val card = DashboardCardType.fromId(id) ?: continue
-            if (id == dragged) continue
-            // Target settled slots rather than the animated visual positions.
-            val location = intArrayOf(gridOrigin[0] + child.left, gridOrigin[1] + child.top)
-            if (x < location[0] - margin || x > location[0] + child.width + margin ||
-                y < location[1] - margin || y > location[1] + child.height + margin) continue
-            // Half-width tiles use left/right zones; full-width tiles use top/bottom.
-            val after = if (cardSpan(card) == 1) {
-                val right = x > location[0] + child.width / 2f
-                if (grid.layoutDirection == View.LAYOUT_DIRECTION_RTL) !right else right
-            } else y > location[1] + child.height / 2f
-            candidate = id to after
-            break
-        }
-        val now = SystemClock.uptimeMillis()
-        if (candidate != hoverTarget) {
-            hoverTarget = candidate
-            hoverStartedAt = now
-        }
-        candidate?.let { (id, after) ->
-            if (immediate || now - hoverStartedAt >= 140L) {
-                previewMoveDashboardCard(dragged, id, after)
+        val order = dragPreviewOrder ?: return
+        // Cache packing for the drag, rather than allocating every projected
+        // arrangement on each pointer frame. A column-count change rebuilds it.
+        val geometry = dragGeometry?.takeIf { it.columns == grid.columnCount } ?: run {
+            val visible = (0 until grid.childCount).mapNotNull { grid.getChildAt(it).tag as? String }.toSet() + dragged
+            val peers = order.filter { it != dragged && it in visible }.mapNotNull { id ->
+                DashboardCardType.fromId(id)?.let { DashboardDragPolicy.Tile(id, cardSpan(it)) }
             }
+            val tile = DashboardCardType.fromId(dragged)?.let { DashboardDragPolicy.Tile(dragged, cardSpan(it)) } ?: return
+            DragGeometry(grid.columnCount, peers.map { it.id }, DashboardDragPolicy.targets(peers, tile, grid.columnCount))
+                .also { dragGeometry = it }
         }
+        val active = order.filter { it == dragged || it in geometry.peers }.indexOf(dragged)
+        val origin = IntArray(2).also(grid::getLocationOnScreen)
+        val columnWidth = (grid.width - grid.paddingLeft - grid.paddingRight).toFloat() / grid.columnCount
+        if (columnWidth <= 0) return
+        val params = dragPlaceholderView?.layoutParams as? GridLayout.LayoutParams
+        val rowHeight = (dragPlaceholderView?.height?.takeIf { it > 0 } ?: activity.dp(160)) +
+            (params?.topMargin ?: activity.dp(7)) + (params?.bottomMargin ?: activity.dp(7))
+        val physicalX = (x - origin[0] - grid.paddingLeft) / columnWidth
+        val logicalX = if (grid.layoutDirection == View.LAYOUT_DIRECTION_RTL) grid.columnCount - physicalX else physicalX
+        val logicalY = (y - origin[1] - grid.paddingTop) / rowHeight
+        if (logicalX < -.5f || logicalX > grid.columnCount + .5f || logicalY < -.5f) { clearHover(); return }
+        val target = DashboardDragPolicy.nearest(geometry.targets, logicalX, logicalY, active)
+        val now = SystemClock.uptimeMillis()
+        val ready = dropHover.update(target?.index, active, now)
+        hoverView?.removeCallbacks(matureHover)
+        hoverView = grid
+        if (ready != null) {
+            val before = geometry.peers.getOrNull(ready)
+            val anchor = before ?: geometry.peers.lastOrNull()
+            if (anchor != null) previewMoveDashboardCard(dragged, anchor, after = before == null)
+            dropHover.clear()
+        } else dropHover.remaining(now)?.let { grid.postDelayed(matureHover, it) }
     }
 
     private var dragPointerX = 0f
@@ -151,7 +227,7 @@ internal class MainEditModeController(
             } else (dragPointerY - viewport.bottom + edge) / edge
             val step = (activity.dp(AUTO_SCROLL_STEP_DP) * proximity.coerceIn(0.2f, 1f)).toInt().coerceAtLeast(1)
             scroll.scrollBy(0, step * autoScrollDirection)
-            updateDropTarget(dragPointerX, dragPointerY, immediate = false)
+            updateDropTarget(dragPointerX, dragPointerY)
             autoScrollScheduled = true
             scroll.postOnAnimation(this)
         }
@@ -183,6 +259,7 @@ internal class MainEditModeController(
             .setMessage(R.string.reset_layout_confirm)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.reset_layout) { _, _ ->
+                forgetUndo()
                 TwidgetStore.resetDashboardCards(activity, activity.selectedAccount)
                 TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
                 activity.render()
@@ -197,9 +274,14 @@ internal class MainEditModeController(
             Toast.makeText(activity, R.string.cannot_remove_last_card, Toast.LENGTH_SHORT).show()
             return
         }
-        TwidgetStore.saveDashboardCards(activity, current.filterNot { it == cardId }, activity.selectedAccount)
+        if (draggedCardId != null || cardId !in current) return
+        val before = layoutState()
+        forgetUndo()
+        activity.dashboardBinder.dispose()
+        TwidgetStore.saveDashboardCards(activity, current.filterNot { it == cardId }, before.account)
         TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
-        activity.render()
+        activity.render(refreshRemote = false)
+        offerUndo(before, R.string.dashboard_card_removed)
     }
 
     fun showAddCardDialog() {
@@ -219,11 +301,8 @@ internal class MainEditModeController(
         val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (draggedCardId != null || card !in availableDashboardCards() || card.id in current) return false
         if (!editMode) setEditMode(true)
-        draggedCardId = card.id
-        draggedCardSpan = span
         // Keep the new card provisional until it lands on the dashboard.
-        dragPreviewOrder = current + card.id
-        dragSourceView = null
+        beginDashboardDrag(card, source = null, span = span)
         activity.dashboardBinder.moveDropPlaceholder(card, current.lastOrNull().orEmpty(), after = true)
         source.setOnDragListener { _, event ->
             if (event.action == DragEvent.ACTION_DRAG_ENDED) finishDashboardDrag(commit = false)
@@ -233,7 +312,6 @@ internal class MainEditModeController(
             View.DragShadowBuilder(preview), card.id, View.DRAG_FLAG_GLOBAL)
         if (started) {
             TwidgetHaptics.dragPickup(source)
-            startDragHoldFeedback()
         } else finishDashboardDrag(commit = false)
         return started
     }
@@ -241,14 +319,18 @@ internal class MainEditModeController(
     fun addDashboardCard(card: DashboardCardType, span: Int = card.span(activity, activity.selectedAccount)) {
         val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (card !in availableDashboardCards() || card.id in current) return
+        val before = layoutState()
+        forgetUndo()
         if (card.supportsSizeVariants) TwidgetStore.setDashboardCardExpanded(activity, card.id, span == 2, activity.selectedAccount)
         TwidgetStore.saveDashboardCards(activity, current + card.id, activity.selectedAccount)
         TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
-        activity.render()
+        activity.render(refreshRemote = false)
+        offerUndo(before, R.string.dashboard_card_added)
     }
 
     fun resizeDashboardCard(card: DashboardCardType) {
         if (!editMode || !card.supportsSizeVariants || draggedCardId != null) return
+        forgetUndo()
         activity.dashboardBinder.resizeCard(card)
     }
 
@@ -268,32 +350,38 @@ internal class MainEditModeController(
 
     fun finishDashboardDrag(commit: Boolean) {
         val droppedId = draggedCardId ?: return
-        if (commit) {
+        val before = dragInitialState
+        val valid = commit && before != null && layoutState() == before
+        if (valid) {
             dragPreviewOrder?.let { order ->
-                val changed = order != TwidgetStore.dashboardCards(activity, activity.selectedAccount)
                 DashboardCardType.fromId(droppedId)?.takeIf { it.supportsSizeVariants }?.let { card ->
-                    draggedCardSpan?.let { TwidgetStore.setDashboardCardExpanded(activity, card.id, it == 2, activity.selectedAccount) }
+                    draggedCardSpan?.let { TwidgetStore.setDashboardCardExpanded(activity, card.id, it == 2, before!!.account) }
                 }
-                TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
-                if (changed) TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
+                TwidgetStore.saveDashboardCards(activity, order, before!!.account)
+                TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
             }
         }
         clearDragPreview()
-        activity.render()
-        if (commit) activity.dashboardBinder.showDropBounce(droppedId)
+        activity.render(refreshRemote = false)
+        if (valid) {
+            activity.dashboardBinder.showDropBounce(droppedId)
+            offerUndo(before!!, if (droppedId in before.order) R.string.dashboard_card_moved else R.string.dashboard_card_added)
+        }
     }
 
     fun clearDragPreview() {
-        stopDragHoldFeedback()
-        hoverTarget = null
+        activity.dashboardBinder.dispose()
+        clearHover()
         stopDashboardDragAutoScroll()
         dragPlaceholderView?.let { placeholder ->
             (placeholder.parent as? android.view.ViewGroup)?.removeView(placeholder)
         }
-        dragSourceView?.visibility = android.view.View.VISIBLE
+        dragSourceView?.visibility = View.VISIBLE
         draggedCardId = null
         draggedCardSpan = null
         dragPreviewOrder = null
+        dragInitialState = null
+        dragGeometry = null
         dragPlaceholderView = null
         dragSourceView = null
     }

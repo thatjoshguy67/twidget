@@ -2,11 +2,11 @@ package com.tjg.twidget.main
 
 import kotlin.math.hypot
 
-/** Row-major slots match the dashboard's equal-height, one/two-column GridLayout. */
+/** Row-major slots match the dashboard's one/two-column GridLayout. */
 internal object DashboardDragPolicy {
-    data class Tile(val id: String, val span: Int)
+    data class Tile(val id: String, val span: Int, val height: Float = 1f)
     data class Slot(val row: Int, val column: Int, val span: Int)
-    data class Target(val index: Int, val slot: Slot, val skippedCells: Int)
+    data class Target(val index: Int, val slot: Slot, val skippedCells: Int, val centerY: Float)
 
     fun pack(tiles: List<Tile>, columns: Int): Map<String, Slot> {
         require(columns > 0)
@@ -28,13 +28,20 @@ internal object DashboardDragPolicy {
     fun targets(peers: List<Tile>, dragged: Tile, columns: Int): List<Target> =
         (0..peers.size).map { index ->
             val order = peers.toMutableList().apply { add(index, dragged) }
-            val slot = pack(order, columns).getValue(dragged.id)
-            Target(index, slot, slot.row * columns + slot.column - peers.take(index).sumOf { it.span })
+            val slots = pack(order, columns)
+            val slot = slots.getValue(dragged.id)
+            val heights = FloatArray(slots.values.maxOf { it.row } + 1)
+            order.forEach { tile ->
+                val row = slots.getValue(tile.id).row
+                heights[row] = maxOf(heights[row], tile.height)
+            }
+            val centerY = heights.take(slot.row).sum() + heights[slot.row] / 2f
+            Target(index, slot, slot.row * columns + slot.column - peers.take(index).sumOf { it.span }, centerY)
         }
 
     fun nearest(targets: List<Target>, x: Float, y: Float, activeIndex: Int, stickiness: Float = .18f): Target? {
         fun distance(target: Target) = hypot(x - target.slot.column - target.slot.span / 2f,
-            y - target.slot.row - .5f)
+            y - target.centerY)
         val active = targets.firstOrNull { it.index == activeIndex }
         val nearest = targets.minWithOrNull(compareBy<Target> { distance(it) }
             .thenBy { it.skippedCells }.thenBy { kotlin.math.abs(it.index - activeIndex) }) ?: return null

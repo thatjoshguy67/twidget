@@ -197,11 +197,13 @@ class MetricChartView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val top = if (compactCardInsets) 0f else 12f * density
         val accent = context.getColor(R.color.oneui_accent)
+        val (seriesTop, seriesBottom) = MetricChartScale.insetPlot(top,
+            (height - bottomLabelSpace(density)).coerceAtLeast(top + 1f), 4f * density)
         barGradient = LinearGradient(
             0f,
-            top,
+            seriesTop,
             0f,
-            (height - bottomLabelSpace(density)).coerceAtLeast(top + 1f),
+            seriesBottom,
             intArrayOf(accent, if (compactCardInsets) 0xff85a3de.toInt() else ColorUtils.blendARGB(accent, Color.WHITE, 0.35f)),
             null,
             Shader.TileMode.CLAMP,
@@ -223,7 +225,9 @@ class MetricChartView @JvmOverloads constructor(
         val top = if (compactCardInsets) 0f else 12f * density
         val bottomLabels = bottomLabelSpace(density)
         val chartBottom = height - bottomLabels
-        val chartHeight = chartBottom - top
+        val (seriesTop, seriesBottom) = MetricChartScale.insetPlot(top, chartBottom, 4f * density)
+        val chartHeight = seriesBottom - seriesTop
+        if (chartHeight <= 0f) return
         // The numbered axis belongs to the current week's bars. Including the
         // long-term account average here compresses small but real day-to-day
         // differences and makes every current bar appear maxed out.
@@ -252,7 +256,7 @@ class MetricChartView @JvmOverloads constructor(
                 (chartHeight * normalized / scaleRange).coerceIn(14f * density, chartHeight)
             }
         }
-        fun yFor(value: Long): Float = top + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
+        fun yFor(value: Long): Float = seriesTop + chartHeight * MetricChartScale.yFraction(value, scaleMin, scaleMax)
         // Both series share the labelled axis. Stretching the historical average
         // to its own range makes an older, lower total appear above today's bars.
         fun averageYFor(value: Long): Float = yFor(value)
@@ -300,8 +304,8 @@ class MetricChartView @JvmOverloads constructor(
             val lastY = averageYFor(averageValues.last())
             linePath.lineTo(plotRight, lastY)
             areaPath.lineTo(plotRight, lastY)
-            areaPath.lineTo(plotRight, chartBottom)
-            areaPath.lineTo(left, chartBottom)
+            areaPath.lineTo(plotRight, seriesBottom)
+            areaPath.lineTo(left, seriesBottom)
             areaPath.close()
             canvas.drawPath(areaPath, areaFillPaint)
             val checkpoint = canvas.save()
@@ -312,7 +316,7 @@ class MetricChartView @JvmOverloads constructor(
             linePaint.alpha = if (graphOnlyLayout) 65 else 105
             var stripeX = left - chartHeight
             while (stripeX < width - right) {
-                canvas.drawLine(stripeX, chartBottom, stripeX + chartHeight, top, areaStripePaint)
+                canvas.drawLine(stripeX, seriesBottom, stripeX + chartHeight, seriesTop, areaStripePaint)
                 stripeX += stripeGap
             }
             canvas.restoreToCount(checkpoint)
@@ -325,12 +329,12 @@ class MetricChartView @JvmOverloads constructor(
             val value = values[index]
             val barHeight = heightFor(value)
             val x = left + index * stride + (barSlot - barWidth) / 2f
-            barRect.set(x, chartBottom - barHeight, x + barWidth, chartBottom)
+            barRect.set(x, seriesBottom - barHeight, x + barWidth, seriesBottom)
             barHitBounds[index].set(left + index * stride, top, left + index * stride + barSlot, chartBottom)
             if (!known.getOrElse(index) { true }) {
                 val dash = "–"
                 canvas.drawText(dash, x + barWidth / 2 - axisLabelPaint.measureText(dash) / 2,
-                    chartBottom - 4f * density, axisLabelPaint)
+                    seriesBottom - 4f * density, axisLabelPaint)
                 return@forEachIndexed
             }
             if (zeroBasedScale && scaleMin < 0) {
@@ -349,11 +353,11 @@ class MetricChartView @JvmOverloads constructor(
 
         val axisTextBounds = android.graphics.Rect()
         axisLabels.forEachIndexed { index, label ->
-            val y = top + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
+            val y = seriesTop + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
             axisLabelPaint.getTextBounds(label, 0, label.length, axisTextBounds)
             val baseline = when (index) {
-                0 -> top - axisTextBounds.top
-                axisLabels.lastIndex -> chartBottom - axisTextBounds.bottom
+                0 -> seriesTop - axisTextBounds.top
+                axisLabels.lastIndex -> seriesBottom - axisTextBounds.bottom
                 else -> y - (axisTextBounds.top + axisTextBounds.bottom) / 2f
             }
             canvas.drawText(label, labelInset, baseline, axisLabelPaint)
@@ -570,6 +574,12 @@ internal object MetricChartScale {
                 else -> format.format(value)
             }
         }
+    }
+
+    /** Keep pill caps clear of the plot mask without changing the numeric range. */
+    fun insetPlot(top: Float, bottom: Float, inset: Float): Pair<Float, Float> {
+        val padding = inset.coerceIn(0f, ((bottom - top) / 4f).coerceAtLeast(0f))
+        return top + padding to bottom - padding
     }
 
     fun yFraction(value: Long, min: Long, max: Long): Float {

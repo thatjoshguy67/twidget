@@ -68,6 +68,17 @@ class DashboardDragPolicyTest {
         assertEquals(2, DashboardDragPolicy.nearest(targets, .5f, 100f, 0)!!.index)
     }
 
+    @Test fun `drop targets account for taller rows and their neighbours`() {
+        val tall = DashboardDragPolicy.Tile("top", 2, 2f)
+        val targets = DashboardDragPolicy.targets(listOf(tall), tile("moving"), 2)
+        assertEquals(.5f, targets[0].centerY, .001f)
+        assertEquals(2.5f, targets[1].centerY, .001f)
+        assertEquals(1, DashboardDragPolicy.nearest(targets, .5f, 2.5f, 0)!!.index)
+        val sameRow = DashboardDragPolicy.targets(listOf(tall), tile("moving"), 4)
+        assertEquals(1f, sameRow[0].centerY, .001f)
+        assertEquals(1f, sameRow[1].centerY, .001f)
+    }
+
     @Test fun `a stationary hover matures and crossing back cancels the pending move`() {
         val hover = DashboardDropHover()
         assertNull(hover.update(2, 0, 1000))

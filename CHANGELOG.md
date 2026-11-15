@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Give Top Followers more vertical space and keep its row edges aligned.
+  Simplify drag landing previews to a plain shape and inset graph pill ends
+  slightly from the plot edges.
+
 - Make dashboard rearrangement use stable two/four-column drop slots, clearer
   previews and selective haptics. Add Undo for moves/removals and an accessible
   destination picker while preserving card sizes.

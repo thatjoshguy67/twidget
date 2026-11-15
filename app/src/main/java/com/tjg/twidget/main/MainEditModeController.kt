@@ -171,24 +171,24 @@ internal class MainEditModeController(
         if (activity.selectedAccount != dragInitialState?.account) { finishDashboardDrag(false); return }
         val grid = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         val order = dragPreviewOrder ?: return
+        val rowHeight = activity.dp(160) + activity.dp(7) * 2
+        fun tile(card: DashboardCardType) = DashboardDragPolicy.Tile(card.id, cardSpan(card),
+            (activity.dp(card.preferredHeightDp) + activity.dp(7) * 2).toFloat() / rowHeight)
         // Cache packing for the drag, rather than allocating every projected
         // arrangement on each pointer frame. A column-count change rebuilds it.
         val geometry = dragGeometry?.takeIf { it.columns == grid.columnCount } ?: run {
             val visible = (0 until grid.childCount).mapNotNull { grid.getChildAt(it).tag as? String }.toSet() + dragged
             val peers = order.filter { it != dragged && it in visible }.mapNotNull { id ->
-                DashboardCardType.fromId(id)?.let { DashboardDragPolicy.Tile(id, cardSpan(it)) }
+                DashboardCardType.fromId(id)?.let(::tile)
             }
-            val tile = DashboardCardType.fromId(dragged)?.let { DashboardDragPolicy.Tile(dragged, cardSpan(it)) } ?: return
-            DragGeometry(grid.columnCount, peers.map { it.id }, DashboardDragPolicy.targets(peers, tile, grid.columnCount))
+            val draggedTile = DashboardCardType.fromId(dragged)?.let(::tile) ?: return
+            DragGeometry(grid.columnCount, peers.map { it.id }, DashboardDragPolicy.targets(peers, draggedTile, grid.columnCount))
                 .also { dragGeometry = it }
         }
         val active = order.filter { it == dragged || it in geometry.peers }.indexOf(dragged)
         val origin = IntArray(2).also(grid::getLocationOnScreen)
         val columnWidth = (grid.width - grid.paddingLeft - grid.paddingRight).toFloat() / grid.columnCount
         if (columnWidth <= 0) return
-        val params = dragPlaceholderView?.layoutParams as? GridLayout.LayoutParams
-        val rowHeight = (dragPlaceholderView?.height?.takeIf { it > 0 } ?: activity.dp(160)) +
-            (params?.topMargin ?: activity.dp(7)) + (params?.bottomMargin ?: activity.dp(7))
         val physicalX = (x - origin[0] - grid.paddingLeft) / columnWidth
         val logicalX = if (grid.layoutDirection == View.LAYOUT_DIRECTION_RTL) grid.columnCount - physicalX else physicalX
         val logicalY = (y - origin[1] - grid.paddingTop) / rowHeight

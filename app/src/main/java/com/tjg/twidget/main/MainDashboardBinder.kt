@@ -50,7 +50,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
-// Cards share one row height and occupy one or two grid columns.
+// Cards align within each row and occupy one or two grid columns.
 internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
     HALF(1, 214),
     MILESTONE(2, 214),
@@ -90,6 +90,7 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
     LIKES("likes", R.string.likes, DashboardCardSize.CHART);
 
+    val preferredHeightDp: Int get() = if (this == TOP_FOLLOWERS) 176 else 160
     val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF
     val previewSpans: List<Int> get() = if (supportsSizeVariants) listOf(1, 2) else listOf(size.span)
     fun span(context: android.content.Context, account: String = TwidgetStore.settings(context).username): Int =
@@ -590,23 +591,15 @@ internal class MainDashboardBinder(
         }
     }
 
-    private fun createDropPlaceholder(card: DashboardCardType): View =
-        TextView(activity).apply {
+    private fun createDropPlaceholder(): View =
+        View(activity).apply {
             background = GradientDrawable().apply {
                 cornerRadius = activity.dp(28).toFloat()
                 val neutral = activity.getColor(R.color.oneui_text_secondary)
-                val accent = activity.getColor(R.color.oneui_accent)
                 setColor((neutral and 0x00ffffff) or 0x18000000)
-                setStroke(activity.dp(1), (accent and 0x00ffffff) or 0x70000000)
             }
             scaleX = EDIT_CARD_SCALE
             scaleY = EDIT_CARD_SCALE
-            gravity = Gravity.CENTER
-            text = activity.getString(card.labelRes)
-            setTextColor(activity.getColor(R.color.oneui_text_secondary))
-            textSize = 14f
-            typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 500)
-            setPadding(activity.dp(12), activity.dp(12), activity.dp(12), activity.dp(12))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
@@ -649,6 +642,7 @@ internal class MainDashboardBinder(
         }.apply {
             tag = card.id
             setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
+            setTag(R.id.dashboard_preferred_height, card.preferredHeightDp)
             val longPressHandler = object : View.OnLongClickListener {
                 override fun onLongClick(view: View): Boolean = handleDashboardCardLongPress(card, this@apply)
 
@@ -1188,8 +1182,9 @@ internal class MainDashboardBinder(
         val placeholder = editModeController.dragPlaceholderView ?: FrameLayout(activity).apply {
             tag = DRAG_PLACEHOLDER_TAG
             setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
+            setTag(R.id.dashboard_preferred_height, card.preferredHeightDp)
             contentDescription = activity.getString(R.string.dashboard_drop_here, activity.getString(card.labelRes))
-            addView(createDropPlaceholder(card), FrameLayout.LayoutParams(
+            addView(createDropPlaceholder(), FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             ))
@@ -1256,9 +1251,10 @@ internal class MainDashboardBinder(
             width = 0
             height = when {
                 dragHeight != null && dragHeight > 0 -> dragHeight
-                else -> activity.dp(card.size.heightDp)
+                else -> activity.dp(card.preferredHeightDp)
             }
             columnSpec = GridLayout.spec(GridLayout.UNDEFINED, editModeController.cardSpan(card), 1f)
+            rowSpec = GridLayout.spec(GridLayout.UNDEFINED, GridLayout.FILL)
             setMargins(activity.dp(7), activity.dp(7), activity.dp(7), activity.dp(7))
         }
 

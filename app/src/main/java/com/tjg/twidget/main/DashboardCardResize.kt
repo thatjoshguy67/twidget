@@ -189,7 +189,7 @@ internal class DashboardCardResize(private val activity: MainActivity) {
                 val params = view.layoutParams as GridLayout.LayoutParams
                 val columns = view.getTag(R.id.dashboard_card_span) as Int
                 params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, columns, 1f)
-                params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED)
+                params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED, GridLayout.FILL)
                 view.layoutParams = params
             }
             grid.columnCount = grid.columnCount

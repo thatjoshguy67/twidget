@@ -115,7 +115,7 @@ internal class TopFollowersCardBinder(
             setPadding(dp(12), dp(12), dp(12), dp(12))
             setTag(R.id.dashboard_list_card, true)
             addView(header(activity.getString(R.string.top_followers_results_title), account, openBrowserEnabled = true),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
             state.top.take(if (activity.resources.configuration.fontScale >= 1.6f) 2 else 3).forEachIndexed { index, follower ->
                 addView(resultRow(index + 1, follower, index < 2),
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))

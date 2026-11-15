@@ -28,7 +28,7 @@ class DashboardGridLayout @JvmOverloads constructor(
                 val params = child.layoutParams as LayoutParams
                 val span = (child.getTag(com.tjg.twidget.R.id.dashboard_card_span) as? Int) ?: 2
                 params.columnSpec = spec(UNDEFINED, span, 1f)
-                params.rowSpec = spec(UNDEFINED)
+                params.rowSpec = spec(UNDEFINED, FILL)
                 child.layoutParams = params
             }
         }
@@ -129,14 +129,15 @@ class DashboardGridLayout @JvmOverloads constructor(
         // Resolve widths from the same column unit, including mixed one/two-column cards.
         // GridLayout weights alone distribute spare space rather than equal column widths.
         // Samsung Health keeps its native row height when four portrait columns
-        // get narrower. Adapt each card's contents instead of squashing the row.
-        val rowHeight = (160 * resources.displayMetrics.density).toInt()
+        // get narrower. Top Followers has a little more space; native FILL
+        // keeps any neighbours on that row aligned to its taller height.
         for (index in 0 until childCount) {
             val child = getChildAt(index)
             val params = child.layoutParams as LayoutParams
             val span = (child.getTag(com.tjg.twidget.R.id.dashboard_card_span) as? Int) ?: 2
             params.width = (available * span / columnCount - params.leftMargin - params.rightMargin).coerceAtLeast(0)
-            params.height = rowHeight.coerceAtLeast(1)
+            val preferredHeight = child.getTag(com.tjg.twidget.R.id.dashboard_preferred_height) as? Int ?: 160
+            params.height = (preferredHeight * resources.displayMetrics.density).toInt().coerceAtLeast(1)
         }
         super.onMeasure(boundedWidthSpec, heightMeasureSpec)
     }

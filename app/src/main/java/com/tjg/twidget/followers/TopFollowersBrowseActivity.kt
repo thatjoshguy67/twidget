@@ -179,7 +179,8 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         })
         // Float search over the full-height list.
         applyEdgeToEdgeInsets(toolbarLayout) { navigationInset ->
-            searchView.updateBottomMarginForNavigationBar(0, navigationInset)
+            searchView.updateBottomMarginForNavigationBar(
+                if (intent.getBooleanExtra(EXTRA_POPOVER, false)) dp(8) else 0, navigationInset)
         }
 
         // AppBarLayout's scrolling child can extend below the window while the

@@ -22,7 +22,7 @@ internal class FollowerThresholdControl(
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private val valueLabel = AppCompatTextView(context)
     private val resultLabel = AppCompatTextView(context)
-    private val segments = FollowerSegmentedSlider(context, scale.values.size)
+    private val segments = FollowerSegmentedSlider(context, scale)
     private val slider = segments.seekBar
     private var settingValue = false
 
@@ -40,7 +40,7 @@ internal class FollowerThresholdControl(
         })
         slider.apply {
             id = R.id.follower_min_slider
-            max = scale.values.lastIndex
+            max = scale.maxProgress
             isEnabled = max > 0
             contentDescription = context.getString(R.string.floating_min_followers)
         }
@@ -48,10 +48,16 @@ internal class FollowerThresholdControl(
         addView(resultLabel.apply { id = R.id.follower_min_results; setPadding(0, dp(4), 0, dp(8)) })
         slider.setOnSeekBarChangeListener(object : SeslSeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeslSeekBar, progress: Int, fromUser: Boolean) {
-                if (!settingValue) { minimum = scale.values[progress]; updateLabels() }
+                if (!settingValue) { minimum = scale.valueAt(progress); updateLabels() }
             }
             override fun onStartTrackingTouch(seekBar: SeslSeekBar) = Unit
-            override fun onStopTrackingTouch(seekBar: SeslSeekBar) = Unit
+            override fun onStopTrackingTouch(seekBar: SeslSeekBar) {
+                val snapped = scale.snappedPosition(seekBar.progress, segments.snapTolerance())
+                if (snapped != seekBar.progress) {
+                    seekBar.progress = snapped
+                    seekBar.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                }
+            }
         })
         select(minimum)
     }

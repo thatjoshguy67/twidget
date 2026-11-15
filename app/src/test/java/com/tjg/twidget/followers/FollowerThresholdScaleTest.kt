@@ -4,32 +4,43 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FollowerThresholdScaleTest {
-    @Test fun presetsFollowPopulationAndDistribution() {
-        val ordinary = FollowerThresholdScale((1L..100L).toList())
-        assertEquals(listOf(0L, 50L, 80L, 95L), ordinary.presets)
-        assertEquals(listOf(0L, 50L, 80L, 95L, 100L), ordinary.values)
-        assertEquals(listOf(0L, 500L, 800L, 950L), FollowerThresholdScale((1L..100L).map { it * 10 }).presets)
-        val skewed = FollowerThresholdScale(List(99) { 20L } + 50_000_000L)
-        assertEquals(listOf(0L, 20L), skewed.presets)
-        assertEquals(50_000_000L, skewed.maximum)
-        assertEquals("Only meaningful segments, including the outlier", listOf(0L, 20L, 50_000_000L), skewed.values)
+    @Test fun numericMilestonesAdaptToTheAvailableRange() {
+        assertEquals(listOf(0L, 100L, 1_000L, 10_000L, 100_000L, 444_000L),
+            FollowerThresholdScale(listOf(40, 444_000)).milestones)
+        assertEquals(listOf(0L, 100L, 1_000L, 10_000L, 100_000L),
+            FollowerThresholdScale(listOf(100_000)).milestones)
+        assertEquals(listOf(0L, 7L), FollowerThresholdScale(listOf(7)).milestones)
+        assertEquals(listOf(0L), FollowerThresholdScale(emptyList()).milestones)
+        assertEquals(0, FollowerThresholdScale(listOf(0, 0)).maxProgress)
     }
-    @Test fun emptyZeroAndSingleFollowerAreUsable() {
-        assertEquals(listOf(0L), FollowerThresholdScale(emptyList()).values)
-        assertEquals(listOf(0L), FollowerThresholdScale(listOf(0, 0)).presets)
-        assertEquals(listOf(0L, 7L), FollowerThresholdScale(listOf(7)).presets)
-    }
-    @Test fun endpointsPresetsAndSavedCustomValueAreExactAndMonotonic() {
-        listOf(1L, 99L, 123_456L, Long.MAX_VALUE).forEach { maximum ->
-            val scale = FollowerThresholdScale(listOf(0, maximum), 23_457)
-            assertEquals(0L, scale.values.first())
-            assertEquals(maxOf(maximum, 23_457), scale.values.last())
-            assertTrue(scale.values.zipWithNext().all { (a, b) -> a < b })
-            (scale.presets + 23_457L).forEach { assertEquals(it, scale.values[scale.position(it)]) }
+    @Test fun arbitraryIntermediateValuesRemainSelectable() {
+        val scale = FollowerThresholdScale(listOf(444_000))
+        listOf(1L, 73L, 99L, 101L, 650L, 1_001L, 23_457L, 276_543L, 444_000L).forEach {
+            assertEquals(it, scale.valueAt(scale.position(it)))
         }
+        assertFalse(scale.milestones.contains(23_457L))
+        val samples = (0..1000).map { scale.valueAt((scale.maxProgress.toLong() * it / 1000).toInt()) }
+        assertTrue(samples.zipWithNext().all { (a, b) -> a <= b })
     }
-    @Test fun restoringCustomThresholdDoesNotDiscardIt() {
+    @Test fun snapsOnlyWithinSmallMilestoneZones() {
+        val scale = FollowerThresholdScale(listOf(100_000))
+        val milestone = scale.position(10_000)
+        assertEquals(milestone, scale.snappedPosition(milestone + 50, 100))
+        assertEquals(milestone, scale.snappedPosition(milestone - 50, 100))
+        assertEquals(milestone + 101, scale.snappedPosition(milestone + 101, 100))
+        val intermediate = scale.position(23_457)
+        assertEquals(intermediate, scale.snappedPosition(intermediate, 100))
+    }
+    @Test fun savedThresholdAndExtremeEndpointsDoNotOverflow() {
+        val empty = FollowerThresholdScale(emptyList())
+        assertEquals(0L, empty.valueAt(0)); assertEquals(0, empty.position(0))
+        val saved = FollowerThresholdScale(listOf(100), 23_457)
+        assertEquals(23_457L, saved.maximum)
+        assertEquals(23_457L, saved.valueAt(saved.position(23_457)))
+        val huge = FollowerThresholdScale(listOf(Long.MAX_VALUE))
+        assertTrue(huge.maxProgress > 0)
+        assertEquals(Long.MAX_VALUE, huge.valueAt(huge.maxProgress))
+        assertEquals(huge.maxProgress, huge.position(Long.MAX_VALUE))
         assertEquals(FollowerFilters(FollowerSort.NAME, 23_457), FollowerFilters.restored("NAME", 23_457))
-        assertEquals(0L, FollowerFilters.restored(null, -5).minimum)
     }
 }

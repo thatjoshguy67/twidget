@@ -8,9 +8,10 @@ import android.widget.LinearLayout
 import android.widget.Space
 import androidx.appcompat.widget.SeslSeekBar
 import com.tjg.twidget.R
+import kotlin.math.abs
 
-/** Widget settings' segment track, ticks and thumb with a data-dependent number of stops. */
-internal class FollowerSegmentedSlider(context: Context, stops: Int) : FrameLayout(context) {
+/** Widget settings visual assets with continuous thumb travel and milestone markers. */
+internal class FollowerSegmentedSlider(context: Context, private val scale: FollowerThresholdScale) : FrameLayout(context) {
     val seekBar = SeslSeekBar(context)
     private val ticks = mutableListOf<View>()
     private val thumb = View(context)
@@ -29,7 +30,7 @@ internal class FollowerSegmentedSlider(context: Context, stops: Int) : FrameLayo
             setPaddingRelative(dp(24), 0, dp(22), 0)
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         }
-        repeat(stops) { index ->
+        repeat(scale.milestones.size) { index ->
             if (index > 0) row.addView(Space(context), LinearLayout.LayoutParams(0, 1, 1f))
             val tick = View(context).apply { setBackgroundResource(R.drawable.widget_setting_seek_bar_tick_mark) }
             ticks += tick
@@ -43,26 +44,35 @@ internal class FollowerSegmentedSlider(context: Context, stops: Int) : FrameLayo
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         }, LayoutParams(dp(20), dp(20), Gravity.LEFT or Gravity.CENTER_VERTICAL))
         addView(seekBar.apply {
-            max = stops - 1
-            isEnabled = stops > 1
-            setPaddingRelative(dp(24), 0, dp(22), 0)
+            max = scale.maxProgress
+            isEnabled = max > 0
+            setPaddingRelative(dp(28), 0, dp(26), 0)
             // Like WidgetOpacityControl, the native seekbar handles input and
             // accessibility while the widget drawables provide the visible surface.
             alpha = 0f
             progressDrawable?.alpha = 0
         }, LayoutParams(-1, -1))
-        if (stops <= 1) alpha = .4f
+        if (scale.maximum == 0L) alpha = .4f
         val onLayout = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updatePosition() }
         ticks.forEach { it.addOnLayoutChangeListener(onLayout) }
         thumb.addOnLayoutChangeListener(onLayout)
     }
 
+    /** A small physical snap zone, independent of the account's numeric range. */
+    fun snapTolerance(): Int {
+        val travel = (seekBar.width - seekBar.paddingLeft - seekBar.paddingRight).coerceAtLeast(1)
+        return (scale.maxProgress.toDouble() * dp(6) / travel).toInt()
+    }
+
     fun updatePosition() {
-        val selected = seekBar.progress.coerceIn(ticks.indices)
-        ticks.forEachIndexed { index, tick -> tick.alpha = if (index == selected) 0f else 1f }
-        val tick = ticks[selected]
-        if (tick.width > 0 && thumb.width > 0) {
-            thumb.translationX = tick.x + tick.width / 2f - thumb.width / 2f
+        val first = ticks.first()
+        val last = ticks.last()
+        if (first.width == 0 || thumb.width == 0) return
+        val fraction = if (seekBar.max > 0) seekBar.progress.toDouble() / seekBar.max else 0.0
+        val center = first.x + first.width / 2f + (last.x - first.x) * fraction.toFloat()
+        thumb.translationX = center - thumb.width / 2f
+        ticks.forEach { tick ->
+            tick.alpha = if (abs(tick.x + tick.width / 2f - center) < thumb.width / 2f) 0f else 1f
         }
     }
 }

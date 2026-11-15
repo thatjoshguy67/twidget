@@ -3,6 +3,7 @@ package com.tjg.twidget.followers
 import android.content.Intent
 import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
@@ -59,9 +60,31 @@ class FloatingFollowerToolsInstrumentedTest {
                     search.onImeVisibilityChanged(true); search.onImeVisibilityChanged(false)
                     assertTrue(search.isFloatingExpanded)
                     val slider = a.searchFilters.dialog!!.findViewById<SeslSeekBar>(R.id.follower_min_slider)!!
-                    assertEquals("Three adaptive segments for this archive", 2, slider.max)
-                    slider.progress = scale.position(10_000)
-                    assertEquals("Segment selects its threshold", scale.position(10_000), slider.progress)
+                    assertEquals("Continuous progress between milestone ticks", scale.maxProgress, slider.max)
+                    slider.progress = scale.position(23_457)
+                    assertEquals(context.getString(R.string.floating_matching_followers, 0, 3), a.searchFilters.dialog!!.findViewById<TextView>(R.id.follower_min_results)!!.text.toString())
+                    assertEquals(java.text.NumberFormat.getIntegerInstance(com.tjg.twidget.core.AppLocales.applicationLocale()).format(23_457) + "+",
+                        a.searchFilters.dialog!!.findViewById<TextView>(R.id.follower_min_value)!!.text.toString())
+                    fun dragTo(fraction: Float) {
+                        val travel = slider.width - slider.paddingLeft - slider.paddingRight
+                        val x = slider.paddingLeft + travel * fraction
+                        val y = slider.height / 2f
+                        val time = SystemClock.uptimeMillis()
+                        listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP).forEachIndexed { i, action ->
+                            val event = MotionEvent.obtain(time, time + i * 16L, action,
+                                if (i == 0) x - 40 * slider.resources.displayMetrics.density else x, y, 0)
+                            slider.dispatchTouchEvent(event)
+                            event.recycle()
+                        }
+                    }
+                    // Actual native touch handling must retain intermediate values,
+                    // then magnetize a release just beside the 10K milestone.
+                    dragTo(.875f)
+                    assertFalse(scale.milestones.contains(scale.valueAt(slider.progress)))
+                    val travel = slider.width - slider.paddingLeft - slider.paddingRight
+                    dragTo(.75f + 2 * slider.resources.displayMetrics.density / travel)
+                    assertEquals("Release near the 10K tick snaps exactly", scale.position(10_000), slider.progress)
+                    assertEquals("Milestone remains exactly selectable", scale.position(10_000), slider.progress)
                     assertEquals(context.getString(R.string.floating_matching_followers, 1, 3), a.searchFilters.dialog!!.findViewById<TextView>(R.id.follower_min_results)!!.text.toString())
                     assertEquals("Pending selection is not applied yet", FollowerFilters(), a.searchFilters.filters)
                     a.searchFilters.dialog!!.getButton(AlertDialog.BUTTON_POSITIVE).performClick()

@@ -616,7 +616,7 @@ internal class MainDashboardBinder(
                 if (!editModeController.editMode) return super.onInterceptTouchEvent(event)
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                     touchingEditButton = (0 until childCount).map { getChildAt(it) }
-                        .filter { it is ImageButton || it.tag == "dashboard_resize_${card.id}" }.any { button ->
+                        .filter { it is ImageButton || (it.tag as? String)?.startsWith("dashboard_resize_${card.id}") == true }.any { button ->
                             event.x >= button.left && event.x < button.right && event.y >= button.top && event.y < button.bottom
                         }
                 }
@@ -696,8 +696,10 @@ internal class MainDashboardBinder(
                     topMargin = activity.dp(10)
                     marginEnd = activity.dp(10)
                 })
-                if (card.supportsSizeVariants) addView(cardResize.createHandle(card, this),
-                    FrameLayout.LayoutParams(activity.dp(64), activity.dp(112), Gravity.CENTER_VERTICAL or Gravity.END))
+                if (card.supportsSizeVariants) for (edge in DashboardResizeEdge.entries) {
+                    addView(cardResize.createHandle(card, this, edge), FrameLayout.LayoutParams(activity.dp(64), activity.dp(112),
+                        Gravity.CENTER_VERTICAL or if (edge == DashboardResizeEdge.LEFT) Gravity.LEFT else Gravity.RIGHT))
+                }
             }
         }
 

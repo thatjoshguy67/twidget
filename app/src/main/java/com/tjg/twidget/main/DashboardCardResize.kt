@@ -29,17 +29,21 @@ import kotlin.math.roundToInt
 
 /** Resizes native card layouts; the grid's column spans change only when the drag snaps. */
 internal class DashboardCardResize(private val activity: MainActivity) {
-    private data class Slots(val bounds: Map<View, Rect>, val height: Int)
+    private data class Slots(val bounds: Map<View, Rect>, val height: Int, val order: List<String>)
     private data class Drag(val card: DashboardCardType, val account: String, val view: FrameLayout,
         val grid: DashboardGridLayout, val bounds: Rect, val small: Int, val large: Int,
-        val smallSlots: Slots, val largeSlots: Slots)
+        val smallSlots: Slots, val largeSlots: Slots, val edge: DashboardResizeEdge, val originalOrder: List<String>)
     private var drag: Drag? = null
     private var animator: ValueAnimator? = null
     private var lastResizeStep = 0
     private var lastResizeTick = 0L
-    val isActive: Boolean get() = drag != null || animator != null
+    private var calculatingSlots = false
+    private var snapPending = false
+    val isActive: Boolean get() = drag != null || animator != null || calculatingSlots || snapPending
 
-    fun createHandle(card: DashboardCardType, wrapper: FrameLayout): View = object : View(activity) {
+    fun createHandle(card: DashboardCardType, wrapper: FrameLayout, edge: DashboardResizeEdge = DashboardResizeEdge.RIGHT): View = ResizeHandle(card, wrapper, edge)
+
+    private inner class ResizeHandle(val card: DashboardCardType, val wrapper: FrameLayout, val edge: DashboardResizeEdge) : View(activity) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val pill = RectF()
         private var downX = 0f
@@ -47,15 +51,36 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         private var accepted = false
         private val slop = ViewConfiguration.get(context).scaledTouchSlop
         init {
-            tag = "dashboard_resize_${card.id}"
+            tag = "dashboard_resize_${card.id}" + if (edge == DashboardResizeEdge.LEFT) "_left" else ""
+            setTag(R.id.dashboard_resize_left_edge, edge == DashboardResizeEdge.LEFT)
+            wrapper.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> if (!isActive) updatePlacement() }
             isClickable = true
             isFocusable = true
-            contentDescription = activity.getString(if (card.span(activity, activity.selectedAccount) == 1)
-                R.string.dashboard_expand_card else R.string.dashboard_shrink_card, activity.getString(card.labelRes))
+            val expanded = card.span(activity, activity.selectedAccount) == 2
+            val label = if (expanded) {
+                if (edge == DashboardResizeEdge.LEFT) R.string.dashboard_shrink_card_left else R.string.dashboard_shrink_card_right
+            } else {
+                if (edge == DashboardResizeEdge.LEFT) R.string.dashboard_expand_card_left else R.string.dashboard_expand_card_right
+            }
+            contentDescription = activity.getString(label, activity.getString(card.labelRes))
+        }
+        fun updatePlacement() {
+            val grid = wrapper.parent as? DashboardGridLayout ?: return
+            if (grid.width <= 0 || wrapper.width <= 0) return
+            val span = wrapper.getTag(R.id.dashboard_card_span) as? Int ?: return
+            val params = wrapper.layoutParams as GridLayout.LayoutParams
+            val unit = (grid.width - grid.paddingLeft - grid.paddingRight).toFloat() / grid.columnCount
+            val column = ((wrapper.left - params.leftMargin - grid.paddingLeft) / unit).roundToInt()
+            val edges = DashboardResizePolicy.edges(column, span, grid.columnCount)
+            visibility = if (edge in edges) View.VISIBLE else View.GONE
+            val hitWidth = if (edges.size == 2) minOf(activity.dp(64), ((wrapper.width - activity.dp(48)) / 2).coerceAtLeast(activity.dp(24))) else activity.dp(64)
+            (layoutParams as? FrameLayout.LayoutParams)?.let {
+                if (it.width != hitWidth) { it.width = hitWidth; layoutParams = it }
+            }
         }
         override fun onDraw(canvas: Canvas) {
             val unit = wrapper.height / 214f
-            val x = width - 4f * unit
+            val x = if (edge == DashboardResizeEdge.LEFT) 4f * unit else width - 4f * unit
             pill.set(x - 3.5f * unit, height / 2f - 30f * unit, x + 3.5f * unit, height / 2f + 30f * unit)
             paint.style = Paint.Style.FILL
             paint.color = context.getColor(R.color.oneui_text_primary)
@@ -65,7 +90,7 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         override fun onTouchEvent(event: MotionEvent): Boolean {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    accepted = begin(card, wrapper)
+                    accepted = begin(card, wrapper, edge)
                     downX = event.rawX
                     moved = false
                     isPressed = accepted
@@ -88,9 +113,13 @@ internal class DashboardCardResize(private val activity: MainActivity) {
             }
             return true
         }
+        override fun onInitializeAccessibilityNodeInfo(info: android.view.accessibility.AccessibilityNodeInfo) {
+            super.onInitializeAccessibilityNodeInfo(info)
+            info.className = android.widget.Button::class.java.name
+        }
         override fun performClick(): Boolean {
             super.performClick()
-            toggle(card)
+            toggle(card, edge)
             return true
         }
         override fun onDetachedFromWindow() {
@@ -103,16 +132,57 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         }
     }
 
-    fun toggle(card: DashboardCardType) {
-        if (isActive) return
-        animateTo(card, if (card.span(activity, activity.selectedAccount) == 1) 2 else 1)
+    private fun refreshHandles(grid: GridLayout) {
+        for (index in 0 until grid.childCount) {
+            val wrapper = grid.getChildAt(index) as? ViewGroup ?: continue
+            (0 until wrapper.childCount).map { wrapper.getChildAt(it) }.filterIsInstance<ResizeHandle>().forEach { it.updatePlacement() }
+        }
     }
 
-    private fun begin(card: DashboardCardType, wrapper: FrameLayout): Boolean {
+    fun toggle(card: DashboardCardType, edge: DashboardResizeEdge? = null) {
+        if (isActive) return
+        val grid = activity.findViewById<DashboardGridLayout>(R.id.dashboard_content) ?: return
+        val wrapper = grid.findViewWithTag<FrameLayout>(card.id) ?: return
+        refreshHandles(grid)
+        val handles = (0 until wrapper.childCount).map { wrapper.getChildAt(it) }.filterIsInstance<ResizeHandle>()
+        val flowEnd = if (wrapper.layoutDirection == View.LAYOUT_DIRECTION_RTL) DashboardResizeEdge.LEFT else DashboardResizeEdge.RIGHT
+        val selected = edge ?: handles.firstOrNull { it.visibility == View.VISIBLE && it.edge == flowEnd }?.edge
+            ?: handles.firstOrNull { it.visibility == View.VISIBLE }?.edge ?: flowEnd
+        if (begin(card, wrapper, selected)) finish(cancelled = false, toggle = true)
+    }
+
+    private fun begin(card: DashboardCardType, wrapper: FrameLayout, edge: DashboardResizeEdge): Boolean {
         if (isActive || !activity.editModeController.editMode || activity.editModeController.draggedCardId != null) return false
         val grid = wrapper.parent as? DashboardGridLayout ?: return false
         val originalSpan = card.span(activity, activity.selectedAccount)
-        fun slots(span: Int): Slots {
+        val originalOrder = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
+        val views = (0 until grid.childCount).map { grid.getChildAt(it) }
+        val rtl = wrapper.layoutDirection == View.LAYOUT_DIRECTION_RTL
+        var smallOrder = originalOrder
+        var largeOrder = originalOrder
+        if (DashboardResizePolicy.againstFlow(edge, rtl)) {
+            if (originalSpan == 1) {
+                val unit = (grid.width - grid.paddingLeft - grid.paddingRight).toFloat() / grid.columnCount
+                val expanded = Rect(wrapper.left, wrapper.top, wrapper.right, wrapper.bottom).apply {
+                    if (edge == DashboardResizeEdge.LEFT) left -= unit.roundToInt() else right += unit.roundToInt()
+                }
+                val collision = views.filter { it !== wrapper && it.top == wrapper.top &&
+                    Rect.intersects(expanded, Rect(it.left, it.top, it.right, it.bottom)) }
+                    .minByOrNull { originalOrder.indexOf(it.tag.toString()) }
+                largeOrder = DashboardResizePolicy.moveBefore(originalOrder, card.id, collision?.tag?.toString())
+                // If a two-column neighbour is displaced, fill its extra cell with
+                // the next small card where possible to keep the outer edge anchored.
+                if (collision?.getTag(R.id.dashboard_card_span) == 2) {
+                    val filler = views.firstOrNull { originalOrder.indexOf(it.tag.toString()) > originalOrder.indexOf(card.id) && it.getTag(R.id.dashboard_card_span) == 1 }
+                    if (filler != null) largeOrder = DashboardResizePolicy.moveBefore(largeOrder, filler.tag.toString(), card.id)
+                }
+            } else {
+                val filler = views.firstOrNull { originalOrder.indexOf(it.tag.toString()) > originalOrder.indexOf(card.id) && it.getTag(R.id.dashboard_card_span) == 1 }
+                if (filler != null) smallOrder = DashboardResizePolicy.moveBefore(originalOrder, filler.tag.toString(), card.id)
+            }
+        }
+        fun slots(span: Int, order: List<String>): Slots {
+            order.mapNotNull { id -> views.firstOrNull { it.tag == id } }.forEach(grid::bringChildToFront)
             wrapper.setTag(R.id.dashboard_card_span, span)
             for (index in 0 until grid.childCount) {
                 val view = grid.getChildAt(index)
@@ -129,14 +199,16 @@ internal class DashboardCardResize(private val activity: MainActivity) {
             return Slots((0 until grid.childCount).associate { index ->
                 val view = grid.getChildAt(index)
                 view to Rect(view.left, view.top, view.right, view.bottom)
-            }, grid.measuredHeight)
+            }, grid.measuredHeight, order)
         }
-        val small = slots(1)
-        val large = slots(2)
-        val original = slots(originalSpan)
+        calculatingSlots = true
+        val endpoints = try {
+            Triple(slots(1, smallOrder), slots(2, largeOrder), slots(originalSpan, originalOrder))
+        } finally { calculatingSlots = false }
+        val (small, large, original) = endpoints
         val bounds = original.bounds.getValue(wrapper)
         drag = Drag(card, activity.selectedAccount, wrapper, grid, bounds,
-            small.bounds.getValue(wrapper).width(), large.bounds.getValue(wrapper).width(), small, large)
+            small.bounds.getValue(wrapper).width(), large.bounds.getValue(wrapper).width(), small, large, edge, originalOrder)
         grid.setResizePreview(original.bounds, original.height)
         lastResizeStep = if (card.span(activity, activity.selectedAccount) == 1) 0 else 8
         lastResizeTick = 0L
@@ -147,7 +219,7 @@ internal class DashboardCardResize(private val activity: MainActivity) {
 
     private fun preview(distance: Float) {
         val state = drag ?: return
-        val direction = if (state.view.layoutDirection == View.LAYOUT_DIRECTION_RTL) -1 else 1
+        val direction = state.edge.direction
         val width = (state.bounds.width() + distance * direction).roundToInt().coerceIn(state.small, state.large)
         val fraction = (width - state.small).toFloat() / (state.large - state.small).coerceAtLeast(1)
         val step = (fraction * 8).roundToInt()
@@ -188,10 +260,11 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         }
         drag = null
         state.view.translationZ = 0f
-        animateTo(state.card, target, feedback = !cancelled)
+        val order = if (cancelled) state.originalOrder else if (target == 2) state.largeSlots.order else state.smallSlots.order
+        animateTo(state.card, target, feedback = !cancelled, order = order)
     }
 
-    private fun animateTo(card: DashboardCardType, targetSpan: Int, feedback: Boolean = true) {
+    private fun animateTo(card: DashboardCardType, targetSpan: Int, feedback: Boolean = true, order: List<String>? = null) {
         val grid = activity.findViewById<GridLayout>(R.id.dashboard_content) ?: return
         val previous = (0 until grid.childCount).associate { index ->
             val view = grid.getChildAt(index)
@@ -205,14 +278,19 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         (grid as? DashboardGridLayout)?.clearResizePreview()
         suppress(grid, false)
         TwidgetStore.setDashboardCardExpanded(activity, card.id, targetSpan == 2, activity.selectedAccount)
+        if (order != null && order != TwidgetStore.dashboardCards(activity, activity.selectedAccount))
+            TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
         if (feedback) TwidgetHaptics.confirm(old)
         activity.render()
-        if (!ValueAnimator.areAnimatorsEnabled()) return
+        if (!ValueAnimator.areAnimatorsEnabled()) { grid.post { refreshHandles(grid) }; return }
+        snapPending = true
         grid.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
                 grid.viewTreeObserver.removeOnPreDrawListener(this)
-                val resized = grid.findViewWithTag<FrameLayout>(card.id) ?: return true
-                val start = previous[card.id] ?: return true
+                val resized = grid.findViewWithTag<FrameLayout>(card.id)
+                val start = previous[card.id]
+                if (resized == null || start == null) { snapPending = false; return true }
+                refreshHandles(grid)
                 val end = Rect(resized.left, resized.top, resized.right, resized.bottom)
                 val views = (0 until grid.childCount).map { grid.getChildAt(it) }
                 val positions = views.associateWith { view ->
@@ -256,6 +334,8 @@ internal class DashboardCardResize(private val activity: MainActivity) {
                             overlay?.let(resized::removeView)
                             fresh?.alpha = 1f
                             animator = null
+                            snapPending = false
+                            refreshHandles(grid)
                             suppress(grid, false)
                             grid.requestLayout()
                         }
@@ -272,6 +352,8 @@ internal class DashboardCardResize(private val activity: MainActivity) {
         drag = null
         animator?.cancel()
         animator = null
+        snapPending = false
+        calculatingSlots = false
     }
 
     private fun content(wrapper: FrameLayout): View? = (0 until wrapper.childCount).map { wrapper.getChildAt(it) }

@@ -1,0 +1,6 @@
+<resources>
+    <string name="dashboard_expand_card_left">Agrandir %1$s vers la gauche</string>
+    <string name="dashboard_expand_card_right">Agrandir %1$s vers la droite</string>
+    <string name="dashboard_shrink_card_left">Réduire %1$s depuis la gauche</string>
+    <string name="dashboard_shrink_card_right">Réduire %1$s depuis la droite</string>
+</resources>

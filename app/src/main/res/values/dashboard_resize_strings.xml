@@ -1,0 +1,6 @@
+<resources>
+    <string name="dashboard_expand_card_left">Expand %1$s to the left</string>
+    <string name="dashboard_expand_card_right">Expand %1$s to the right</string>
+    <string name="dashboard_shrink_card_left">Shrink %1$s from the left</string>
+    <string name="dashboard_shrink_card_right">Shrink %1$s from the right</string>
+</resources>

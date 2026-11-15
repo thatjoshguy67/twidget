@@ -39,16 +39,32 @@ class DashboardGridLayout @JvmOverloads constructor(
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             resizeTouchTarget = null
             val extra = (12f * resources.displayMetrics.density).toInt()
+            var nearest = Float.POSITIVE_INFINITY
             for (index in 0 until childCount) {
                 val card = getChildAt(index) as? ViewGroup ?: continue
-                val handle = (0 until card.childCount).map { card.getChildAt(it) }
-                    .firstOrNull { (it.tag as? String)?.startsWith("dashboard_resize_") == true } ?: continue
-                val bounds = Rect()
-                if (!handle.getGlobalVisibleRect(bounds)) continue
-                bounds.inset(-extra, -extra)
-                if (bounds.contains(event.rawX.toInt(), event.rawY.toInt())) {
-                    resizeTouchTarget = handle
-                    break
+                val buttons = (0 until card.childCount).map { card.getChildAt(it) }.filterIsInstance<android.widget.ImageButton>()
+                if (buttons.any { button -> val rect = Rect(); button.getGlobalVisibleRect(rect) && rect.contains(event.rawX.toInt(), event.rawY.toInt()) }) {
+                    resizeTouchTarget = null
+                    return super.dispatchTouchEvent(event)
+                }
+                val handles = (0 until card.childCount).map { card.getChildAt(it) }
+                    .filter { (it.tag as? String)?.startsWith("dashboard_resize_") == true }
+                for (handle in handles) {
+                    val bounds = Rect()
+                    if (!handle.getGlobalVisibleRect(bounds)) continue
+                    val edgeX = if (handle.getTag(com.tjg.twidget.R.id.dashboard_resize_left_edge) == true) bounds.left else bounds.right
+                    val dx = event.rawX - edgeX
+                    val dy = maxOf(bounds.top - event.rawY, 0f, event.rawY - bounds.bottom)
+                    val distance = dx * dx + dy * dy
+                    // Grow into the surrounding gutter, preserving a clear centre
+                    // pickup target between both grips on four-column cards.
+                    if (handle.getTag(com.tjg.twidget.R.id.dashboard_resize_left_edge) == true) bounds.left -= extra
+                    else bounds.right += extra
+                    bounds.top -= extra; bounds.bottom += extra
+                    if (bounds.contains(event.rawX.toInt(), event.rawY.toInt()) && distance < nearest) {
+                        resizeTouchTarget = handle
+                        nearest = distance
+                    }
                 }
             }
         }

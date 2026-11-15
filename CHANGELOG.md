@@ -4,6 +4,9 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Resize dashboard cards from either side, with inward-facing edge handles,
+  both directions for interior four-column cards, and live neighbour reflow.
+
 - Give expanded metric graphs full-height labelled plots beside their values.
   Show seven calendar-day post slots, keep missing baselines unknown, and
   preserve complete date labels.

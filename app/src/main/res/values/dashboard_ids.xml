@@ -1,4 +1,5 @@
 <resources>
+    <item name="dashboard_resize_left_edge" type="id" />
     <item name="dashboard_move_earlier_action" type="id" />
     <item name="dashboard_move_later_action" type="id" />
     <item name="dashboard_list_card" type="id" />

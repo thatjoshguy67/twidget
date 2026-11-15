@@ -19,4 +19,5 @@
     <string name="dashboard_streak_start">Comença avui</string>
     <string name="dashboard_move_earlier">Mou abans</string>
     <string name="dashboard_move_later">Mou després</string>
+    <string name="dashboard_observed_net_period">Canvi observat %1$s · %2$s</string>
 </resources>

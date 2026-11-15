@@ -411,7 +411,7 @@ internal class MainDashboardBinder(
         else -> createInsightCard(card, stats, history)
     }.also { root ->
         if (root.findViewById<View>(R.id.dashboard_stat_context) != null) {
-            DashboardStatContext.bind(activity, card, root, stats, history, span == 2)
+            DashboardStatContext.bind(activity, card, root, stats, history, span == 2, fullHistory)
         }
     }
 
@@ -864,18 +864,18 @@ internal class MainDashboardBinder(
                     accent = activity.getColor(R.color.oneui_accent),
                 )
             }
-            DashboardCardType.POST_RATE -> InsightSpec(
-                label = activity.getString(R.string.post_rate),
-                value = history.filter { it.postsKnown && !it.estimated }.let { known ->
-                    if (known.size >= 2) decimal(dailyAverage(known) { it.posts }.coerceAtLeast(0.0), "") else "--"
-                },
-                detail = history.filter { it.postsKnown && !it.estimated }.let { known ->
-                    if (known.size >= 2) {
-                        activity.getString(R.string.dashboard_period_net, TwidgetStore.signedNumber(rangeDelta(known) { it.posts }), DashboardPeriods.label(known))
-                    } else activity.getString(R.string.unknown_profile_status)
-                },
-                accent = activity.getColor(R.color.metric_green),
-            )
+            DashboardCardType.POST_RATE -> {
+                val points = DashboardDailyPosts.points(renderSnapshot?.history ?: TwidgetStore.fullHistory(activity, stats.userName), stats)
+                val observed = points.mapNotNull { it.net }
+                val period = "${AppLocales.formatDate(points.first().timestamp, "MMMd")}–${AppLocales.formatDate(points.last().timestamp, "MMMd")}"
+                InsightSpec(label = activity.getString(R.string.post_rate),
+                    value = if (observed.isNotEmpty()) decimal(observed.average(), "") else "--",
+                    detail = if (observed.isNotEmpty()) activity.getString(
+                        if (observed.size == 7) R.string.dashboard_period_net else R.string.dashboard_observed_net_period,
+                        TwidgetStore.signedNumber(observed.sum()), period)
+                        else activity.getString(R.string.unknown_profile_status),
+                    accent = activity.getColor(R.color.metric_green))
+            }
             DashboardCardType.LIKES_PER_POST -> InsightSpec(
                 label = activity.getString(R.string.likes_per_post),
                 value = if (stats.likesKnown && stats.postsKnown) {

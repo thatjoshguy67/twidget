@@ -2,6 +2,8 @@
     <item name="dashboard_move_earlier_action" type="id" />
     <item name="dashboard_move_later_action" type="id" />
     <item name="dashboard_list_card" type="id" />
+    <item name="dashboard_stat_detail_compact" type="id" />
+    <item name="dashboard_stat_detail_expanded" type="id" />
     <item name="dashboard_stat_expanded" type="id" />
     <item name="dashboard_card_span" type="id" />
     <item name="dashboard_card_content" type="id" />

@@ -4,6 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class MetricChartScaleTest {
+    @Test fun expandedDailyChartsUseAZeroBaselineAndRetainNegativeNetDays() {
+        assertEquals(0L to 32L, MetricChartScale.zeroBasedBounds(listOf(8, 32, 14)))
+        assertEquals(-8L to 32L, MetricChartScale.zeroBasedBounds(listOf(-8, 32, 14)))
+        assertEquals(listOf("-1k", "-2k", "-3k"), MetricChartScale.axisLabels(-3000, -1000, 3))
+        assertEquals(listOf("4", "2.7", "1.3", "0"), MetricChartScale.axisLabels(0, 4))
+    }
+
     @Test
     fun largeAxisLabelsUseAtMostOneDecimal() {
         assertEquals(listOf("8.1k", "8k", "7.9k"), MetricChartScale.axisLabels(7_903, 8_053, 3))

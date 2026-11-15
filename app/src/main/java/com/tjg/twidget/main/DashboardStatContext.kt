@@ -16,7 +16,6 @@ import com.tjg.twidget.data.ProfileStats
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.TwidgetFonts
 import java.time.LocalDate
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal object DashboardPeriods {
@@ -32,10 +31,16 @@ internal object DashboardPeriods {
 /** Extra space carries evidence, with explicit sample/period labels. */
 internal object DashboardStatContext {
     fun bind(activity: MainActivity, card: DashboardCardType, root: View, stats: ProfileStats,
-        history: List<HistorySample>, expanded: Boolean) {
+        history: List<HistorySample>, expanded: Boolean, fullHistory: List<HistorySample> = history) {
         root.setTag(R.id.dashboard_stat_expanded, expanded)
         val panel = root.findViewById<LinearLayout>(R.id.dashboard_stat_context) ?: return
         panel.removeAllViews()
+        val compactDetail = root.findViewById<TextView>(R.id.stat_detail)?.text ?: ""
+        root.setTag(R.id.dashboard_stat_detail_compact, compactDetail)
+        root.setTag(R.id.dashboard_stat_detail_expanded, compactDetail)
+        fun footerContext(value: String) {
+            root.setTag(R.id.dashboard_stat_detail_expanded, listOf(compactDetail, value).filter { it.isNotBlank() }.joinToString("\n"))
+        }
         val descriptions = mutableListOf<String>()
         fun dp(n: Int) = (n * activity.resources.displayMetrics.density).roundToInt()
         fun text(value: String, size: Float = 12f, strong: Boolean = false) = TextView(activity).apply {
@@ -62,11 +67,14 @@ internal object DashboardStatContext {
         }
         fun string(id: Int) = activity.getString(id)
         fun count(n: Long) = TwidgetStore.compactNumber(n)
-        fun bars(values: List<Double?>, labels: List<String>) {
-            if (values.isEmpty() || values.all { it == null } || activity.resources.configuration.fontScale >= 1.6f) return
-            panel.addView(MiniBars(activity, values, activity.getColor(R.color.oneui_accent)).apply {
-                contentDescription = labels.zip(values).joinToString(". ") { (label, v) -> "$label: ${v?.let { count(it.toLong()) } ?: "--"}" }
+        fun bars(values: List<Double?>, labels: List<String>): Boolean {
+            if (values.isEmpty() || values.all { it == null }) return false
+            panel.addView(com.tjg.twidget.ui.MetricChartView(activity).apply {
+                compactCardInsets = true
+                zeroBasedScale = true
+                setOptionalSeries(labels.zip(values).map { (label, value) -> label to value?.toLong() })
             }, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(6) })
+            return true
         }
         val data = activity.analytics
         val posts = data?.recentPosts.orEmpty().sortedBy { it.timestamp }
@@ -97,20 +105,29 @@ internal object DashboardStatContext {
                 val snapshot = ActivityClient.snapshot(activity, stats.userName)
                 val days = DailyStreakStore.activeDays(activity, stats.userName)
                 val week = (6L downTo 0L).map { LocalDate.now().minusDays(it) }
-                caption(string(R.string.dashboard_activity_week))
-                bars(week.map { day -> when {
+                descriptions += string(R.string.dashboard_activity_week)
+                val hasPlot = bars(week.map { day -> when {
                     day.toString() in days -> 1.0
                     snapshot.activityComplete && day.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() >= snapshot.activityWindowStartAt -> 0.0
                     else -> null
                 } }, week.map { it.toString() })
-                row(string(R.string.dashboard_best_streak), snapshot.longestStreak.toString())
+                val best = "${string(R.string.dashboard_best_streak)} ${snapshot.longestStreak}"
+                descriptions += best
+                if (hasPlot) root.setTag(R.id.dashboard_stat_detail_expanded, best) else {
+                    caption(string(R.string.dashboard_activity_week))
+                    row(string(R.string.dashboard_best_streak), snapshot.longestStreak.toString())
+                }
             }
             DashboardCardType.POST_RATE -> {
-                caption(period)
-                val pairs = real.zipWithNext().filter { (a,b) -> a.postsKnown && b.postsKnown }
-                bars(pairs.map { (a,b) -> (b.posts - a.posts).toDouble() }, pairs.map { it.second.dayLabel })
-                val known = real.filter { it.postsKnown }
-                row(string(R.string.dashboard_net_posts), if (known.size >= 2) TwidgetStore.signedNumber(known.last().posts - known.first().posts) else "--")
+                val points = DashboardDailyPosts.points(fullHistory, stats)
+                val dates = points.map { AppLocales.formatDate(it.timestamp, "MMMd") }
+                val range = "${dates.first()}–${dates.last()}"
+                descriptions += range
+                val hasPlot = bars(points.map { it.net?.toDouble() }, dates)
+                val observed = points.mapNotNull { it.net }
+                val net = if (observed.isNotEmpty()) TwidgetStore.signedNumber(observed.sum()) else "--"
+                descriptions += "${string(R.string.dashboard_net_posts)}: $net"
+                if (!hasPlot) { caption(range); row(string(R.string.dashboard_net_posts), net) }
             }
             DashboardCardType.ENGAGEMENT_RATE, DashboardCardType.AVG_ENGAGEMENTS, DashboardCardType.MEDIAN_ENGAGEMENTS -> {
                 caption(if (data == null) string(R.string.analytics_syncing) else string(R.string.dashboard_recent_posts))
@@ -121,12 +138,16 @@ internal object DashboardStatContext {
                 }
             }
             DashboardCardType.AVG_VIEWS -> {
-                caption(if (data == null) string(R.string.analytics_syncing) else string(R.string.dashboard_recent_posts))
-                bars(posts.takeLast(14).map { if (it.viewsKnown) it.views.toDouble() else null }, posts.takeLast(14).map { AppLocales.formatDate(it.timestamp, "MMMd") })
+                val source = if (data == null) string(R.string.analytics_syncing) else string(R.string.dashboard_recent_posts)
+                descriptions += source
+                val hasPlot = bars(posts.takeLast(14).map { if (it.viewsKnown) it.views.toDouble() else null }, posts.takeLast(14).map { AppLocales.formatDate(it.timestamp, "MMMd") })
                 val observedViews = posts.filter { it.viewsKnown }.map { it.views }.sorted()
                 val median = if (observedViews.isEmpty()) null else if (observedViews.size % 2 == 1) observedViews[observedViews.size / 2]
                     else ((observedViews[observedViews.size / 2 - 1].toDouble() + observedViews[observedViews.size / 2]) / 2).toLong()
-                row(string(R.string.dashboard_median), median?.let(::count) ?: "--")
+                val value = median?.let(::count) ?: "--"
+                descriptions += "${string(R.string.dashboard_median)}: $value"
+                if (hasPlot) footerContext("${string(R.string.dashboard_median)} $value")
+                else { caption(source); row(string(R.string.dashboard_median), value) }
             }
             DashboardCardType.TOTAL_VIEWS -> {
                 caption(if (data == null) string(R.string.analytics_syncing) else string(R.string.dashboard_recent_posts))
@@ -145,11 +166,13 @@ internal object DashboardStatContext {
                 imports.lastOrNull()?.let { caption(it.date.toString()) }
             }
             else -> {
-                caption(period.ifBlank { string(R.string.dashboard_coverage) })
                 val known = real.filter { it.followersKnown }
+                descriptions += period.ifBlank { string(R.string.dashboard_coverage) }
                 if (known.size >= 2) {
                     bars(known.zipWithNext().map { (a,b) -> (b.followers - a.followers).toDouble() }, known.drop(1).map { it.dayLabel })
-                    row(string(R.string.dashboard_net_growth), TwidgetStore.signedNumber(known.last().followers - known.first().followers))
+                    val net = TwidgetStore.signedNumber(known.last().followers - known.first().followers)
+                    descriptions += "${string(R.string.dashboard_net_growth)}: $net"
+                    footerContext(activity.getString(R.string.dashboard_period_net, net, period))
                 } else caption(string(R.string.dashboard_no_comparison))
             }
         }
@@ -182,38 +205,4 @@ internal object DashboardStatContext {
         }
     }
 
-    private class MiniBars(context: Context, private val values: List<Double?>, private val accent: Int) : View(context) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var fill: android.graphics.Shader? = null
-        private var negativeFill: android.graphics.Shader? = null
-        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-            val red = context.getColor(R.color.metric_red)
-            negativeFill = android.graphics.LinearGradient(0f, 0f, 0f, h.coerceAtLeast(1).toFloat(),
-                red, androidx.core.graphics.ColorUtils.blendARGB(red, android.graphics.Color.WHITE, .35f), android.graphics.Shader.TileMode.CLAMP)
-            fill = android.graphics.LinearGradient(0f, 0f, 0f, h.coerceAtLeast(1).toFloat(),
-                accent, 0xff85a3de.toInt(), android.graphics.Shader.TileMode.CLAMP)
-        }
-        override fun onDraw(canvas: Canvas) {
-            val step = width.toFloat() / values.size.coerceAtLeast(1)
-            val maximum = values.filterNotNull().maxOfOrNull { abs(it) }?.coerceAtLeast(1.0) ?: 1.0
-            val diverging = values.any { (it ?: 0.0) < 0 }
-            val base = if (diverging) height / 2f else height.toFloat()
-            val range = if (diverging) height / 2f else height.toFloat()
-            val barWidth = minOf(step * .54f, 18f * resources.displayMetrics.density)
-            val radius = barWidth / 2f
-            values.forEachIndexed { index, value ->
-                val left = step * index + (step - barWidth) / 2f
-                val right = left + barWidth
-                paint.color = context.getColor(R.color.oneui_divider); paint.alpha = 105; paint.shader = null
-                canvas.drawRoundRect(left, 0f, right, height.toFloat(), radius, radius, paint)
-                if (value != null && value != 0.0) {
-                    paint.color = if (value < 0) context.getColor(R.color.metric_red) else accent; paint.alpha = 255
-                    paint.shader = if (value < 0) negativeFill else fill
-                    val end = base - (value / maximum * range).toFloat()
-                    canvas.drawRoundRect(left, minOf(base, end), right, maxOf(base, end), radius, radius, paint)
-                }
-            }
-            paint.shader = null
-        }
-    }
 }

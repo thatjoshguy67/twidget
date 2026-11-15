@@ -19,4 +19,5 @@
     <string name="dashboard_streak_start">Start today</string>
     <string name="dashboard_move_earlier">Move earlier</string>
     <string name="dashboard_move_later">Move later</string>
+    <string name="dashboard_observed_net_period">Observed net %1$s · %2$s</string>
 </resources>

@@ -70,16 +70,26 @@ class DashboardRefinementInstrumentedTest {
                         measure(tile, 392)
                         val panel = tile.findViewById<ViewGroup>(R.id.dashboard_stat_context)
                         assertEquals("$card expands into context", View.VISIBLE, panel.visibility)
-                        assertTrue("$card adds meaningful context", panel.childCount >= 2)
-                        assertEquals("$card expansion preserves headline text size", size, value.textSize, 1f)
+                        assertTrue("$card adds meaningful context", panel.childCount >= 1)
+                        assertTrue("$card expansion never shrinks the primary value", value.textSize + 1f >= size)
                         val header = tile.findViewById<View>(R.id.dashboard_stat_header)
                         assertEquals("$card header shares the outer top inset", tile.paddingTop, header.top)
+                        assertEquals("$card heading stays above the primary value", value.left, header.left)
+                        assertEquals("$card heading uses only the primary column", value.width, header.width)
                         assertTrue("$card heading fits in the header", tile.findViewById<TextView>(R.id.metric_label).top >= 0)
                         assertTrue("$card context fits its bounds", (0 until panel.childCount).all { panel.getChildAt(it).bottom <= panel.height + 1 })
+                        if (card == DashboardCardType.POST_RATE) {
+                            val chart = descendants(panel).filterIsInstance<com.tjg.twidget.ui.MetricChartView>().first()
+                            val dates = com.tjg.twidget.ui.MetricChartView::class.java.getDeclaredField("labels").apply { isAccessible = true }.get(chart) as List<*>
+                            assertEquals("Posts/day keeps seven explicit day slots", 7, dates.size)
+                            assertTrue("Daily totals use a labelled zero-based scale", chart.zeroBasedScale)
+                        }
                         if (card == DashboardCardType.AVG_VIEWS) {
-                            val chart = (0 until panel.childCount).map { panel.getChildAt(it) }.first { it.javaClass.simpleName == "MiniBars" }
-                            assertTrue("Expanded plot uses the available vertical space", chart.height >= activity.dp(48))
-                            assertEquals("Median row reaches the shared bottom inset", panel.height, panel.getChildAt(panel.childCount - 1).bottom)
+                            val chart = (0 until panel.childCount).map { panel.getChildAt(it) }.first { it is com.tjg.twidget.ui.MetricChartView }
+                            assertEquals("Expanded plot uses the complete inset height", tile.height - tile.paddingTop - tile.paddingBottom, chart.height)
+                            assertEquals("Graph starts at the shared top inset", tile.paddingTop, panel.top)
+                            assertEquals("Graph ends at the shared bottom inset", tile.height - tile.paddingBottom, panel.bottom)
+                            assertTrue("Median is retained below the primary value", tile.findViewById<TextView>(R.id.stat_detail).text.contains(activity.getString(R.string.dashboard_median)))
                         }
                         val bitmap = Bitmap.createBitmap(tile.width, tile.height, Bitmap.Config.ARGB_8888)
                         tile.draw(Canvas(bitmap))
@@ -113,6 +123,36 @@ class DashboardRefinementInstrumentedTest {
                     bitmap.recycle()
                 } finally { activity.analytics = previous }
             }
+        }
+    }
+    @Test fun dailyChartKeepsUnknownSlotsAndDrawsBarsAgainstItsNumericScale() {
+        instrumentation.runOnMainSync {
+            val context = ContextThemeWrapper(instrumentation.targetContext, R.style.Theme_Twidget)
+            val chart = com.tjg.twidget.ui.MetricChartView(context).apply {
+                compactCardInsets = true
+                zeroBasedScale = true
+                setOptionalSeries(listOf("Day 1" to null, "Day 2" to 100L, "Day 3" to 20L, "Day 4" to 30L,
+                    "Day 5" to 10L, "Day 6" to 15L, "Day 7" to 1L))
+            }
+            measure(chart, 188, 136)
+            val bitmap = Bitmap.createBitmap(chart.width, chart.height, Bitmap.Config.ARGB_8888)
+            chart.draw(Canvas(bitmap))
+            fun field(name: String) = com.tjg.twidget.ui.MetricChartView::class.java.getDeclaredField(name).apply { isAccessible = true }.get(chart)
+            assertEquals(7, (field("labels") as List<*>).size)
+            assertEquals(false, (field("known") as List<*>).first())
+            assertTrue(chart.contentDescription.contains("Day 1: --"))
+            val plot = field("plotRect") as android.graphics.RectF
+            val bar = field("barRect") as android.graphics.RectF
+            assertTrue("Numeric scale has its own visible gutter", plot.left > 0)
+            assertTrue("Date labels have their own visible strip", plot.bottom < chart.height)
+            assertEquals("A value of one is one percent of the 100-unit scale", plot.height() / 100f, bar.height(), 1f)
+            assertTrue("Date glyphs have visible ink below the plot", (plot.bottom.toInt() + 1 until bitmap.height).any { y ->
+                (0 until bitmap.width).any { x -> android.graphics.Color.alpha(bitmap.getPixel(x, y)) > 0 }
+            })
+            assertTrue("Date anti-aliasing clears the bottom clipping boundary", (0 until bitmap.width).all { x ->
+                android.graphics.Color.alpha(bitmap.getPixel(x, bitmap.height - 1)) == 0
+            })
+            bitmap.recycle()
         }
     }
     @Test fun briefRetainsArtworkAndFitsLargeText() {

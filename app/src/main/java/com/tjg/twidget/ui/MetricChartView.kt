@@ -103,6 +103,8 @@ class MetricChartView @JvmOverloads constructor(
     private var labels: List<String> = emptyList()
     private var estimated: List<Boolean> = emptyList()
     private var values: List<Long> = emptyList()
+    private var known: List<Boolean> = emptyList()
+    internal var zeroBasedScale: Boolean = false
     private var averageValues: List<Long> = emptyList()
     private var barGradient: LinearGradient? = null
     private var activeIndex = -1
@@ -136,6 +138,7 @@ class MetricChartView @JvmOverloads constructor(
     }
 
     fun setData(samples: List<HistorySample>, selector: (HistorySample) -> Long) {
+        known = List(samples.size) { true }
         labels = samples.map(HistorySample::dayLabel)
         estimated = samples.map(HistorySample::estimated)
         values = samples.map(selector)
@@ -158,6 +161,7 @@ class MetricChartView @JvmOverloads constructor(
     }
 
     fun setSeries(points: List<ImportedChartPoint>) {
+        known = List(points.size) { true }
         labels = points.map(ImportedChartPoint::label)
         estimated = List(points.size) { false }
         values = points.map(ImportedChartPoint::value)
@@ -169,8 +173,15 @@ class MetricChartView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** Keep absent days visible as unknown slots, never as zero observations. */
+    internal fun setOptionalSeries(points: List<Pair<String, Long?>>) {
+        setSeries(points.map { ImportedChartPoint(it.first, it.second ?: 0) })
+        known = points.map { it.second != null }
+        contentDescription = points.joinToString(". ") { "${it.first}: ${it.second?.let(numberFormat::format) ?: "--"}" }
+    }
+
     // The dashboard owns its single outer inset. Only the date glyphs and their
-    // six-dp separation from the plot need space inside this view.
+    // three-dp separation from the plot need space inside this view.
     private fun bottomLabelSpace(density: Float): Float {
         if (!compactCardInsets) return 34f * density
         val bounds = android.graphics.Rect()
@@ -178,7 +189,7 @@ class MetricChartView @JvmOverloads constructor(
             dateLabelPaint.getTextBounds(label, 0, label.length, bounds)
             bounds.height()
         } ?: 0
-        return glyphHeight + 6f * density
+        return glyphHeight + 3f * density + 2f
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
@@ -216,11 +227,13 @@ class MetricChartView @JvmOverloads constructor(
         // The numbered axis belongs to the current week's bars. Including the
         // long-term account average here compresses small but real day-to-day
         // differences and makes every current bar appear maxed out.
-        val (scaleMin, scaleMax) = MetricChartScale.primaryAxisBounds(values, averageValues)
+        val observed = values.filterIndexed { index, _ -> known.getOrElse(index) { true } }
+        val (scaleMin, scaleMax) = if (zeroBasedScale) MetricChartScale.zeroBasedBounds(observed)
+            else MetricChartScale.primaryAxisBounds(observed, averageValues)
         val scaleRange = (scaleMax - scaleMin).coerceAtLeast(1)
         val fullAxisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
         val axisLabels = if (compactCardInsets && fullAxisLabels.distinct().size < fullAxisLabels.size)
-            MetricChartScale.axisLabels(scaleMin, scaleMax, 3) else fullAxisLabels
+            MetricChartScale.axisLabels(scaleMin, scaleMax, 3).distinct() else fullAxisLabels
         // Reserve a real gutter after the widest formatted Y label. A fixed
         // plot origin collapses this gap as soon as values gain commas/digits.
         val left = labelInset + axisLabels.maxOf(axisLabelPaint::measureText) + (if (narrow) 6f else if (compactCardInsets) 10f else 8f) * density
@@ -231,6 +244,7 @@ class MetricChartView @JvmOverloads constructor(
         val barWidth = (barSlot * 0.54f).coerceIn(6f * density,
             (if (compactCardInsets) 23f * resources.displayMetrics.density * cardDesignScale else 24f * density))
         fun heightFor(value: Long): Float {
+            if (zeroBasedScale) return (chartHeight * (value - scaleMin) / scaleRange).coerceIn(0f, chartHeight)
             val normalized = (value - scaleMin).coerceAtLeast(0)
             return if (value <= 0) {
                 4f * density
@@ -313,6 +327,17 @@ class MetricChartView @JvmOverloads constructor(
             val x = left + index * stride + (barSlot - barWidth) / 2f
             barRect.set(x, chartBottom - barHeight, x + barWidth, chartBottom)
             barHitBounds[index].set(left + index * stride, top, left + index * stride + barSlot, chartBottom)
+            if (!known.getOrElse(index) { true }) {
+                val dash = "–"
+                canvas.drawText(dash, x + barWidth / 2 - axisLabelPaint.measureText(dash) / 2,
+                    chartBottom - 4f * density, axisLabelPaint)
+                return@forEachIndexed
+            }
+            if (zeroBasedScale && scaleMin < 0) {
+                val baseline = yFor(0)
+                val end = yFor(value)
+                barRect.set(x, minOf(baseline, end), x + barWidth, maxOf(baseline, end).coerceAtLeast(minOf(baseline, end) + 1f))
+            }
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
             barPaint.alpha = if (estimated[index]) 80 else 255
@@ -345,7 +370,7 @@ class MetricChartView @JvmOverloads constructor(
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
                 if (labelX + labelWidth + 4f * resources.displayMetrics.density <= nextLabelLeft) {
-                    canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() else height - 8f * density, dateLabelPaint)
+                    canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() - 2f else height - 8f * density, dateLabelPaint)
                     nextLabelLeft = labelX
                 }
             }
@@ -359,7 +384,7 @@ class MetricChartView @JvmOverloads constructor(
             val x = left + activeIndex * stride + (barSlot - barWidth) / 2f
             drawTooltip(
                 canvas = canvas,
-                label = "$label  ${if (estimated[activeIndex]) "~" else ""}${numberFormat.format(value)}",
+                label = "$label  ${if (estimated[activeIndex]) "~" else ""}${if (known.getOrElse(activeIndex) { true }) numberFormat.format(value) else "--"}",
                 anchorX = x + barWidth / 2f,
                 anchorY = yFor(value),
                 chartLeft = left,
@@ -523,9 +548,15 @@ internal object MetricChartScale {
         return min to rawMax
     }
 
+    fun zeroBasedBounds(values: List<Long>): Pair<Long, Long> {
+        val min = (values.minOrNull() ?: 0).coerceAtMost(0)
+        val max = (values.maxOrNull() ?: 0).coerceAtLeast(0)
+        return if (min == max) 0L to 3L else min to max
+    }
+
     fun axisLabels(min: Long, max: Long, tickCount: Int = 4): List<String> {
-        val values = if (tickCount == 3) listOf(max, min + (max - min) / 2, min)
-            else listOf(max, min + (max - min) * 2 / 3, min + (max - min) / 3, min)
+        val values = if (tickCount == 3) listOf(max.toDouble(), min + (max - min) / 2.0, min.toDouble())
+            else listOf(max.toDouble(), min + (max - min) * 2 / 3.0, min + (max - min) / 3.0, min.toDouble())
         val format = NumberFormat.getNumberInstance(AppLocales.applicationLocale()).apply {
             maximumFractionDigits = 1
             minimumFractionDigits = 0
@@ -533,9 +564,9 @@ internal object MetricChartScale {
         }
         return values.map { value ->
             when {
-                value >= 1_000_000_000 -> format.format(value / 1_000_000_000.0) + "b"
-                value >= 1_000_000 -> format.format(value / 1_000_000.0) + "m"
-                value >= 1_000 -> format.format(value / 1_000.0) + "k"
+                kotlin.math.abs(value) >= 1_000_000_000 -> format.format(value / 1_000_000_000.0) + "b"
+                kotlin.math.abs(value) >= 1_000_000 -> format.format(value / 1_000_000.0) + "m"
+                kotlin.math.abs(value) >= 1_000 -> format.format(value / 1_000.0) + "k"
                 else -> format.format(value)
             }
         }

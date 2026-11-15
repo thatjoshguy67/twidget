@@ -19,4 +19,5 @@
     <string name="dashboard_streak_start">Heute starten</string>
     <string name="dashboard_move_earlier">Nach vorne verschieben</string>
     <string name="dashboard_move_later">Nach hinten verschieben</string>
+    <string name="dashboard_observed_net_period">Beobachtete Änderung %1$s · %2$s</string>
 </resources>

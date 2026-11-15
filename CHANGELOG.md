@@ -4,6 +4,10 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Give expanded metric graphs full-height labelled plots beside their values.
+  Show seven calendar-day post slots, keep missing baselines unknown, and
+  preserve complete date labels.
+
 - Give expanded dashboard stats useful comparisons and sample context, align card
   insets, and restore Your Brief’s widget artwork and editorial hierarchy.
   Improve graph space, keyboard/TalkBack rearrangement, and layout restoration

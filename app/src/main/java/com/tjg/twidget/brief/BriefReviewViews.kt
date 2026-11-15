@@ -212,16 +212,7 @@ internal object BriefReviewTweetCard {
 
     internal fun openTweet(context: Context, url: String) {
         if (!canOpen(url)) return
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(Intent(intent).setPackage("com.twitter.android"))
-        } catch (_: ActivityNotFoundException) {
-            context.startActivity(intent)
-        } catch (_: SecurityException) {
-            context.startActivity(intent)
-        }
+        com.tjg.twidget.ui.TweetPopOverLauncher.open(context, url)
     }
 
     private fun makeClickable(view: View, ripple: Int, click: () -> Unit) {

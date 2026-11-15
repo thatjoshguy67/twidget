@@ -270,6 +270,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             prepareBriefEntrance()
             startPreparedBriefEntrance()
         }
+        // Returning from a child page/popover keeps the current presentation.
     }
 
     private fun loadBrief(
@@ -978,7 +979,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefCardAction.COMPOSE_TWEET -> Unit
             BriefCardAction.OPEN_POST -> card.actionData
                 .takeIf { it.startsWith("https://") || it.startsWith("http://") }
-                ?.let { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
+                ?.let { com.tjg.twidget.ui.TweetPopOverLauncher.open(this, it) }
         }
     }
 

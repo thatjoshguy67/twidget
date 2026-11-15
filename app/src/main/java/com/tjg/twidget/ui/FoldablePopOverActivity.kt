@@ -8,6 +8,7 @@ import android.content.res.Configuration
  * full-screen on the folded display and a One UI pop-over on the inner display.
  */
 abstract class FoldablePopOverActivity : EdgeToEdgeActivity() {
+    internal val tweetPopOverLauncher = TweetPopOverLauncher(this)
     private var isChangingPresentation = false
 
     override fun onConfigurationChanged(newConfig: Configuration) {

@@ -116,10 +116,11 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             recycler.seslHideGoToTop()
             true
         }
-        var surfaceHeight = 0
+        var surfaceTop = 0
+        var surfaceBottom = 0
         listView.background = object : GradientDrawable() {
             override fun draw(canvas: android.graphics.Canvas) {
-                setBounds(0, 0, listView.width, surfaceHeight)
+                setBounds(0, surfaceTop, listView.width, surfaceBottom)
                 super.draw(canvas)
             }
         }.apply {
@@ -128,7 +129,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         }
         listView.outlineProvider = object : android.view.ViewOutlineProvider() {
             override fun getOutline(view: View, outline: android.graphics.Outline) {
-                outline.setRoundRect(0, 0, view.width, surfaceHeight, dp(28).toFloat())
+                outline.setRoundRect(0, surfaceTop, view.width, surfaceBottom, dp(28).toFloat())
             }
         }
         listView.clipToOutline = true
@@ -242,11 +243,15 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             if (listView.paddingBottom != clearance) {
                 listView.setPadding(listView.paddingLeft, listView.paddingTop, listView.paddingRight, clearance)
             }
+            val firstRow = listView.findViewHolderForAdapterPosition(0)?.itemView
             val lastRow = listView.findViewHolderForAdapterPosition(adapter.itemCount - 1)?.itemView
-            val targetSurfaceHeight = (lastRow?.let { it.bottom + dp(4) } ?: listView.height)
-                .coerceIn(0, listView.height)
-            if (surfaceHeight != targetSurfaceHeight) {
-                surfaceHeight = targetSurfaceHeight
+            val surface = followerListSurfaceBounds(
+                listView.height, dp(28), adapter.itemCount,
+                firstRow?.top, lastRow?.bottom, dp(4),
+            )
+            if (surfaceTop != surface.top || surfaceBottom != surface.bottom) {
+                surfaceTop = surface.top
+                surfaceBottom = surface.bottom
                 listView.invalidateOutline()
                 listView.invalidate()
             }

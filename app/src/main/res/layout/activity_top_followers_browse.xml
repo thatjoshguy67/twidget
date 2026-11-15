@@ -10,7 +10,7 @@
     app:expandable="true"
     app:expanded="false"
     app:handleInsets="false"
-    app:mainRoundedCorners="top"
+    app:mainRoundedCorners="none"
     app:showNavButtonAsBack="true"
     app:title="@string/top_followers_browser_title">
 
@@ -24,9 +24,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:paddingStart="10dp"
-            android:paddingTop="10dp"
+            android:paddingTop="0dp"
             android:paddingEnd="10dp"
-            android:paddingBottom="10dp">
+            android:paddingBottom="0dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/top_followers_browse_list"

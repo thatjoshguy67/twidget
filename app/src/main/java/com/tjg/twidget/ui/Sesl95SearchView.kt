@@ -35,6 +35,7 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
     private var imeVisible = false
     private var expansionGeneration = 0
     private var trackingImeBack = false
+    private var searchMenuOpen = false
     private var lastAvailableWidth = 0
     private val input get() = seslGetAutoCompleteView()
     private val hintPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
@@ -134,20 +135,25 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
     }
 
     /** Modern gesture Back is consumed by the IME before the activity callback. */
+    fun onSearchMenuVisibilityChanged(open: Boolean) {
+        searchMenuOpen = open
+        expansionGeneration++
+    }
+
     fun onImeVisibilityChanged(visible: Boolean) {
         val dismissed = imeVisible && !visible
         imeVisible = visible
-        if (!dismissed || !isFloatingExpanded || !hasWindowFocus()) return
+        if (!dismissed || !isFloatingExpanded || searchMenuOpen || !hasWindowFocus()) return
         val generation = expansionGeneration
         post {
-            if (generation == expansionGeneration && !imeVisible && isFloatingExpanded &&
+            if (generation == expansionGeneration && !imeVisible && isFloatingExpanded && !searchMenuOpen &&
                 isAttachedToWindow && hasWindowFocus()) collapse()
         }
     }
 
     /** Key-based Back must also collapse instead of only clearing the EditText focus. */
     override fun dispatchKeyEventPreIme(event: KeyEvent): Boolean {
-        if (event.keyCode == KeyEvent.KEYCODE_BACK && isFloatingExpanded) {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && isFloatingExpanded && !searchMenuOpen) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 if (event.repeatCount == 0) trackingImeBack = true
                 return true

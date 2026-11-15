@@ -1,9 +1,5 @@
 package com.tjg.twidget.followers
 
-import android.app.Activity
-import android.app.Instrumentation
-import android.content.IntentFilter
-import android.speech.RecognizerIntent
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -120,6 +116,14 @@ class TopFollowersSearchInstrumentedTest {
             TopFollower("$it", "follower$it", "Follower $it", 10000L - it, false, "")
         })
         fun settle() { instrumentation.waitForIdleSync(); SystemClock.sleep(500) }
+        fun assertShortSurface(activity: TopFollowersBrowseActivity) {
+            val list = activity.findViewById<RecyclerView>(R.id.top_followers_browse_list)
+            val bitmap = Bitmap.createBitmap(list.width, list.height, Bitmap.Config.ARGB_8888)
+            list.draw(android.graphics.Canvas(bitmap))
+            assertEquals("Short results leave the area below their surface transparent", 0,
+                android.graphics.Color.alpha(bitmap.getPixel(list.width / 2, list.height - 1)))
+            bitmap.recycle()
+        }
         fun capture(name: String) {
             val bitmap = instrumentation.uiAutomation.takeScreenshot()
             File(context.getExternalFilesDir(null), "$name.png").outputStream().use {
@@ -141,13 +145,13 @@ class TopFollowersSearchInstrumentedTest {
                             toolbar.menu.getItem(it).title == activity.getString(R.string.top_followers_browser_search)
                         })
                         assertFalse("Search must not autofocus on opening", search.hasFocus())
-                        assertFalse("Idle mic uses the outline icon", search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected)
+                        assertEquals("Voice input is replaced by search refinements", View.GONE, search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).visibility)
                         compactWidth = search.width
                         (search as com.tjg.twidget.ui.Sesl95SearchView).expand(showKeyboard = false, animate = false)
                         assertEquals("First row must meet the rounded list edge", 0,
                             activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).paddingTop)
                         assertTrue("Idle search should be compact", search.width < activity.window.decorView.width)
-                        assertEquals(View.VISIBLE, search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).visibility)
+                        assertEquals(View.VISIBLE, search.findViewById<View>(androidx.appcompat.R.id.search_more_btn).visibility)
                         val bounds = Rect()
                         assertTrue(search.getGlobalVisibleRect(bounds))
                         val safe = ViewCompat.getRootWindowInsets(search)!!.getInsets(WindowInsetsCompat.Type.navigationBars())
@@ -205,7 +209,7 @@ class TopFollowersSearchInstrumentedTest {
                     settle()
                     scenario.onActivity { activity ->
                         assertEquals(1, activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
-                        assertTrue("Short results must hug their surface", activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).background.bounds.height() < activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).height)
+                        assertShortSurface(activity)
                     }
                     scenario.recreate()
                     settle()
@@ -213,7 +217,7 @@ class TopFollowersSearchInstrumentedTest {
                         val search = activity.findViewById<SearchView>(R.id.top_followers_browse_search)
                         assertEquals("follower30", search.query.toString())
                         assertEquals(1, activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
-                        assertTrue("Short results must hug their surface", activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).background.bounds.height() < activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).height)
+                        assertShortSurface(activity)
                         search.findViewById<View>(androidx.appcompat.R.id.search_close_btn).performClick()
                         search.clearFocus()
                     }
@@ -242,7 +246,7 @@ class TopFollowersSearchInstrumentedTest {
                     scenario.onActivity { activity ->
                         val search = activity.findViewById<SearchView>(R.id.top_followers_browse_search)
                         val insets = ViewCompat.getRootWindowInsets(search)!!
-                        assertTrue("Focused mic uses the filled icon (IME=${insets.isVisible(WindowInsetsCompat.Type.ime())}, focused=${search.hasFocus()}, current=${activity.currentFocus?.javaClass?.simpleName})", search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected)
+                        assertEquals("Filter menu stays available while typing", View.VISIBLE, search.findViewById<View>(androidx.appcompat.R.id.search_more_btn).visibility)
                         assertTrue("Focused search should expand", search.width > compactWidth)
                         assertTrue("Keyboard must be shown", insets.isVisible(WindowInsetsCompat.Type.ime()))
                         val bounds = Rect()
@@ -264,23 +268,15 @@ class TopFollowersSearchInstrumentedTest {
                         assertEquals("", search.query.toString())
                         search.expand(showKeyboard = false, animate = false)
                     }
-                    val voiceMonitor = instrumentation.addMonitor(
-                        IntentFilter(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),
-                        Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().putStringArrayListExtra(
-                            RecognizerIntent.EXTRA_RESULTS, arrayListOf("follower30"))), true)
-                    try {
-                        scenario.onActivity { activity ->
-                            activity.findViewById<SearchView>(R.id.top_followers_browse_search)
-                                .findViewById<View>(androidx.appcompat.R.id.search_voice_btn).performClick()
-                        }
-                        settle()
-                        assertEquals(1, voiceMonitor.hits)
-                        scenario.onActivity { activity ->
-                            assertEquals("follower30", activity.findViewById<SearchView>(R.id.top_followers_browse_search).query.toString())
-                            assertEquals(1, activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
-                        assertTrue("Short results must hug their surface", activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).background.bounds.height() < activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).height)
-                        }
-                    } finally { instrumentation.removeMonitor(voiceMonitor) }
+                    scenario.onActivity { activity ->
+                        val search = activity.findViewById<SearchView>(R.id.top_followers_browse_search)
+                        assertEquals(View.GONE, search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).visibility)
+                        search.setQuery("follower30", false)
+                    }
+                    settle()
+                    scenario.onActivity { activity ->
+                        assertEquals(1, activity.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
+                    }
                 }
             }
         } finally {

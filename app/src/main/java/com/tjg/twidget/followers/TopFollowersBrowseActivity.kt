@@ -2,7 +2,6 @@ package com.tjg.twidget.followers
 
 import android.animation.ValueAnimator
 import android.app.SearchManager
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Outline
 import android.graphics.Rect
@@ -10,7 +9,6 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
-import android.speech.RecognizerIntent
 import android.util.TypedValue
 import android.view.KeyEvent
 import com.tjg.twidget.ui.Sesl95SearchView
@@ -29,8 +27,6 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
@@ -65,22 +61,11 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     private lateinit var refreshView: SwipeRefreshLayout
     private lateinit var toolbarLayout: ToolbarLayout
     private lateinit var searchView: Sesl95SearchView
-    private lateinit var filterCapsule: FollowerFilterCapsule
+    internal lateinit var searchFilters: FollowerSearchMenu
     private var filters = FollowerFilters()
     private var refreshItem: MenuItem? = null
     private var refreshGeneration = 0
     private var refreshing = false
-    private val voiceSearch = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val data = result.data ?: return@registerForActivityResult
-            val spoken = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-                ?: data.getStringExtra(SearchManager.QUERY)
-            spoken?.let {
-                searchView.setQuery(it, false)
-                searchView.clearFocus()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,58 +110,27 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         searchContainer = findViewById(R.id.top_followers_browse_search_container)
         searchView = findViewById(R.id.top_followers_browse_search)
         val closeSearch = object : OnBackPressedCallback(false) {
-            override fun handleOnBackPressed() { searchView.collapse() }
+            override fun handleOnBackPressed() {
+                if (::searchFilters.isInitialized && searchFilters.popup != null) searchFilters.dismiss() else searchView.collapse()
+            }
         }
         onBackPressedDispatcher.addCallback(this, closeSearch)
-        filterCapsule = findViewById(R.id.follower_filters)
         filters = FollowerFilters.restored(savedInstanceState?.getString("filter_sort"), savedInstanceState?.getLong("filter_minimum") ?: 0L)
-        filterCapsule.setFilters(filters)
-        val closeFilters = object : OnBackPressedCallback(false) {
-            override fun handleOnBackPressed() { filterCapsule.setExpanded(false) }
-        }
-        onBackPressedDispatcher.addCallback(this, closeFilters)
-        filterCapsule.onExpansionChanged = { expanded ->
-            closeFilters.isEnabled = expanded
-            if (expanded) searchView.collapse(animate = false, clearQuery = false)
-            searchView.visibility = if (expanded) View.INVISIBLE else View.VISIBLE
-        }
-        filterCapsule.onFiltersChanged = { value ->
-            filters = value
-            render()
-        }
+        searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
+        searchFilters = FollowerSearchMenu(searchView, filters) { value -> filters = value; render() }
         searchView.onExpansionChanged = {
             closeSearch.isEnabled = it
-            if (it) filterCapsule.setExpanded(false, animate = false)
-            filterCapsule.visibility = if (it) View.INVISIBLE else View.VISIBLE
+            if (!it) searchFilters.dismiss()
         }
         com.tjg.twidget.ui.KeyboardNavigation.register(this, "search", R.string.floating_shortcut_search, KeyEvent.KEYCODE_F) {
-            filterCapsule.setExpanded(false, animate = false)
             searchView.expand()
         }
         com.tjg.twidget.ui.KeyboardNavigation.register(this, "filters", R.string.floating_shortcut_filters, KeyEvent.KEYCODE_F,
-            KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) {
-            searchView.collapse(animate = false, clearQuery = false)
-            filterCapsule.setExpanded(!filterCapsule.expanded)
-        }
-        searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
-        searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).setOnClickListener {
-            try {
-                voiceSearch.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.top_followers_browser_search))
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                })
-            } catch (_: ActivityNotFoundException) {
-                // A recognizer can be removed after SESL checks its availability.
-                searchView.requestFocus()
-            }
-        }
-        searchView.setOnQueryTextFocusChangeListener { _, _ -> updateSearchWidth() }
+            KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) { searchFilters.show() }
         // Read the delivered insets, rather than the previous root snapshot while it is dispatching.
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(searchView) { _, insets ->
             val imeVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
             searchView.onImeVisibilityChanged(imeVisible)
-            updateSearchWidth(imeVisible)
             insets
         }
         ViewCompat.setWindowInsetsAnimationCallback(
@@ -208,8 +162,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         )
         query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
         searchView.setQuery(query, false)
-        if (savedInstanceState?.getBoolean("filters_expanded") != true &&
-            (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true)) {
+        if (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true) {
             searchView.expand(showKeyboard = false, animate = false)
         }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -224,15 +177,9 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 return true
             }
         })
-        if (!searchView.isFloatingExpanded && savedInstanceState?.getBoolean("filters_expanded") == true) {
-            filterCapsule.setExpanded(true, animate = false)
-        }
-        updateSearchWidth()
         // Float search over the full-height list.
         applyEdgeToEdgeInsets(toolbarLayout) { navigationInset ->
             searchView.updateBottomMarginForNavigationBar(0, navigationInset)
-            filterCapsule.updateBottomMarginForNavigationBar(0, navigationInset)
-            updateSearchWidth()
         }
 
         // AppBarLayout's scrolling child can extend below the window while the
@@ -244,7 +191,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         var scrollbarBottom = -1
         listView.viewTreeObserver.addOnPreDrawListener {
             listView.getLocationInWindow(listPosition)
-            (if (filterCapsule.expanded) filterCapsule else searchView).getLocationInWindow(searchPosition)
+            searchView.getLocationInWindow(searchPosition)
             toolbarLayout.toolbar.getLocationInWindow(toolbarPosition)
             val firstVisible = (listView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
             adapter.currentList.getOrNull(firstVisible)?.let {
@@ -312,7 +259,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         outState.putString(STATE_QUERY, query)
         outState.putString("filter_sort", filters.sort.name)
         outState.putLong("filter_minimum", filters.minimum)
-        outState.putBoolean("filters_expanded", filterCapsule.expanded)
         outState.putBoolean("search_expanded", searchView.isFloatingExpanded)
         super.onSaveInstanceState(outState)
     }
@@ -323,6 +269,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         AppExecutors.cancel(archiveLoad)
         AppExecutors.cancel(searchWork)
         searchHandler.removeCallbacksAndMessages(null)
+        if (::searchFilters.isInitialized) searchFilters.dismiss()
         super.onDestroy()
     }
 
@@ -423,7 +370,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             lastPublishedFilters = publishedFilters
             lastPublishedQuery = publishedQuery
         }
-        filterCapsule.showResultCount(visible.size)
         val empty = visible.isEmpty()
         emptyView.setText(
             if (query.isBlank() && filters.activeCount == 0) {
@@ -449,11 +395,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
-    }
-
-    private fun updateSearchWidth(keyboardActive: Boolean = androidx.core.view.ViewCompat.getRootWindowInsets(toolbarLayout)
-        ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true) {
-        searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).isSelected = keyboardActive
     }
 
     private fun updateQuery(value: String?) {

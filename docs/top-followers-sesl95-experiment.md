@@ -19,3 +19,7 @@ The first capsule-toolbar prototype was rejected after device review. Its custom
 The same SearchView stays on the same Activity and keeps the existing list query callback. There is no in-field back arrow. Escape, key-based Back or keyboard dismissal collapses it and clears the filter. IME visible-to-hidden transitions handle gesture Back before the activity receives a back callback; transitions while another window has focus are ignored. Query and expanded state are retained across recreation. Ctrl+F expands and focuses it. The ordinary keyboard and voice-search integrations remain. The coloured hint only starts once the bar opens. No search subpage is launched.
 
 Validation of this revision: local build, lint and unit tests; the revised device-test APK is built for later execution. Installation remains an install-only handoff to the user, so actual animation/layout parity is not claimed.
+
+## Search refinements revision
+
+The standalone filters capsule was removed after device review. The expanded search bar now uses the native overflow-button slot for a sliders icon and checked popup menu, replacing microphone input. Sorting and follower-count thresholds compose with the text query. Reset clears refinements only; active refinements tint the menu button and collapsed FAB. Popup focus/IME transitions do not collapse search. Ctrl+Shift+F expands search and opens this menu after layout.

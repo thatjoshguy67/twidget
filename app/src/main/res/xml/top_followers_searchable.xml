@@ -3,5 +3,4 @@
     android:label="@string/top_followers_browser_title"
     android:hint="@string/top_followers_browser_search"
     android:imeOptions="actionSearch"
-    android:inputType="text"
-    android:voiceSearchMode="showVoiceSearchButton|launchRecognizer" />
+    android:inputType="text" />

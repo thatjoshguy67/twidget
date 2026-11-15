@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class FloatingFollowerToolsInstrumentedTest {
-    @Test fun filtersComposeWithSearchRestoreAndCloseInPlace() {
+    @Test fun searchMenuCombinesFiltersPreservesQueryAndReturnsToList() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val username = "floating_filters_test"
@@ -24,48 +24,72 @@ class FloatingFollowerToolsInstrumentedTest {
             TopFollower("1", "zebra", "Zebra", 100_000, false, ""),
             TopFollower("2", "amy", "Amy", 10_000, false, ""),
             TopFollower("3", "alan", "Alan", 9_999, false, "")))
-        fun settle() { SystemClock.sleep(600); instrumentation.waitForIdleSync() }
+        fun settle() { SystemClock.sleep(500); instrumentation.waitForIdleSync() }
         try {
             ActivityScenario.launch<TopFollowersBrowseActivity>(Intent(context, TopFollowersBrowseActivity::class.java)
                 .putExtra(TopFollowersBrowseActivity.EXTRA_USERNAME, username)).use { scenario ->
                 settle()
                 scenario.onActivity { a ->
-                    a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).apply {
-                        expand(false, false); setQuery("amy", false)
-                    }
+                    assertNull("No standalone filter surface", a.findViewById<View>(R.id.follower_filters))
                     a.window.callback.dispatchKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F, 0,
                         KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
-                    assertTrue(a.findViewById<FollowerFilterCapsule>(R.id.follower_filters).expanded)
-                    a.findViewById<View>(R.id.follower_min_10k).performClick()
                 }
                 settle()
                 scenario.onActivity { a ->
-                    assertEquals("Query is preserved when opening filters", "amy", a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).query.toString())
-                    assertEquals(1, a.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
-                    a.findViewById<View>(R.id.follower_sort_name).performClick()
+                    assertNotNull("Shortcut opens the menu from the collapsed FAB", a.searchFilters.popup)
+                    a.searchFilters.dismiss()
+                    val search = a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search)
+                    search.setQuery("amy", false)
+                    assertEquals(View.GONE, search.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).visibility)
+                    assertEquals(View.VISIBLE, search.seslGetOverflowMenuButton().visibility)
+                    search.seslGetOverflowMenuButton().performClick()
                 }
+                settle()
+                scenario.onActivity { a ->
+                    val search = a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search)
+                    assertNotNull(a.searchFilters.popup)
+                    // Opening a popup may hide the IME; that is not an exit from search.
+                    search.onImeVisibilityChanged(true); search.onImeVisibilityChanged(false)
+                    assertTrue(search.isFloatingExpanded)
+                    a.searchFilters.popup!!.menu.performIdentifierAction(R.id.follower_min_10k, 0)
+                }
+                settle()
+                scenario.onActivity { a ->
+                    assertEquals("amy", a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).query.toString())
+                    assertEquals(1, a.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount)
+                    a.searchFilters.show()
+                }
+                settle()
+                scenario.onActivity { a -> a.searchFilters.popup!!.menu.performIdentifierAction(R.id.follower_sort_name, 0) }
                 scenario.recreate(); settle()
                 scenario.onActivity { a ->
-                    val filters = a.findViewById<FollowerFilterCapsule>(R.id.follower_filters)
-                    assertEquals(FollowerFilters(FollowerSort.NAME, 10_000), filters.filters)
-                    assertTrue("Filter panel survives recreation", filters.expanded)
-                    a.onBackPressedDispatcher.onBackPressed()
-                    assertFalse(filters.expanded)
-                    assertFalse(a.isFinishing)
-                    a.window.callback.dispatchKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F, 0, KeyEvent.META_CTRL_ON))
-                    val search = a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search)
-                    assertTrue(search.isFloatingExpanded)
-                    repeat(4) { search.collapse(); search.expand(false) }
-                    search.collapse()
-                    repeat(4) { filters.setExpanded(true); filters.setExpanded(false) }
+                    assertEquals(FollowerFilters(FollowerSort.NAME, 10_000), a.searchFilters.filters)
+                    assertEquals("amy", a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).query.toString())
+                    a.window.callback.dispatchKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_F, 0,
+                        KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON))
                 }
                 settle()
                 scenario.onActivity { a ->
-                    val search = a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search)
-                    assertFalse(search.isFloatingExpanded)
-                    assertEquals((56f * a.resources.displayMetrics.density).toInt(), search.width)
-                    assertFalse(a.findViewById<FollowerFilterCapsule>(R.id.follower_filters).expanded)
+                    val menu = a.searchFilters.popup!!.menu
+                    assertTrue(menu.findItem(R.id.follower_sort_name).isChecked)
+                    assertTrue(menu.findItem(R.id.follower_min_10k).isChecked)
+                    a.onBackPressedDispatcher.onBackPressed()
+                    assertNull(a.searchFilters.popup)
+                    assertTrue(a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).isFloatingExpanded)
+                    a.searchFilters.show()
                 }
+                settle()
+                scenario.onActivity { a -> a.searchFilters.popup!!.menu.performIdentifierAction(R.id.follower_filter_reset, 0) }
+                settle()
+                scenario.onActivity { a ->
+                    assertEquals(FollowerFilters(), a.searchFilters.filters)
+                    assertEquals("Reset preserves the text query", "amy", a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).query.toString())
+                    a.onBackPressedDispatcher.onBackPressed()
+                    assertFalse(a.findViewById<Sesl95SearchView>(R.id.top_followers_browse_search).isFloatingExpanded)
+                    assertFalse(a.isFinishing)
+                }
+                settle()
+                scenario.onActivity { a -> assertEquals(3, a.findViewById<RecyclerView>(R.id.top_followers_browse_list).adapter!!.itemCount) }
             }
         } finally { TopFollowersArchiveStore.clear(context, username) }
     }

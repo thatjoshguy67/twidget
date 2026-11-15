@@ -279,24 +279,23 @@ class DashboardCardRenderingInstrumentedTest {
                         com.tjg.twidget.data.ProfileStats("That Josh Guy", "mock", 7671, 1265, 12, 500), 21, span)
                     render(counter, ((if (span == 1) 189 else 392) * density).toInt(), height,
                         File(context.filesDir, "count-$night-$span.png"))
-                    val text = counter.findViewById<TextView>(R.id.followers_value)
+                    val text = counter as com.tjg.twidget.ui.FollowerCountCardView
                     assertTrue("Both count sizes share the native card radius",
                         kotlin.math.abs((counter.background as android.graphics.drawable.GradientDrawable).cornerRadius - 28f * density) < 1f)
-                    assertTrue("Both count sizes use complete lettered text", text.text.toString().contains("Seven"))
-                    assertTrue("All words fit within the count card", text.layout.getLineEnd(text.lineCount - 1) == text.text.length)
-                    assertTrue("No count words are ellipsized", (0 until text.lineCount).all { text.layout.getEllipsisCount(it) == 0 })
+                    val fitted = requireNotNull(text.fittedLayout())
+                    assertTrue("Both count sizes use complete lettered text", text.contentDescription.toString().contains("Seven"))
+                    assertTrue("All words fit within the count card", fitted.height <= text.height - text.paddingTop - text.paddingBottom)
+                    assertTrue("No count words are ellipsized", fitted.lines.flatten().joinToString(" ") { it.text } == text.contentDescription.toString())
                 }
                 for (count in listOf(7671L, 8051L)) {
                     val countCard = FollowerCountCard.create(context,
                         com.tjg.twidget.data.ProfileStats("That Josh Guy", "mock", count, 1265, 12, 500), 21, 1)
                     render(countCard, width, height, File(context.filesDir, "compact-count-$count-$night.png"))
-                    val compact = countCard.findViewById<TextView>(R.id.followers_value)
-                    val footer = countCard.findViewById<TextView>(R.id.dashboard_count_footer)
-                    val available = compact.height - compact.paddingTop - compact.paddingBottom
-                    assertTrue("Written count leaves a stable footer zone", compact.bottom <= footer.top)
-                    assertTrue("Compact count still fits without clipping", compact.layout.height <= available + 1)
-                    assertTrue("Every count word remains visible", compact.layout.getLineEnd(compact.lineCount - 1) == compact.text.length &&
-                        (0 until compact.lineCount).all { compact.layout.getEllipsisCount(it) == 0 })
+                    val compact = countCard as com.tjg.twidget.ui.FollowerCountCardView
+                    val fitted = requireNotNull(compact.fittedLayout())
+                    assertTrue("Count and supporting copy share the widget's fitting area",
+                        fitted.height <= compact.height - compact.paddingTop - compact.paddingBottom)
+                    assertTrue("Every count word remains visible", fitted.lines.flatten().joinToString(" ") { it.text } == compact.contentDescription.toString())
                 }
                 val states = listOf(
                     "steady" to StreakSnapshot(12, true, null, longestStreak = 120),

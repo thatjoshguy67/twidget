@@ -64,8 +64,9 @@ class DashboardCardVariantsInstrumentedTest {
                 assertTrue(TwidgetStore.isDashboardCardExpanded(activity, "follower_count"))
                 val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                 grid.dashboardCardChildren().groupBy { it.top }.values.forEach { row -> row.forEach { assertEquals(row.first().height, it.height) } }
-                val text = card(activity, "follower_count").findViewById<TextView>(R.id.followers_value)
-                assertEquals("Written count remains complete", text.text.length, text.layout.getLineEnd(text.lineCount - 1))
+                val text = card(activity, "follower_count").findViewById<com.tjg.twidget.ui.FollowerCountCardView>(R.id.followers_value)
+                assertEquals("Written count remains complete", text.contentDescription.toString(),
+                    requireNotNull(text.fittedLayout()).lines.flatten().joinToString(" ") { it.text })
             }
             SystemClock.sleep(300)
             scenario.recreate()

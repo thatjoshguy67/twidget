@@ -28,7 +28,7 @@ internal object DashboardCardDesign {
         val density = root.resources.displayMetrics.density
         val scale = heightPx / (214f * density)
         val nativeStatSpacing = root.findViewById<View>(R.id.dashboard_stat_header) != null
-        val nativeEditorialSpacing = root.findViewById<View>(R.id.dashboard_count_footer) != null
+        val nativeEditorialSpacing = root is FollowerCountCardView || root.findViewById<View>(R.id.dashboard_count_footer) != null
         val nativeListSpacing = root.getTag(R.id.dashboard_list_card) == true
         val nativeBriefSpacing = root is BriefDashboardCardLayout
         val nativePostSpacing = root.findViewById<View>(R.id.dashboard_post_heading) != null

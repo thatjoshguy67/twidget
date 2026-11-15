@@ -255,6 +255,42 @@ class DashboardRecyclerInteractionInstrumentedTest {
     }
 
 
+    @Test fun followerCountKeepsWidgetLayoutThroughNativeResizeAndUndo() {
+        for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
+            val order = listOf("follower_count", "daily_streak", "avg_views", "post_rate")
+            scenario.onActivity { activity ->
+                TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
+                TwidgetStore.setDashboardCardExpanded(activity, "follower_count", false, activity.selectedAccount)
+                activity.render(refreshRemote = false)
+            }
+            settle()
+            fun assertCount(activity: MainActivity, span: Int) {
+                val card = tile(activity, "follower_count")
+                assertEquals(span, card.getTag(R.id.dashboard_card_span))
+                val content = card.findViewById<com.tjg.twidget.ui.FollowerCountCardView>(R.id.followers_value)
+                val layout = requireNotNull(content.fittedLayout())
+                assertEquals(content.contentDescription.toString(), layout.lines.flatten().joinToString(" ") { it.text })
+                assertTrue(layout.height <= content.height - content.paddingTop - content.paddingBottom)
+                assertTrue(layout.bounds.all { it.width() <= content.width - content.paddingLeft - content.paddingRight })
+                assertNull("The widget's account footer is omitted", content.findViewById<View>(R.id.dashboard_count_footer))
+            }
+            scenario.onActivity { activity ->
+                assertCount(activity, 1)
+                activity.editModeController.resizeDashboardCard(DashboardCardType.FOLLOWER_COUNT)
+            }
+            settle()
+            scenario.onActivity { activity ->
+                assertCount(activity, 2)
+                activity.findViewById<View>(com.google.android.material.R.id.snackbar_action).performClick()
+            }
+            settle()
+            scenario.onActivity { activity -> assertCount(activity, 1) }
+            scenario.recreate()
+            settle()
+            scenario.onActivity { activity -> assertCount(activity, 1) }
+        }
+    }
+
     @Test fun resizeUndoKeepsRebuiltCardsAboveTheirEditShadows() {
         for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
             repeat(3) {

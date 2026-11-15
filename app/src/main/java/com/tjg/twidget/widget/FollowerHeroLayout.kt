@@ -40,7 +40,11 @@ internal class FollowerHeroLayout(
 
     fun draw(canvas: Canvas, width: Float, height: Float, padding: Float, wordGap: Float, lineGap: Float) {
         if (words.isEmpty() || width <= 1f || height <= 1f) return
-        val layout = fit(width, height, wordGap, lineGap)
+        draw(canvas, fit(width, height, wordGap, lineGap), padding)
+    }
+
+    /** A live view can retain its fitted runs until its size or content changes. */
+    fun draw(canvas: Canvas, layout: Layout, padding: Float) {
         layout.lines.forEachIndexed { lineIndex, line ->
             var x = padding - layout.bounds[lineIndex].left
             val baseline = padding - layout.bounds.first().top + lineIndex * layout.advance

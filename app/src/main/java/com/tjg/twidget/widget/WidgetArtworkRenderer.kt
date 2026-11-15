@@ -51,21 +51,13 @@ object WidgetArtworkRenderer {
             textSize = 12f * density
             applyWidgetTypeface(context, settings.fontFamily, 600, if (contained) 25 else 51, 100)
         }
-        val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, AppLocales.resolve(settings.language))
         val deltaColor = colors.deltaColor(delta, dark)
         val footerHeight = (if (contained) 20f else 14f) * density
         val textMaxWidth = width - pad * 2
         val textMaxHeight = height - pad * 2 - footerHeight - 8f * density
-        val locale = AppLocales.resolve(settings.language)
-        val localizedContext = AppLocales.wrap(context, settings.language)
-        val countWords = TwidgetWidget.followersInWords(stats.followersCount, locale)
-            .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
-        val followerNoun = if (locale.language in setOf("es", "ca") && stats.followersCount >= 1_000_000 && stats.followersCount % 1_000_000 == 0L)
-            localizedContext.getString(R.string.l10n_widget_followers_of) else localizedContext.resources.getQuantityString(R.plurals.widget_count_followers, com.tjg.twidget.brief.BriefStrings.quantity(stats.followersCount))
-        val words = countWords + followerNoun + listOfNotNull(deltaText.takeIf { it.isNotEmpty() })
+        val (words, countWordCount) = followerHeroWords(context, settings, stats, delta)
         val gap = wordSpacing(context, textMaxWidth)
-        val hero = followerHero(context, settings, words, countWords.size, primary, secondary, deltaColor)
+        val hero = followerHero(context, settings, words, countWordCount, primary, secondary, deltaColor)
         hero.draw(canvas, textMaxWidth, textMaxHeight, pad, gap, 4f * density)
 
         val handle = "@${stats.userName}"
@@ -88,7 +80,21 @@ object WidgetArtworkRenderer {
         return bitmap
     }
 
-    private fun wordSpacing(context: Context, maxWidth: Float): Float =
+    /** Shared by the home-screen artwork and dashboard, without any account footer. */
+    internal fun followerHeroWords(context: Context, settings: TwidgetWidgetSettings, stats: ProfileStats,
+        delta: Long): Pair<List<String>, Int> {
+        val locale = AppLocales.resolve(settings.language)
+        val localizedContext = AppLocales.wrap(context, settings.language)
+        val countWords = (if (stats.followersKnown) TwidgetWidget.followersInWords(stats.followersCount, locale) else "--")
+            .split(Regex("\\s+")).filter { it.isNotBlank() }
+        val followerNoun = if (locale.language in setOf("es", "ca") && stats.followersCount >= 1_000_000 && stats.followersCount % 1_000_000 == 0L)
+            localizedContext.getString(R.string.l10n_widget_followers_of) else localizedContext.resources.getQuantityString(
+                R.plurals.widget_count_followers, com.tjg.twidget.brief.BriefStrings.quantity(stats.followersCount))
+        val deltaText = if (!stats.followersKnown || !settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, locale)
+        return (countWords + followerNoun + listOfNotNull(deltaText.takeIf { it.isNotEmpty() })) to countWords.size
+    }
+
+    internal fun wordSpacing(context: Context, maxWidth: Float): Float =
         (if (maxWidth / context.resources.displayMetrics.density < 230f) 4f else 6f) * context.resources.displayMetrics.density
 
     internal fun followerHero(

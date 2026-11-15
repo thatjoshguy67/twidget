@@ -1,8 +1,14 @@
 package com.tjg.twidget.followers
 
-import android.view.Menu
 import android.view.View
-import androidx.appcompat.widget.PopupMenu
+import androidx.core.view.ViewCompat
+import android.widget.LinearLayout
+import android.widget.RadioGroup
+import android.widget.ScrollView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatRadioButton
+import androidx.appcompat.widget.AppCompatTextView
+import dev.oneuiproject.oneui.R as OneUiIconR
 import com.tjg.twidget.R
 import com.tjg.twidget.ui.Sesl95SearchView
 
@@ -13,69 +19,92 @@ internal class FollowerSearchMenu(
     private val changed: (FollowerFilters) -> Unit,
 ) {
     var filters = initial; private set
-    var popup: PopupMenu? = null; private set
+    var dialog: AlertDialog? = null; private set
     init {
-        search.seslSetOverflowMenuButtonIcon(search.context.getDrawable(R.drawable.ic_search_filters))
+        search.seslSetOverflowMenuButtonIcon(search.context.getDrawable(OneUiIconR.drawable.ic_oui_list_filter))
         search.seslSetOverflowMenuButtonVisibility(View.VISIBLE)
         search.seslSetOnOverflowMenuButtonClickListener { show() }
         updateIndicator()
     }
     fun show() {
-        if (popup != null) return
+        if (dialog != null || !search.isAttachedToWindow) return
         if (!search.isFloatingExpanded) search.expand(showKeyboard = false, animate = false)
-        val anchor = search.seslGetOverflowMenuButton()
-        // Wait for expansion/layout when invoked from the collapsed keyboard shortcut.
-        afterSearchLayout { anchor.post {
-            if (!search.isAttachedToWindow || !search.isFloatingExpanded || popup != null) return@post
-            val menu = PopupMenu(search.context, anchor)
-            fun heading(label: Int) { menu.menu.add(Menu.NONE, Menu.NONE, Menu.NONE, label).isEnabled = false }
-            fun option(group: Int, id: Int, label: Int, selected: Boolean) {
-                menu.menu.add(group, id, Menu.NONE, label).apply { isCheckable = true; isChecked = selected }
-            }
-            heading(R.string.floating_sort)
-            option(1, R.id.follower_sort_count, R.string.floating_sort_count, filters.sort == FollowerSort.FOLLOWERS)
-            option(1, R.id.follower_sort_name, R.string.floating_sort_name, filters.sort == FollowerSort.NAME)
-            heading(R.string.floating_min_followers)
-            option(2, R.id.follower_min_any, R.string.floating_all, filters.minimum == 0L)
-            option(2, R.id.follower_min_10k, R.string.floating_10k, filters.minimum == 10_000L)
-            option(2, R.id.follower_min_100k, R.string.floating_100k, filters.minimum == 100_000L)
-            menu.menu.setGroupCheckable(1, true, true)
-            menu.menu.setGroupCheckable(2, true, true)
-            menu.menu.add(3, R.id.follower_filter_reset, Menu.NONE, R.string.floating_reset).isEnabled = filters.activeCount > 0
-            menu.setOnMenuItemClickListener { item ->
-                filters = when (item.itemId) {
-                    R.id.follower_sort_count -> filters.copy(sort = FollowerSort.FOLLOWERS)
-                    R.id.follower_sort_name -> filters.copy(sort = FollowerSort.NAME)
-                    R.id.follower_min_any -> filters.copy(minimum = 0)
-                    R.id.follower_min_10k -> filters.copy(minimum = 10_000)
-                    R.id.follower_min_100k -> filters.copy(minimum = 100_000)
-                    R.id.follower_filter_reset -> FollowerFilters()
-                    else -> return@setOnMenuItemClickListener false
+        val builder = AlertDialog.Builder(search.context)
+        val context = builder.context
+        fun dp(value: Int) = (value * context.resources.displayMetrics.density).toInt()
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), dp(8))
+        }
+        fun group(label: Int, options: List<Pair<Int, Int>>, selected: Int): RadioGroup {
+            content.addView(AppCompatTextView(context).apply {
+                setText(label)
+                setTextAppearance(androidx.appcompat.R.style.TextAppearance_AppCompat_Subhead)
+                setPadding(0, dp(12), 0, dp(4))
+                ViewCompat.setAccessibilityHeading(this, true)
+            })
+            return RadioGroup(context).apply {
+                orientation = RadioGroup.VERTICAL
+                options.forEach { (optionId, labelId) ->
+                    addView(AppCompatRadioButton(context).apply {
+                        id = optionId
+                        setText(labelId)
+                        minHeight = dp(48)
+                    }, RadioGroup.LayoutParams(-1, -2))
                 }
+                check(selected)
+                content.addView(this, LinearLayout.LayoutParams(-1, -2))
+            }
+        }
+        val sort = group(R.string.floating_sort, listOf(
+            R.id.follower_sort_count to R.string.floating_sort_count,
+            R.id.follower_sort_name to R.string.floating_sort_name),
+            if (filters.sort == FollowerSort.NAME) R.id.follower_sort_name else R.id.follower_sort_count)
+        val minimum = group(R.string.floating_min_followers, listOf(
+            R.id.follower_min_any to R.string.floating_all,
+            R.id.follower_min_10k to R.string.floating_10k,
+            R.id.follower_min_100k to R.string.floating_100k), when (filters.minimum) {
+                100_000L -> R.id.follower_min_100k
+                10_000L -> R.id.follower_min_10k
+                else -> R.id.follower_min_any
+            })
+        val window = builder.setTitle(R.string.floating_filters)
+            .setView(ScrollView(context).apply { addView(content) })
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                filters = FollowerFilters(
+                    if (sort.checkedRadioButtonId == R.id.follower_sort_name) FollowerSort.NAME else FollowerSort.FOLLOWERS,
+                    when (minimum.checkedRadioButtonId) {
+                        R.id.follower_min_100k -> 100_000L
+                        R.id.follower_min_10k -> 10_000L
+                        else -> 0L
+                    })
                 updateIndicator()
                 changed(filters)
-                true
             }
-            menu.setOnDismissListener {
-                popup = null
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.floating_reset, null)
+            .create()
+        window.setOnDismissListener {
+            if (dialog === window) {
+                dialog = null
                 search.onSearchMenuVisibilityChanged(false)
             }
-            popup = menu
-            search.onSearchMenuVisibilityChanged(true)
-            menu.show()
-        } }
+        }
+        dialog = window
+        // Dialog focus may hide the IME; keep the in-list search and its query alive.
+        search.onSearchMenuVisibilityChanged(true)
+        window.show()
+        window.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            sort.check(R.id.follower_sort_count)
+            minimum.check(R.id.follower_min_any)
+        }
     }
-    private fun afterSearchLayout(action: () -> Unit) {
-        if (search.isLaidOut && !search.isLayoutRequested) { action(); return }
-        search.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(v: View, l: Int, t: Int, r: Int, b: Int,
-                oldL: Int, oldT: Int, oldR: Int, oldB: Int) {
-                v.removeOnLayoutChangeListener(this)
-                action()
-            }
-        })
+    fun dismiss() {
+        val current = dialog ?: return
+        dialog = null
+        search.onSearchMenuVisibilityChanged(false)
+        current.dismiss()
     }
-    fun dismiss() { popup?.dismiss() }
     private fun updateIndicator() {
         val context = search.context
         val description = if (filters.activeCount == 0) context.getString(R.string.floating_filters)

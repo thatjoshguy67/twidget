@@ -109,9 +109,15 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         searchFab = findViewById(R.id.top_followers_browse_search_fab)
         searchContainer = findViewById(R.id.top_followers_browse_search_container)
         searchView = findViewById(R.id.top_followers_browse_search)
+        // ToolbarLayout routes root overlays into its coordinator. Allow the search
+        // button's elevation shadow outside the SearchView's tight layout bounds.
+        (searchView.parent as? android.view.ViewGroup)?.apply {
+            clipChildren = false
+            clipToPadding = false
+        }
         val closeSearch = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
-                if (::searchFilters.isInitialized && searchFilters.popup != null) searchFilters.dismiss() else searchView.collapse()
+                if (::searchFilters.isInitialized && searchFilters.dialog != null) searchFilters.dismiss() else searchView.collapse()
             }
         }
         onBackPressedDispatcher.addCallback(this, closeSearch)

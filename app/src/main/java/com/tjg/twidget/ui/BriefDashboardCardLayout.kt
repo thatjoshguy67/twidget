@@ -25,27 +25,54 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val inset = dp(12)
         setPadding(inset, inset, inset, inset)
-        findViewById<View>(R.id.brief_dashboard_icon)?.apply {
-            visibility = View.VISIBLE
-            layoutParams.width = dp(32)
-            layoutParams.height = dp(32)
-            (layoutParams as LayoutParams).bottomMargin = dp(8)
+        val icon = findViewById<View>(R.id.brief_dashboard_icon)
+        fun artwork(size: Int, gap: Int) {
+            icon?.apply {
+                visibility = View.VISIBLE
+                layoutParams.width = dp(size)
+                layoutParams.height = dp(size)
+                (layoutParams as LayoutParams).bottomMargin = dp(gap)
+            }
         }
+        artwork(32, 8)
         val title = findViewById<TextView>(R.id.brief_dashboard_title)
         val body = findViewById<TextView>(R.id.brief_dashboard_message)
         title?.apply {
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,
                 if ((MeasureSpec.getSize(widthMeasureSpec) / resources.displayMetrics.density).roundToInt() < 340) 22f else 24f)
             paint.isFakeBoldText = false
+            maxLines = 3
         }
+        body?.maxLines = 3
         if (title != null && body != null && MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
-            val available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp(32 + 8)).coerceAtLeast(0)
-            val gap = dp(6)
-            val minimumBodyLines = if (resources.configuration.fontScale >= 1.6f) 1 else 2
-            title.maxLines = if (available - minimumBodyLines * body.lineHeight - gap >= title.lineHeight * 2) 2 else 1
-            title.measure(MeasureSpec.makeMeasureSpec((MeasureSpec.getSize(widthMeasureSpec) - inset * 2).coerceAtLeast(1), MeasureSpec.EXACTLY),
-                MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST))
-            body.maxLines = ((available - title.measuredHeight - gap) / body.lineHeight.coerceAtLeast(1)).coerceIn(1, 3)
+            val width = MeasureSpec.makeMeasureSpec((MeasureSpec.getSize(widthMeasureSpec) - inset * 2).coerceAtLeast(1), MeasureSpec.EXACTLY)
+            fun intrinsic(text: TextView, lines: Int): Int {
+                text.maxLines = lines
+                text.measure(width, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+                return text.measuredHeight
+            }
+            var available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp(32 + 8)).coerceAtLeast(0)
+            var gap = dp(6)
+            var titleLines = 3
+            var titleHeight = intrinsic(title, titleLines)
+            val bodyHeights = (1..3).associateWith { intrinsic(body, it) }
+            val minimumBody = bodyHeights.getValue(1)
+            val compactAvailable = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp(28 + 4)).coerceAtLeast(0)
+            // Measure the actual selected font and emphasis spans. Reserving two
+            // nominal body line-heights used to force a perfectly usable title to one line.
+            if (titleHeight + gap + minimumBody > available ||
+                (bodyHeights.getValue(2) > minimumBody && titleHeight + gap + bodyHeights.getValue(2) > available &&
+                    titleHeight + dp(4) + bodyHeights.getValue(2) <= compactAvailable)) {
+                artwork(28, 4)
+                available = compactAvailable
+                gap = dp(4)
+            }
+            while (titleLines > 1 && titleHeight + gap + minimumBody > available) {
+                titleHeight = intrinsic(title, --titleLines)
+            }
+            title.maxLines = titleLines
+            val remaining = (available - titleHeight - gap).coerceAtLeast(0)
+            body.maxLines = (3 downTo 1).firstOrNull { bodyHeights.getValue(it) <= remaining } ?: 1
             (body.layoutParams as LayoutParams).topMargin = gap
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)

@@ -4,6 +4,9 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Let Brief headings wrap before allocating the remaining card space to the
+  description, using the selected font’s measured height.
+
 - Resize dashboard cards from either side, with inward-facing edge handles,
   both directions for interior four-column cards, and live neighbour reflow.
 

@@ -109,7 +109,7 @@ internal class MainDrawerController(
                 override fun onDrawerStateChanged(newState: Int) {
                     // Canvas blur is captured once per native sliding transition, not per frame.
                     if (newState != androidx.drawerlayout.widget.DrawerLayout.STATE_IDLE && !moving) {
-                        drawer.seslSetDrawerViewFloatingBlur(activity, nativeDrawer)
+                        applyPhoneDrawerBlur(drawer, nativeDrawer)
                     }
                     moving = newState != androidx.drawerlayout.widget.DrawerLayout.STATE_IDLE
                 }
@@ -121,9 +121,12 @@ internal class MainDrawerController(
                 .widthPx(if (large) activity.resources.getDimensionPixelSize(
                     com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width_closed) else 0).build()
             pane.setOutsideTouchEnabled(false)
-            pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 0f))
+            // Non-blur backgrounds must stay opaque while the rail changes width.
+            // SESL uses separate blur curves on supported devices; only its solid
+            // fallback reads this alpha, including failed/disabled blur attempts.
+            pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 1f))
             pane.setPaneConfig(PaneState.OPENED, ResponsiveConfigBuilder.create(activity, mode, PaneState.OPENED)
-                .widthPx(activity.resources.getDimensionPixelSize(com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width)).build())
+                .widthPx(activity.resources.getDimensionPixelSize(com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width)).build().copy(nonBlurBGAlpha = 1f))
             val opened = pane.getPaneConfig(PaneState.OPENED)
             (nativeDrawer.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams).apply {
                 matchConstraintMinWidth = closed.width
@@ -187,9 +190,17 @@ internal class MainDrawerController(
             dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ZERO)
     }
 
+    private fun applyPhoneDrawerBlur(drawer: androidx.drawerlayout.widget.DrawerLayout, surface: View) {
+        drawer.seslSetDrawerViewFloatingBlur(activity, surface)
+        // The library lowers fallback alpha even when this platform cannot blur.
+        if (!androidx.core.view.SemBlurCompat.isBlurEffectPresetSupport()) {
+            surface.background?.mutate()?.alpha = 255
+        }
+    }
+
     internal fun setDrawerOpen(open: Boolean, animate: Boolean = true) {
         phoneDrawer?.let { drawer ->
-            if (open && !animate) drawer.seslSetDrawerViewFloatingBlur(activity,
+            if (open && !animate) applyPhoneDrawerBlur(drawer,
                 activity.findViewById(com.google.android.material.R.id.responsive_pane_drawer))
             if (open) drawer.openDrawer(androidx.core.view.GravityCompat.START, animate)
             else drawer.closeDrawer(androidx.core.view.GravityCompat.START, animate)

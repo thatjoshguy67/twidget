@@ -507,9 +507,12 @@ internal class MainDashboardBinder(
                 TwidgetStore.chartHistory(snapshot.history, HistoryRange.WEEK), snapshot.history) }
                 finally { reusableContent = null }
             if (next !== previous) {
+                // Edit shadows include an opaque surface: keep replacement
+                // content above that shadow and below the border/remove button.
+                val contentIndex = wrapper.indexOfChild(previous).coerceAtLeast(0)
                 wrapper.removeView(previous)
                 next.setTag(R.id.dashboard_card_content, true)
-                wrapper.addView(next, 0, FrameLayout.LayoutParams(-1, -1))
+                wrapper.addView(next, contentIndex, FrameLayout.LayoutParams(-1, -1))
             }
         }
         updateCardEditing(wrapper, card)

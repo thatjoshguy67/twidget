@@ -112,6 +112,10 @@ class DashboardRecyclerInteractionInstrumentedTest {
         val view = grid(activity)
         val tiles = (0 until view.childCount).map { view.getChildAt(it) }.filter { it.tag in fixture }
         for (a in tiles) {
+            val card = a as ViewGroup
+            val content = (0 until card.childCount).first { card.getChildAt(it).getTag(R.id.dashboard_card_content) == true }
+            for (index in 0 until card.childCount) if (card.getChildAt(index) is com.tjg.twidget.ui.CardShadowView)
+                assertTrue("Edit shadows stay behind content after resize and Undo", index < content)
             assertEquals(1f, a.alpha, .001f)
             assertEquals(0f, a.translationX, 1f)
             assertEquals(0f, a.translationY, 1f)
@@ -250,6 +254,25 @@ class DashboardRecyclerInteractionInstrumentedTest {
         }
     }
 
+
+    @Test fun resizeUndoKeepsRebuiltCardsAboveTheirEditShadows() {
+        for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
+            repeat(3) {
+                scenario.onActivity { activity -> activity.editModeController.resizeDashboardCard(DashboardCardType.AVG_VIEWS) }
+                settle()
+                scenario.onActivity { activity ->
+                    assertSettledGrid(activity)
+                    activity.findViewById<View>(com.google.android.material.R.id.snackbar_action).performClick()
+                }
+                settle()
+                scenario.onActivity { activity ->
+                    assertEquals(fixture, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
+                    assertFalse(TwidgetStore.isDashboardCardExpanded(activity, "avg_views", activity.selectedAccount))
+                    assertSettledGrid(activity)
+                }
+            }
+        }
+    }
 
     @Test fun holdMenuEnlargesAndShrinksInTwoAndFourColumnsIncludingRtl() {
         for (columns in listOf(2, 4)) for (rtl in listOf(false, true)) withDashboard(columns, rtl) { scenario ->

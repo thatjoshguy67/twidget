@@ -36,13 +36,16 @@ class DrawerSurfaceInstrumentedTest {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 SystemClock.sleep(500)
                 for (open in listOf(true, false, true, false)) {
-                    val alphas = mutableListOf<Int>()
+                    val frames = mutableListOf<Pair<Int, Int>>()
                     lateinit var surface: View
                     lateinit var listener: ViewTreeObserver.OnPreDrawListener
                     scenario.onActivity { activity ->
                         surface = activity.findViewById(com.google.android.material.R.id.responsive_pane_drawer)
                         listener = ViewTreeObserver.OnPreDrawListener {
-                            alphas.add(surface.background.alpha)
+                            val pane = surface.parent as? com.google.android.material.oneui.responsivepane.ResponsivePaneLayout
+                            val railWidth = pane?.getPaneConfig(com.google.android.material.oneui.responsivepane.model.PaneState.CLOSED)?.width
+                            val expected = if (railWidth != null && surface.width <= railWidth) 0 else 255
+                            frames.add(surface.background.alpha to expected)
                             true
                         }
                         surface.viewTreeObserver.addOnPreDrawListener(listener)
@@ -53,8 +56,10 @@ class DrawerSurfaceInstrumentedTest {
                     scenario.onActivity { activity ->
                         surface.viewTreeObserver.removeOnPreDrawListener(listener)
                         assertEquals(open, activity.drawerController.isDrawerOpen)
-                        assertTrue("Animated transition produces multiple visible frames: $alphas", alphas.size >= 3)
-                        assertTrue("No transparent frame or late fill during ${if (open) "opening" else "closing"}: $alphas", alphas.all { it == 255 })
+                        assertTrue("Animated transition produces multiple visible frames: $frames", frames.size >= 3)
+                        assertTrue("Only the collapsed rail is transparent during ${if (open) "opening" else "closing"}: $frames", frames.all { it.first == it.second })
+                        val rail = surface.parent is com.google.android.material.oneui.responsivepane.ResponsivePaneLayout
+                        assertEquals("Collapsed rails are transparent; expanded surfaces are solid", if (rail && !open) 0 else 255, surface.background.alpha)
                     }
                 }
             }

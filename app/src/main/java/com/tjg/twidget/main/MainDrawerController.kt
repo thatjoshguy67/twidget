@@ -121,10 +121,7 @@ internal class MainDrawerController(
                 .widthPx(if (large) activity.resources.getDimensionPixelSize(
                     com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width_closed) else 0).build()
             pane.setOutsideTouchEnabled(false)
-            // Non-blur backgrounds must stay opaque while the rail changes width.
-            // SESL uses separate blur curves on supported devices; only its solid
-            // fallback reads this alpha, including failed/disabled blur attempts.
-            pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 1f))
+            pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 0f))
             pane.setPaneConfig(PaneState.OPENED, ResponsiveConfigBuilder.create(activity, mode, PaneState.OPENED)
                 .widthPx(activity.resources.getDimensionPixelSize(com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width)).build().copy(nonBlurBGAlpha = 1f))
             val opened = pane.getPaneConfig(PaneState.OPENED)
@@ -136,6 +133,16 @@ internal class MainDrawerController(
             (nativeDrawer as ResponsiveDrawerLayout).maxWidth = opened.width
             nativeDrawer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
                 if (!nativeDrawer.isBlurApplied()) nativeDrawer.applyBlurInfo(activity)
+            }
+            // SESL fades the non-blur fill and can reset it during width changes.
+            // Resolve the fallback after those updates: the resting rail stays
+            // transparent, but every expanded frame gets a solid readable surface.
+            nativeDrawer.viewTreeObserver.addOnPreDrawListener {
+                if (!nativeDrawer.isBlurApplied()) {
+                    val alpha = if (nativeDrawer.width > closed.width) 255 else 0
+                    nativeDrawer.background?.let { if (it.alpha != alpha) it.alpha = alpha }
+                }
+                true
             }
             val content = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_content)
             (content.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams).apply {

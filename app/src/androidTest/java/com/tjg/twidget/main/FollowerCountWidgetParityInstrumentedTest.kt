@@ -45,20 +45,15 @@ class FollowerCountWidgetParityInstrumentedTest {
         return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { card.draw(Canvas(it)) }
     }
 
-    @Test fun bothSpansMatchWidgetTypographyAndFittingWithoutAnAccountFooter() {
+    @Test fun bothSpansUseTheFlexWidgetVariantAcrossAppFontsWithoutAnAccountFooter() {
         val originalFont = AppAppearance.font(base)
         try {
             instrumentation.runOnMainSync {
                 for (font in AppAppearance.Font.entries) {
                     AppAppearance.setFont(base, font)
-                    val family = when (font) {
-                        AppAppearance.Font.DEFAULT -> TwidgetStore.FONT_ONE_UI_SANS
-                        AppAppearance.Font.SYSTEM -> TwidgetStore.FONT_SYSTEM
-                        AppAppearance.Font.GOOGLE_SANS_FLEX -> TwidgetStore.FONT_GOOGLE_SANS_FLEX
-                    }
                     for (dark in listOf(false, true)) {
                         val context = context(dark)
-                        val settings = WidgetPreviews.settings(WidgetStyle.MATERIAL).copy(fontFamily = family,
+                        val settings = WidgetPreviews.settings(WidgetStyle.MATERIAL).copy(fontFamily = TwidgetStore.FONT_GOOGLE_SANS_FLEX,
                             language = AppLocales.applicationLocale().toLanguageTag(), showDelta = true)
                         for (count in listOf(116L, 8079L, 999_999_999L)) {
                             val stats = ProfileStats("Test", "not_in_the_card", count, 1, 1, 1)

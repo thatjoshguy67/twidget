@@ -20,14 +20,9 @@ internal class FollowerCountCardView(context: Context) : View(context) {
     private var fittedHeight = 0
 
     fun bind(stats: ProfileStats, delta: Long) {
-        val family = when (AppAppearance.font(context)) {
-            AppAppearance.Font.GOOGLE_SANS_FLEX -> TwidgetStore.FONT_GOOGLE_SANS_FLEX
-            AppAppearance.Font.SYSTEM -> TwidgetStore.FONT_SYSTEM
-            AppAppearance.Font.DEFAULT -> TwidgetStore.FONT_ONE_UI_SANS
-        }
         val settings = TwidgetWidgetSettings(tintAlpha = 255, tintColor = 0, logo = TwidgetStore.LOGO_X,
             tapAction = TwidgetStore.TAP_APP, accountUsername = stats.userName, colorMode = TwidgetStore.COLOR_MODE_SYSTEM,
-            fontFamily = family, language = AppLocales.applicationLocale().toLanguageTag(), style = WidgetStyle.MATERIAL)
+            fontFamily = TwidgetStore.FONT_GOOGLE_SANS_FLEX, language = AppLocales.applicationLocale().toLanguageTag(), style = WidgetStyle.MATERIAL)
         val (words, countWordCount) = WidgetArtworkRenderer.followerHeroWords(context, settings, stats, delta)
         hero = WidgetArtworkRenderer.followerHero(context, settings, words, countWordCount,
             context.getColor(R.color.oneui_text_primary), context.getColor(R.color.oneui_text_secondary),

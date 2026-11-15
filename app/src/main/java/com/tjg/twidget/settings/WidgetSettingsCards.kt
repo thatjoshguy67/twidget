@@ -79,7 +79,8 @@ internal class WidgetSettingsCard(
     init {
         background = surface(context.getColor(R.color.oneui_card_bg), 28f)
         clipToOutline = true
-        phone.setImageResource(deviceAsset(oneUi))
+        if (oneUi) phone.setImageResource(deviceAsset(true))
+        phone.visibility = if (oneUi) View.VISIBLE else View.GONE
         phone.scaleType = ImageView.ScaleType.FIT_XY
         phone.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         addView(phone)
@@ -103,7 +104,7 @@ internal class WidgetSettingsCard(
                 widthPx = dp(352), heightPx = dp(176), account = account,
                 snapshot = com.tjg.twidget.brief.BriefStore.read(context, account), dark = dark,
                 fontFamily = settings.fontFamily, style = settings.style))
-            WidgetKind.LOCK_SCREEN -> {
+            WidgetKind.LOCK_SCREEN -> if (oneUi || supported) {
                 artwork.scaleType = ImageView.ScaleType.FIT_CENTER
                 clock.format12Hour = "h:mm"
                 clock.format24Hour = "HH:mm"
@@ -146,11 +147,19 @@ internal class WidgetSettingsCard(
         fun button(label: Int, primary: Boolean, action: () -> Unit) = AppCompatButton(context).apply {
             setText(label)
             isAllCaps = false
-            textSize = 18f
-            setPadding(dp(8), 0, dp(8), 0)
+            textSize = if (oneUi) 18f else 16f
+            setPadding(dp(if (oneUi) 8 else 12), dp(if (oneUi) 0 else 8),
+                dp(if (oneUi) 8 else 12), dp(if (oneUi) 0 else 8))
+            if (!oneUi) {
+                minHeight = dp(48)
+                setSingleLine(false)
+                maxLines = 2
+                ellipsize = null
+            }
             val dark = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
             val color = if (primary) context.getColor(R.color.oneui_accent)
+                else if (!oneUi) context.getColor(R.color.oneui_bg)
                 else if (dark) context.getColor(R.color.oneui_card_bg) else 0x99FCFCFF.toInt()
             backgroundTintList = null
             background = RippleDrawable(android.content.res.ColorStateList.valueOf(
@@ -181,9 +190,28 @@ internal class WidgetSettingsCard(
             unavailable.background = surface(context.getColor(R.color.oneui_card_bg), 0f)
             addView(unavailable)
         }
+        if (!oneUi) {
+            title.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            title.maxLines = 2
+            artwork.scaleType = ImageView.ScaleType.FIT_CENTER
+            if (!supported) {
+                title.alpha = 1f
+                artwork.visibility = View.GONE
+                smallLockArtwork.visibility = View.GONE
+                clock.visibility = View.GONE
+                date.visibility = View.GONE
+                unavailable.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                unavailable.setPadding(0, 0, 0, 0)
+            }
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (!oneUi) {
+            val height = measureCompact(widthMeasureSpec)
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
+            return
+        }
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val scale = width / 392f
         fun place(view: View, x: Int, y: Int, w: Int, h: Int) {
@@ -210,6 +238,58 @@ internal class WidgetSettingsCard(
         }
         place(unavailable, 0, 312, 392, 72)
         super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec((384 * scale).toInt(), MeasureSpec.EXACTLY))
+    }
+
+    /** Native-sized controls and a bounded 2:1 widget preview, independent of page width. */
+    private fun measureCompact(widthMeasureSpec: Int): Int {
+        val width = MeasureSpec.getSize(widthMeasureSpec)
+        val inset = dp(16)
+        val gap = dp(16)
+        val available = (width - inset * 2).coerceAtLeast(1)
+        val wide = available >= dp(568) && resources.configuration.fontScale <= 1.3f
+        val previewWidth = minOf(dp(352), if (wide) ((available - gap) * .55f).toInt() else available)
+        val previewHeight = previewWidth / 2
+        val controlsWidth = if (wide) minOf(available - previewWidth - gap, dp(320)) else minOf(available, dp(352))
+        fun naturalHeight(view: View, width: Int, minimum: Int): Int {
+            view.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            return maxOf(minimum, view.measuredHeight)
+        }
+        fun place(view: View, start: Int, top: Int, width: Int, height: Int) {
+            view.layoutParams = LayoutParams(width, height, Gravity.TOP or Gravity.START).apply {
+                marginStart = start
+                topMargin = top
+            }
+        }
+        val titleWidth = if (supported && wide) controlsWidth else available
+        val titleHeight = naturalHeight(title, titleWidth, dp(24))
+        val height: Int
+        if (!supported) {
+            val messageHeight = naturalHeight(unavailable, available, dp(24))
+            place(title, inset, inset, available, titleHeight)
+            place(unavailable, inset, inset + titleHeight + dp(8), available, messageHeight)
+            height = inset * 2 + titleHeight + dp(8) + messageHeight
+        } else {
+            val actionsHeight = naturalHeight(actions, controlsWidth, dp(48))
+            if (wide) {
+                val controlsHeight = titleHeight + gap + actionsHeight
+                val bodyHeight = maxOf(previewHeight, controlsHeight)
+                val controlsTop = inset + (bodyHeight - controlsHeight) / 2
+                val bodyStart = inset + (available - previewWidth - gap - controlsWidth) / 2
+                place(artwork, bodyStart, inset + (bodyHeight - previewHeight) / 2, previewWidth, previewHeight)
+                place(title, bodyStart + previewWidth + gap, controlsTop, controlsWidth, titleHeight)
+                place(actions, bodyStart + previewWidth + gap, controlsTop + titleHeight + gap, controlsWidth, actionsHeight)
+                height = inset * 2 + bodyHeight
+            } else {
+                val previewStart = inset + (available - previewWidth) / 2
+                val controlsStart = inset + (available - controlsWidth) / 2
+                place(title, inset, inset, available, titleHeight)
+                place(artwork, previewStart, inset + titleHeight + gap, previewWidth, previewHeight)
+                place(actions, controlsStart, inset + titleHeight + gap + previewHeight + gap, controlsWidth, actionsHeight)
+                height = inset * 2 + titleHeight + gap + previewHeight + gap + actionsHeight
+            }
+        }
+        return height
     }
 
     internal companion object {

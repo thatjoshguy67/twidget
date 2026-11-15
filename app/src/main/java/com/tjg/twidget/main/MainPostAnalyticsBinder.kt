@@ -36,6 +36,7 @@ internal class MainPostAnalyticsBinder(
     private fun cardDp(value: Int) = (value * activity.resources.displayMetrics.density).roundToInt()
 
     fun createGridCard(card: DashboardCardType, account: String): View {
+        PostAnalyticsInspector.attach(activity)
         val data = activity.analytics
         return when (card) {
             DashboardCardType.ALL_TIME_POST -> {
@@ -92,10 +93,10 @@ internal class MainPostAnalyticsBinder(
             )
             isClickable = opensPost
             isFocusable = opensPost
-            contentDescription = if (post == null) label else activity.getString(R.string.open_post)
+            contentDescription = if (post == null) label else activity.getString(R.string.floating_inspector)
             post?.url?.takeIf { it.isNotBlank() }?.let { postUrl ->
                 setOnClickListener {
-                    activity.dashboardTweetLauncher.open(postUrl)
+                    PostAnalyticsInspector.attach(activity).show(post, account, this)
                 }
             }
 

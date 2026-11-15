@@ -1,0 +1,19 @@
+<resources>
+    <item name="floating_focus_binding" type="id" />
+    <item name="floating_keyboard_observer" type="id" />
+    <item name="floating_keyboard_controller" type="id" />
+    <item name="floating_shortcuts_action" type="id" />
+    <item name="follower_filters" type="id" />
+    <item name="follower_filter_toggle" type="id" />
+    <item name="follower_sort_count" type="id" />
+    <item name="follower_sort_name" type="id" />
+    <item name="follower_min_any" type="id" />
+    <item name="follower_min_10k" type="id" />
+    <item name="follower_min_100k" type="id" />
+    <item name="post_inspector_controller" type="id" />
+    <item name="post_inspector_action" type="id" />
+    <item name="post_inspector_pane" type="id" />
+    <item name="post_inspector_minimize" type="id" />
+    <item name="post_inspector_restore" type="id" />
+    <item name="post_inspector_close" type="id" />
+</resources>

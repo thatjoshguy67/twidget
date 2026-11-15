@@ -22,6 +22,7 @@ class TwidgetApplication : Application(), Configuration.Provider {
                 { _, _ -> refreshHomeWidgets() }, android.os.Handler(mainLooper),
             )
         }
+        com.tjg.twidget.ui.KeyboardNavigation.install(this)
         AppLocales.initialize(this)
         com.tjg.twidget.ui.AppAppearance.apply(this)
         com.tjg.twidget.brief.BriefForegroundPreparation.install(this)

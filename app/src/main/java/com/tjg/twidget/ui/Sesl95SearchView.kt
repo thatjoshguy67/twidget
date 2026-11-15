@@ -10,9 +10,6 @@ import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.view.inputmethod.InputMethodManager
-import androidx.dynamicanimation.animation.FloatValueHolder
-import androidx.dynamicanimation.animation.SpringAnimation
-import androidx.dynamicanimation.animation.SpringForce
 import com.tjg.twidget.R
 import android.text.Editable
 import android.text.TextPaint
@@ -33,7 +30,7 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
     var onExpansionChanged: ((Boolean) -> Unit)? = null
     private val fabSize get() = (56f * resources.displayMetrics.density).toInt()
     private var surfaceWidth = 0f
-    private var widthMotion: SpringAnimation? = null
+    private var widthMotion: FloatingSurfaceMotion? = null
     private var changingMode = false
     private var imeVisible = false
     private var expansionGeneration = 0
@@ -116,7 +113,8 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
         post { startHint() }
     }
 
-    fun collapse(animate: Boolean = true) {
+    fun collapse(animate: Boolean = true, clearQuery: Boolean = true) {
+        val retainedQuery = if (clearQuery) "" else query.toString()
         changingMode = true
         isFloatingExpanded = false
         imeVisible = false
@@ -129,6 +127,7 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
         clearFocus()
         seslSetUpButtonVisibility(View.GONE)
         isIconified = true
+        if (retainedQuery.isNotEmpty()) setQuery(retainedQuery, false)
         changingMode = false
         resizeTo(fabSize.toFloat(), animate)
         onExpansionChanged?.invoke(false)
@@ -168,19 +167,18 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
     ).coerceAtLeast(fabSize)
 
     private fun resizeTo(target: Float, animate: Boolean) {
-        widthMotion?.cancel()
         if (!animate || !isLaidOut || !ValueAnimator.areAnimatorsEnabled()) {
+            widthMotion?.cancel()
+            widthMotion = null
             surfaceWidth = target
             requestLayout()
             return
         }
-        widthMotion = SpringAnimation(FloatValueHolder(surfaceWidth)).apply {
-            spring = SpringForce(target).setDampingRatio(if (isFloatingExpanded) 1f else .84f)
-                .setStiffness(if (isFloatingExpanded) 420f else 439f)
-            setMinimumVisibleChange(.5f)
-            addUpdateListener { _, value, _ -> surfaceWidth = value; requestLayout() }
-            start()
-        }
+        val motion = widthMotion ?: FloatingSurfaceMotion(surfaceWidth, .5f) {
+            surfaceWidth = it
+            requestLayout()
+        }.also { widthMotion = it }
+        motion.moveTo(target)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -188,6 +186,7 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
         if (available != lastAvailableWidth) {
             lastAvailableWidth = available
             widthMotion?.cancel()
+            widthMotion = null
             surfaceWidth = if (isFloatingExpanded) targetWidth().toFloat() else fabSize.toFloat()
         }
         val width = surfaceWidth.toInt().coerceIn(minOf(fabSize, available), available)

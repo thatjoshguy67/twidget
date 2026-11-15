@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_filters">Filters</string>
+    <string name="floating_filters_active">Filters · %1$d</string>
+    <string name="floating_sort">Sort by</string>
+    <string name="floating_sort_count">Most followers</string>
+    <string name="floating_sort_name">Name A–Z</string>
+    <string name="floating_min_followers">Minimum followers</string>
+    <string name="floating_all">Any</string>
+    <string name="floating_10k">10K+</string>
+    <string name="floating_100k">100K+</string>
+    <string name="floating_reset">Reset filters</string>
+    <string name="floating_results">%1$d results</string>
+    <string name="floating_inspect">Inspect</string>
+    <string name="floating_inspector">Post inspector</string>
+    <string name="floating_minimize">Minimize</string>
+    <string name="floating_restore">Restore inspector</string>
+    <string name="floating_close">Close inspector</string>
+    <string name="floating_report">Full report</string>
+    <string name="floating_views_unknown">Views unavailable</string>
+    <string name="floating_shortcuts">Keyboard shortcuts</string>
+    <string name="floating_shortcut_hint">Shortcuts · Ctrl+/</string>
+    <string name="floating_shortcut_navigation">Tab / Shift+Tab: move focus\nEnter / Space: activate\nEsc: close the active panel or go back</string>
+    <string name="floating_shortcut_search">Search · Ctrl+F</string>
+    <string name="floating_shortcut_filters">Filters · Ctrl+Shift+F</string>
+    <string name="floating_shortcut_inspector">Minimize / restore · Ctrl+M</string>
+    <string name="floating_expand_filters">Expand filters</string>
+    <string name="floating_collapse_filters">Collapse filters</string>
+</resources>

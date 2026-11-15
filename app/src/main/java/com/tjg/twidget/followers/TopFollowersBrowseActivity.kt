@@ -65,6 +65,8 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     private lateinit var refreshView: SwipeRefreshLayout
     private lateinit var toolbarLayout: ToolbarLayout
     private lateinit var searchView: Sesl95SearchView
+    private lateinit var filterCapsule: FollowerFilterCapsule
+    private var filters = FollowerFilters()
     private var refreshItem: MenuItem? = null
     private var refreshGeneration = 0
     private var refreshing = false
@@ -126,7 +128,36 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             override fun handleOnBackPressed() { searchView.collapse() }
         }
         onBackPressedDispatcher.addCallback(this, closeSearch)
-        searchView.onExpansionChanged = { closeSearch.isEnabled = it }
+        filterCapsule = findViewById(R.id.follower_filters)
+        filters = FollowerFilters.restored(savedInstanceState?.getString("filter_sort"), savedInstanceState?.getLong("filter_minimum") ?: 0L)
+        filterCapsule.setFilters(filters)
+        val closeFilters = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() { filterCapsule.setExpanded(false) }
+        }
+        onBackPressedDispatcher.addCallback(this, closeFilters)
+        filterCapsule.onExpansionChanged = { expanded ->
+            closeFilters.isEnabled = expanded
+            if (expanded) searchView.collapse(animate = false, clearQuery = false)
+            searchView.visibility = if (expanded) View.INVISIBLE else View.VISIBLE
+        }
+        filterCapsule.onFiltersChanged = { value ->
+            filters = value
+            render()
+        }
+        searchView.onExpansionChanged = {
+            closeSearch.isEnabled = it
+            if (it) filterCapsule.setExpanded(false, animate = false)
+            filterCapsule.visibility = if (it) View.INVISIBLE else View.VISIBLE
+        }
+        com.tjg.twidget.ui.KeyboardNavigation.register(this, "search", R.string.floating_shortcut_search, KeyEvent.KEYCODE_F) {
+            filterCapsule.setExpanded(false, animate = false)
+            searchView.expand()
+        }
+        com.tjg.twidget.ui.KeyboardNavigation.register(this, "filters", R.string.floating_shortcut_filters, KeyEvent.KEYCODE_F,
+            KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) {
+            searchView.collapse(animate = false, clearQuery = false)
+            filterCapsule.setExpanded(!filterCapsule.expanded)
+        }
         searchView.setSearchableInfo(getSystemService(SearchManager::class.java).getSearchableInfo(componentName))
         searchView.findViewById<View>(androidx.appcompat.R.id.search_voice_btn).setOnClickListener {
             try {
@@ -177,7 +208,8 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         )
         query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
         searchView.setQuery(query, false)
-        if (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true) {
+        if (savedInstanceState?.getBoolean("filters_expanded") != true &&
+            (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true)) {
             searchView.expand(showKeyboard = false, animate = false)
         }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -192,11 +224,15 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 return true
             }
         })
-        setSearchExpandedImmediate(query.isNotBlank())
-        // Float search over the full-height list; searchContainer translates 1:1 with the IME.
-        applyEdgeToEdgeInsets(toolbarLayout, padRootForIme = false) { navigationInset ->
-            searchFab.updateBottomMarginForNavigationBar(dp(24), navigationInset)
-            searchContainer.updateBottomMarginForNavigationBar(0, navigationInset)
+        if (!searchView.isFloatingExpanded && savedInstanceState?.getBoolean("filters_expanded") == true) {
+            filterCapsule.setExpanded(true, animate = false)
+        }
+        updateSearchWidth()
+        // Float search over the full-height list.
+        applyEdgeToEdgeInsets(toolbarLayout) { navigationInset ->
+            searchView.updateBottomMarginForNavigationBar(0, navigationInset)
+            filterCapsule.updateBottomMarginForNavigationBar(0, navigationInset)
+            updateSearchWidth()
         }
 
         // AppBarLayout's scrolling child can extend below the window while the
@@ -208,8 +244,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         var scrollbarBottom = -1
         listView.viewTreeObserver.addOnPreDrawListener {
             listView.getLocationInWindow(listPosition)
-            val activeBottom = if (searchContainer.visibility == View.VISIBLE) searchContainer else searchFab
-            activeBottom.getLocationInWindow(searchPosition)
+            (if (filterCapsule.expanded) filterCapsule else searchView).getLocationInWindow(searchPosition)
             toolbarLayout.toolbar.getLocationInWindow(toolbarPosition)
             val firstVisible = (listView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
             adapter.currentList.getOrNull(firstVisible)?.let {
@@ -275,6 +310,9 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(STATE_QUERY, query)
+        outState.putString("filter_sort", filters.sort.name)
+        outState.putLong("filter_minimum", filters.minimum)
+        outState.putBoolean("filters_expanded", filterCapsule.expanded)
         outState.putBoolean("search_expanded", searchView.isFloatingExpanded)
         super.onSaveInstanceState(outState)
     }
@@ -360,11 +398,12 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         val generation = ++searchGeneration
         val ranked = allFollowers
         val requested = query
+        val requestedFilters = filters
         AppExecutors.cancel(searchWork)
         searchHandler.removeCallbacksAndMessages(null)
         searchHandler.postDelayed({
             searchWork = AppExecutors.submit {
-                val visible = TopFollowersBrowserPolicy.filter(ranked, requested)
+                val visible = requestedFilters.apply(ranked, requested)
                 runOnUiThread {
                     if (generation == searchGeneration && !isFinishing && !isDestroyed) publishResults(visible)
                 }
@@ -372,11 +411,22 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         }, if (query.isBlank()) 0L else 120L)
     }
 
+    private var lastPublishedFilters = FollowerFilters()
+    private var lastPublishedQuery = ""
+
     private fun publishResults(visible: List<RankedTopFollower>) {
-        adapter.submitList(visible)
+        val publishedFilters = filters
+        val publishedQuery = query
+        adapter.submitList(visible) {
+            // A changed filter/order starts at its first result, retaining original rank labels.
+            if (publishedFilters != lastPublishedFilters || publishedQuery != lastPublishedQuery) listView.scrollToPosition(0)
+            lastPublishedFilters = publishedFilters
+            lastPublishedQuery = publishedQuery
+        }
+        filterCapsule.showResultCount(visible.size)
         val empty = visible.isEmpty()
         emptyView.setText(
-            if (query.isBlank()) {
+            if (query.isBlank() && filters.activeCount == 0) {
                 R.string.top_followers_browser_empty
             } else {
                 R.string.top_followers_browser_no_results
@@ -388,7 +438,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (::searchView.isInitialized && event.action == KeyEvent.ACTION_DOWN) {
-            if (event.keyCode == KeyEvent.KEYCODE_F && event.isCtrlPressed) {
+            if (event.keyCode == KeyEvent.KEYCODE_F && event.hasModifiers(KeyEvent.META_CTRL_ON)) {
                 searchView.expand()
                 return true
             }

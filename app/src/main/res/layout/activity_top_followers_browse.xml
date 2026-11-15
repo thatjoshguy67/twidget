@@ -52,6 +52,15 @@
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+    <com.tjg.twidget.followers.FollowerFilterCapsule
+        android:id="@+id/follower_filters"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        app:layout_location="root" />
+
     <com.tjg.twidget.ui.Sesl95SearchView
         android:id="@+id/top_followers_browse_search"
         android:layout_width="match_parent"

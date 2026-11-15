@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_filters">Filtros</string>
+    <string name="floating_filters_active">Filtros · %1$d</string>
+    <string name="floating_sort">Ordenar por</string>
+    <string name="floating_sort_count">Más seguidores</string>
+    <string name="floating_sort_name">Nombre A–Z</string>
+    <string name="floating_min_followers">Mínimo de seguidores</string>
+    <string name="floating_all">Cualquiera</string>
+    <string name="floating_10k">10 mil+</string>
+    <string name="floating_100k">100 mil+</string>
+    <string name="floating_reset">Restablecer filtros</string>
+    <string name="floating_results">%1$d resultados</string>
+    <string name="floating_inspect">Inspeccionar</string>
+    <string name="floating_inspector">Inspector de publicaciones</string>
+    <string name="floating_minimize">Minimizar</string>
+    <string name="floating_restore">Restaurar inspector</string>
+    <string name="floating_close">Cerrar inspector</string>
+    <string name="floating_report">Informe completo</string>
+    <string name="floating_views_unknown">Visualizaciones no disponibles</string>
+    <string name="floating_shortcuts">Atajos de teclado</string>
+    <string name="floating_shortcut_hint">Atajos · Ctrl+/</string>
+    <string name="floating_shortcut_navigation">Tab / Mayús+Tab: mover el foco\nIntro / Espacio: activar\nEsc: cerrar el panel activo o volver</string>
+    <string name="floating_shortcut_search">Buscar · Ctrl+F</string>
+    <string name="floating_shortcut_filters">Filtros · Ctrl+Mayús+F</string>
+    <string name="floating_shortcut_inspector">Minimizar / restaurar · Ctrl+M</string>
+    <string name="floating_expand_filters">Expandir filtros</string>
+    <string name="floating_collapse_filters">Contraer filtros</string>
+</resources>

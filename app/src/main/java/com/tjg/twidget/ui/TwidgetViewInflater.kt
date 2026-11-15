@@ -16,6 +16,7 @@ class TwidgetViewInflater : AppCompatViewInflater() {
         addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) {
                 TwidgetFonts.observeWindow(view.rootView)
+                SeslKeyboardFocus.observeWindow(view.rootView)
                 TwidgetFonts.applyTo(view)
             }
             override fun onViewDetachedFromWindow(view: View) = Unit

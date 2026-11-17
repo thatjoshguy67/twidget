@@ -48,15 +48,21 @@ internal class TopFollowersCardBinder(
         FrameLayout(activity).apply {
             minimumHeight = 0
             background = rounded(cardColor, 28f)
-            clipToOutline = true
+            clipToOutline = false
+            clipChildren = false
+            clipToPadding = false
 
-            repeat(3) { index ->
-                addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(58).apply {
-                    leftMargin = dp(48)
-                    rightMargin = dp(47)
-                    topMargin = dp(44 + index * 67)
-                })
-            }
+            addView(FrameLayout(activity).apply {
+                background = rounded(Color.TRANSPARENT, 28f)
+                clipToOutline = true
+                repeat(3) { index ->
+                    addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(58).apply {
+                        leftMargin = dp(48)
+                        rightMargin = dp(47)
+                        topMargin = dp(44 + index * 67)
+                    })
+                }
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             addView(label(activity.getString(R.string.top_followers_question), 14f, primaryColor, 700).apply {
                 gravity = Gravity.CENTER
             }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) })
@@ -102,7 +108,7 @@ internal class TopFollowersCardBinder(
             }
             addView(action, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(60)).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = dp(140)
+                topMargin = dp(128)
             })
         }
 

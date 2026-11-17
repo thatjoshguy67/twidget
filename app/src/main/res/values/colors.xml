@@ -54,6 +54,14 @@
     <color name="import_grad_end">#F1F1F3</color>
     <color name="import_failure_start">#FF8D8F</color>
     <color name="brief_dashboard_glow">#8DCCFF</color>
+    <color name="brief_explore_surface">@android:color/transparent</color>
+    <color name="brief_insight_card_bg">#FCFCFF</color>
+    <color name="brief_explore_title">#010102</color>
+    <color name="brief_explore_body">#66010102</color>
+    <color name="brief_explore_ripple">#1A000000</color>
+    <color name="brief_insight_normal_start">#3DBED6</color>
+    <color name="brief_insight_normal_center">#3FA2FF</color>
+    <color name="brief_insight_normal_end">#387AFF</color>
     <color name="brief_screen_top">#A1D5FF</color>
     <color name="brief_top_bar_transparent">#00A1D5FF</color>
     <color name="brief_screen_bottom">#F1F1F3</color>

@@ -78,7 +78,23 @@ internal object SeslToolbarCompatibility {
                 if (fadingViews.containsKey(view)) continue
                 when (view) {
                     is NestedScrollView -> view.seslSetFadingEdgeEnabled(true)
-                    is RecyclerView -> view.seslSetFadingEdgeEnabled(true)
+                    is RecyclerView -> {
+                        view.seslSetFadingEdgeEnabled(true)
+                        // A non-zero fading-edge color uses direct gradient drawing instead of
+                        // saveUnclippedLayer(0, 0, width, topHeight), which would clip card shadows
+                        // horizontally at the RecyclerView bounds.
+                        if (view is DashboardRecyclerView) {
+                            val tv = android.util.TypedValue()
+                            if (view.context.theme.resolveAttribute(androidx.appcompat.R.attr.roundedCornerColor, tv, true)) {
+                                val bg = if (tv.resourceId != 0) {
+                                    androidx.core.content.ContextCompat.getColor(view.context, tv.resourceId)
+                                } else {
+                                    tv.data
+                                }
+                                if (bg != 0) view.seslSetFadingEdgeColor(bg)
+                            }
+                        }
+                    }
                     else -> continue
                 }
                 fadingViews[view] = true

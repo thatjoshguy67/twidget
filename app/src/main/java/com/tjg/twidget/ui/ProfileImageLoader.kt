@@ -31,9 +31,15 @@ object ProfileImageLoader {
     }
     private val requests = mutableMapOf<String, FutureTask<Bitmap?>>()
 
-    private fun sharedBitmap(context: Context, url: String, media: Boolean, download: Boolean): Bitmap? {
+    private fun sharedBitmap(
+        context: Context,
+        url: String,
+        media: Boolean,
+        download: Boolean,
+        maxDimension: Int = if (media) 1600 else 400,
+    ): Bitmap? {
         if (url.isBlank()) return null
-        val key = "${if (media) "media" else "avatar"}:$url"
+        val key = "${if (media) "media" else "avatar"}:$url@$maxDimension"
         bitmaps.get(key)?.let { return it }
         val requestKey = "$key:download=$download"
         val request = synchronized(requests) {
@@ -41,7 +47,9 @@ object ProfileImageLoader {
                 runCatching {
                     val file = if (media) mediaCacheFile(context, url) else cacheFile(context, url)
                     if (!file.exists() && download) downloadFile(url, file)
-                    val bitmap = file.takeIf { it.exists() }?.let { decodeSampledBitmap(it, if (media) 1600 else 400) }
+                    val bitmap = file.takeIf { it.exists() }?.let {
+                        decodeSampledBitmap(it, maxDimension, if (media) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565)
+                    }
                     bitmap?.also { bitmaps.put(key, it) }
                 }.getOrNull()
             }.also { requests[requestKey] = it }
@@ -55,7 +63,7 @@ object ProfileImageLoader {
     }
 
     fun hasCachedImage(context: Context, url: String): Boolean = highResolutionUrl(url).let {
-        it.isNotBlank() && (bitmaps.get("avatar:$it") != null || cacheFile(context, it).exists())
+        it.isNotBlank() && (memoryAvatar(it, 400) != null || cacheFile(context, it).exists())
     }
 
     fun applyCircleClip(imageView: ImageView) {
@@ -70,26 +78,29 @@ object ProfileImageLoader {
 
     fun loadInto(context: Context, imageView: ImageView, url: String) {
         applyCircleClip(imageView)
-        val imageUrl = highResolutionUrl(url)
-        val requestToken = "profile:$imageUrl"
+        val target = avatarTargetPx(imageView)
+        val imageUrl = sizedAvatarUrl(url, target)
+        val requestToken = "profile:$imageUrl@$target"
         imageView.setTag(R.id.profile_image_request, requestToken)
         if (imageUrl.isBlank()) {
             showFallback(imageView)
             return
         }
+        val fullUrl = highResolutionUrl(url)
+        (memoryAvatar(imageUrl, target) ?: memoryAvatar(fullUrl, target))?.let {
+            showAvatar(imageView, it)
+            return
+        }
 
         showFallback(imageView)
         AppExecutors.executeImage {
-            val bitmap = cachedBitmap(context, imageUrl) ?: downloadToCache(context, imageUrl)
+            val bitmap = loadAvatar(context, imageUrl, target)
+                ?: if (imageUrl != fullUrl) loadAvatar(context, fullUrl, target) else null
             imageView.post {
                 // Dashboard rows are often populated before attachment. The old
                 // attachment guard discarded fast avatar responses permanently.
                 if (imageView.getTag(R.id.profile_image_request) == requestToken && bitmap != null) {
-                    applyCircleClip(imageView)
-                    imageView.setPadding(0, 0, 0, 0)
-                    imageView.background = null
-                    imageView.imageTintList = null
-                    imageView.setImageBitmap(bitmap)
+                    showAvatar(imageView, bitmap)
                 }
             }
         }
@@ -162,7 +173,7 @@ object ProfileImageLoader {
     fun memoryCircularBitmap(url: String, sizePx: Int): Bitmap? {
         val imageUrl = highResolutionUrl(url)
         val key = "circle:$sizePx:$imageUrl"
-        return bitmaps.get(key) ?: bitmaps.get("avatar:$imageUrl")?.let {
+        return bitmaps.get(key) ?: memoryAvatar(imageUrl, 400)?.let {
             circularCrop(it, sizePx).also { crop -> bitmaps.put(key, crop) }
         }
     }
@@ -301,24 +312,57 @@ object ProfileImageLoader {
         return file
     }
 
-    private fun decodeSampledBitmap(file: File, maxDimension: Int): Bitmap? {
+    private fun showAvatar(imageView: ImageView, bitmap: Bitmap) {
+        applyCircleClip(imageView)
+        imageView.setPadding(0, 0, 0, 0)
+        imageView.background = null
+        imageView.imageTintList = null
+        imageView.setImageBitmap(bitmap)
+    }
+
+    /** View edge in pixels. An unmeasured view keeps the 400px source so it is not upscaled later. */
+    private fun avatarTargetPx(imageView: ImageView): Int {
+        val laidOut = maxOf(imageView.width, imageView.height)
+        if (laidOut > 0) return laidOut
+        val specified = maxOf(imageView.layoutParams?.width ?: 0, imageView.layoutParams?.height ?: 0)
+        return if (specified > 0) specified else 400
+    }
+
+    private fun loadAvatar(context: Context, imageUrl: String, target: Int): Bitmap? =
+        sharedBitmap(context, imageUrl, media = false, download = false, maxDimension = target)
+            ?: sharedBitmap(context, imageUrl, media = false, download = true, maxDimension = target)
+
+    private fun memoryAvatar(url: String, maxDimension: Int): Bitmap? =
+        bitmaps.get("avatar:$url@$maxDimension")
+
+    private fun decodeSampledBitmap(file: File, maxDimension: Int, config: Bitmap.Config): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(file.absolutePath, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
-        while (bounds.outWidth / sample > maxDimension || bounds.outHeight / sample > maxDimension) {
+        while (bounds.outWidth / (sample * 2) >= maxDimension && bounds.outHeight / (sample * 2) >= maxDimension) {
             sample *= 2
         }
-        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = config
+            inDither = config == Bitmap.Config.RGB_565
+        }
         return BitmapFactory.decodeFile(file.absolutePath, options)
     }
 
-    private fun highResolutionUrl(url: String): String =
-        url.trim()
+    private fun highResolutionUrl(url: String): String = sizedAvatarUrl(url, 400)
+
+    /** Smallest Twitter size that still covers the view, so the bitmap is never scaled up. */
+    private fun sizedAvatarUrl(url: String, targetPx: Int): String {
+        val normalized = url.trim()
             .let { if (it.startsWith("//")) "https:$it" else it }
             .replace(Regex("^http://pbs\\.twimg\\.com/", RegexOption.IGNORE_CASE), "https://pbs.twimg.com/")
-            .replace(Regex("_normal(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_400x400")
-            .replace(Regex("([?&]name=)normal(?=(&|$))")) { "${it.groupValues[1]}400x400" }
+        val token = if (targetPx <= 200) "200x200" else "400x400"
+        return normalized
+            .replace(Regex("_(?:normal|bigger|mini|200x200|200x400|400x400)(?=\\.[A-Za-z0-9]+(?:\\?|$))"), "_$token")
+            .replace(Regex("([?&]name=)(?:normal|bigger|mini|200x200|200x400|400x400)(?=(&|$))")) { "${it.groupValues[1]}$token" }
+    }
 
     private fun tweetMediaUrl(url: String): String =
         url.trim()

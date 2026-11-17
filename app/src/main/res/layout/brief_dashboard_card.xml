@@ -1,21 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.tjg.twidget.ui.BriefDashboardCardLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:clipToOutline="true" android:foreground="@drawable/brief_card_ripple"
-    android:orientation="vertical" android:padding="12dp">
-    <ImageView android:id="@+id/brief_dashboard_icon"
-        android:layout_width="32dp" android:layout_height="32dp" android:layout_marginBottom="8dp"
-        android:contentDescription="@null" android:scaleType="fitCenter" />
-    <LinearLayout android:id="@+id/brief_dashboard_copy"
-        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:orientation="vertical" android:gravity="bottom">
-        <TextView android:id="@+id/brief_dashboard_title"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end"
-            android:textColor="@color/oneui_text_primary" android:textSize="24sp" />
-        <TextView android:id="@+id/brief_dashboard_message"
-            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
-            android:includeFontPadding="false" android:maxLines="3" android:ellipsize="end"
-            android:textColor="@color/oneui_text_primary" android:textSize="16sp" />
-    </LinearLayout>
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/brief_explore_card_bg"
+    android:stateListAnimator="@animator/brief_explore_recoil"
+    android:minHeight="100dp"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <ImageView
+        android:id="@+id/brief_dashboard_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginBottom="@dimen/brief_dashboard_icon_margin_bottom"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter" />
+
+    <FrameLayout
+        android:id="@+id/brief_dashboard_copy"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipChildren="true">
+
+        <LinearLayout
+            android:id="@+id/brief_dashboard_content_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/brief_dashboard_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sec"
+                android:includeFontPadding="false"
+                android:maxLines="2"
+                android:textColor="@color/brief_explore_title"
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/brief_dashboard_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:fontFamily="sec"
+                android:includeFontPadding="false"
+                android:maxLines="2"
+                android:textColor="@color/brief_explore_body"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/brief_dashboard_generating_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.airbnb.lottie.LottieAnimationView
+                android:id="@+id/brief_dashboard_generating"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginEnd="12dp"
+                android:contentDescription="@string/brief_refreshing"
+                android:visibility="gone"
+                app:lottie_autoPlay="true"
+                app:lottie_colorFilter="@color/brief_explore_title"
+                app:lottie_loop="true"
+                app:lottie_rawRes="@raw/intelligence_progress_mono" />
+
+            <com.tjg.twidget.ui.ShrinkWrapTextView
+                android:id="@+id/brief_dashboard_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sec"
+                android:includeFontPadding="false"
+                android:lineSpacingExtra="6dp"
+                android:maxLines="2"
+                android:textColor="@color/brief_explore_title"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </FrameLayout>
 </com.tjg.twidget.ui.BriefDashboardCardLayout>

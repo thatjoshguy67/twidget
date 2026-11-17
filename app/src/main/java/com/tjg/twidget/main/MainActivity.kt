@@ -18,12 +18,16 @@ import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.AnalyticsClient
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.XAnalyticsMovement
 import com.tjg.twidget.banger.BangerScanWorker
+import com.tjg.twidget.brief.BriefHomeRefresh
 import com.tjg.twidget.core.AppExecutors
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.env.BuildVars
@@ -39,6 +43,7 @@ import com.tjg.twidget.update.UpdateNotificationHelper
 import com.tjg.twidget.widget.RefreshWorker
 import com.tjg.twidget.widget.TwidgetWidget
 import dev.oneuiproject.oneui.R as OneUiIconR
+import kotlinx.coroutines.launch
 
 class MainActivity : EdgeToEdgeActivity() {
     internal val dashboardTweetLauncher = DashboardTweetLauncher(this)
@@ -55,6 +60,7 @@ class MainActivity : EdgeToEdgeActivity() {
     internal lateinit var editModeController: MainEditModeController
     private var skipNextResumeRender = false
     private var launchChromeReady = false
+    private var briefGenerationVisible: Boolean? = null
 
     private val bangerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -70,7 +76,7 @@ class MainActivity : EdgeToEdgeActivity() {
             val account = intent?.getStringExtra(com.tjg.twidget.brief.BriefStore.EXTRA_USERNAME) ?: return
             if (!account.equals(selectedAccount, true) || isFinishing || isDestroyed ||
                 editModeController.editMode) return
-            dashboardBinder.bindContent(refreshRemote = false)
+            dashboardBinder.onBriefPresentationUpdated()
         }
     }
 
@@ -131,6 +137,7 @@ class MainActivity : EdgeToEdgeActivity() {
         render(refreshRemote = false)
         restoreDashboardPosition(savedInstanceState)
         skipNextResumeRender = true
+        observeBriefHomeRefresh()
         val decor = window.decorView
         decor.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
             private var scheduled = false
@@ -151,13 +158,31 @@ class MainActivity : EdgeToEdgeActivity() {
                     }
                     syncController.maybeRefreshAnalytics(selectedAccount)
                     syncController.maybeRefreshStreak(selectedAccount)
-                    if (savedInstanceState == null) checkReleasesOnLaunch()
-                    if (savedInstanceState == null && TwidgetStore.settings(this@MainActivity).refreshOnLaunch) {
-                        syncController.sync(showProgress = false)
+                    if (savedInstanceState == null) {
+                        checkReleasesOnLaunch()
+                        if (TwidgetStore.settings(this@MainActivity).refreshOnLaunch) {
+                            syncController.sync(showProgress = false)
+                        }
+                        BriefHomeRefresh.startIfNeeded(this@MainActivity)
                     }
                 }
             }
         })
+    }
+
+    private fun observeBriefHomeRefresh() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                BriefHomeRefresh.generating.collect { generating ->
+                    val previous = briefGenerationVisible
+                    if (previous == generating) return@collect
+                    briefGenerationVisible = generating
+                    if (previous == null && !generating) return@collect
+                    if (isFinishing || isDestroyed || editModeController.editMode) return@collect
+                    dashboardBinder.updateBriefGeneration(generating)
+                }
+            }
+        }
     }
 
     override fun onResume() {

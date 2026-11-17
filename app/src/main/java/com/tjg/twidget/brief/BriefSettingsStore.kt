@@ -12,6 +12,7 @@ object BriefSettingsStore {
     private const val KEY_CONTENT_PREFIX = "content_"
     private const val KEY_CONTENT_REGENERATION_PENDING = "content_regeneration_pending"
     private const val KEY_REVIEWS_SETTINGS_SEEN = "reviews_settings_seen"
+    private const val KEY_REFRESH_ON_HOME = "refresh_on_home"
 
     fun reviewsSettingsSeen(context: Context): Boolean = prefs(context).getBoolean(KEY_REVIEWS_SETTINGS_SEEN, false)
     fun markReviewsSettingsSeen(context: Context) { prefs(context).edit().putBoolean(KEY_REVIEWS_SETTINGS_SEEN, true).apply() }
@@ -20,6 +21,13 @@ object BriefSettingsStore {
 
     fun setEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+    }
+
+    fun refreshOnHome(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_REFRESH_ON_HOME, false)
+
+    fun setRefreshOnHome(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_REFRESH_ON_HOME, enabled).apply()
     }
 
     fun onboardingComplete(context: Context): Boolean =

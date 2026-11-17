@@ -279,7 +279,7 @@ internal class MainDrawerController(
                 val header = listOf(name, stats.isVerified, stats.isPrivate, expandedSubtitle, collapsedSubtitle)
                 if (lastHeader != header || collapsedTitle?.toString() != lastRenderedTitle) {
                     if (lastHeader?.take(3) != header.take(3) || collapsedTitle?.toString() != lastRenderedTitle) {
-                        val title = VerifiedBadge.decorate(activity, name, stats.isVerified, stats.isPrivate, dp(26))
+                        val title = VerifiedBadge.decorate(activity, name, stats.isVerified, stats.isPrivate, dp(26), scaleWithText = true)
                         setTitle(title)
                         lastRenderedTitle = title.toString()
                     }

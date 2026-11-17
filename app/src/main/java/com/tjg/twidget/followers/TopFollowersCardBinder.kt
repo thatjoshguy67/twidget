@@ -27,6 +27,7 @@ import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.settings.SettingsCategoryActivity
 import com.tjg.twidget.settings.SettingsPage
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 
@@ -189,7 +190,8 @@ internal class TopFollowersCardBinder(
             addView(com.tjg.twidget.ui.DashboardFollowerIdentityLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(label(follower.name, 16f, primaryColor, 700).apply {
+                addView(label("", 16f, primaryColor, 700).apply {
+                    text = VerifiedBadge.decorate(activity, follower.name, follower.verified, null, dp(15))
                     gravity = Gravity.START
                     textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                     textDirection = View.TEXT_DIRECTION_FIRST_STRONG

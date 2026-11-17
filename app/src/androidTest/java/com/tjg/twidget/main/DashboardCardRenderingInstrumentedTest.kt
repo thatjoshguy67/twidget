@@ -156,7 +156,7 @@ class DashboardCardRenderingInstrumentedTest {
                 val density = context.resources.displayMetrics.density
                 val width = (189 * density).toInt()
                 val height = (160 * density).toInt()
-                // Brief retains its identifying icon above the title at phone/fold widths.
+                // Brief follows the explore card: end artwork, 15/13sp, weight 600.
                 for (cardWidth in listOf(284, 340, 392)) {
                     val brief = LayoutInflater.from(context).inflate(R.layout.brief_dashboard_card, null, false)
                     val title = brief.findViewById<TextView>(R.id.brief_dashboard_title).apply {
@@ -168,23 +168,20 @@ class DashboardCardRenderingInstrumentedTest {
                     val icon = brief.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
                         setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
                             context, com.tjg.twidget.brief.BriefCardType.SLOWDOWN, "", (60 * density).toInt(),
-                            context.getColor(R.color.oneui_text_primary)))
+                            context.getColor(R.color.brief_explore_title)))
                     }
-                    brief.background = MilestoneCardBackgroundDrawable(
-                        context.getColor(R.color.dashboard_brief_start), context.getColor(R.color.dashboard_brief_end),
-                        28f * density)
                     TwidgetFonts.applyTo(brief)
-                    val cardHeight = (160 * density).toInt()
+                    val cardHeight = (140 * density).toInt()
                     render(brief, (cardWidth * density).toInt(), cardHeight, File(context.filesDir, "brief-$night-$cardWidth.png"))
                     assertTrue("Shared widget state artwork remains available", icon.drawable != null)
                     val copy = brief.findViewById<View>(R.id.brief_dashboard_copy)
                     assertTrue("Brief icon remains visible at every width", icon.visibility == View.VISIBLE)
                     assertTrue("Brief artwork sits above the editorial copy", icon.bottom <= copy.top)
                     assertTrue("Brief text stays inside the row", copy.bottom <= cardHeight - brief.paddingBottom + 1)
-                    assertEquals("Brief title uses an explicit 700 weight", 700, title.typeface.weight)
+                    assertEquals("Brief title uses Sec600", 600, title.typeface.weight)
+                    assertEquals("Brief body uses Sec600", 600, message.typeface.weight)
                     assertTrue("Brief avoids synthetic bold", !title.paint.isFakeBoldText)
-                    assertTrue("Brief retains the widget's title/body weight hierarchy", title.typeface.weight > message.typeface.weight)
-                    for ((text, size) in listOf(title to if (cardWidth < 340) 22f else 24f, message to 16f)) {
+                    for ((text, size) in listOf(title to 20f, message to 13f)) {
                         val nativeSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
                             size, context.resources.displayMetrics)
                         assertTrue("Brief typography remains at its native readable size", kotlin.math.abs(text.textSize - nativeSize) < 1f)

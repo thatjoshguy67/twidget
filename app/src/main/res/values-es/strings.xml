@@ -596,6 +596,8 @@
     <string name="brief_settings_off">Desactivado</string>
     <string name="brief_settings_preview_description">Vista previa de un Tu Resumen personalizado</string>
     <string name="brief_settings_intro">Obtén un resumen diario personalizado basado en tu actividad de Twitter, tus tuits recientes, tus objetivos y tu horario de publicación. Cambia a medida que avanza tu día y aparece en tu panel y como widget en la pantalla de inicio.</string>
+    <string name="brief_refresh_on_home">Actualizar en la pantalla de inicio</string>
+    <string name="brief_refresh_on_home_summary">Actualiza Tu resumen al abrir la aplicación, con las mismas reglas de actualidad que al abrir el Resumen.</string>
     <string name="brief_settings_ai_intro">Utiliza un motor de agregación de datos, así como tu elección de modelos locales o basados en la nube. La opción local usa Gemini Nano en dispositivos compatibles, mientras que la nube usa la API de Google AI Studio para usar modelos Gemini.</string>
     <string name="brief_manage_content">Gestionar contenido a incluir</string>
     <string name="brief_content_top_tweet">Mejor tuit de la semana</string>
@@ -933,6 +935,8 @@
     <string name="debug_ui_state">Estado de la interfaz</string>
     <string name="debug_component_library">Mostrar biblioteca de componentes</string>
     <string name="debug_show_onboarding">Mostrar introducción</string>
+    <string name="debug_home_generation">Reproducir la generación de inicio</string>
+    <string name="debug_home_generation_summary">Muestra la animación de generación en la tarjeta del resumen de la pantalla de inicio</string>
     <string name="debug_show_review_preview">Mostrar vista previa del análisis de tuits</string>
     <string name="debug_preview_state">Estado de la vista previa</string>
     <string name="debug_launch_preview">Abrir vista previa</string>

@@ -59,6 +59,7 @@ import com.tjg.twidget.ui.CardValueTextView
 import com.tjg.twidget.ui.MetricChartView
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
+import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 import java.text.NumberFormat
@@ -703,7 +704,14 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(10), 0, 0, 0)
-                    addView(primaryText(follower.name.ifBlank { "@${follower.username}" }, 20f, true).apply {
+                    addView(primaryText("", 20f, true).apply {
+                        text = VerifiedBadge.decorate(
+                            this@TwidgetBriefActivity,
+                            follower.name.ifBlank { "@${follower.username}" },
+                            follower.verified,
+                            null,
+                            dp(18),
+                        )
                         maxLines = 1
                         ellipsize = TextUtils.TruncateAt.END
                     })

@@ -32,6 +32,7 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
+import com.tjg.twidget.ui.VerifiedBadge
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.R as OneUiIconR
 
@@ -452,7 +453,13 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 val follower = ranked.follower
                 boundFollower = follower
                 rank.text = ranked.rank.toString()
-                name.text = follower.name
+                name.text = VerifiedBadge.decorate(
+                    itemView.context,
+                    follower.name,
+                    follower.verified,
+                    null,
+                    (18 * itemView.resources.displayMetrics.density).toInt(),
+                )
                 handle.text = "@${follower.username}"
                 count.text = TwidgetStore.compactNumber(follower.followers)
                 divider.visibility = if (showDivider) View.VISIBLE else View.INVISIBLE

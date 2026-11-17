@@ -2,12 +2,16 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/main_account_page"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <FrameLayout
         android:id="@+id/dashboard_scroll"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
         <com.tjg.twidget.ui.DashboardRecyclerView
             android:id="@+id/dashboard_content"

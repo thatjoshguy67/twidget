@@ -597,6 +597,8 @@
     <string name="brief_settings_off">Désactivé</string>
     <string name="brief_settings_preview_description">Aperçu d\'un Brief personnalisé</string>
     <string name="brief_settings_intro">Reçois un briefing quotidien personnalisé basé sur ton activité Twitter, tes tweets récents, tes objectifs et tes tweets programmés. Il évolue tout au long de la journée et s\'affiche sur ton tableau de bord ainsi que dans un widget de l\'écran d\'accueil.</string>
+    <string name="brief_refresh_on_home">Actualiser sur l\'écran d\'accueil</string>
+    <string name="brief_refresh_on_home_summary">Met à jour le Brief à l\'ouverture de l\'application, avec les mêmes règles de fraîcheur que l\'ouverture du Brief.</string>
     <string name="brief_settings_ai_intro">Il s\'appuie sur un moteur d\'agrégation de données et sur des modèles locaux ou dans le cloud, au choix. Le mode local utilise Gemini Nano sur les appareils compatibles, tandis que le cloud utilise l\'API Google AI Studio avec les modèles Gemini.</string>
     <string name="brief_manage_content">Gérer le contenu à inclure</string>
     <string name="brief_content_top_tweet">Meilleur tweet de la semaine</string>
@@ -935,6 +937,8 @@
     <string name="debug_ui_state">État de l’interface</string>
     <string name="debug_component_library">Afficher la bibliothèque de composants</string>
     <string name="debug_show_onboarding">Afficher la présentation initiale</string>
+    <string name="debug_home_generation">Lire la génération de l\'accueil</string>
+    <string name="debug_home_generation_summary">Affiche l\'animation de génération sur la carte Brief de l\'accueil</string>
     <string name="debug_show_review_preview">Afficher un aperçu d’analyse de tweet</string>
     <string name="debug_preview_state">État de l’aperçu</string>
     <string name="debug_launch_preview">Ouvrir l’aperçu</string>

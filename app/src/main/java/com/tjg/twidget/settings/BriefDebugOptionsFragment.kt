@@ -92,6 +92,11 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
             startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.CHATGPT_LINK))
         }
         row(screen, "onboarding", R.string.debug_show_onboarding, enabled = username.isNotBlank()) { startActivity(BriefOnboardingActivity.intent(context, username)) }
+        row(screen, "home_generation", R.string.debug_home_generation, getString(R.string.debug_home_generation_summary)) {
+            BriefHomeRefresh.preview()
+            startActivity(Intent(context, com.tjg.twidget.main.MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        }
         row(screen, "review_preview", R.string.debug_show_review_preview) { preview() }
         gap(screen)
         screen.addPreference(ListPreference(context).apply {

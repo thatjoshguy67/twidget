@@ -2,7 +2,6 @@
 <resources>
     <string name="top_followers_browser_title">Meilleurs abonnés</string>
     <string name="top_followers_browser_search">Rechercher des abonnés</string>
-    <string name="top_followers_browser_search_hint">Rechercher</string>
     <string name="top_followers_browser_refresh">Actualiser la liste complète</string>
     <string name="top_followers_browser_refreshed">%1$d abonnés synchronisés</string>
     <string name="top_followers_browser_refresh_failed">Impossible d\'actualiser la liste complète des abonnés. Réessaie.</string>

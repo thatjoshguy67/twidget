@@ -2,7 +2,6 @@
 <resources>
     <string name="top_followers_browser_title">Top followers</string>
     <string name="top_followers_browser_search">Search followers</string>
-    <string name="top_followers_browser_search_hint">Search</string>
     <string name="top_followers_browser_refresh">Refresh full list</string>
     <string name="top_followers_browser_refreshed">%1$d followers synced</string>
     <string name="top_followers_browser_refresh_failed">Couldn’t refresh the full follower list. Try again.</string>

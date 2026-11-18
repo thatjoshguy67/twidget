@@ -2,7 +2,6 @@
 <resources>
     <string name="top_followers_browser_title">Millors seguidors</string>
     <string name="top_followers_browser_search">Buscar seguidors</string>
-    <string name="top_followers_browser_search_hint">Buscar</string>
     <string name="top_followers_browser_refresh">Actualitzar la llista completa</string>
     <string name="top_followers_browser_refreshed">%1$d seguidors sincronitzats</string>
     <string name="top_followers_browser_refresh_failed">No s\'ha pogut actualitzar la llista completa de seguidors. Torna-ho a provar.</string>

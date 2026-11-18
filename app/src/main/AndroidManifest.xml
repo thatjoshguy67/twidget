@@ -16,6 +16,10 @@
             <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
         </intent>
         <intent>
+            <action android:name="samsung.honeyboard.honeyvoice.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <package android:name="com.samsung.android.honeyboard" />
+        <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.APP_BROWSER" />
         </intent>
@@ -187,7 +191,7 @@
         <activity
             android:name=".followers.TopFollowersBrowseActivity"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
-            android:windowSoftInputMode="adjustResize"
+            android:windowSoftInputMode="adjustNothing"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.SEARCH" />

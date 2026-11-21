@@ -9,6 +9,11 @@ import java.nio.charset.StandardCharsets
 
 /** Shared HTTP helpers for short-lived JSON requests across Twidget clients. */
 internal object HttpTransport {
+    init {
+        // HttpURLConnection keep-alive is per host. Four avatar downloads need more than the default pool.
+        System.setProperty("http.keepAlive", "true")
+        System.setProperty("http.maxConnections", "8")
+    }
     data class Response(
         val code: Int,
         val body: String,

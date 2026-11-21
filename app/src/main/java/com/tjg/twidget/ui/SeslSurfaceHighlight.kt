@@ -96,6 +96,8 @@ internal object SeslSurfaceHighlight {
                 28f * view.resources.displayMetrics.density
             view.id == com.google.android.material.R.id.design_bottom_sheet ->
                 28f * view.resources.displayMetrics.density
+            view is BriefDashboardCardLayout ->
+                28f * view.resources.displayMetrics.density
             view.getTag(R.id.sesl_surface_radius) is Float -> view.getTag(R.id.sesl_surface_radius) as Float
             else -> 0f
         }

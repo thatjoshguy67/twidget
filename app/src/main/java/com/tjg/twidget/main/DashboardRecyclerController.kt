@@ -319,14 +319,15 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                     setColor((activity.getColor(R.color.oneui_text_secondary) and 0x00ffffff) or 0x18000000)
                 }
             } else binder.createRecyclerCard(card)
-            wrapper.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, activity.dp(card.preferredHeightDp))
+            wrapper.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, activity.dp(card.preferredHeightDp(activity)))
             return CardHolder(wrapper, card.id)
         }
         override fun onBindViewHolder(holder: CardHolder, position: Int) = onBindViewHolder(holder, position, mutableListOf(DATA))
         override fun onBindViewHolder(holder: CardHolder, position: Int, payloads: MutableList<Any>) {
             val card = items[position]
             holder.wrapper.setTag(R.id.dashboard_card_span, span(card))
-            holder.wrapper.layoutParams.height = activity.dp(card.preferredHeightDp)
+            holder.wrapper.setTag(R.id.dashboard_preferred_height, card.preferredHeightDp(activity))
+            holder.wrapper.layoutParams.height = activity.dp(card.preferredHeightDp(activity))
             if (card.id != external) binder.bindRecyclerCard(holder.wrapper, card, refreshContent = !holder.fresh && (payloads.isEmpty() || DATA in payloads || RESIZE in payloads || PROFILE in payloads),
                 reuseContent = PROFILE !in payloads)
             holder.fresh = false

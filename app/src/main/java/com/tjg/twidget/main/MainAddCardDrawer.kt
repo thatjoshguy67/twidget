@@ -333,7 +333,7 @@ internal class MainAddCardDrawer(
         val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
         val columnWidth = ((grid.width - grid.paddingLeft - grid.paddingRight) / grid.columnCount.coerceAtLeast(1)).coerceAtLeast(activity.dp(120))
         val sourceWidth = (columnWidth * span - activity.dp(14)).coerceAtLeast(activity.dp(100))
-        val sourceHeight = activity.dp(card.preferredHeightDp)
+        val sourceHeight = activity.dp(card.preferredHeightDp(activity))
         repeat(2) {
             com.tjg.twidget.ui.DashboardCardDesign.apply(cardView, sourceHeight, sourceWidth)
             cardView.measure(View.MeasureSpec.makeMeasureSpec(sourceWidth, View.MeasureSpec.EXACTLY),

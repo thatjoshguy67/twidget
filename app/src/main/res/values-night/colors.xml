@@ -49,6 +49,11 @@
     <color name="import_grad_end">#010102</color>
     <color name="import_failure_start">#6B2028</color>
     <color name="brief_dashboard_glow">#002F52</color>
+    <color name="brief_explore_surface">@android:color/transparent</color>
+    <color name="brief_insight_card_bg">#252528</color>
+    <color name="brief_explore_title">#FCFCFF</color>
+    <color name="brief_explore_body">#99999E</color>
+    <color name="brief_explore_ripple">#33FFFFFF</color>
     <color name="brief_screen_top">#003B66</color>
     <color name="brief_top_bar_transparent">#00003B66</color>
     <color name="brief_screen_bottom">#343A43</color>
@@ -63,4 +68,7 @@
     <color name="brief_onboarding_guiding_light">#E6FFFFFF</color>
     <color name="brief_footer_action_surface">#CC272A30</color>
     <color name="card_catalogue_preview_bg">#353538</color>
+    <color name="follower_search_fab_bg">#3A3A3D</color>
+    <color name="follower_search_fab_ripple">#28FFFFFF</color>
+    <color name="follower_search_bar_bg">#3A3A3D</color>
 </resources>

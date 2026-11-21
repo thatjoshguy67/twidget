@@ -598,6 +598,8 @@
     <string name="brief_settings_off">Aus</string>
     <string name="brief_settings_preview_description">Vorschau deines personalisierten Briefings</string>
     <string name="brief_settings_intro">Erhalte ein personalisiertes tägliches Briefing basierend auf deiner X-Aktivität, deinen neuesten Tweets, deinen Zielen und deinem Tweet-Zeitplan. Es passt sich deinem Tag an und erscheint in deinem Dashboard sowie als Startbildschirm-Widget.</string>
+    <string name="brief_refresh_on_home">Beim Öffnen der Startseite aktualisieren</string>
+    <string name="brief_refresh_on_home_summary">Das Briefing wird beim Öffnen der App aktualisiert, mit denselben Regeln wie beim Öffnen des Briefings.</string>
     <string name="brief_settings_ai_intro">Das Briefing nutzt eine Datenaggregations-Engine sowie wahlweise lokale oder cloudbasierte Modelle. Lokal benutzt auf unterstützten Geräten Gemini Nano, während bei der Option Cloud die Google AI Studio API für Gemini-Modelle genutzt wird.</string>
     <string name="brief_manage_content">Inhalte zum Einbeziehen verwalten</string>
     <string name="brief_content_top_tweet">Top-Tweet dieser Woche</string>
@@ -920,6 +922,8 @@
     <string name="debug_ui_state">Oberflächenstatus</string>
     <string name="debug_component_library">Komponentenbibliothek anzeigen</string>
     <string name="debug_show_onboarding">Einführung anzeigen</string>
+    <string name="debug_home_generation">Startseiten-Generierung abspielen</string>
+    <string name="debug_home_generation_summary">Zeigt die Generierungsanimation auf der Briefing-Karte der Startseite</string>
     <string name="debug_show_review_preview">Tweet-Analyse als Vorschau anzeigen</string>
     <string name="debug_preview_state">Vorschaustatus</string>
     <string name="debug_launch_preview">Vorschau öffnen</string>

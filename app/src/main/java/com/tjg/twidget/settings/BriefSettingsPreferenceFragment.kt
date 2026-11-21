@@ -14,6 +14,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
+import androidx.preference.SwitchPreferenceCompat
 import com.tjg.twidget.R
 import com.tjg.twidget.brief.BriefApiKeyDialog
 import com.tjg.twidget.brief.BriefProviderMode
@@ -63,6 +64,18 @@ class BriefSettingsPreferenceFragment : InsetPreferenceFragment() {
             isSelectable = false
             setAllowDividerAbove(false)
             setAllowDividerBelow(false)
+        })
+
+        screen.addPreference(spacerCategory())
+        screen.addPreference(SwitchPreferenceCompat(context).apply {
+            key = "brief_refresh_on_home"
+            title = getString(R.string.brief_refresh_on_home)
+            summary = getString(R.string.brief_refresh_on_home_summary)
+            isChecked = BriefSettingsStore.refreshOnHome(context)
+            setOnPreferenceChangeListener { _, value ->
+                BriefSettingsStore.setRefreshOnHome(context, value as Boolean)
+                true
+            }
         })
 
         screen.addPreference(spacerCategory())

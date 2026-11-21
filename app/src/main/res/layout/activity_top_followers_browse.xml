@@ -52,18 +52,44 @@
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <androidx.appcompat.widget.SearchView
-        android:id="@+id/top_followers_browse_search"
+    <ImageButton
+        android:id="@+id/top_followers_browse_search_fab"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/follower_search_fab_background"
+        android:contentDescription="@string/top_followers_browser_search"
+        android:elevation="4dp"
+        android:scaleType="center"
+        android:src="@drawable/ic_reminder_search"
+        android:tooltipText="@string/top_followers_browser_search"
+        app:layout_location="root"
+        app:tint="@color/oneui_text_primary" />
+
+    <FrameLayout
+        android:id="@+id/top_followers_browse_search_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:maxWidth="@dimen/top_followers_search_compact_width"
-        android:imeOptions="actionSearch"
-        android:inputType="text"
-        app:layout_location="root"
-        app:queryBackground="@drawable/sesl_textfield_search_light"
-        app:closeIcon="@drawable/sesl_ic_search_bottom_clear"
-        app:voiceIcon="@drawable/search_mic_icon"
-        app:queryHint="@string/top_followers_browser_search_hint"
-        app:seslIsBottomSearchView="true" />
+        android:layout_gravity="bottom"
+        android:background="@null"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:visibility="gone"
+        app:layout_location="root">
+
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/top_followers_browse_search"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxWidth="800dp"
+            app:closeIcon="@drawable/sesl_ic_search_bottom_clear"
+            app:queryBackground="@drawable/follower_search_bar_background"
+            app:queryHint="@string/top_followers_browser_search"
+            app:seslIsBottomSearchView="true" />
+    </FrameLayout>
 </dev.oneuiproject.oneui.layout.ToolbarLayout>

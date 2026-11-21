@@ -27,6 +27,7 @@ import com.tjg.twidget.main.MainActivity
 import com.tjg.twidget.settings.SettingsCategoryActivity
 import com.tjg.twidget.settings.SettingsPage
 import com.tjg.twidget.ui.ProfileImageLoader
+import com.tjg.twidget.ui.VerifiedBadge
 import com.tjg.twidget.ui.startRightSidePopOverActivity
 import dev.oneuiproject.oneui.R as OneUiIconR
 
@@ -47,15 +48,21 @@ internal class TopFollowersCardBinder(
         FrameLayout(activity).apply {
             minimumHeight = 0
             background = rounded(cardColor, 28f)
-            clipToOutline = true
+            clipToOutline = false
+            clipChildren = false
+            clipToPadding = false
 
-            repeat(3) { index ->
-                addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(58).apply {
-                    leftMargin = dp(48)
-                    rightMargin = dp(47)
-                    topMargin = dp(44 + index * 67)
-                })
-            }
+            addView(FrameLayout(activity).apply {
+                background = rounded(Color.TRANSPARENT, 28f)
+                clipToOutline = true
+                repeat(3) { index ->
+                    addView(View(activity).apply { background = rounded(skeletonColor, 12f) }, matchFrameParams(58).apply {
+                        leftMargin = dp(48)
+                        rightMargin = dp(47)
+                        topMargin = dp(44 + index * 67)
+                    })
+                }
+            }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
             addView(label(activity.getString(R.string.top_followers_question), 14f, primaryColor, 700).apply {
                 gravity = Gravity.CENTER
             }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) })
@@ -101,7 +108,7 @@ internal class TopFollowersCardBinder(
             }
             addView(action, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(60)).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = dp(140)
+                topMargin = dp(128)
             })
         }
 
@@ -189,7 +196,8 @@ internal class TopFollowersCardBinder(
             addView(com.tjg.twidget.ui.DashboardFollowerIdentityLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(label(follower.name, 16f, primaryColor, 700).apply {
+                addView(label("", 16f, primaryColor, 700).apply {
+                    text = VerifiedBadge.decorate(activity, follower.name, follower.verified, null, dp(15))
                     gravity = Gravity.START
                     textAlignment = View.TEXT_ALIGNMENT_VIEW_START
                     textDirection = View.TEXT_DIRECTION_FIRST_STRONG

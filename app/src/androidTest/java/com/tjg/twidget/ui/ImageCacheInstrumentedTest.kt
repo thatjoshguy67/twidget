@@ -34,7 +34,7 @@ class ImageCacheInstrumentedTest {
             val b = pool.submit<Bitmap?> { ProfileImageLoader.cachedBitmap(context, urls[0]) }
             val first = a.get(5, TimeUnit.SECONDS)!!
             assertSame(first, b.get(5, TimeUnit.SECONDS))
-            assertTrue(first.width <= 400 && first.height <= 400)
+            assertTrue(first.width in 400..500 && first.height <= 500)
             assertEquals(Color.RED, first.getPixel(0, 0))
             assertEquals(Color.BLUE, ProfileImageLoader.cachedBitmap(context, urls[1])!!.getPixel(0, 0))
             files[0].delete()

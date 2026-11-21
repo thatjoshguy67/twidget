@@ -156,7 +156,7 @@ class DashboardCardRenderingInstrumentedTest {
                 val density = context.resources.displayMetrics.density
                 val width = (189 * density).toInt()
                 val height = (160 * density).toInt()
-                // Brief retains its identifying icon above the title at phone/fold widths.
+                // Brief keeps the widget typography hierarchy and adaptive fitting.
                 for (cardWidth in listOf(284, 340, 392)) {
                     val brief = LayoutInflater.from(context).inflate(R.layout.brief_dashboard_card, null, false)
                     val title = brief.findViewById<TextView>(R.id.brief_dashboard_title).apply {
@@ -168,22 +168,19 @@ class DashboardCardRenderingInstrumentedTest {
                     val icon = brief.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
                         setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
                             context, com.tjg.twidget.brief.BriefCardType.SLOWDOWN, "", (60 * density).toInt(),
-                            context.getColor(R.color.oneui_text_primary)))
+                            context.getColor(R.color.brief_explore_title)))
                     }
-                    brief.background = MilestoneCardBackgroundDrawable(
-                        context.getColor(R.color.dashboard_brief_start), context.getColor(R.color.dashboard_brief_end),
-                        28f * density)
                     TwidgetFonts.applyTo(brief)
-                    val cardHeight = (160 * density).toInt()
+                    val cardHeight = (184 * density).toInt()
                     render(brief, (cardWidth * density).toInt(), cardHeight, File(context.filesDir, "brief-$night-$cardWidth.png"))
                     assertTrue("Shared widget state artwork remains available", icon.drawable != null)
                     val copy = brief.findViewById<View>(R.id.brief_dashboard_copy)
                     assertTrue("Brief icon remains visible at every width", icon.visibility == View.VISIBLE)
                     assertTrue("Brief artwork sits above the editorial copy", icon.bottom <= copy.top)
                     assertTrue("Brief text stays inside the row", copy.bottom <= cardHeight - brief.paddingBottom + 1)
-                    assertEquals("Brief title uses an explicit 700 weight", 700, title.typeface.weight)
+                    assertEquals("Brief title uses explicit 700 weight", 700, title.typeface.weight)
+                    assertEquals("Brief body uses regular weight", 400, message.typeface.weight)
                     assertTrue("Brief avoids synthetic bold", !title.paint.isFakeBoldText)
-                    assertTrue("Brief retains the widget's title/body weight hierarchy", title.typeface.weight > message.typeface.weight)
                     for ((text, size) in listOf(title to if (cardWidth < 340) 22f else 24f, message to 16f)) {
                         val nativeSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
                             size, context.resources.displayMetrics)
@@ -314,6 +311,53 @@ class DashboardCardRenderingInstrumentedTest {
                     val nativeSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 14f, context.resources.displayMetrics)
                     assertTrue("Streak labels do not shrink to fit a clipped line", kotlin.math.abs(title.textSize - nativeSize) < 1f)
                     assertTrue("Streak label has full line height", title.layout.height <= title.height - title.compoundPaddingTop - title.compoundPaddingBottom + 1)
+                }
+            }
+        }
+    }
+
+    @Test fun briefCopyFitsNarrowWideAndLargeFontCardsWithoutClipping() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.runOnMainSync {
+            for (night in listOf(Configuration.UI_MODE_NIGHT_NO, Configuration.UI_MODE_NIGHT_YES)) {
+                for (fontScale in listOf(1f, 1.6f)) {
+                    for (orientation in listOf(Configuration.ORIENTATION_PORTRAIT, Configuration.ORIENTATION_LANDSCAPE)) {
+                        val config = Configuration(instrumentation.targetContext.resources.configuration).apply {
+                            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or night
+                            this.fontScale = fontScale
+                            this.orientation = orientation
+                        }
+                        val context = ContextThemeWrapper(instrumentation.targetContext.createConfigurationContext(config), R.style.Theme_Twidget)
+                        val density = context.resources.displayMetrics.density
+                        for (widthDp in listOf(284, 340, 600)) {
+                            val root = LayoutInflater.from(context).inflate(R.layout.brief_dashboard_card, null, false)
+                            val title = root.findViewById<TextView>(R.id.brief_dashboard_title).apply {
+                                text = "Your growth and content review"
+                            }
+                            val message = root.findViewById<TextView>(R.id.brief_dashboard_message).apply {
+                                text = "You gained 18 followers today and 88 followers this week."
+                            }
+                            val width = (widthDp * density).toInt()
+                            val height = (DashboardCardType.MILESTONE.preferredHeightDp(context) * density).toInt()
+                            root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                            root.layout(0, 0, width, height)
+                            val copy = root.findViewById<View>(R.id.brief_dashboard_copy)
+                            val group = root.findViewById<View>(R.id.brief_dashboard_content_group)
+                            val case = "width=$widthDp scale=$fontScale orientation=$orientation"
+                            assertTrue("Heading lines clipped: $case", title.layout.height <= title.height)
+                            assertTrue("Description lines clipped: $case", message.layout.height <= message.height)
+                            assertTrue("Copy overflows card: $case", group.bottom <= copy.height)
+                            assertTrue("Description remains visible: $case", message.height > 0)
+                            assertEquals(700, title.typeface.weight)
+                            assertEquals(400, message.typeface.weight)
+                            root.findViewById<View>(R.id.brief_dashboard_icon).visibility = View.GONE
+                            root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                            assertEquals("Measuring generation state must not expose the icon", View.GONE,
+                                root.findViewById<View>(R.id.brief_dashboard_icon).visibility)
+                        }
+                    }
                 }
             }
         }

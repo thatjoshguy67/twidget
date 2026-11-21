@@ -2,7 +2,6 @@
 <resources>
     <string name="top_followers_browser_title">Mejores seguidores</string>
     <string name="top_followers_browser_search">Buscar seguidores</string>
-    <string name="top_followers_browser_search_hint">Buscar</string>
     <string name="top_followers_browser_refresh">Actualizar lista completa</string>
     <string name="top_followers_browser_refreshed">%1$d seguidores sincronizados</string>
     <string name="top_followers_browser_refresh_failed">No se pudo actualizar la lista completa de seguidores. Inténtalo de nuevo.</string>

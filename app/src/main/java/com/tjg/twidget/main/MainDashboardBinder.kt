@@ -1,10 +1,14 @@
 package com.tjg.twidget.main
 
 import com.tjg.twidget.core.AppLocales
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Canvas
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.MotionEvent
@@ -12,14 +16,17 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
 import com.tjg.twidget.ui.DashboardRecyclerView
+import com.tjg.twidget.ui.ShrinkWrapTextView
 import com.tjg.twidget.ui.TwidgetHaptics
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
+import com.airbnb.lottie.LottieAnimationView
 import com.tjg.twidget.R
 import com.tjg.twidget.analytics.ActivityClient
 import com.tjg.twidget.analytics.AnalyticsBlendPolicy
@@ -28,6 +35,7 @@ import com.tjg.twidget.analytics.BlendedAnalytics
 import com.tjg.twidget.analytics.ImportedAnalyticsStore
 import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.analytics.XAnalyticsMovement
+import com.tjg.twidget.brief.BriefHomeRefresh
 import com.tjg.twidget.brief.BriefEngine
 import com.tjg.twidget.brief.BriefCardType
 import com.tjg.twidget.brief.BriefEditorialSummary
@@ -90,7 +98,16 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     POSTS("posts", R.string.posts, DashboardCardSize.CHART),
     LIKES("likes", R.string.likes, DashboardCardSize.CHART);
 
-    val preferredHeightDp: Int get() = if (this == TOP_FOLLOWERS) 176 else 160
+    val preferredHeightDp: Int get() = when (this) {
+        TOP_FOLLOWERS -> 176
+        MILESTONE -> 184
+        else -> 160
+    }
+    fun preferredHeightDp(context: android.content.Context): Int = when (this) {
+        TOP_FOLLOWERS -> 176
+        MILESTONE -> kotlin.math.ceil(64.0 + 120.0 * context.resources.configuration.fontScale.coerceAtLeast(1f)).toInt()
+        else -> 160
+    }
     val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF
     val previewSpans: List<Int> get() = if (supportsSizeVariants) listOf(1, 2) else listOf(size.span)
     fun span(context: android.content.Context, account: String = TwidgetStore.settings(context).username): Int =
@@ -344,6 +361,42 @@ internal class MainDashboardBinder(
 
     private fun createBriefCard(stats: ProfileStats, account: String): View {
         val root = inflateCard(R.layout.brief_dashboard_card)
+        updateBriefCardData(root, account)
+        bindBriefGeneration(root, BriefHomeRefresh.showsAnimation(activity))
+        root.setOnClickListener {
+            if (!editModeController.editMode && isDefaultAccount(account)) {
+                BriefSettingsStore.setEnabled(activity, true)
+                activity.startActivity(TwidgetBriefActivity.intent(activity, account))
+            }
+        }
+        return root
+    }
+
+    fun findBriefCard(): View? {
+        val page = activity.findViewById<View>(R.id.main_account_page) ?: return null
+        val recycler = page.findViewById<DashboardRecyclerView>(R.id.dashboard_content) ?: return null
+        val holder = recycler.findViewHolderForItemId(DashboardCardType.MILESTONE.ordinal.toLong())
+        val holderContent = (holder?.itemView as? ViewGroup)?.let { wrapper ->
+            (0 until wrapper.childCount).map { wrapper.getChildAt(it) }
+                .firstOrNull { it.getTag(R.id.dashboard_card_content) == true }
+        }
+        if (holderContent != null) return holderContent
+
+        for (i in 0 until recycler.childCount) {
+            val child = recycler.getChildAt(i)
+            val content = (child as? ViewGroup)?.let { wrapper ->
+                (0 until wrapper.childCount).map { wrapper.getChildAt(it) }
+                    .firstOrNull { it.getTag(R.id.dashboard_card_content) == true }
+            } ?: child
+            if (content is com.tjg.twidget.ui.BriefDashboardCardLayout ||
+                content.findViewById<View>(R.id.brief_dashboard_generating) != null) {
+                return content
+            }
+        }
+        return null
+    }
+
+    private fun updateBriefCardData(root: View, account: String) {
         val snapshot = BriefEngine.rebuild(activity, account)
         val presentation = BriefStore.presentation(activity, account, snapshot)
         val summary = presentation?.summary() ?: run {
@@ -354,35 +407,321 @@ internal class MainDashboardBinder(
             )
         }
         val heroType = presentation?.heroType ?: snapshot.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY
-        root.findViewById<ImageView>(R.id.brief_dashboard_icon).apply {
+        root.findViewById<ImageView>(R.id.brief_dashboard_icon)?.apply {
             setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
-                activity, heroType, account, activity.dp(60), activity.getColor(R.color.oneui_text_primary)))
+                activity, heroType, account, activity.dp(60), activity.getColor(R.color.brief_explore_title)))
         }
         val headline = summary.title
         val description = summary.shortDescription
-        root.findViewById<TextView>(R.id.brief_dashboard_title).text = headline
-        root.findViewById<TextView>(R.id.brief_dashboard_message).apply {
-            text = android.text.SpannableString(description).apply {
-                com.tjg.twidget.widget.BriefWidgetArtworkRenderer.emphasisRanges(toString()).forEach { range ->
-                    setSpan(android.text.style.StyleSpan(Typeface.BOLD), range.first, range.last + 1,
-                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-            }
-        }
-        root.background = MilestoneCardBackgroundDrawable(
-            glowColor = activity.getColor(R.color.dashboard_brief_start),
-            surfaceColor = activity.getColor(R.color.dashboard_brief_end),
-            radiusPx = activity.dp(28).toFloat(),
-        )
+        root.findViewById<TextView>(R.id.brief_dashboard_title)?.text = headline
+        root.findViewById<TextView>(R.id.brief_dashboard_message)?.text = description
         root.contentDescription =
             "${activity.getString(R.string.brief_title)}. $headline. $description"
-        root.setOnClickListener {
-            if (!editModeController.editMode && isDefaultAccount(account)) {
-                BriefSettingsStore.setEnabled(activity, true)
-                activity.startActivity(TwidgetBriefActivity.intent(activity, account))
+    }
+
+    fun updateBriefGeneration(generating: Boolean) {
+        val root = findBriefCard()
+        if (root == null) {
+            bindContent(refreshRemote = false)
+            return
+        }
+        val account = activity.selectedAccount
+        if (!generating) {
+            updateBriefCardData(root, account)
+        }
+        bindBriefGeneration(root, generating)
+    }
+
+    fun onBriefPresentationUpdated() {
+        val root = findBriefCard()
+        val account = activity.selectedAccount
+        if (root != null) {
+            updateBriefCardData(root, account)
+            val isGenerating = BriefHomeRefresh.showsAnimation(activity)
+            if (!isGenerating && root.getTag(R.id.brief_transition_animating) != true) {
+                bindBriefGeneration(root, false)
+            }
+        } else {
+            bindContent(refreshRemote = false)
+        }
+    }
+
+    private fun bindBriefGeneration(root: View, generating: Boolean) {
+        val contentGroup = root.findViewById<View>(R.id.brief_dashboard_content_group)
+        val generatingGroup = root.findViewById<View>(R.id.brief_dashboard_generating_group)
+        val lottie = root.findViewById<LottieAnimationView>(R.id.brief_dashboard_generating)
+        val title = root.findViewById<TextView>(R.id.brief_dashboard_title)
+        val message = root.findViewById<TextView>(R.id.brief_dashboard_message)
+        val status = root.findViewById<TextView>(R.id.brief_dashboard_status)
+        val icon = root.findViewById<View>(R.id.brief_dashboard_icon)
+
+        val wasGenerating = (root.getTag(R.id.brief_generation_active) == true) ||
+            (generatingGroup?.visibility == View.VISIBLE)
+        root.setTag(R.id.brief_generation_active, generating)
+
+        if (!generating) {
+            if (root.getTag(R.id.brief_transition_animating) == true) {
+                return
+            }
+            if (wasGenerating && ValueAnimator.areAnimatorsEnabled()) {
+                root.setTag(R.id.brief_transition_animating, true)
+                val exitInterpolator = PathInterpolator(0.4f, 0f, 1f, 1f)
+                val enterInterpolator = PathInterpolator(0.33f, 0f, 0.24f, 1f)
+                val enterOffset = activity.dp(6).toFloat()
+
+                status.animate().cancel()
+                lottie.animate().cancel()
+                generatingGroup?.animate()?.cancel()
+
+                fun startEntrance() {
+                    if (!root.isAttachedToWindow || root.getTag(R.id.brief_generation_active) == true) {
+                        root.setTag(R.id.brief_transition_animating, false)
+                        return
+                    }
+                    (root as? com.tjg.twidget.ui.BriefDashboardCardLayout)?.startNowCardEntranceAnimation {
+                        root.setTag(R.id.brief_transition_animating, false)
+                    }
+
+                    val revealGroup = contentGroup ?: title
+                    revealGroup.apply {
+                        animate().cancel()
+                        visibility = View.VISIBLE
+                        alpha = 0f
+                        translationY = enterOffset
+                        animate()
+                            .alpha(1f)
+                            .translationY(0f)
+                            .setDuration(330L)
+                            .setInterpolator(enterInterpolator)
+                            .withLayer()
+                            .withEndAction {
+                                root.setTag(R.id.brief_transition_animating, false)
+                            }
+                            .start()
+                    }
+                    if (contentGroup != null) {
+                        title.visibility = View.VISIBLE
+                        title.alpha = 1f
+                        title.translationY = 0f
+                        message.visibility = View.VISIBLE
+                        message.alpha = 1f
+                        message.translationY = 0f
+                    } else {
+                        message.apply {
+                            animate().cancel()
+                            visibility = View.VISIBLE
+                            alpha = 0f
+                            translationY = enterOffset
+                            animate()
+                                .alpha(1f)
+                                .translationY(0f)
+                                .setDuration(330L)
+                                .setInterpolator(enterInterpolator)
+                                .withLayer()
+                                .start()
+                        }
+                    }
+
+                    icon.apply {
+                        animate().cancel()
+                        visibility = View.VISIBLE
+                        alpha = 0f
+                        scaleX = 0.88f
+                        scaleY = 0.88f
+                        animate()
+                            .alpha(1f)
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(330L)
+                            .setInterpolator(enterInterpolator)
+                            .withLayer()
+                            .start()
+                    }
+                }
+
+                // Fade out the centered generation group before making the top icon visible,
+                // otherwise revealing the icon shrinks brief_dashboard_copy and jumps the spinner downward.
+                if (generatingGroup != null) {
+                    generatingGroup.animate()
+                        .alpha(0f)
+                        .setDuration(120L)
+                        .setInterpolator(exitInterpolator)
+                        .withLayer()
+                        .withEndAction {
+                            stopBriefStatus(status)
+                            lottie.cancelAnimation()
+                            generatingGroup.visibility = View.GONE
+                            generatingGroup.alpha = 1f
+                            startEntrance()
+                        }
+                        .start()
+                } else {
+                    lottie.animate()
+                        .alpha(0f)
+                        .setDuration(120L)
+                        .setInterpolator(exitInterpolator)
+                        .withLayer()
+                        .withEndAction {
+                            lottie.cancelAnimation()
+                            lottie.visibility = View.GONE
+                            lottie.alpha = 1f
+                        }
+                        .start()
+
+                    status.animate()
+                        .alpha(0f)
+                        .setDuration(120L)
+                        .setInterpolator(exitInterpolator)
+                        .withLayer()
+                        .withEndAction {
+                            stopBriefStatus(status)
+                            status.visibility = View.GONE
+                            status.alpha = 1f
+                            status.translationY = 0f
+                            startEntrance()
+                        }
+                        .start()
+                }
+            } else {
+                root.setTag(R.id.brief_transition_animating, false)
+                stopBriefStatus(status)
+                lottie.cancelAnimation()
+                generatingGroup?.animate()?.cancel()
+                generatingGroup?.visibility = View.GONE
+                generatingGroup?.alpha = 1f
+                lottie.visibility = View.GONE
+                lottie.alpha = 1f
+
+                contentGroup?.animate()?.cancel()
+                contentGroup?.visibility = View.VISIBLE
+                contentGroup?.alpha = 1f
+                contentGroup?.translationY = 0f
+
+                title.animate().cancel()
+                title.visibility = View.VISIBLE
+                title.alpha = 1f
+                title.translationY = 0f
+
+                message.animate().cancel()
+                message.visibility = View.VISIBLE
+                message.alpha = 1f
+                message.translationY = 0f
+
+                status.visibility = View.GONE
+                status.alpha = 1f
+                status.translationY = 0f
+
+                icon.animate().cancel()
+                icon.visibility = View.VISIBLE
+                icon.alpha = 1f
+                icon.scaleX = 1f
+                icon.scaleY = 1f
+            }
+            return
+        }
+
+        root.setTag(R.id.brief_transition_animating, false)
+        contentGroup?.animate()?.cancel()
+        contentGroup?.visibility = View.GONE
+        title.animate().cancel()
+        message.animate().cancel()
+        icon.animate().cancel()
+        lottie.animate().cancel()
+        status.animate().cancel()
+        generatingGroup?.animate()?.cancel()
+
+        title.visibility = View.GONE
+        message.visibility = View.GONE
+        icon.visibility = View.GONE
+
+        generatingGroup?.visibility = View.VISIBLE
+        generatingGroup?.alpha = 1f
+
+        status.visibility = View.VISIBLE
+        status.alpha = 1f
+        status.translationY = 0f
+
+        lottie.visibility = View.VISIBLE
+        lottie.alpha = 1f
+        if (!lottie.isAnimating) lottie.playAnimation()
+
+        startBriefStatus(status)
+    }
+
+    /**
+     * Generation uses the Erkunden card's 100dp minimum, the same frame as the
+     * finished card. The Now card tweens a height change over 330ms with
+     * FastOutSlowIn and snaps when the height does not change.
+     */
+    private fun settleBriefHeight(wrapper: FrameLayout) {
+        val generating = BriefHomeRefresh.showsAnimation(activity)
+        wrapper.setTag(R.id.brief_generation_active, generating)
+        (wrapper.getTag(R.id.brief_generation_height) as? ValueAnimator)?.cancel()
+        wrapper.setTag(R.id.brief_generation_height, null)
+        wrapper.setTag(R.id.dashboard_resize_animating, false)
+        wrapper.layoutParams.height = activity.dp(DashboardCardType.MILESTONE.preferredHeightDp(activity))
+        wrapper.requestLayout()
+    }
+
+    private fun startBriefStatus(status: TextView) {
+        if (status.getTag(R.id.brief_dashboard_status) != null) return
+        val offset = 10f * activity.resources.displayMetrics.density
+        val appear = PathInterpolator(0.22f, 0f, 0.18f, 1f)
+        val disappear = PathInterpolator(0.42f, 0f, 1f, 1f)
+        val messages = intArrayOf(
+            R.string.brief_loading_status_analyzing,
+            R.string.brief_loading_status_insights,
+            R.string.brief_loading_status_preparing,
+        ).map(activity::getString)
+        (status as? ShrinkWrapTextView)?.candidateTexts = messages
+        var index = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                val current = this
+                if (status.getTag(R.id.brief_dashboard_status) !== current) return
+                val message = messages[index % messages.size]
+                index += 1
+                status.animate().cancel()
+                if (ValueAnimator.areAnimatorsEnabled() && status.alpha > 0f) {
+                    val fadeOut = ObjectAnimator.ofFloat(status, View.ALPHA, status.alpha, 0f).apply {
+                        duration = 170L
+                        interpolator = appear
+                    }
+                    val moveOut = ObjectAnimator.ofFloat(status, View.TRANSLATION_Y, status.translationY, -offset).apply {
+                        duration = 280L
+                        interpolator = disappear
+                    }
+                    AnimatorSet().apply {
+                        playTogether(fadeOut, moveOut)
+                        addListener(object : AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: Animator) {
+                                if (status.getTag(R.id.brief_dashboard_status) !== current) return
+                                status.text = message
+                                status.alpha = 0f
+                                status.translationY = offset
+                                status.animate().alpha(1f).translationY(0f).setDuration(420L).setInterpolator(appear).start()
+                            }
+                        })
+                        start()
+                    }
+                } else {
+                    status.text = message
+                    status.alpha = 1f
+                    status.translationY = 0f
+                }
+                status.postDelayed(this, 2_400L)
             }
         }
-        return root
+        status.setTag(R.id.brief_dashboard_status, runnable)
+        runnable.run()
+    }
+
+    private fun stopBriefStatus(status: TextView) {
+        (status.getTag(R.id.brief_dashboard_status) as? Runnable)?.let(status::removeCallbacks)
+        status.setTag(R.id.brief_dashboard_status, null)
+        status.animate().cancel()
+        status.alpha = 0f
+        status.translationY = 0f
     }
 
     private fun isDefaultAccount(account: String): Boolean =
@@ -515,6 +854,7 @@ internal class MainDashboardBinder(
                 wrapper.addView(next, contentIndex, FrameLayout.LayoutParams(-1, -1))
             }
         }
+        if (card == DashboardCardType.MILESTONE && refreshContent) settleBriefHeight(wrapper)
         updateCardEditing(wrapper, card)
     }
 
@@ -576,8 +916,9 @@ internal class MainDashboardBinder(
                 if (getTag(R.id.dashboard_resize_animating) != true || child.getTag(R.id.dashboard_card_content) != true)
                     return super.drawChild(canvas, child, drawingTime)
                 resizeClip.reset()
-                resizeClip.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), activity.dp(28).toFloat(),
-                    activity.dp(28).toFloat(), android.graphics.Path.Direction.CW)
+                val clipRadius = activity.dp(28).toFloat()
+                resizeClip.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), clipRadius,
+                    clipRadius, android.graphics.Path.Direction.CW)
                 val save = canvas.save()
                 canvas.clipPath(resizeClip)
                 // Fill the revealed surface while shrinking. Content itself
@@ -612,9 +953,11 @@ internal class MainDashboardBinder(
                 super.onDetachedFromWindow()
             }
         }.apply {
+            clipChildren = false
+            clipToPadding = false
             tag = card.id
             setTag(R.id.dashboard_card_span, editModeController.cardSpan(card))
-            setTag(R.id.dashboard_preferred_height, card.preferredHeightDp)
+            setTag(R.id.dashboard_preferred_height, card.preferredHeightDp(activity))
             val longPressHandler = object : View.OnLongClickListener {
                 override fun onLongClick(view: View): Boolean = handleDashboardCardHold(card, this@apply, pointerHeld = false)
 

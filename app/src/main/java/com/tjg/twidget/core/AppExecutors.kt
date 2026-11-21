@@ -28,7 +28,7 @@ object AppExecutors {
     }
 
     private val imageExecutor = ThreadPoolExecutor(
-        2, 2, 30L, TimeUnit.SECONDS, ArrayBlockingQueue(64),
+        4, 4, 30L, TimeUnit.SECONDS, ArrayBlockingQueue(64),
         ThreadFactory { task -> Thread(task, "twidget-image-${threadNumber.incrementAndGet()}").apply {
             priority = Thread.NORM_PRIORITY - 1
         } }, ThreadPoolExecutor.AbortPolicy(),

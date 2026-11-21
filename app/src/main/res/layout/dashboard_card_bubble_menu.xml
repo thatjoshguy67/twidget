@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/popup_root_layout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <ImageView
+        android:id="@+id/popup_arrow_top"
+        android:layout_width="10dp"
+        android:layout_height="5dp"
+        android:alpha="0.77"
+        android:contentDescription="@null"
+        android:elevation="3dp"
+        android:rotation="180"
+        android:src="@drawable/ic_quick_option_arrow"
+        android:visibility="gone" />
+
+    <FrameLayout
+        android:id="@+id/popup_card_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bubble_option_round"
+        android:clipToOutline="true"
+        android:elevation="3dp">
+
+        <View
+            android:id="@+id/popup_blur_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <LinearLayout
+            android:id="@+id/popup_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/popup_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bubble_option_header_top"
+                android:gravity="center_vertical"
+                android:minHeight="44dp"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <TextView
+                    android:id="@+id/popup_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sec"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:textColor="#FCFCFF"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/popup_item_layout"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="6dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="6dp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <ImageView
+        android:id="@+id/popup_arrow_bottom"
+        android:layout_width="10dp"
+        android:layout_height="5dp"
+        android:alpha="0.77"
+        android:contentDescription="@null"
+        android:elevation="3dp"
+        android:src="@drawable/ic_quick_option_arrow"
+        android:visibility="gone" />
+</LinearLayout>

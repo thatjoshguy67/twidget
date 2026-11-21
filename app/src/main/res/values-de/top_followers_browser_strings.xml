@@ -2,7 +2,6 @@
 <resources>
     <string name="top_followers_browser_title">Top-Follower</string>
     <string name="top_followers_browser_search">Follower durchsuchen</string>
-    <string name="top_followers_browser_search_hint">Suchen</string>
     <string name="top_followers_browser_refresh">Gesamte Liste aktualisieren</string>
     <string name="top_followers_browser_refreshed">%1$d Follower synchronisiert</string>
     <string name="top_followers_browser_refresh_failed">Aktualisierung der Follower-Liste fehlgeschlagen. Versuche es erneut.</string>

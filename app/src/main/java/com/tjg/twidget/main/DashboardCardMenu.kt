@@ -7,6 +7,7 @@ import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.os.Build
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -265,6 +266,8 @@ internal class DashboardCardMenu(private val activity: MainActivity) {
         private val pivotX: Float,
         private val pivotY: Float,
     ) : Transition() {
+        init { addTarget(R.id.popup_root_layout) }
+
         override fun captureStartValues(transitionValues: TransitionValues) = Unit
         override fun captureEndValues(transitionValues: TransitionValues) = Unit
         override fun isTransitionRequired(startValues: TransitionValues?, endValues: TransitionValues?): Boolean = true
@@ -276,7 +279,8 @@ internal class DashboardCardMenu(private val activity: MainActivity) {
         ): Animator? {
             val view = endValues?.view ?: startValues?.view ?: return null
             val originalVisibility = view.visibility
-            view.setTransitionVisibility(View.VISIBLE)
+            if (Build.VERSION.SDK_INT >= 29) view.setTransitionVisibility(View.VISIBLE)
+            else view.visibility = View.VISIBLE
             view.pivotX = pivotX
             view.pivotY = pivotY
             val fromAlpha = if (entering) 0f else 1f
@@ -307,7 +311,8 @@ internal class DashboardCardMenu(private val activity: MainActivity) {
                 playTogether(alphaAnim, scaleXAnim, scaleYAnim)
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
-                        view.setTransitionVisibility(originalVisibility)
+                        if (Build.VERSION.SDK_INT >= 29) view.setTransitionVisibility(originalVisibility)
+                        else view.visibility = originalVisibility
                     }
                 })
             }

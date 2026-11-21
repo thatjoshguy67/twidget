@@ -132,13 +132,16 @@ class DashboardRecyclerInteractionInstrumentedTest {
     }
     private fun descendants(view: View): List<View> = listOf(view) + if (view is ViewGroup)
         (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
-    private fun menu(): android.widget.ListView? = android.view.inspector.WindowInspector.getGlobalWindowViews()
-        .flatMap(::descendants).filterIsInstance<android.widget.ListView>().firstOrNull { it.isShown && it.adapter != null }
+    private fun menu(): ViewGroup? = android.view.inspector.WindowInspector.getGlobalWindowViews()
+        .flatMap(::descendants).filterIsInstance<ViewGroup>().firstOrNull {
+            it.id == R.id.popup_item_layout && it.isShown
+        }
     private fun choose(activity: MainActivity, action: Int) {
-        val list = requireNotNull(menu()) { "A held card opens native actions" }
-        val index = (0 until list.adapter.count).firstOrNull { list.adapter.getItem(it) == activity.getString(action) }
-        assertNotNull("Requested card action is available", index)
-        list.performItemClick(list.getChildAt(index!!) ?: View(activity), index, list.adapter.getItemId(index))
+        val root = requireNotNull(menu()) { "A held card opens native actions" }
+        val label = descendants(root).filterIsInstance<android.widget.TextView>()
+            .firstOrNull { it.id == R.id.popup_option_text && it.text == activity.getString(action) }
+        assertNotNull("Requested card action is available", label)
+        (label!!.parent as View).performClick()
     }
 
     @Test fun realViewsStayOpaqueDuringNativeDragAndCancellationRestoresOrder() {
@@ -371,8 +374,8 @@ class DashboardRecyclerInteractionInstrumentedTest {
             assertTrue(activity.editModeController.editMode)
             assertNull(activity.editModeController.draggedCardId)
             val actions = requireNotNull(menu())
-            assertFalse("The hold menu does not offer Move to", (0 until actions.adapter.count).any {
-                actions.adapter.getItem(it) == activity.getString(R.string.dashboard_move_to)
+            assertFalse("The hold menu does not offer Move to", descendants(actions).filterIsInstance<android.widget.TextView>().any {
+                it.text == activity.getString(R.string.dashboard_move_to)
             })
             pointer.send(MotionEvent.ACTION_UP)
             choose(activity, R.string.dashboard_size_enlarge)

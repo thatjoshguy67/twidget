@@ -1,3 +1,4 @@
+import { mergeInteractionData } from "./interactions.js";
 import fs from "node:fs";
 import path from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
@@ -107,7 +108,7 @@ export class LocalHistoryRepository {
     this.sampleRetentionDays = sampleRetentionDays;
     this.inactiveAccountDays = inactiveAccountDays;
     this.now = now;
-    this.store = { version: 4, accounts: {}, meta: {}, access: {}, topFollowers: {} };
+    this.store = { version: 4, accounts: {}, meta: {}, access: {}, topFollowers: {}, interactions: {} };
     this.revision = 0;
     this.persistedRevision = 0;
     this.flushPromise = null;
@@ -124,6 +125,7 @@ export class LocalHistoryRepository {
         meta: objectValue(parsed?.meta),
         access: objectValue(parsed?.access),
         topFollowers: objectValue(parsed?.topFollowers),
+        interactions: objectValue(parsed?.interactions),
       };
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -148,6 +150,13 @@ export class LocalHistoryRepository {
       }
     }
     return normalizeStoredSamples(this.store.accounts[key], this.maxHistoryDays, this.sampleRetentionDays, this.now());
+  }
+  async getInteractions(key) { return this.store.interactions[key] || { daily: [], posts: [] }; }
+  async storeInteractions(key, data, { expectedUserId } = {}) {
+    if (!Object.hasOwn(this.store.accounts, key) || (expectedUserId !== undefined && this.store.meta[key]?.userId !== expectedUserId)) return false;
+    this.store.interactions[key] = mergeInteractionData(this.store.interactions[key], data);
+    await this.persist();
+    return true;
   }
   async getMeta(key) { return { ...(this.store.meta[key] || {}) }; }
   async setMeta(key, meta) {
@@ -221,6 +230,7 @@ export class LocalHistoryRepository {
     this.store.meta[newKey] = { ...sourceMeta, ...targetMeta, userId };
     this.store.access[newKey] = Math.max(this.store.access[oldKey] || 0, this.store.access[newKey] || 0);
     if (!this.store.topFollowers[newKey] && this.store.topFollowers[oldKey]) this.store.topFollowers[newKey] = this.store.topFollowers[oldKey];
+    this.store.interactions[newKey] = mergeInteractionData(this.store.interactions[newKey], this.store.interactions[oldKey] || { daily: [], posts: [] });
     this.removeAccountState(oldKey);
     await this.persist();
     return { moved: true };
@@ -236,6 +246,7 @@ export class LocalHistoryRepository {
     delete this.store.meta[key];
     delete this.store.access[key];
     delete this.store.topFollowers[key];
+    delete this.store.interactions[key];
     return existed;
   }
   async getTopFollowersScan(key) {
@@ -454,6 +465,10 @@ export class PostgresHistoryRepository {
         created_at timestamptz NOT NULL DEFAULT now(),
         last_accessed_at timestamptz NOT NULL DEFAULT now()
       );
+      CREATE TABLE IF NOT EXISTS twidget_interactions (
+        username varchar(15) PRIMARY KEY REFERENCES twidget_history_accounts(username) ON DELETE CASCADE,
+        data jsonb NOT NULL DEFAULT '{"daily":[],"posts":[]}'::jsonb
+      );
       CREATE TABLE IF NOT EXISTS twidget_history_samples (
         username varchar(15) NOT NULL REFERENCES twidget_history_accounts(username) ON DELETE CASCADE,
         sample_date date NOT NULL,
@@ -578,6 +593,24 @@ export class PostgresHistoryRepository {
       sampleRetentionDays: this.sampleRetentionDays,
       now: Date.now(),
     });
+  }
+  async getInteractions(key) {
+    const result = await this.pool.query("SELECT data FROM twidget_interactions WHERE username = $1", [key]);
+    return result.rows[0]?.data || { daily: [], posts: [] };
+  }
+  async storeInteractions(key, data, { expectedUserId } = {}) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const account = await client.query("SELECT metadata FROM twidget_history_accounts WHERE username = $1 FOR UPDATE", [key]);
+      if (!account.rowCount || (expectedUserId !== undefined && account.rows[0].metadata?.userId !== expectedUserId)) { await client.query("ROLLBACK"); return false; }
+      const old = await client.query("SELECT data FROM twidget_interactions WHERE username = $1", [key]);
+      const merged = mergeInteractionData(old.rows[0]?.data, data);
+      await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [key, JSON.stringify(merged)]);
+      await client.query("COMMIT");
+      return true;
+    } catch (error) { await client.query("ROLLBACK"); throw error; }
+    finally { client.release(); }
   }
   async getMeta(key) {
     const result = await this.pool.query("SELECT metadata FROM twidget_history_accounts WHERE username = $1", [key]);
@@ -963,6 +996,12 @@ export class PostgresHistoryRepository {
         (username, sample_date, followers, followers_known, following, following_known, posts, posts_known, likes, likes_known, source, estimated, observed_at)
         SELECT $2, sample_date, followers, followers_known, following, following_known, posts, posts_known, likes, likes_known, source, estimated, observed_at
         FROM twidget_history_samples WHERE username = $1 ON CONFLICT (username, sample_date) DO UPDATE SET ${overlap}`, [oldKey, newKey]);
+      const interactionRows = await client.query("SELECT username, data FROM twidget_interactions WHERE username = ANY($1::text[])", [[oldKey, newKey]]);
+      const sourceInteractions = interactionRows.rows.find(row => row.username === oldKey)?.data;
+      if (sourceInteractions) {
+        const targetInteractions = interactionRows.rows.find(row => row.username === newKey)?.data;
+        await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [newKey, JSON.stringify(mergeInteractionData(targetInteractions, sourceInteractions))]);
+      }
       await client.query("UPDATE twidget_top_follower_scans SET username = $2 WHERE username = $1", [oldKey, newKey]);
       await client.query("DELETE FROM twidget_history_accounts WHERE username = $1", [oldKey]);
       await client.query("COMMIT");
@@ -998,6 +1037,7 @@ export class PostgresHistoryRepository {
       await this.storeSamples(key, samples, { preferExisting: true });
     }
     for (const [key, meta] of Object.entries(objectValue(parsed?.meta))) await this.setMeta(key, meta);
+    for (const [key, data] of Object.entries(objectValue(parsed?.interactions))) await this.storeInteractions(key, data);
   }
 }
 

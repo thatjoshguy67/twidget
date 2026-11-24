@@ -555,7 +555,15 @@ internal object MetricChartScale {
     fun zeroBasedBounds(values: List<Long>): Pair<Long, Long> {
         val min = (values.minOrNull() ?: 0).coerceAtMost(0)
         val max = (values.maxOrNull() ?: 0).coerceAtLeast(0)
-        return if (min == max) 0L to 3L else min to max
+        if (min == max) return 0L to 3L
+        // Allocate whole, evenly spaced ticks on both sides of zero. The
+        // plotted bounds and labels must describe the same numeric scale.
+        val step = niceStep((max.toDouble() - min.toDouble()) / 3.0)
+        val lowerSteps = kotlin.math.ceil(-min.toDouble() / step).toLong()
+        val upperSteps = kotlin.math.ceil(max.toDouble() / step).toLong()
+        val totalSteps = lowerSteps + upperSteps
+        val spare = (3L - totalSteps).coerceAtLeast(0L)
+        return -(lowerSteps * step) to ((upperSteps + spare) * step)
     }
 
     fun axisLabels(min: Long, max: Long, tickCount: Int = 4): List<String> {

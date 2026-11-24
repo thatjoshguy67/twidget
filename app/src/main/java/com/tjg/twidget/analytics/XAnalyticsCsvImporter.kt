@@ -23,6 +23,7 @@ data class XAnalyticsMovement(
     val shares: Long? = null,
     val replies: Long? = null,
     val reposts: Long? = null,
+    val quotes: Long? = null,
     val profileVisits: Long? = null,
     val postsCreated: Long? = null,
     val videoViews: Long? = null,
@@ -95,6 +96,7 @@ object XAnalyticsCsvImporter {
                     shares = optionalUnsignedLong(row, header, offset + 2, "Shares"),
                     replies = optionalUnsignedLong(row, header, offset + 2, "Replies"),
                     reposts = optionalUnsignedLong(row, header, offset + 2, "Reposts"),
+                    quotes = optionalUnsignedLong(row, header, offset + 2, "Quotes"),
                     profileVisits = optionalUnsignedLong(row, header, offset + 2, "Profile visits"),
                     postsCreated = optionalUnsignedLong(row, header, offset + 2, "Create Post"),
                     videoViews = optionalUnsignedLong(row, header, offset + 2, "Video views"),
@@ -213,7 +215,7 @@ object XAnalyticsCsvImporter {
     ): Long? {
         val index = header[column.lowercase(Locale.US)] ?: return null
         require(index < row.size) { UiMessages.message(UiMessages.Key.ERROR_CSV_ROW, rowNumber, column) }
-        return unsignedLong(row[index], rowNumber, column)
+        return row[index].takeIf { it.isNotBlank() }?.let { unsignedLong(it, rowNumber, column) }
     }
 
     private fun validateMetricConsistency(movement: XAnalyticsMovement, rowNumber: Int) {

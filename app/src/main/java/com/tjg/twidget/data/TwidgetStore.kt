@@ -563,6 +563,7 @@ object TwidgetStore {
         edit.apply()
         clearCachedStats(context, cleanUsername)
         com.tjg.twidget.analytics.ImportedAnalyticsStore.clear(context, cleanUsername)
+        com.tjg.twidget.analytics.InteractionStore.clear(context, cleanUsername)
         com.tjg.twidget.followers.TopFollowersStore.clear(context, cleanUsername)
         BangerClient.clear(context, cleanUsername)
         BangerScanWorker.clear(context, cleanUsername)

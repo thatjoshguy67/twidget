@@ -193,6 +193,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
                     if (accepted != null) TwidgetStore.saveStats(this, current.copy(history = accepted.history))
                     else TwidgetStore.importFollowerHistory(this, canonical, parsed.samples)
                     ImportedAnalyticsStore.saveVerified(this, canonical, parsed.movements)
+                    InteractionStore.saveCsv(this, canonical, parsed.movements)
                 }
                 TwidgetWidget.updateAll(this)
             }

@@ -41,6 +41,10 @@ data class PostSummary(
     val fullText: String? = null,
     val isReply: Boolean = false,
     val viewsKnown: Boolean = true,
+    val likesKnown: Boolean = true,
+    val repostsKnown: Boolean = true,
+    val repliesKnown: Boolean = true,
+    val quotesKnown: Boolean = true,
     val quotedPost: QuotedPost? = null,
 )
 

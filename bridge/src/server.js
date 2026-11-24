@@ -1,3 +1,4 @@
+import { normalizeInteractionData, fxInteractionSnapshot } from "./interactions.js";
 import { rateLimit, requestToken, tokenMatches, ServiceBusyError, upstreamGate } from "./http-policy.js";
 import express from "express";
 import crypto from "node:crypto";
@@ -159,7 +160,10 @@ app.use((req, res, next) => {
   // without consuming the smaller remote-work budget used by scan starts.
   const topFollowersArchiveRead = req.method === "GET"
     && /^\/history\/[^/]+\/top-followers\/all$/.test(req.path);
-  if (!topFollowersArchiveRead && /^\/(admin|analytics|banger|history|official|oauth)\b/.test(req.path)) {
+  // Interaction sync is a bounded local storage exchange, not upstream work;
+  // retain the general limiter so a full history can be uploaded in batches.
+  const interactionSync = /^\/history\/[^/]+\/interactions$/.test(req.path);
+  if (!topFollowersArchiveRead && !interactionSync && /^\/(admin|analytics|banger|history|official|oauth)\b/.test(req.path)) {
     return rateLimit(expensiveLimiter, expensiveRateLimitMax)(req, res, next);
   }
   next();
@@ -618,6 +622,28 @@ app.post("/history/:username/top-followers", requireTopFollowersPublisher, histo
   res.status(201).json({ userName: username, ...cached });
 });
 
+app.get("/history/:username/interactions", async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) return res.status(400).json({ error: "invalid_username" });
+  const key = username.toLowerCase();
+  if (!(await historyRepository.hasAccount(key))) return res.status(404).json({ error: "history_account_not_registered" });
+  const meta = await historyRepository.getMeta(key);
+  res.json({ userName: username, userId: meta.userId || "", ...(await historyRepository.getInteractions(key)) });
+});
+
+app.post("/history/:username/interactions", historyJsonBody, async (req, res) => {
+  const username = cleanUsername(req.params.username);
+  if (!username) return res.status(400).json({ error: "invalid_username" });
+  const key = username.toLowerCase();
+  const meta = await historyRepository.getMeta(key);
+  if (!meta.userId || req.body?.userId !== meta.userId) return res.status(409).json({ error: "history_identity_mismatch" });
+  let data;
+  try { data = normalizeInteractionData(req.body); }
+  catch { return res.status(400).json({ error: "invalid_interactions" }); }
+  if (!(await historyRepository.storeInteractions(key, data, { expectedUserId: meta.userId }))) return res.status(409).json({ error: "history_account_not_registered" });
+  res.json({ userId: meta.userId, ...(await historyRepository.getInteractions(key)) });
+});
+
 app.post("/history/:username/analytics-import", historyJsonBody, async (req, res) => {
   const username = cleanUsername(req.params.username);
   if (!username) {
@@ -651,6 +677,14 @@ app.post("/history/:username/analytics-import", historyJsonBody, async (req, res
       res.status(status).json({ error: validation.error, ...(validation.detail ? { detail: validation.detail } : {}) });
       return;
     }
+    let interactionRows;
+    try {
+      interactionRows = normalizeInteractionData({ daily: req.body.movements.map(row => ({
+        date: row.date, likes: row.likes, reposts: row.reposts, replies: row.replies,
+        shares: row.shares, quotes: row.quotes, bookmarks: row.bookmarks, views: row.impressions,
+      })), posts: [] });
+    } catch { return res.status(400).json({ error: "invalid_interactions" }); }
+    await historyRepository.storeInteractions(key, interactionRows);
     await recordHistorySample(profile);
     await cache.set(key, { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
     if (validation.samples.length) {
@@ -775,7 +809,6 @@ async function computeAnalytics(username) {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const activity = await fetchFxWeeklyPosts(username, weekAgo);
   const posts = activity.posts;
-
   const postCount = posts.length;
   const views = posts.map((post) => post.views);
   const engagements = posts.map((post) => post.engagements);
@@ -934,6 +967,8 @@ function publicBangerState(state) {
 
 async function fetchFxWeeklyPosts(username, weekAgo) {
   if (process.env.TEST_MOCK_UPSTREAM === "1") return { posts: [], complete: true };
+  const key = username.toLowerCase();
+  const ownerId = (await historyRepository.getMeta(key)).userId;
   const url = new URL(`https://api.fxtwitter.com/2/profile/${encodeURIComponent(username)}/statuses`);
   url.searchParams.set("count", String(analyticsPostCount));
   url.searchParams.set("since", String(weekAgo));
@@ -952,9 +987,13 @@ async function fetchFxWeeklyPosts(username, weekAgo) {
     .filter((status) => isWeeklyOwnPost(status, requested, weekAgo))
     .map(normalizeFxStatus)
     .sort((a, b) => b.ts - a.ts);
-  const bestCandidates = results
-    .filter(status => ownFxPostEligible(status, requested, { windowStart: weekAgo, includeReplies: true }))
-    .map(normalizeFxStatus);
+  const eligible = results.filter(status => ownFxPostEligible(status, requested, { windowStart: weekAgo, includeReplies: true }));
+  const bestCandidates = eligible.map(normalizeFxStatus);
+  if (ownerId) {
+    const capturedAt = Date.now();
+    const snapshots = eligible.map(status => fxInteractionSnapshot(status, capturedAt)).filter(Boolean);
+    if (snapshots.length) await historyRepository.storeInteractions(key, { daily: [], posts: snapshots }, { expectedUserId: ownerId });
+  }
   return { posts, bestCandidates, complete: results.length < analyticsPostCount };
 }
 
@@ -971,6 +1010,10 @@ function normalizeFxStatus(status) {
     ...coachingFields(status),
     links: textParts.links,
     views: numberValue(status.views),
+    likesKnown: status.likes != null,
+    repostsKnown: status.reposts != null,
+    repliesKnown: status.replies != null,
+    quotesKnown: status.quotes != null,
     likes,
     replies,
     reposts,
@@ -1154,6 +1197,9 @@ async function refreshKnownAccounts() {
         await recordHistorySample(profile);
         await cache.set(key, { fetchedAt: Date.now(), data: profile }, cacheTtlMs * 2);
         console.log(`Daily refresh recorded ${key}`);
+        // Keep public post snapshots fresh on the same bounded daily schedule.
+        try { await withUpstreamSlot(() => computeAnalytics(key)); }
+        catch (error) { console.warn(`Interaction refresh failed for ${key}:`, error?.message ?? error); }
       } catch (error) {
         console.warn(`Daily refresh failed for ${key}:`, error);
       }

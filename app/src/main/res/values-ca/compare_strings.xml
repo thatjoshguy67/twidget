@@ -1,0 +1,25 @@
+<resources>
+    <string name="compare_title">Comparar</string>
+    <string name="compare_done">Fet</string>
+    <string name="compare_vs">vs</string>
+    <string name="compare_choose">Tria un compte</string>
+    <string name="compare_type_handle">Introdueix un usuari públic</string>
+    <string name="compare_handle_hint">Nom d’usuari</string>
+    <string name="compare_cancel">Cancel·la</string>
+    <string name="compare_use_account">Fes servir el compte</string>
+    <string name="compare_invalid_handle">Introdueix un usuari de X vàlid.</string>
+    <string name="compare_loading">S’està carregant…</string>
+    <string name="compare_load_error">No s’ha pogut carregar el compte.</string>
+    <string name="compare_analytics_error">Estadístiques no disponibles.</string>
+    <string name="compare_retry">Torna-ho a provar</string>
+    <string name="compare_followers">Seguidors</string>
+    <string name="compare_engagement">Interacció</string>
+    <string name="compare_likes">M’agrada</string>
+    <string name="compare_reposts">Republicacions</string>
+    <string name="compare_views">Visualitzacions</string>
+    <string name="compare_weekly_delta">%1$s aquesta setmana</string>
+    <string name="compare_pick_description">Tria un compte: %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s: %3$s</string>
+    <string name="compare_footnote">Últims 7 dies de publicacions originals observades; els totals són acumulats i poden ser una mostra.</string>
+    <string name="compare_missing">—</string>
+</resources>

@@ -1,0 +1,25 @@
+<resources>
+    <string name="compare_title">Comparer</string>
+    <string name="compare_done">Terminé</string>
+    <string name="compare_vs">vs</string>
+    <string name="compare_choose">Choisir un compte</string>
+    <string name="compare_type_handle">Saisir un identifiant public</string>
+    <string name="compare_handle_hint">Identifiant</string>
+    <string name="compare_cancel">Annuler</string>
+    <string name="compare_use_account">Utiliser ce compte</string>
+    <string name="compare_invalid_handle">Saisissez un identifiant X valide.</string>
+    <string name="compare_loading">Chargement…</string>
+    <string name="compare_load_error">Impossible de charger ce compte.</string>
+    <string name="compare_analytics_error">Statistiques indisponibles.</string>
+    <string name="compare_retry">Réessayer</string>
+    <string name="compare_followers">Abonnés</string>
+    <string name="compare_engagement">Engagement</string>
+    <string name="compare_likes">J’aime</string>
+    <string name="compare_reposts">Reposts</string>
+    <string name="compare_views">Vues</string>
+    <string name="compare_weekly_delta">%1$s cette semaine</string>
+    <string name="compare_pick_description">Choisir un compte : %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s : %3$s</string>
+    <string name="compare_footnote">7 derniers jours de posts originaux observés ; les totaux sont cumulés et peuvent provenir d’un échantillon.</string>
+    <string name="compare_missing">—</string>
+</resources>

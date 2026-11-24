@@ -1,0 +1,25 @@
+<resources>
+    <string name="compare_title">Compare</string>
+    <string name="compare_done">Done</string>
+    <string name="compare_vs">vs</string>
+    <string name="compare_choose">Choose account</string>
+    <string name="compare_type_handle">Enter a public handle</string>
+    <string name="compare_handle_hint">Username</string>
+    <string name="compare_cancel">Cancel</string>
+    <string name="compare_use_account">Use account</string>
+    <string name="compare_invalid_handle">Enter a valid X handle.</string>
+    <string name="compare_loading">Loading…</string>
+    <string name="compare_load_error">Could not load this account.</string>
+    <string name="compare_analytics_error">Post stats unavailable.</string>
+    <string name="compare_retry">Retry</string>
+    <string name="compare_followers">Followers</string>
+    <string name="compare_engagement">Engagement</string>
+    <string name="compare_likes">Likes</string>
+    <string name="compare_reposts">Reposts</string>
+    <string name="compare_views">Views</string>
+    <string name="compare_weekly_delta">%1$s this week</string>
+    <string name="compare_pick_description">Choose account: %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s: %3$s</string>
+    <string name="compare_footnote">Last 7 days of observed original posts; totals are lifetime counts so far and may be sampled.</string>
+    <string name="compare_missing">—</string>
+</resources>

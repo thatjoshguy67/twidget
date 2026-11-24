@@ -1,0 +1,25 @@
+<resources>
+    <string name="compare_title">Vergleichen</string>
+    <string name="compare_done">Fertig</string>
+    <string name="compare_vs">vs</string>
+    <string name="compare_choose">Konto auswählen</string>
+    <string name="compare_type_handle">Öffentlichen Nutzernamen eingeben</string>
+    <string name="compare_handle_hint">Nutzername</string>
+    <string name="compare_cancel">Abbrechen</string>
+    <string name="compare_use_account">Konto verwenden</string>
+    <string name="compare_invalid_handle">Gib einen gültigen X-Nutzernamen ein.</string>
+    <string name="compare_loading">Wird geladen…</string>
+    <string name="compare_load_error">Konto konnte nicht geladen werden.</string>
+    <string name="compare_analytics_error">Beitragsstatistiken nicht verfügbar.</string>
+    <string name="compare_retry">Erneut versuchen</string>
+    <string name="compare_followers">Follower</string>
+    <string name="compare_engagement">Interaktion</string>
+    <string name="compare_likes">Gefällt mir</string>
+    <string name="compare_reposts">Reposts</string>
+    <string name="compare_views">Aufrufe</string>
+    <string name="compare_weekly_delta">%1$s diese Woche</string>
+    <string name="compare_pick_description">Konto auswählen: %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s: %3$s</string>
+    <string name="compare_footnote">Letzte 7 Tage beobachteter Originalbeiträge; Gesamtzahlen sind bisherige Werte und können auf einer Stichprobe beruhen.</string>
+    <string name="compare_missing">—</string>
+</resources>

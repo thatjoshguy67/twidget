@@ -217,6 +217,9 @@ object AnalyticsClient {
         return TwitterApisTimelineResult(statuses, incomplete)
     }
 
+    /** Read-only public weekly analytics for comparisons; does not update account caches. */
+    internal fun fetchPublic(username: String): PostAnalytics = fetchFxTwitter(username)
+
     private fun fetchFxTwitter(username: String): PostAnalytics {
         val profile = FxTwitterClient.fetchProfile(username)
         val now = System.currentTimeMillis()

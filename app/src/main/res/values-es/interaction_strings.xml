@@ -1,0 +1,31 @@
+<resources>
+    <string name="interactions_title">Interacciones</string>
+    <string name="interaction_stats_title">Estadísticas de publicaciones</string>
+    <string name="interaction_mix_title">Distribución de interacciones</string>
+    <string name="interaction_split_title">Originales y respuestas</string>
+    <string name="interaction_likes">Me gusta</string>
+    <string name="interaction_reposts">Republicaciones</string>
+    <string name="interaction_replies">Respuestas</string>
+    <string name="interaction_shares">Compartidos</string>
+    <string name="interaction_quotes">Citas</string>
+    <string name="interaction_bookmarks">Guardados</string>
+    <string name="interaction_views">Vistas</string>
+    <string name="interaction_original">Originales</string>
+    <string name="interaction_total">total</string>
+    <string name="interaction_last_7">Últimos 7 días</string>
+    <string name="interaction_last_30">Últimos 30 días</string>
+    <string name="interaction_last_90">Últimos 90 días</string>
+    <string name="interaction_empty">Aún no hay datos de interacción. Importa X Analytics o actualiza tus publicaciones públicas.</string>
+    <string name="interaction_mix_unavailable">Distribución no disponible con datos incompletos</string>
+    <string name="interaction_split_empty">No se observaron publicaciones en este periodo</string>
+    <string name="interaction_by_post_date">Actividad diaria CSV; recuentos públicos por fecha de publicación.</string>
+    <string name="interaction_range_7">7D</string>
+    <string name="interaction_range_30">30D</string>
+    <string name="interaction_range_90">90D</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

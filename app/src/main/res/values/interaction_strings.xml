@@ -1,0 +1,31 @@
+<resources>
+    <string name="interactions_title">Interactions</string>
+    <string name="interaction_stats_title">Post stats</string>
+    <string name="interaction_mix_title">Engagement Mix</string>
+    <string name="interaction_split_title">Original vs Replies</string>
+    <string name="interaction_likes">Likes</string>
+    <string name="interaction_reposts">Reposts</string>
+    <string name="interaction_replies">Replies</string>
+    <string name="interaction_shares">Shares</string>
+    <string name="interaction_quotes">Quotes</string>
+    <string name="interaction_bookmarks">Bookmarks</string>
+    <string name="interaction_views">Views</string>
+    <string name="interaction_original">Original</string>
+    <string name="interaction_total">total</string>
+    <string name="interaction_range_7">7D</string>
+    <string name="interaction_range_30">30D</string>
+    <string name="interaction_range_90">90D</string>
+    <string name="interaction_last_7">Last 7 days</string>
+    <string name="interaction_last_30">Last 30 days</string>
+    <string name="interaction_last_90">Last 90 days</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_empty">No data for this metric yet. Import X Analytics or refresh your public posts.</string>
+    <string name="interaction_mix_unavailable">Mix unavailable for incomplete data</string>
+    <string name="interaction_split_empty">No posts observed in this range</string>
+    <string name="interaction_by_post_date">CSV daily activity; public counts by post date.</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

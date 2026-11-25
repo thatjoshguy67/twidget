@@ -198,7 +198,6 @@ internal class MainPostAnalyticsBinder(
                         }, android.widget.FrameLayout.LayoutParams(cardDp(112), cardDp(88), Gravity.CENTER))
                     }
                     contentDescription = activity.getString(R.string.post_media) + ": " + media.size
-                    setOnClickListener { activity.dashboardTweetLauncher.open(post.url) }
                 },
                     LinearLayout.LayoutParams(cardDp(151), LinearLayout.LayoutParams.MATCH_PARENT))
             }

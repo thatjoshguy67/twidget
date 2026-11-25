@@ -14,15 +14,18 @@ class DashboardStatCardLayout @JvmOverloads constructor(context: Context, attrs:
     private var columnWidth = 0
     private var headerHeight = 0
     private var detailHeight = 0
+    private var sideInset = 0
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)
-        val available = (width - paddingLeft - paddingRight).coerceAtLeast(1)
+        val innerWidth = (width - paddingLeft - paddingRight).coerceAtLeast(1)
         val header = findViewById<View>(R.id.dashboard_stat_header)
         val value = findViewById<View>(R.id.followers_value)
         val detail = findViewById<android.widget.TextView>(R.id.stat_detail)
         val panel = findViewById<View>(R.id.dashboard_stat_context)
-        split = getTag(R.id.dashboard_stat_expanded) == true && available >= dp(240) && panel != null
+        split = getTag(R.id.dashboard_stat_expanded) == true && innerWidth >= dp(240) && panel != null
+        sideInset = if (split) dp(8) else 0
+        val available = (innerWidth - sideInset * 2).coerceAtLeast(1)
         val alignment = if (split) android.view.Gravity.START else android.view.Gravity.CENTER_HORIZONTAL
         (header as? LinearLayout)?.gravity = alignment or android.view.Gravity.CENTER_VERTICAL
         (value as? android.widget.TextView)?.gravity = alignment or android.view.Gravity.CENTER_VERTICAL
@@ -57,12 +60,12 @@ class DashboardStatCardLayout @JvmOverloads constructor(context: Context, attrs:
         val bodyTop = paddingTop + headerHeight + dp(if (split) 4 else 8)
         val bottom = height - paddingBottom
         val rtl = layoutDirection == View.LAYOUT_DIRECTION_RTL
-        val valueLeft = if (split && rtl) width - paddingRight - columnWidth else paddingLeft
+        val valueLeft = if (split && rtl) width - paddingRight - sideInset - columnWidth else paddingLeft + sideInset
         header.layout(valueLeft, paddingTop, valueLeft + columnWidth, paddingTop + headerHeight)
         value.layout(valueLeft, bodyTop, valueLeft + columnWidth, bottom - detailHeight)
         detail.layout(valueLeft, bottom - detailHeight, valueLeft + columnWidth, bottom)
         if (split && panel != null) {
-            val x = if (rtl) paddingLeft else valueLeft + columnWidth + dp(10)
+            val x = if (rtl) paddingLeft + sideInset else valueLeft + columnWidth + dp(10)
             panel.layout(x, paddingTop, x + panel.measuredWidth, bottom)
         }
     }

@@ -956,3 +956,24 @@ test("Fx failure after migration retains the paid snapshot and never reports its
   assert.equal(archive.total, 1);
   assert.deepEqual((await fetch(`${base}/history/example`).then(r => r.json())).followerChanges, []);
 });
+
+test("CSV validation fetches a fresh ID-bound profile and rejects another account", async t => {
+  const now = Date.now();
+  const yesterday = new Date(now - DAY).toISOString().slice(0, 10);
+  const today = new Date(now).toISOString().slice(0, 10);
+  const store = followerStore({ example: { userId: "123456" }, wrong: { userId: "999" } });
+  for (const key of ["example", "wrong"]) store.accounts[key] = [
+    { ts: Date.parse(`${yesterday}T00:00:00Z`), followers: 1234, followersKnown: true, src: "live" },
+  ];
+  const base = await startBridge(t, {}, { store });
+  const payload = JSON.stringify({ movements: [yesterday, today].map(date => ({ date, newFollows: 1, unfollows: 1 })) });
+  const send = key => fetch(`${base}/history/${key}/analytics-import`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: payload,
+  });
+  const valid = await send("example");
+  assert.equal(valid.status, 200, await valid.clone().text());
+  assert.equal((await valid.json()).checkedAnchors, 1);
+  const invalid = await send("wrong");
+  assert.equal(invalid.status, 409);
+  assert.equal((await invalid.json()).error, "history_identity_mismatch");
+});

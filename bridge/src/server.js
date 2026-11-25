@@ -756,7 +756,16 @@ app.post("/history/:username/analytics-import", historyJsonBody, async (req, res
     return;
   }
   try {
-    const profile = await fetchProfileLimited(username);
+    // Imports need a fresh count for this exact account. FxTwitter's handle
+    // lookup can fail while its numeric-ID route still works.
+    const meta = await historyRepository.getMeta(key);
+    const userId = meta.userId || meta.verifiedUserId || "";
+    const profile = userId
+      ? await withUpstreamSlot(() => fetchFxProfile(username, userId))
+      : await fetchProfileLimited(username);
+    if (userId && (profile.userId !== userId || profile.userName.toLowerCase() !== key)) {
+      return res.status(409).json({ error: "history_identity_mismatch" });
+    }
     if (profile.isPrivate === true) {
       res.status(403).json({ error: "private_account_not_pooled" });
       return;

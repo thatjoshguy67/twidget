@@ -10,12 +10,12 @@ import org.json.JSONObject
 
 /** The model selects relevant panels; all their values come from recorded evidence. */
 internal data class BriefReviewEvidence(val post: PostSummary, val peers: List<PostSummary>,
-    val observations: List<PostObservation>, val observedAt: Long, val rankingPosts: List<PostSummary> = peers) {
-    private fun rankKey(value: PostSummary) = BriefPublishedReviewStore.postId(value.url) ?: value.url
-    private val rankingPeers get() = rankingPosts.filter { rankKey(it) != rankKey(post) && it.isReply == post.isReply && it.viewsKnown }
-        .distinctBy(::rankKey).sortedByDescending { it.timestamp }.take(9)
-    val viewsRankTotal: Int get() = rankingPeers.size + 1
-    val viewsRank: Int? get() = if (post.viewsKnown) 1 + rankingPeers.count { it.views > post.views } else null
+    val observations: List<PostObservation>, val observedAt: Long, val rankingPosts: List<PostSummary> = peers,
+    val rankingAt: Long = System.currentTimeMillis()) {
+    private val rankingPool get() = recentRankingCandidates(post, listOf(post) + rankingPosts, rankingAt)
+    private val isRanked get() = rankingPool.any { rankKey(it) == rankKey(post) }
+    val viewsRankTotal: Int get() = if (isRanked) rankingPool.size else 0
+    val viewsRank: Int? get() = if (isRanked) 1 + rankingPool.count { it.views > post.views } else null
     val interactions: Long get() = interactions(post)
     val medianPeerViews: Long? get() = peers.takeIf { it.size >= 3 }?.map(PostSummary::views)?.sorted()?.let {
         if (it.size % 2 == 1) it[it.size / 2] else it[it.size / 2 - 1] + (it[it.size / 2] - it[it.size / 2 - 1]) / 2
@@ -49,22 +49,29 @@ internal data class BriefReviewEvidence(val post: PostSummary, val peers: List<P
     }
 
     companion object {
+        private const val RANKING_WINDOW_MS = 30 * 86_400_000L
+        private fun rankKey(value: PostSummary) = BriefPublishedReviewStore.postId(value.url) ?: value.url
+        fun recentRankingCandidates(post: PostSummary, candidates: List<PostSummary>, now: Long): List<PostSummary> = candidates.filter {
+            it.isReply == post.isReply && it.authorUserName.trimStart('@').equals(post.authorUserName.trimStart('@'), true) &&
+                it.viewsKnown && com.tjg.twidget.analytics.PostAgeComparison.valid(it) &&
+                it.timestamp in maxOf(1L, now - RANKING_WINDOW_MS)..now
+        }.distinctBy(::rankKey).sortedByDescending { it.timestamp }.take(10)
+
         fun interactions(post: PostSummary): Long = publicInteractions(post.likes, post.replies, post.reposts, post.quotes)
-        fun create(post: PostSummary, analytics: PostAnalytics, observations: List<PostObservation>): BriefReviewEvidence {
-            val ranking = (analytics.reviewPosts + analytics.recentPosts + analytics.recentReplies)
-                .filter { it.isReply == post.isReply && it.authorUserName.equals(analytics.userName, true) && com.tjg.twidget.analytics.PostAgeComparison.valid(it) }
-                .distinctBy(PostSummary::url).sortedByDescending(PostSummary::timestamp).take(10)
+        fun create(post: PostSummary, analytics: PostAnalytics, observations: List<PostObservation>, now: Long = System.currentTimeMillis()): BriefReviewEvidence {
+            val ranking = recentRankingCandidates(post,
+                analytics.reviewPosts + analytics.recentPosts + analytics.recentReplies + analytics.historicalPosts, now)
             // A retained all-time winner is not necessarily re-fetched with the weekly timeline.
             // Its cached totals cannot be assigned today's observation time or a growth chart.
             if (com.tjg.twidget.analytics.PostAgeComparison.age(post, analytics) == null ||
                 (post.observedAt <= 0 && analytics.cachedAt - post.timestamp > analytics.windowDays * 86_400_000L))
-                return BriefReviewEvidence(post, emptyList(), emptyList(), post.observedAt, ranking)
+                return BriefReviewEvidence(post, emptyList(), emptyList(), post.observedAt, ranking, now)
             val peers = BriefPostCoach.comparisonPeers(post, analytics).takeIf {
                 (com.tjg.twidget.analytics.PostAgeComparison.age(post, analytics) ?: 0L) >= 24 * 60 * 60_000L
             }.orEmpty()
             return BriefReviewEvidence(post, peers, observations.filter {
                 it.at in maxOf(post.timestamp, analytics.cachedAt - 7 * 24 * 60 * 60_000L)..analytics.cachedAt
-            }, post.observedAt.takeIf { it > 0 } ?: analytics.cachedAt, ranking)
+            }, post.observedAt.takeIf { it > 0 } ?: analytics.cachedAt, ranking, now)
         }
     }
 }

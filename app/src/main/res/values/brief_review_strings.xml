@@ -66,9 +66,9 @@
     <string name="coach_archived_counts_without_views">Your saved tweet has %1$s public interactions.</string>
     <string name="coach_archived_limit">These are saved lifetime totals. Their observation time is unavailable, so they cannot show recent growth or a fair comparison with this week’s tweets.</string>
     <string name="review_views_rank">%1$d/%2$d</string>
-    <string name="review_views_rank_context">Compared with your most recent eligible tweets of a similar age and format, up to ten posts in total. Equal view totals share a rank.</string>
+    <string name="review_views_rank_context">Compared with up to ten of your latest eligible tweets from the past 30 days. Original tweets and replies rank separately. Equal view totals share a rank.</string>
     <string name="review_performance_ranking">Performance ranking</string>
-    <string name="review_rank_only_post">This is the only eligible tweet currently available.</string>
-    <string name="review_rank_comparison">Ranked by recorded views against %1$d other recent tweets. Ties share a rank.</string>
+    <string name="review_rank_only_post">This is the only eligible tweet from the past 30 days currently available.</string>
+    <string name="review_rank_comparison">Ranked by recorded views against %1$d other recent tweets from the past 30 days. Ties share a rank.</string>
     <string name="review_preview_rank">Ranked %1$d/%2$d by views.</string>
 </resources>

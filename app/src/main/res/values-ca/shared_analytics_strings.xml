@@ -8,10 +8,10 @@
     <string name="app_icon_selected">S’ha seleccionat la icona %1$s</string>
     <string name="review_performance_ranking">Classificació de rendiment</string>
     <string name="settings_outline_effects">Efectes de contorn</string>
-    <string name="review_views_rank_context">Comparat amb les teves piulades elegibles més recents d’una edat i un format semblants, fins a deu en total. Els totals de visualitzacions iguals comparteixen posició.</string>
+    <string name="review_views_rank_context">Comparat amb fins a deu de les teves piulades elegibles més recents dels últims 30 dies. Les piulades originals i les respostes es classifiquen per separat. Els totals de visualitzacions iguals comparteixen posició.</string>
     <string name="review_views_rank">%1$d/%2$d</string>
-    <string name="review_rank_comparison">Classificat per visualitzacions registrades entre %1$d altres piulades recents. Els empats comparteixen posició.</string>
-    <string name="review_rank_only_post">Aquesta és l’única piulada elegible disponible actualment.</string>
+    <string name="review_rank_comparison">Classificat per visualitzacions registrades entre %1$d altres piulades recents dels últims 30 dies. Els empats comparteixen posició.</string>
+    <string name="review_rank_only_post">Aquesta és l’única piulada elegible dels últims 30 dies disponible actualment.</string>
     <string name="review_preview_rank">Posició %1$d/%2$d per visualitzacions.</string>
     <string name="app_icon_dark">Fosca</string>
     <string name="settings_cloud_ai_provider">Proveïdor d’IA al núvol</string>

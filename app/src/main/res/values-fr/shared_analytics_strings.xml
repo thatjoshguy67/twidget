@@ -8,10 +8,10 @@
     <string name="app_icon_selected">Icône %1$s sélectionnée</string>
     <string name="review_performance_ranking">Classement des performances</string>
     <string name="settings_outline_effects">Effets de contour</string>
-    <string name="review_views_rank_context">Comparaison avec vos tweets admissibles les plus récents d’âge et de format similaires, jusqu’à dix au total. Les totaux de vues identiques partagent le même rang.</string>
+    <string name="review_views_rank_context">Comparaison avec dix de vos derniers tweets admissibles au maximum, publiés au cours des 30 derniers jours. Les tweets originaux et les réponses sont classés séparément. Les totaux de vues identiques partagent le même rang.</string>
     <string name="review_views_rank">%1$d/%2$d</string>
-    <string name="review_rank_comparison">Classé selon les vues enregistrées parmi %1$d autres tweets récents. Les ex æquo partagent le même rang.</string>
-    <string name="review_rank_only_post">Il s’agit du seul tweet admissible actuellement disponible.</string>
+    <string name="review_rank_comparison">Classé selon les vues enregistrées parmi %1$d autres tweets récents des 30 derniers jours. Les ex æquo partagent le même rang.</string>
+    <string name="review_rank_only_post">Il s’agit du seul tweet admissible des 30 derniers jours actuellement disponible.</string>
     <string name="review_preview_rank">Classé %1$d/%2$d selon les vues.</string>
     <string name="app_icon_dark">Sombre</string>
     <string name="settings_cloud_ai_provider">Fournisseur d’IA cloud</string>

@@ -6,13 +6,19 @@ import org.junit.Test
 import java.util.Locale
 
 class BriefReviewPreviewCopyTest {
+    @Test fun historicalSavedReviewsKeepTheirCountsWithoutARecentRank() {
+        val old = post().copy(timestamp = now - 365 * 86_400_000L)
+        val copy = BriefReviewPreviewCopy.description(old, saved(old), strings, now)
+        assertTrue(copy.contains("1,000 views"))
+        assertFalse(copy.contains("Ranked"))
+    }
     private val now = 1_800_000_000_000L
     private val hour = 3_600_000L
     private val strings = TestBriefStrings()
     private fun post() = PostSummary("https://x.com/example/status/1", "Shipped this.", 1000, 10, 3, 2, 0, 900,
         now - 48 * hour, "", "Example", "example", "", fullText = "Shipped this.")
     private fun saved(post: PostSummary = post(), peers: List<PostSummary> = emptyList(), observedAt: Long = now): BriefSavedReview {
-        val evidence = BriefReviewEvidence(post, peers, emptyList(), observedAt)
+        val evidence = BriefReviewEvidence(post, peers, emptyList(), observedAt, rankingAt = now)
         val input = BriefCoachInput("published", post.text, true, 0, BriefCoachReport(emptyList(), emptyList(), emptyList(), emptyList()),
             emptyList(), observedAt, "en", reviewEvidence = evidence)
         return BriefSavedReview(BriefReviewSubject(BriefReviewTarget("example", postUrl = post.url), input, post = post),

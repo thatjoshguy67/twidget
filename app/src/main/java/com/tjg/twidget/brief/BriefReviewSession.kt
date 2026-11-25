@@ -36,13 +36,12 @@ internal object BriefReviewSubjects {
     fun withRanking(context: Context, subject: BriefReviewSubject): BriefReviewSubject {
         val evidence = subject.input.reviewEvidence ?: return subject
         val analytics = AnalyticsClient.cached(context, subject.target.username)
+        val now = System.currentTimeMillis()
         val candidates = analytics?.let { it.reviewPosts + it.recentPosts + it.recentReplies + it.historicalPosts }.orEmpty() +
             BriefPublishedReviewStore.posts(context, subject.target.username, 100) + evidence.rankingPosts
-        val posts = candidates.filter { it.isReply == evidence.post.isReply && it.authorUserName.equals(subject.target.username, true) &&
-            com.tjg.twidget.analytics.PostAgeComparison.valid(it) }
-            .distinctBy { BriefPublishedReviewStore.postId(it.url) ?: it.url }
-            .sortedByDescending(PostSummary::timestamp).take(10)
-        return subject.copy(input = subject.input.copy(reviewEvidence = evidence.copy(rankingPosts = posts)))
+        val posts = BriefReviewEvidence.recentRankingCandidates(evidence.post, candidates, now)
+        return subject.copy(input = subject.input.copy(reviewEvidence = evidence.copy(rankingPosts = posts,
+            rankingAt = now)))
     }
 
     /** Only a missing/stale cache merits a recovery fetch; deleted accounts and disabled content do not. */

@@ -16,7 +16,7 @@ internal object BriefReviewPreviewCopy {
         val evidence = saved?.subject?.takeIf { subject ->
             subject.post?.let { BriefPublishedReviewStore.postId(post.url) != null && BriefPublishedReviewStore.postId(it.url) == BriefPublishedReviewStore.postId(post.url) &&
                 (it.authorUserName.equals(post.authorUserName, true) || subject.target.username.equals(post.authorUserName, true)) && it.isReply == post.isReply } == true
-        }?.input?.reviewEvidence
+        }?.input?.reviewEvidence?.copy(rankingAt = now)
         val body = if (evidence == null) strings.text(if (post.isReply) R.string.review_preview_invite_reply else R.string.review_preview_invite)
         else {
             val subject = strings.text(if (post.isReply) R.string.review_preview_subject_reply else R.string.review_preview_subject_tweet)

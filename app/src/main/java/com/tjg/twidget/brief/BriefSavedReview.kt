@@ -55,6 +55,7 @@ internal object BriefSavedReviewCodec {
                 .put("limits", JSONArray(report.limitations)).put("measurements", JSONArray(report.measurements))
                 .put("examples", posts(report.examples)))
             .put("evidence", JSONObject().put("peers", posts(evidence.peers)).put("rankingPosts", posts(evidence.rankingPosts))
+                .put("rankingAt", evidence.rankingAt)
                 .put("observations", JSONArray(evidence.observations.map { point ->
                     JSONObject().put("at", point.at).put("views", point.views ?: JSONObject.NULL)
                         .put("likes", point.likes).put("replies", point.replies).put("reposts", point.reposts).put("quotes", point.quotes)
@@ -81,7 +82,8 @@ internal object BriefSavedReviewCodec {
                 val point = values.getJSONObject(index)
                 PostObservation(point.getLong("at"), if (point.isNull("views")) null else point.getLong("views"),
                     point.getLong("likes"), point.getLong("replies"), point.getLong("reposts"), point.getLong("quotes"))
-            } }, observedAt, readPosts(rawEvidence.optJSONArray("rankingPosts") ?: rawEvidence.getJSONArray("peers")))
+            } }, observedAt, readPosts(rawEvidence.optJSONArray("rankingPosts") ?: rawEvidence.getJSONArray("peers")),
+            rawEvidence.optLong("rankingAt", System.currentTimeMillis()))
         val baseInput = BriefCoachInput(if (post.isReply) "reply" else "published", root.getString("text"), root.getBoolean("complete"), post.media.size + post.quotedPost?.media.orEmpty().size,
             BriefCoachReport(strings(report, "evidence"), strings(report, "factors"), strings(report, "steps"), strings(report, "limits"),
                 readPosts(report.getJSONArray("examples")), strings(report, "measurements")),

@@ -8,10 +8,10 @@
     <string name="app_icon_selected">Icono %1$s seleccionado</string>
     <string name="review_performance_ranking">Clasificación de rendimiento</string>
     <string name="settings_outline_effects">Efectos de contorno</string>
-    <string name="review_views_rank_context">Comparado con tus tuits aptos más recientes de edad y formato similares, hasta diez en total. Los mismos totales de visualizaciones comparten posición.</string>
+    <string name="review_views_rank_context">Comparado con hasta diez de tus tuits aptos más recientes de los últimos 30 días. Los tuits originales y las respuestas se clasifican por separado. Los mismos totales de visualizaciones comparten posición.</string>
     <string name="review_views_rank">%1$d/%2$d</string>
-    <string name="review_rank_comparison">Clasificado por visualizaciones registradas frente a otros %1$d tuits recientes. Los empates comparten posición.</string>
-    <string name="review_rank_only_post">Este es el único tuit apto disponible actualmente.</string>
+    <string name="review_rank_comparison">Clasificado por visualizaciones registradas frente a otros %1$d tuits recientes de los últimos 30 días. Los empates comparten posición.</string>
+    <string name="review_rank_only_post">Este es el único tuit apto de los últimos 30 días disponible actualmente.</string>
     <string name="review_preview_rank">Puesto %1$d/%2$d por visualizaciones.</string>
     <string name="app_icon_dark">Oscuro</string>
     <string name="settings_cloud_ai_provider">Proveedor de IA en la nube</string>

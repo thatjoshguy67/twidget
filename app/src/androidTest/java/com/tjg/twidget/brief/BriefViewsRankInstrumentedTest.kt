@@ -35,7 +35,10 @@ class BriefViewsRankInstrumentedTest {
                     now-60_000,"","Example","example","",fullText="A useful new feature.")
                 val peers = (1..9).map { post.copy(url="https://x.com/example/status/$it", views=it*10L, timestamp=now-it*60000) }
                 for (count in listOf(0,2,8,9)) {
-                    val evidence = BriefReviewEvidence(post, peers.take(count), emptyList(), now)
+                    val oldBanger = post.copy(url = "https://x.com/example/status/999", views = 10_000_000,
+                        timestamp = now - 365 * 86_400_000L)
+                    val evidence = BriefReviewEvidence(post, peers.take(count), emptyList(), now,
+                        rankingPosts = peers.take(count) + oldBanger)
                     val input = BriefCoachInput("published",post.fullText!!,true,0,
                         BriefCoachReport(emptyList(),emptyList(),emptyList(),emptyList()),emptyList(),now,"en",reviewEvidence=evidence)
                     val result = requireNotNull(BriefCoachAi.parse("""{"possibleExplanation":"Your post could identify its audience more clearly.","suggestions":[{"action":"Explain who the feature helps.","reason":"The audience is unstated.","evidenceIds":["subject"]}]}""",input.packet(cloud=true)))

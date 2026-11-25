@@ -110,17 +110,14 @@ object BangerClient {
         if (capped && postsScanned < MAX_POSTS) capped = false
         var cursor = if (complete || capped) "" else state.optString("cursor")
         val seenCursors = mutableSetOf<String>()
-        val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
+        val userId = com.tjg.twidget.data.TwidgetStore.currentStats(context, username).userId
         val requested = username.lowercase(Locale.US)
         var fetchedAnyPage = false
 
         for (pageIndex in 0 until if (complete || capped) 1 else PAGES_PER_REFRESH) {
-            val query = buildString {
-                append("?count=$PAGE_SIZE")
-                if (cursor.isNotBlank()) append("&cursor=${URLEncoder.encode(cursor, StandardCharsets.UTF_8.name())}")
-            }
+            val url = com.tjg.twidget.providers.FxTwitterClient.timelineUrl(username, userId, PAGE_SIZE, cursor)
             val root = try {
-                JSONObject(AnalyticsClient.read("https://api.fxtwitter.com/2/profile/$encoded/statuses$query", ""))
+                JSONObject(AnalyticsClient.read(url, ""))
             } catch (_: Exception) {
                 break
             }

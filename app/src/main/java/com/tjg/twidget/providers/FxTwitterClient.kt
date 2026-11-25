@@ -17,16 +17,30 @@ import org.json.JSONObject
 object FxTwitterClient {
     private const val BASE_URL = "https://api.fxtwitter.com"
 
-    fun fetchProfile(username: String): ProfileStats {
-        val encoded = URLEncoder.encode(username.trim().trimStart('@'), StandardCharsets.UTF_8.name())
-        val json = JSONObject(read("$BASE_URL/$encoded"))
+    internal fun identity(username: String, userId: String = ""): String =
+        userId.takeIf { it.matches(Regex("[0-9]+")) }?.let { "id:$it" }
+            ?: username.trim().trimStart('@')
+
+    internal fun profileUrl(username: String, userId: String = ""): String =
+        "$BASE_URL/2/profile/${URLEncoder.encode(identity(username, userId), StandardCharsets.UTF_8.name())}"
+
+    internal fun timelineUrl(username: String, userId: String, count: Int, cursor: String = "", withReplies: Boolean = false): String =
+        buildString {
+            append(profileUrl(username, userId)).append("/statuses?count=").append(count.coerceIn(1, 100))
+            if (withReplies) append("&with_replies=true")
+            if (cursor.isNotBlank()) append("&cursor=").append(URLEncoder.encode(cursor, StandardCharsets.UTF_8.name()))
+        }
+
+    fun fetchProfile(username: String, userId: String = ""): ProfileStats {
+        if (userId.matches(Regex("[0-9]+"))) return fetchProfileById(userId)
+        val json = JSONObject(read(profileUrl(username)))
         return NetworkResponseParsers.parseFxTwitterUser(json, username)
     }
 
     fun fetchProfileById(userId: String): ProfileStats {
         require(userId.matches(Regex("[0-9]+")))
         val profile = NetworkResponseParsers.parseFxTwitterUser(
-            JSONObject(read("$BASE_URL/2/profile/id:$userId")), "",
+            JSONObject(read(profileUrl("", userId))), "",
         )
         require(profile.userId == userId) { "X account identity could not be verified." }
         return profile

@@ -1,14 +1,14 @@
 import { fxTimelineUrl } from './fx-timeline.js';
 import { ownFxPostEligible } from './post-ranking.js';
 
-export async function fetchTimelinePage(username, cursor = null, fetcher = fetch, mode = 'auto', count = 100) {
-  const url = fxTimelineUrl(username, count, cursor);
+export async function fetchTimelinePage(username, cursor = null, fetcher = fetch, mode = 'auto', count = 100, baseUrl = 'https://api.fxtwitter.com') {
+  const url = fxTimelineUrl(username, count, cursor, baseUrl);
   if (mode === 'standard') url.searchParams.delete('with_replies');
   const response = await fetcher(url, {
     headers: { Accept: 'application/json', 'User-Agent': 'TwidgetBridge/0.1' },
     signal: AbortSignal.timeout(15000),
   });
-  if (response.status === 404 && mode === 'auto' && !cursor) return fetchTimelinePage(username, null, fetcher, 'standard', count);
+  if (response.status === 404 && mode === 'auto' && !cursor) return fetchTimelinePage(username, null, fetcher, 'standard', count, baseUrl);
   const json = await response.json().catch(() => ({}));
   // An error/404 is never evidence that historical coverage is complete.
   if (!response.ok || json.code >= 400 || !Array.isArray(json.results)) {
@@ -18,7 +18,7 @@ export async function fetchTimelinePage(username, cursor = null, fetcher = fetch
   return { results: json.results, mode: mode === 'standard' ? 'standard' : 'with_replies', cursor: typeof next === 'string' && next ? next : null };
 }
 
-export async function backfillAnalytics({ username, profile, archive, normalize, page = (u, c, mode, id) => fetchTimelinePage(id ? `id:${id}` : u, c, fetch, mode), maxPages = 2, restart = false }) {
+export async function backfillAnalytics({ username, profile, archive, normalize, baseUrl = 'https://api.fxtwitter.com', page = (u, c, mode, id) => fetchTimelinePage(id ? `id:${id}` : u, c, fetch, mode, 100, baseUrl), maxPages = 2, restart = false }) {
   return archive.withBackfillLock(username, async () => {
     const existing = await archive.get(username);
     let state = existing.userId === profile.userId && !restart ? { ...existing.backfill } : {};

@@ -98,15 +98,15 @@ internal class CompareSheet(private val activity: MainActivity) {
         }
         AppExecutors.execute(onRejected = { finish(null) }) {
             val result = runCatching {
-                val profile = FxTwitterClient.fetchProfile(handle)
-                val analytics = if (profile.isPrivate == true) null else runCatching { AnalyticsClient.fetchPublic(profile.userName) }.getOrNull()
+                val trackedHandle = tracked.firstOrNull { it.equals(handle, true) }
+                val snapshot = trackedHandle?.let { TwidgetStore.accountSnapshot(activity, it) }
+                val profile = FxTwitterClient.fetchProfile(handle, snapshot?.stats?.userId.orEmpty())
+                val analytics = if (profile.isPrivate == true) null else runCatching { AnalyticsClient.fetchPublic(profile.userName, profile.userId) }.getOrNull()
                 val posts = analytics?.recentPosts?.map { post -> ComparePostCounts(
                     post.likes.takeIf { post.likesKnown }, post.reposts.takeIf { post.repostsKnown },
                     post.replies.takeIf { post.repliesKnown }, post.quotes.takeIf { post.quotesKnown },
                     post.views.takeIf { post.viewsKnown },
                 ) }
-                val trackedHandle = tracked.firstOrNull { it.equals(handle, true) }
-                val snapshot = trackedHandle?.let { TwidgetStore.accountSnapshot(activity, it) }
                 val history = if (profile.userId.isNotBlank() && snapshot != null && snapshot.stats.userId == profile.userId) snapshot.history
                     .filter { !it.estimated && it.followersKnown }.map { CompareHistoryPoint(it.timestamp, it.followers) } else emptyList()
                 val delta = CompareLogic.weeklyDelta(profile.followersCount.takeIf { profile.followersKnown }, history, System.currentTimeMillis())

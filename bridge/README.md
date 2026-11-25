@@ -7,6 +7,14 @@ upstream; Rettiwt guest lookup is the profile fallback.
 Twidget's FxTwitter mode does not require this service. Both profile data and
 weekly analytics can be fetched directly by the Android app.
 
+Profile, weekly analytics, archive backfill and Banger requests use numeric
+account IDs whenever available from the account record, cached profile, or
+the Android request's `userId` query parameter. Profile requests with an explicit
+ID cannot reuse another account's cached response. New accounts use the
+current `/2/profile/{handle}` discovery route; the old `/{handle}` profile API
+is no longer used. `FXTWITTER_BASE_URL` overrides the public API origin for
+self-hosted deployments and provider integration tests.
+
 ## Local development
 
 ```bash

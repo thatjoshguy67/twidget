@@ -977,3 +977,52 @@ test("CSV validation fetches a fresh ID-bound profile and rejects another accoun
   assert.equal(invalid.status, 409);
   assert.equal((await invalid.json()).error, "history_identity_mismatch");
 });
+
+test("profile refresh, weekly analytics, archive backfill and Banger all prefer known Fx IDs", async t => {
+  const paths = [];
+  const provider = http.createServer((req, res) => {
+    const path = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+    paths.push(path);
+    res.setHeader("Content-Type", "application/json");
+    const id = path.includes("id:456") || path === "/2/profile/fresh" ? "456"
+      : path.includes("id:789") ? "789" : path.includes("id:321") ? "321" : path.includes("id:654") ? "654" : "123";
+    const name = id === "456" ? "fresh" : id === "789" ? "remote" : id === "321" ? "enroll" : id === "654" ? "moved" : "example";
+    if (path.endsWith("/statuses")) {
+      assert.match(path, /\/2\/profile\/id:[0-9]+\/statuses$/);
+      return res.end(JSON.stringify({ code: 200, results: [{ type: "status", id: "101", url: `https://x.com/${name}/status/101`,
+        author: { id, screen_name: name }, created_timestamp: Math.floor(Date.now() / 1000) - 3600,
+        text: "Sample post", likes: 5, views: 100, replies: 0, reposts: 0, quotes: 0 }], cursor: { bottom: null } }));
+    }
+    res.end(JSON.stringify({ code: 200, user: { id, screen_name: name, name, followers: 50,
+      following: 10, statuses: 5, likes: 2, protected: false, verification: { verified: false } } }));
+  });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const base = await startBridge(t, { TEST_MOCK_UPSTREAM: "0", FXTWITTER_BASE_URL: `http://127.0.0.1:${provider.address().port}` },
+    { store: followerStore({ example: { userId: "123" }, oldname: { userId: "654" } }) });
+  const profile = await fetch(`${base}/user/example`).then(r => r.json());
+  assert.equal(profile.userId, "123");
+  for (const [path, method] of [["/analytics/example", "GET"], ["/banger/example", "GET"], ["/analytics/example/backfill", "POST"]]) {
+    const response = await fetch(base + path, { method });
+    assert.equal(response.status, 200, `${path}: ${await response.clone().text()}`);
+  }
+  const fresh = await fetch(`${base}/analytics/fresh`).then(r => r.json());
+  assert.equal(fresh.postCount, 1, "A just-discovered account passes its ID to the first weekly timeline request");
+  const remote = await fetch(`${base}/user/remote?userId=789`).then(r => r.json());
+  assert.equal(remote.userId, "789", "An app-provided ID works before the bridge has cached the profile");
+  const enrolled = await fetch(`${base}/history/enroll?userId=321`).then(r => r.json());
+  assert.equal(enrolled.userId, "321", "First shared-history enrollment uses the app's ID");
+  const moved = await fetch(`${base}/history/oldname/handle`, { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: "moved", userId: "654" }) });
+  assert.equal(moved.status, 200, await moved.clone().text());
+  assert.ok(paths.includes("/2/profile/id:321"));
+  assert.ok(paths.includes("/2/profile/id:654"));
+  const wrong = await fetch(`${base}/user/example?userId=999`);
+  assert.equal(wrong.status, 502, "A mismatched ID cannot receive another account's cached profile");
+  assert.ok(paths.includes("/2/profile/id:123/statuses"));
+  assert.ok(paths.includes("/2/profile/id:456/statuses"));
+  assert.ok(paths.includes("/2/profile/id:789"));
+  assert.ok(!paths.includes("/2/profile/example"));
+  assert.ok(!paths.includes("/example"));
+  assert.equal((await fetch(`${base}/user/example?userId=invalid`)).status, 400);
+});

@@ -1,5 +1,5 @@
 import { backfillAnalytics, fetchTimelinePage } from "./analytics-backfill.js";
-import { fxTimelineUrl } from "./fx-timeline.js";
+import { fxProfileUrl, fxUserId } from "./fx-profile.js";
 import { AnalyticsArchive } from "./analytics-archive.js";
 import { postCounters, dashboardStats } from "./dashboard-stats.js";
 import { profileResponse, profileDetails, analyticsResponse } from "./profile-contract.js";
@@ -100,6 +100,7 @@ const twitterApisApiKey = String(process.env.TWITTERAPIS_API_KEY || "").trim();
 const topFollowersProvider = String(process.env.TOP_FOLLOWERS_PROVIDER || "fxtwitter").trim().toLowerCase();
 if (!["fxtwitter", "twitterapis"].includes(topFollowersProvider)) throw new Error("invalid_top_followers_provider");
 const topFollowersConfigured = topFollowersProvider === "fxtwitter" || Boolean(twitterApisApiKey);
+const fxApiBaseUrl = String(process.env.FXTWITTER_BASE_URL || "https://api.fxtwitter.com").trim();
 const fxFollowersEndpoint = String(process.env.FXTWITTER_FOLLOWERS_ENDPOINT || "https://api.fxtwitter.com/2/profile").trim();
 const twitterApisFollowersEndpoint = String(process.env.TWITTERAPIS_FOLLOWERS_ENDPOINT ||
   "https://api.twitterapis.com/twitter/user/followers_v2").trim();
@@ -501,7 +502,7 @@ app.get("/history/:username", async (req, res) => {
       return;
     }
     try {
-      const profile = await fetchProfileLimited(username);
+      const profile = await fetchProfileLimited(username, requestedId || "");
       if (profile.isPrivate === true) {
         res.status(403).json({ error: "private_account_not_pooled" });
         return;
@@ -817,7 +818,7 @@ async function handleAccountRename(req, res, allowLegacy) {
   const userId = stringValue(req.body?.userId);
   if (!old || !next || old === next || !/^[0-9]+$/.test(userId)) return res.status(400).json({ error: "invalid_handle_change" });
   try {
-    const profile = await fetchProfileLimited(next);
+    const profile = await fetchProfileLimited(next, userId);
     if (profile.userId !== userId || profile.userName.toLowerCase() !== next || profile.isPrivate === true) {
       return res.status(409).json({ error: "destination_identity_conflict" });
     }
@@ -890,7 +891,7 @@ app.post("/analytics/:username/backfill", async (req, res) => {
     if (profile.userName.toLowerCase() !== username) return res.status(409).json({ error: "analytics_identity_mismatch" });
     if (!profile.userId || profile.isPrivate !== false) return res.status(403).json({ error: "public_profile_required" });
     const result = await withUpstreamSlot(() => backfillAnalytics({ username, profile, archive: analyticsArchive,
-      normalize: normalizeFxStatus, maxPages: envInteger("ANALYTICS_BACKFILL_PAGES", 2, 1, 5),
+      normalize: normalizeFxStatus, baseUrl: fxApiBaseUrl, maxPages: envInteger("ANALYTICS_BACKFILL_PAGES", 2, 1, 5),
       restart: req.query.restart === "true" || req.query.restart === "1" }));
     res.setHeader("Cache-Control", "no-store");
     if (!result) return res.status(409).json({ error: "backfill_in_progress" });
@@ -1026,7 +1027,7 @@ async function refreshBanger(username) {
   for (let pageIndex = 0; pageIndex < pages; pageIndex += 1) {
     let page;
     try {
-      page = await fetchFxStatusPage(username, cursor);
+      page = await fetchFxStatusPage(username, cursor, profile.userId);
     } catch (error) {
       if (!state.post) throw error;
       break;
@@ -1064,10 +1065,9 @@ async function refreshBanger(username) {
   return state;
 }
 
-async function fetchFxStatusPage(username, cursor = "") {
-  const meta = await historyRepository.getMeta(username.toLowerCase());
-  const id = meta.userId || meta.verifiedUserId || (await cache.get(username.toLowerCase()))?.data?.userId;
-  const url = new URL(`https://api.fxtwitter.com/2/profile/${encodeURIComponent(id ? `id:${id}` : username)}/statuses`);
+async function fetchFxStatusPage(username, cursor = "", userId = "") {
+  const id = await resolveFxUserId(username, userId);
+  const url = new URL(`${fxProfileUrl(username, id, fxApiBaseUrl)}/statuses`);
   url.searchParams.set("count", "100");
   if (cursor) url.searchParams.set("cursor", cursor);
   const response = await fetch(url, {
@@ -1114,8 +1114,8 @@ async function fetchFxWeeklyPosts(username, weekAgo, userId = "") {
   if (process.env.TEST_MOCK_UPSTREAM === "1") return { posts: [], complete: true };
   const key = username.toLowerCase();
   const identityMeta = await historyRepository.getMeta(key);
-  const ownerId = identityMeta.userId || identityMeta.verifiedUserId || (await cache.get(key))?.data?.userId;
-  const page = await fetchTimelinePage(ownerId ? `id:${ownerId}` : username, null, fetch, 'auto', analyticsPostCount);
+  const ownerId = fxUserId(userId, identityMeta.userId, identityMeta.verifiedUserId, (await cache.get(key))?.data?.userId);
+  const page = await fetchTimelinePage(ownerId ? `id:${ownerId}` : username, null, fetch, 'auto', analyticsPostCount, fxApiBaseUrl);
   const json = { results: page.results, cursor: { bottom: page.cursor } };
   const requested = username.toLowerCase();
   const results = Array.isArray(json.results) ? json.results : [];
@@ -1239,7 +1239,7 @@ function minBy(items, selector) {
 }
 
 app.get(["/user/:username", "/users/:username", "/details/:username"], async (req, res) => {
-  await handleUser(req.params.username, res);
+  await handleUser(req.params.username, res, req.query.userId);
 });
 
 app.get("/", async (req, res) => {
@@ -1253,7 +1253,7 @@ app.get("/", async (req, res) => {
     return;
   }
 
-  await handleUser(username, res);
+  await handleUser(username, res, req.query.userId);
 });
 
 app.use((_req, res) => {
@@ -1618,14 +1618,18 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function handleUser(input, res) {
+async function handleUser(input, res, expectedUserId = "") {
+  if (typeof expectedUserId !== "string" || (expectedUserId && !/^[0-9]+$/.test(expectedUserId))) {
+    return res.status(400).json({ error: "invalid_user_id" });
+  }
   const username = cleanUsername(input);
   if (!username) {
     res.status(400).json({ error: "invalid_username" });
     return;
   }
 
-  const cached = await cache.get(username.toLowerCase());
+  const candidate = await cache.get(username.toLowerCase());
+  const cached = !expectedUserId || candidate?.data?.userId === expectedUserId ? candidate : null;
   if (cached && Date.now() - cached.fetchedAt < cacheTtlMs) {
     res.setHeader("X-Twidget-Cache", "hit");
     setPublicCache(res, 300);
@@ -1634,7 +1638,7 @@ async function handleUser(input, res) {
   }
 
   try {
-    const profile = await fetchProfileLimited(username);
+    const profile = await fetchProfileLimited(username, expectedUserId);
     // Ordinary profile lookups must not opt users into persistent pooled
     // history. Existing opt-in accounts still receive their daily update.
     await recordHistorySample(profile);
@@ -1656,11 +1660,11 @@ async function handleUser(input, res) {
   }
 }
 
-async function fetchProfileLimited(username) {
-  const key = cleanUsername(username).toLowerCase();
+async function fetchProfileLimited(username, expectedUserId = "") {
+  const key = `${cleanUsername(username).toLowerCase()}:${expectedUserId}`;
   const existing = profileInFlight.get(key);
   if (existing) return existing;
-  const pending = withUpstreamSlot(() => fetchProfile(username))
+  const pending = withUpstreamSlot(() => fetchProfile(username, expectedUserId))
     .finally(() => profileInFlight.delete(key));
   profileInFlight.set(key, pending);
   return pending;
@@ -1669,16 +1673,20 @@ async function fetchProfileLimited(username) {
 // FxTwitter is the primary upstream: free, no credentials, and it reports
 // verified/protected directly. Rettiwt stays as the fallback for the days
 // FxTwitter is down or blocked.
-async function fetchProfile(username) {
+async function fetchProfile(username, expectedUserId = "") {
   if (process.env.TEST_MOCK_UPSTREAM === "1") {
     return { ...mockProfile(username), profileSource: "mock" };
   }
+  const id = await resolveFxUserId(username, expectedUserId);
   try {
-    return { ...await fetchFxProfile(username), profileSource: "fxtwitter" };
+    return { ...await fetchFxProfile(username, id), profileSource: "fxtwitter" };
   } catch (error) {
+    if (error?.message === "profile_identity_mismatch") throw error;
     console.warn(`FxTwitter fetch failed for ${username}, falling back to Rettiwt:`, error?.message ?? error);
   }
-  return { ...await fetchRettiwtProfile(username), profileSource: "rettiwt" };
+  const profile = await fetchRettiwtProfile(username);
+  if (id && profile.userId !== id) throw new Error("profile_identity_mismatch");
+  return { ...profile, profileSource: "rettiwt" };
 }
 
 function mockProfile(username) {
@@ -1701,15 +1709,18 @@ function mockProfile(username) {
   };
 }
 
+async function resolveFxUserId(username, expectedUserId = "") {
+  const meta = await historyRepository.getMeta(username.toLowerCase());
+  const cachedProfile = await cache.get(username.toLowerCase());
+  return fxUserId(expectedUserId, meta.userId, meta.verifiedUserId, cachedProfile?.data?.userId);
+}
+
 async function fetchFxProfile(username, expectedUserId = "") {
   if (process.env.TEST_MOCK_UPSTREAM === "1") {
     return mockProfile(username);
   }
-  const meta = await historyRepository.getMeta(username.toLowerCase());
-  const cachedProfile = await cache.get(username.toLowerCase());
-  const id = expectedUserId || meta.userId || meta.verifiedUserId || cachedProfile?.data?.userId || "";
-  const identity = /^[0-9]+$/.test(id) ? `2/profile/id:${id}` : encodeURIComponent(username);
-  const response = await fetch(`https://api.fxtwitter.com/${identity}`, {
+  const id = await resolveFxUserId(username, expectedUserId);
+  const response = await fetch(fxProfileUrl(username, id, fxApiBaseUrl), {
     headers: { Accept: "application/json", "User-Agent": "TwidgetBridge/0.1" },
     signal: AbortSignal.timeout(10000),
   });
@@ -1721,7 +1732,7 @@ async function fetchFxProfile(username, expectedUserId = "") {
   if (!user || typeof user !== "object") {
     throw new Error(`FxTwitter returned no user (${stringValue(json.message) || "unknown"})`);
   }
-  if (id && (String(user.id) !== String(id) || String(user.screen_name).replace(/^@+/, "").toLowerCase() !== username.toLowerCase())) {
+  if ((id && String(user.id) !== id) || String(user.screen_name).replace(/^@+/, "").toLowerCase() !== username.toLowerCase()) {
     throw new Error("profile_identity_mismatch");
   }
   return {

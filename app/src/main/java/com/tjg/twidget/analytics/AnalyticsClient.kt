@@ -272,10 +272,10 @@ object AnalyticsClient {
     }
 
     /** Read-only public weekly analytics for comparisons; does not update account caches. */
-    internal fun fetchPublic(username: String): PostAnalytics = fetchFxTwitter(username)
+    internal fun fetchPublic(username: String, userId: String = ""): PostAnalytics = fetchFxTwitter(username, userId)
 
     private fun fetchFxTwitter(username: String, userId: String = ""): PostAnalytics {
-        val profile = if (userId.matches(Regex("[0-9]+"))) FxTwitterClient.fetchProfileById(userId) else FxTwitterClient.fetchProfile(username)
+        val profile = FxTwitterClient.fetchProfile(username, userId)
         require(profile.userName.equals(username, true)) { "Account handle changed; refresh the profile first." }
         val now = System.currentTimeMillis()
         val weekAgo = now - WEEK_MS

@@ -17,10 +17,10 @@ object RettiwtClient {
     fun refresh(context: Context, accountUsername: String = TwidgetStore.settings(context).username, forceSharedHistory: Boolean = false): ProfileStats {
         val generation = TwidgetStore.accountGeneration(context, accountUsername)
         val previous = TwidgetStore.currentStats(context, accountUsername)
-        val attempt = runCatching { refreshProfile(context, accountUsername) }
+        val attempt = runCatching { refreshProfile(context, accountUsername, previous.userId) }
         val fetched = attempt.getOrNull()?.let { profile ->
             if (profile.userId.isNotBlank()) profile else {
-                val identity = runCatching { FxTwitterClient.fetchProfile(profile.userName) }.getOrNull()
+                val identity = runCatching { FxTwitterClient.fetchProfile(profile.userName, previous.userId) }.getOrNull()
                 profile.copy(userId = identity?.userId.orEmpty())
             }
         }
@@ -28,7 +28,7 @@ object RettiwtClient {
             (fetched == null || fetched.userId != previous.userId)) {
             // Resolve the immutable ID when an old handle disappears or is recycled.
             val resolved = FxTwitterClient.fetchProfileById(previous.userId)
-            val refreshed = refreshProfile(context, resolved.userName)
+            val refreshed = refreshProfile(context, resolved.userName, previous.userId)
             require(refreshed.userId.isBlank() || refreshed.userId == previous.userId) {
                 "X account identity changed during refresh. Try again."
             }
@@ -39,7 +39,7 @@ object RettiwtClient {
         return HistoryPool.enrich(context, owned, settings, TwidgetStore.bridgeEndpoint(settings), force = forceSharedHistory)
     }
 
-    private fun refreshProfile(context: Context, accountUsername: String): ProfileStats {
+    private fun refreshProfile(context: Context, accountUsername: String, userId: String): ProfileStats {
         val settings = TwidgetStore.settings(context)
         val username = accountUsername.trim().trimStart('@')
         if (username.isBlank()) {
@@ -77,7 +77,7 @@ object RettiwtClient {
         // fallback; with it off the app talks to FxTwitter only.
         if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             try {
-                return finalize(FxTwitterClient.fetchProfile(username), username)
+                return finalize(FxTwitterClient.fetchProfile(username, userId), username)
             } catch (error: Exception) {
                 if (!settings.shareHistory) throw error
                 lastError = error
@@ -90,7 +90,9 @@ object RettiwtClient {
             "${endpoint.url}/users/$encoded",
             "${endpoint.url}/details/$encoded",
             "${endpoint.url}?username=$encoded",
-        )
+        ).map { url ->
+            if (userId.matches(Regex("[0-9]+"))) "$url${if ('?' in url) '&' else '?'}userId=$userId" else url
+        }
         for (candidate in candidates) {
             try {
                 return enrichStatusFields(
@@ -135,7 +137,9 @@ object RettiwtClient {
                 isPrivate = parsed.isPrivate ?: official.isPrivate,
             )
         }
-        runCatching { FxTwitterClient.fetchProfile(parsed.userName) }
+        runCatching { FxTwitterClient.fetchProfile(parsed.userName, parsed.userId.ifBlank {
+            TwidgetStore.currentStats(context, parsed.userName).userId
+        }) }
             .getOrNull()
             ?.takeIf { it.isVerified != null || it.isPrivate != null }
             ?.let { fx ->
@@ -175,8 +179,8 @@ object RettiwtClient {
     // that one field when possible, otherwise retain the last observed value
     // instead of recording a fabricated drop to zero.
     private fun withAvailableLikes(context: Context, username: String, official: ProfileStats): ProfileStats {
-        val live = runCatching { FxTwitterClient.fetchProfile(username) }.getOrNull()
         val previous = TwidgetStore.currentStats(context, username)
+        val live = runCatching { FxTwitterClient.fetchProfile(username, official.userId.ifBlank { previous.userId }) }.getOrNull()
         val likes = MetricProvenance.preferLiveThenPrevious(
             liveValue = live?.likeCount,
             liveKnown = live?.likesKnown == true,

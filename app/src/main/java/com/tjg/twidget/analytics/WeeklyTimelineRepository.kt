@@ -6,9 +6,9 @@ import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.core.SharedRequestCache
 import com.tjg.twidget.data.SecureCredentialStore
 import com.tjg.twidget.providers.TwitterApisClient
+import com.tjg.twidget.providers.FxTwitterClient
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.security.MessageDigest
@@ -27,11 +27,9 @@ internal object WeeklyTimelineRepository {
         cache.invalidateCompleted { it.endsWith(suffix) }
     }
 
-    fun fxTwitter(username: String, userId: String = ""): Timeline = cache.get("fx:${username.lowercase(Locale.US)}") {
+    fun fxTwitter(username: String, userId: String = ""): Timeline = cache.get("fx:${FxTwitterClient.identity(username, userId)}:${username.lowercase(Locale.US)}") {
         val now = System.currentTimeMillis()
         val weekAgo = now - WEEK_MS
-        val identity = userId.takeIf { it.matches(Regex("[0-9]+")) }?.let { "id:$it" } ?: username
-        val encoded = URLEncoder.encode(identity, StandardCharsets.UTF_8.name())
         val statuses = mutableListOf<JSONObject>()
         val seenIds = mutableSetOf<String>()
         val seenCursors = mutableSetOf<String>()
@@ -39,13 +37,11 @@ internal object WeeklyTimelineRepository {
         var pages = 0
         var reachedWindowBoundary = false
         while (pages < MAX_ANALYTICS_PAGES && statuses.size < MAX_ANALYTICS_STATUSES) {
-            val query = buildString {
-                append("?count=$ANALYTICS_PAGE_SIZE&with_replies=true")
-                if (cursor.isBlank()) append("&since=$weekAgo")
-                else append("&cursor=${URLEncoder.encode(cursor, StandardCharsets.UTF_8.name())}")
-            }
+            // The provider's `since` filter can return 404. Bound and filter
+            // the retrieved pages locally, just like the bridge.
+            val url = FxTwitterClient.timelineUrl(username, userId, ANALYTICS_PAGE_SIZE, cursor, withReplies = true)
             val body = try {
-                HttpTransport.requireSuccess(HttpTransport.get("https://api.fxtwitter.com/2/profile/$encoded/statuses$query"), "FxTwitter timeline")
+                HttpTransport.requireSuccess(HttpTransport.get(url), "FxTwitter timeline")
             } catch (error: HttpTransport.HttpException) {
                 // A reply timeline may advertise a continuation cursor which the
                 // upstream rejects. Keep the observed first page as sampled data.

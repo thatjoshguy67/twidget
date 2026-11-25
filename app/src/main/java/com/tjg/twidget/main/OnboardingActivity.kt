@@ -662,7 +662,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             }
         }) {
             val result = runCatching {
-                FxTwitterClient.fetchProfile(username).also { profile ->
+                FxTwitterClient.fetchProfile(username, TwidgetStore.currentStats(this, username).userId).also { profile ->
                     if (!profile.userName.equals(username, ignoreCase = true)) {
                         throw HttpTransport.HttpException(404, "FxTwitter returned a different account")
                     }

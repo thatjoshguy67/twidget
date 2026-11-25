@@ -636,7 +636,7 @@ app.post("/history/:username/top-followers/scan", trackTopFollowersActivity, asy
     await historyRepository.patchMeta(key, { topFollowersEnrolledAt: Date.now() });
   }
   const snapshot = await historyRepository.getTopFollowersSnapshot(key, { offset: 0, limit: 5 });
-  if (snapshot && Date.now() - snapshot.completedAt < topFollowersFreshMs) {
+  if (snapshot && (snapshot.provider || "twitterapis") === topFollowersProvider && Date.now() - snapshot.completedAt < topFollowersFreshMs) {
     res.json(topFollowersSnapshotResponse(username, snapshot, true));
     return;
   }
@@ -661,7 +661,7 @@ async function refreshTopFollowersOnReturn(key, username, snapshot, meta, req) {
 
 async function topFollowersRefreshDecision(key, snapshot, scan, now = Date.now()) {
   await topFollowersPriority.refresh();
-  if (scan && (scan.provider || "twitterapis") !== topFollowersProvider) return "full";
+  if ((scan || snapshot) && (scan?.provider || snapshot?.provider || "twitterapis") !== topFollowersProvider) return "full";
   return topFollowersPriority.refreshKind(key, snapshot, scan, now, topFollowersHeadCheck);
 }
 

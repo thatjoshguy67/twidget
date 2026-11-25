@@ -941,7 +941,7 @@ test("Fx failure after migration retains the paid snapshot and never reports its
   await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
   t.after(() => { provider.closeAllConnections(); provider.close(); });
   const now = Date.now();
-  const old = { ...completedFollowerScan(now - 2 * DAY), userId: "123" };
+  const old = { ...completedFollowerScan(now - 60_000), userId: "123" };
   const running = { ...old, scanId: "paid-running", status: "running", cursor: "paid-cursor", previous: old };
   const base = await startBridge(t, { TOP_FOLLOWERS_PROVIDER: "fxtwitter", TWITTERAPIS_API_KEY: "", TEST_MOCK_UPSTREAM: "0",
     FXTWITTER_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/profile` },

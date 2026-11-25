@@ -25,7 +25,7 @@ class DashboardStatCardLayout @JvmOverloads constructor(context: Context, attrs:
         val panel = findViewById<View>(R.id.dashboard_stat_context)
         split = getTag(R.id.dashboard_stat_expanded) == true && innerWidth >= dp(240) && panel != null
         sideInset = if (split) dp(8) else 0
-        val available = (innerWidth - sideInset * 2).coerceAtLeast(1)
+        val available = (innerWidth - sideInset).coerceAtLeast(1)
         val alignment = if (split) android.view.Gravity.START else android.view.Gravity.CENTER_HORIZONTAL
         (header as? LinearLayout)?.gravity = alignment or android.view.Gravity.CENTER_VERTICAL
         (value as? android.widget.TextView)?.gravity = alignment or android.view.Gravity.CENTER_VERTICAL
@@ -65,7 +65,7 @@ class DashboardStatCardLayout @JvmOverloads constructor(context: Context, attrs:
         value.layout(valueLeft, bodyTop, valueLeft + columnWidth, bottom - detailHeight)
         detail.layout(valueLeft, bottom - detailHeight, valueLeft + columnWidth, bottom)
         if (split && panel != null) {
-            val x = if (rtl) paddingLeft + sideInset else valueLeft + columnWidth + dp(10)
+            val x = if (rtl) paddingLeft else valueLeft + columnWidth + dp(10)
             panel.layout(x, paddingTop, x + panel.measuredWidth, bottom)
         }
     }

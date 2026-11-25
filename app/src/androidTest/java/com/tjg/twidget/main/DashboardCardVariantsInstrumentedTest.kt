@@ -177,7 +177,7 @@ class DashboardCardVariantsInstrumentedTest {
                             assertTrue("Thumbnail fits inside the content row", media.getChildAt(0).height <= media.height)
                         }
                         assertTrue("The post itself remains actionable", tile.hasOnClickListeners())
-                        assertTrue("Media opens the annotated viewer",
+                        assertTrue("Media opens the tweet",
                             tile.findViewById<View>(R.id.dashboard_post_media).hasOnClickListeners())
                     }
                     val opened = mutableListOf<android.content.Intent>()
@@ -198,6 +198,10 @@ class DashboardCardVariantsInstrumentedTest {
                             intent.getBooleanExtra("com.x.deeplink.EXTRA_INTERNAL_DEEPLINK", false))
                         assertEquals("Tweet navigation does not detach the caller's task", 0,
                             intent.flags and (android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                        assertTrue(tile.findViewById<View>(R.id.dashboard_post_media).performClick())
+                        assertEquals("Both the card and image stack open X", 2, opened.size)
+                        assertEquals("com.twitter.android", opened.last().`package`)
+                        assertEquals(post.url, opened.last().dataString)
                         assertEquals(android.net.Uri.parse("android-app://${activity.packageName}"),
                             androidx.core.content.IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_REFERRER, android.net.Uri::class.java))
                     } finally { instrumentation.removeMonitor(monitor) }

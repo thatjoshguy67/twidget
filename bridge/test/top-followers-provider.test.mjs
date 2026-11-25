@@ -34,10 +34,10 @@ test("unavailable, malformed and incomplete Fx lists cannot masquerade as termin
   for (const body of [
     { code: 404, results: [], cursor: { bottom: null } },
     { code: 200, results: [] },
-    { code: 200, results: [], cursor: { bottom: "more" } },
     { code: 200, results: [{ ...fxUser, id: "" }], cursor: { bottom: null } },
   ]) assert.throws(() => parseFxFollowersPage(body));
   assert.deepEqual(parseFxFollowersPage({ code: 200, results: [], cursor: { bottom: null } }), { users: [], nextCursor: "" });
+  assert.deepEqual(parseFxFollowersPage({ code: 200, results: [], cursor: { bottom: "terminal" } }), { users: [], nextCursor: "terminal" });
 });
 
 test("TwitterAPIs follower pages are normalized and deduplicated", () => {

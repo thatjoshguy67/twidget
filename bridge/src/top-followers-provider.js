@@ -32,8 +32,8 @@ export function parseFxFollowersPage(body) {
     if (!user) throw new Error("invalid_fx_follower");
     return user;
   });
-  // Empty pages with a continuation cursor do not prove the list is complete.
-  if (!users.length && body.cursor.bottom) throw new Error("fx_followers_empty_continuation");
+  // X can keep a bottom cursor on the terminal empty page. The collector
+  // ends on a valid empty results array, not cursor nullness alone.
   const nextCursor = boundedString(body.cursor.bottom, 4096);
   if (nextCursor === null) throw new Error("invalid_fx_followers_cursor");
   return { users, nextCursor };

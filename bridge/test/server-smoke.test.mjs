@@ -906,10 +906,11 @@ test("Fx follower scans need no key, use immutable IDs, and publish interval los
   const provider = http.createServer((req, res) => {
     const url = new URL(req.url, "http://localhost");
     requests.push({ path: url.pathname, cursor: url.searchParams.get("cursor"), auth: req.headers.authorization });
-    const id = url.searchParams.has("cursor") ? "3" : "1";
+    const cursor = url.searchParams.get("cursor");
+    const id = cursor ? "3" : "1";
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ code: 200, results: [{ id, screen_name: `fan${id}`, name: "Fan", followers: 10 }],
-      cursor: { top: null, bottom: id === "1" ? "fx-next" : null } }));
+    res.end(JSON.stringify({ code: 200, results: cursor === "fx-end" ? [] : [{ id, screen_name: `fan${id}`, name: "Fan", followers: 10 }],
+      cursor: { top: null, bottom: cursor ? "fx-end" : "fx-next" } }));
   });
   await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
   t.after(() => { provider.closeAllConnections(); provider.close(); });
@@ -927,6 +928,7 @@ test("Fx follower scans need no key, use immutable IDs, and publish interval los
   assert.deepEqual(requests, [
     { path: "/profile/id:123/followers", cursor: null, auth: undefined },
     { path: "/profile/id:123/followers", cursor: "fx-next", auth: undefined },
+    { path: "/profile/id:123/followers", cursor: "fx-end", auth: undefined },
   ]);
   const history = await fetch(`${base}/history/example`).then(r => r.json());
   assert.equal(history.followerChanges.length, 1, JSON.stringify(history));

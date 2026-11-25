@@ -50,7 +50,8 @@ export function topFollowersHeadComplete(scan) {
 export function canResumeTopFollowersScan(scan, { now = Date.now(), resumeMaxAgeMs = DAY, maxPages = MAX_PAGES } = {}) {
   return scan?.status === "failed" && now >= Number(scan.retryAt || 0) &&
     now - scan.startedAt <= resumeMaxAgeMs && scan.pages < maxPages &&
-    ["provider_unavailable", "provider_rate_limited", "provider_credit_empty", "provider_key_rejected", "provider_timeout", "provider_request_budget"].includes(scan.error);
+    ["provider_unavailable", "provider_rate_limited", "provider_credit_empty", "provider_key_rejected", "provider_timeout", "provider_request_budget",
+      "fx_followers_empty_continuation"].includes(scan.error);
 }
 
 export function topFollowersRetryState(scan, error, now = Date.now()) {

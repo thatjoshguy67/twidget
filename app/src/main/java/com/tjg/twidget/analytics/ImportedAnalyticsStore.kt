@@ -21,13 +21,13 @@ object ImportedAnalyticsStore {
 
     fun saveVerified(context: Context, username: String, incoming: List<XAnalyticsMovement>) {
         synchronized(com.tjg.twidget.data.TwidgetStore) {
-            if (incoming.none(::hasAnalytics)) return
+            if (incoming.isEmpty()) return
             validate(context, username, incoming)
             val merged = linkedMapOf<LocalDate, XAnalyticsMovement>()
             (all(context, username) + incoming).sortedBy { it.date }.forEach { sample ->
-                if (hasAnalytics(sample)) {
-                    merged[sample.date] = merged[sample.date]?.let { saved -> merge(saved, sample) } ?: sample
-                }
+                // Follow movements are required CSV data even when every
+                // optional engagement column is absent (or both counts are zero).
+                merged[sample.date] = merged[sample.date]?.let { saved -> merge(saved, sample) } ?: sample
             }
             val retained = merged.values.toList().takeLast(MAX_DAYS)
             com.tjg.twidget.data.AccountPreferences.open(context, PREFS).edit()
@@ -56,9 +56,6 @@ object ImportedAnalyticsStore {
             com.tjg.twidget.data.AccountPreferences.open(context, PREFS).edit().remove(key(username)).apply()
         }
     }
-
-    private fun hasAnalytics(sample: XAnalyticsMovement): Boolean =
-        sample.analyticsValues().any { it.second != null }
 
     private fun merge(saved: XAnalyticsMovement, incoming: XAnalyticsMovement): XAnalyticsMovement = incoming.copy(
         impressions = saved.impressions ?: incoming.impressions,

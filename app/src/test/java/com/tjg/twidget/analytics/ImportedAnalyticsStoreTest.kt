@@ -25,7 +25,7 @@ class ImportedAnalyticsStoreTest {
             mediaViews = 6,
         )
 
-        assertEquals(11, sample.analyticsValues().size)
+        assertEquals(12, sample.analyticsValues().size)
         assertEquals(100L, sample.analyticsValues().first().second)
     }
 

@@ -1,0 +1,31 @@
+<resources>
+    <string name="interactions_title">Interaktionen</string>
+    <string name="interaction_stats_title">Beitragsstatistik</string>
+    <string name="interaction_mix_title">Interaktionsmix</string>
+    <string name="interaction_split_title">Originale und Antworten</string>
+    <string name="interaction_likes">Gefällt mir</string>
+    <string name="interaction_reposts">Reposts</string>
+    <string name="interaction_replies">Antworten</string>
+    <string name="interaction_shares">Geteilt</string>
+    <string name="interaction_quotes">Zitate</string>
+    <string name="interaction_bookmarks">Lesezeichen</string>
+    <string name="interaction_views">Aufrufe</string>
+    <string name="interaction_original">Originale</string>
+    <string name="interaction_total">gesamt</string>
+    <string name="interaction_last_7">Letzte 7 Tage</string>
+    <string name="interaction_last_30">Letzte 30 Tage</string>
+    <string name="interaction_last_90">Letzte 90 Tage</string>
+    <string name="interaction_empty">Noch keine Interaktionsdaten. Importiere X Analytics oder aktualisiere öffentliche Beiträge.</string>
+    <string name="interaction_mix_unavailable">Mix bei unvollständigen Daten nicht verfügbar</string>
+    <string name="interaction_split_empty">Keine Beiträge in diesem Zeitraum erfasst</string>
+    <string name="interaction_by_post_date">CSV-Tagesaktivität; öffentliche Zähler nach Beitragsdatum.</string>
+    <string name="interaction_range_7">7D</string>
+    <string name="interaction_range_30">30D</string>
+    <string name="interaction_range_90">90D</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

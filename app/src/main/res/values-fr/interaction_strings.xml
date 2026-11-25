@@ -1,0 +1,31 @@
+<resources>
+    <string name="interactions_title">Interactions</string>
+    <string name="interaction_stats_title">Statistiques des posts</string>
+    <string name="interaction_mix_title">Répartition des interactions</string>
+    <string name="interaction_split_title">Posts originaux et réponses</string>
+    <string name="interaction_likes">J’aime</string>
+    <string name="interaction_reposts">Reposts</string>
+    <string name="interaction_replies">Réponses</string>
+    <string name="interaction_shares">Partages</string>
+    <string name="interaction_quotes">Citations</string>
+    <string name="interaction_bookmarks">Signets</string>
+    <string name="interaction_views">Vues</string>
+    <string name="interaction_original">Originaux</string>
+    <string name="interaction_total">total</string>
+    <string name="interaction_last_7">7 derniers jours</string>
+    <string name="interaction_last_30">30 derniers jours</string>
+    <string name="interaction_last_90">90 derniers jours</string>
+    <string name="interaction_empty">Aucune interaction pour le moment. Importez X Analytics ou actualisez vos posts publics.</string>
+    <string name="interaction_mix_unavailable">Répartition indisponible pour des données incomplètes</string>
+    <string name="interaction_split_empty">Aucun post observé sur cette période</string>
+    <string name="interaction_by_post_date">Activité quotidienne CSV ; compteurs publics par date de publication.</string>
+    <string name="interaction_range_7">7D</string>
+    <string name="interaction_range_30">30D</string>
+    <string name="interaction_range_90">90D</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

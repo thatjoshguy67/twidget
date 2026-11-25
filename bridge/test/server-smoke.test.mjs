@@ -608,3 +608,23 @@ test("an empty legacy enrollment can resume sampling without being silently boun
   assert.equal(body.userId, '');
   assert.deepEqual(body.history.map(row => row.followers), [1234]);
 });
+
+test('interaction sync validates identity, merges snapshots and retains nulls', async t => {
+  const base = await startBridge(t, {});
+  const history = await (await fetch(`${base}/history/example`)).json();
+  const send = body => fetch(`${base}/history/example/interactions`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const data = { userId: history.userId, daily: [{ date: '2026-01-01', likes: 0 }],
+    posts: [{ id: '123', createdAt: 1000, capturedAt: 2000, isReply: false, likes: 5 }] };
+  assert.equal((await send({ ...data, userId: 'wrong' })).status, 409);
+  assert.equal((await send({ ...data, posts: [{ ...data.posts[0], likes: -1 }] })).status, 400);
+  assert.equal((await send(data)).status, 200);
+  assert.equal((await send({ ...data, daily: [], posts: [{ ...data.posts[0], capturedAt: 3000, likes: 2, reposts: 3 }] })).status, 200);
+  const saved = await (await fetch(`${base}/history/example/interactions`)).json();
+  assert.equal(saved.userId, history.userId);
+  assert.equal(saved.daily[0].likes, 0);
+  assert.equal(saved.daily[0].shares, null);
+  assert.equal(saved.posts[0].likes, 5);
+  assert.equal(saved.posts[0].reposts, 3);
+});

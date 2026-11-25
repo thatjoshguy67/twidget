@@ -2,6 +2,9 @@ package com.tjg.twidget.bridge
 
 import android.content.Context
 import com.tjg.twidget.analytics.XAnalyticsMovement
+import com.tjg.twidget.analytics.InteractionData
+import com.tjg.twidget.analytics.InteractionStore
+import com.tjg.twidget.analytics.mergeInteractions
 import com.tjg.twidget.core.HttpTransport
 import com.tjg.twidget.core.NetworkResponseParsers
 import com.tjg.twidget.data.BridgeEndpoint
@@ -37,6 +40,7 @@ object HistoryPool {
         if (!needsSync(context, username)) return stats
         markAttempted(context, username)
         val pooled = runCatching { fetchPooledHistory(context, username, stats.userId, endpoint) }.getOrNull() ?: return stats
+        runCatching { syncInteractions(context, username, stats.userId, endpoint) }
         markSynced(context, username)
         return if (pooled.isEmpty()) stats else stats.copy(history = stats.history + pooled, historyUserId = stats.userId)
     }
@@ -52,7 +56,16 @@ object HistoryPool {
                 put(JSONObject()
                     .put("date", movement.date.toString())
                     .put("newFollows", movement.newFollows)
-                    .put("unfollows", movement.unfollows))
+                    .put("unfollows", movement.unfollows)
+                    .apply {
+                        movement.likes?.let { put("likes", it) }
+                        movement.reposts?.let { put("reposts", it) }
+                        movement.quotes?.let { put("quotes", it) }
+                        movement.replies?.let { put("replies", it) }
+                        movement.shares?.let { put("shares", it) }
+                        movement.bookmarks?.let { put("bookmarks", it) }
+                        movement.impressions?.let { put("impressions", it) }
+                    })
             }
         })
         val body = request(
@@ -64,6 +77,29 @@ object HistoryPool {
         )
         val root = JSONObject(body)
         return NetworkResponseParsers.parseBridgeAnalyticsImport(root)
+    }
+
+    /** Exchange only for an ID-bound pooled account; never upload to a recycled handle. */
+    fun syncInteractions(context: Context, username: String, userId: String, endpoint: BridgeEndpoint) {
+        if (userId.isBlank()) return
+        val url = "${endpoint.url}/history/${encode(username)}/interactions"
+        val remote = JSONObject(request(context, "GET", url, null, endpoint.token))
+        if (remote.optString("userId") != userId) return
+        InteractionStore.seedCsv(context, username)
+        val remoteData = InteractionStore.decode(remote)
+        val merged = InteractionStore.merge(context, username,
+            mergeInteractions(remoteData, InteractionStore.all(context, username)))
+        val remoteDays = remoteData.daily.associateBy { it.date }
+        val remotePosts = remoteData.posts.associateBy { it.id }
+        val dailyChunks = merged.daily.filter { it != remoteDays[it.date] }.chunked(50)
+        val postChunks = merged.posts.filter { it != remotePosts[it.id] }.chunked(50)
+        val chunks = maxOf(dailyChunks.size, postChunks.size)
+        repeat(chunks) { index ->
+            val payload = InteractionStore.encode(InteractionData(
+                dailyChunks.getOrElse(index) { emptyList() }, postChunks.getOrElse(index) { emptyList() },
+            )).put("userId", userId)
+            request(context, "POST", url, payload.toString(), endpoint.token)
+        }
     }
 
     // Registers the account when unknown and returns the pooled history.

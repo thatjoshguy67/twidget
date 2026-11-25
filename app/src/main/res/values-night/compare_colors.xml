@@ -1,0 +1,9 @@
+<resources>
+    <color name="compare_followers_color">#69B6FF</color>
+    <color name="compare_engagement_color">#FFB265</color>
+    <color name="compare_likes_color">#FF7188</color>
+    <color name="compare_reposts_color">#57CE90</color>
+    <color name="compare_views_color">#A998FF</color>
+    <color name="compare_negative_color">#FF7A80</color>
+    <color name="compare_positive_color">#72D6A0</color>
+</resources>

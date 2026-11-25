@@ -69,6 +69,10 @@ internal enum class DashboardCardSize(val span: Int, val heightDp: Int) {
 }
 
 internal enum class DashboardCardType(val id: String, val labelRes: Int, val size: DashboardCardSize) {
+    INTERACTIONS("interactions", R.string.interactions_title, DashboardCardSize.FULL),
+    INTERACTION_TOTALS("interaction_totals", R.string.interaction_stats_title, DashboardCardSize.FULL),
+    ENGAGEMENT_MIX("engagement_mix", R.string.interaction_mix_title, DashboardCardSize.FULL),
+    ORIGINAL_REPLIES("original_replies", R.string.interaction_split_title, DashboardCardSize.FULL),
     FOLLOWER_RATIO("follower_ratio", R.string.follower_ratio, DashboardCardSize.HALF),
     POST_RATE("post_rate", R.string.post_rate, DashboardCardSize.HALF),
     LIKES_PER_POST("likes_per_post", R.string.likes_per_post, DashboardCardSize.HALF),
@@ -99,11 +103,19 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
     LIKES("likes", R.string.likes, DashboardCardSize.CHART);
 
     val preferredHeightDp: Int get() = when (this) {
+        INTERACTIONS -> 340
+        INTERACTION_TOTALS -> 230
+        ENGAGEMENT_MIX -> 240
+        ORIGINAL_REPLIES -> 185
         TOP_FOLLOWERS -> 176
         MILESTONE -> 184
         else -> 160
     }
     fun preferredHeightDp(context: android.content.Context): Int = when (this) {
+        INTERACTIONS -> (340 + 50 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
+        INTERACTION_TOTALS -> (230 + 70 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
+        ENGAGEMENT_MIX -> (240 + 65 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
+        ORIGINAL_REPLIES -> (185 + 60 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
         TOP_FOLLOWERS -> 176
         MILESTONE -> kotlin.math.ceil(64.0 + 120.0 * context.resources.configuration.fontScale.coerceAtLeast(1f)).toInt()
         else -> 160
@@ -323,6 +335,7 @@ internal class MainDashboardBinder(
         history: List<HistorySample>, chartHistory: List<HistorySample>, fullHistory: List<HistorySample>,
         span: Int = editModeController.cardSpan(card),
     ): View = when {
+        card in INTERACTION_CARDS -> InteractionCards.create(activity, card, account)
         card == DashboardCardType.FOLLOWERS -> createFollowerGraph(account, chartHistory, fullHistory)
         card == DashboardCardType.FOLLOWER_COUNT -> FollowerCountCard.create(activity, stats,
             renderSnapshot?.todayDelta({ it.followersKnown }) { it.followers } ?: 0, span, reusableContent)
@@ -840,7 +853,7 @@ internal class MainDashboardBinder(
             val previous = (0 until wrapper.childCount).map { wrapper.getChildAt(it) }
                 .firstOrNull { it.getTag(R.id.dashboard_card_content) == true }
             val snapshot = renderSnapshot ?: TwidgetStore.accountSnapshot(activity, activity.selectedAccount)
-            reusableContent = if (reuseContent && card !in POST_CARD_TYPES && card != DashboardCardType.TOP_FOLLOWERS) previous else null
+            reusableContent = if (reuseContent && card !in INTERACTION_CARDS && card !in POST_CARD_TYPES && card != DashboardCardType.TOP_FOLLOWERS) previous else null
             val next = try { createCardContent(card, activity.selectedAccount, snapshot.stats,
                 TwidgetStore.rangedHistory(snapshot.history, HistoryRange.WEEK),
                 TwidgetStore.chartHistory(snapshot.history, HistoryRange.WEEK), snapshot.history) }
@@ -1440,6 +1453,8 @@ internal class MainDashboardBinder(
         private const val EDIT_BORDER_TAG = "dashboard_edit_border"
         private const val EDIT_CARD_SCALE = 0.97f
                 private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
+        private val INTERACTION_CARDS = setOf(DashboardCardType.INTERACTIONS, DashboardCardType.INTERACTION_TOTALS,
+            DashboardCardType.ENGAGEMENT_MIX, DashboardCardType.ORIGINAL_REPLIES)
         private val POST_CARD_TYPES = setOf(
             DashboardCardType.ALL_TIME_POST,
             DashboardCardType.BEST_POST,

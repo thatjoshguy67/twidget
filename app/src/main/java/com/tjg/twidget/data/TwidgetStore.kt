@@ -166,6 +166,10 @@ object TwidgetStore {
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "milestone",
         "followers",
+        "interactions",
+        "interaction_totals",
+        "engagement_mix",
+        "original_replies",
         "follower_count",
         "top_followers",
         "daily_streak",
@@ -563,6 +567,7 @@ object TwidgetStore {
         edit.apply()
         clearCachedStats(context, cleanUsername)
         com.tjg.twidget.analytics.ImportedAnalyticsStore.clear(context, cleanUsername)
+        com.tjg.twidget.analytics.InteractionStore.clear(context, cleanUsername)
         com.tjg.twidget.followers.TopFollowersStore.clear(context, cleanUsername)
         BangerClient.clear(context, cleanUsername)
         BangerScanWorker.clear(context, cleanUsername)
@@ -702,6 +707,13 @@ object TwidgetStore {
         val saved = prefs(context).getString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), null)?.let { encoded ->
             runCatching { JSONArray(encoded).let { array -> List(array.length()) { array.getString(it) } } }.getOrNull()
         }
+        val migrationKey = dashboardProfileKey(context, "dashboard_interactions_v1", username)
+        if (!prefs(context).getBoolean(migrationKey, false)) {
+            val migrated = addInteractionDashboardCards(resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS))
+            prefs(context).edit().putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(migrated).toString())
+                .putBoolean(migrationKey, true).apply()
+            return migrated
+        }
         return resolveDashboardCards(saved, DEFAULT_DASHBOARD_CARDS)
     }
 
@@ -723,13 +735,15 @@ object TwidgetStore {
     fun saveDashboardCards(context: Context, cards: List<String>, username: String = settings(context).username) {
         ensureDashboardProfile(context, username)
         val clean = cards.filter { it in DEFAULT_DASHBOARD_CARDS }.distinct()
-        prefs(context).edit().putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(clean).toString()).apply()
+        prefs(context).edit().putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(clean).toString())
+            .putBoolean(dashboardProfileKey(context, "dashboard_interactions_v1", username), true).apply()
     }
 
     fun resetDashboardCards(context: Context, username: String = settings(context).username) {
         prefs(context).edit()
             .putString(dashboardProfileKey(context, KEY_DASHBOARD_CARDS, username), JSONArray(DEFAULT_DASHBOARD_CARDS).toString())
-            .putStringSet(dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username), emptySet()).apply()
+            .putStringSet(dashboardProfileKey(context, KEY_DASHBOARD_LARGE_CARDS, username), emptySet())
+            .putBoolean(dashboardProfileKey(context, "dashboard_interactions_v1", username), true).apply()
     }
 
     private fun saveLegacyDashboardCards(context: Context, cards: List<String>) {
@@ -1373,3 +1387,9 @@ internal fun resolveDashboardCards(saved: List<String>?, available: List<String>
 
 internal fun prioritizeDashboardCard(cards: List<String>, cardId: String): List<String> =
     if (cardId in cards) listOf(cardId) + cards.filterNot { it == cardId } else cards
+
+internal fun addInteractionDashboardCards(cards: List<String>): List<String> {
+    val added = listOf("interactions", "interaction_totals", "engagement_mix", "original_replies").filterNot { it in cards }
+    val index = cards.indexOf("followers").let { if (it < 0) cards.size else it + 1 }
+    return cards.take(index) + added + cards.drop(index)
+}

@@ -5,10 +5,18 @@ import org.junit.Test
 
 class MetricChartScaleTest {
     @Test fun expandedDailyChartsUseAZeroBaselineAndRetainNegativeNetDays() {
-        assertEquals(0L to 32L, MetricChartScale.zeroBasedBounds(listOf(8, 32, 14)))
-        assertEquals(-8L to 32L, MetricChartScale.zeroBasedBounds(listOf(-8, 32, 14)))
+        assertEquals(0L to 60L, MetricChartScale.zeroBasedBounds(listOf(8, 32, 14)))
+        assertEquals(-20L to 40L, MetricChartScale.zeroBasedBounds(listOf(-8, 32, 14)))
         assertEquals(listOf("-1k", "-2k", "-3k"), MetricChartScale.axisLabels(-3000, -1000, 3))
         assertEquals(listOf("4", "2.7", "1.3", "0"), MetricChartScale.axisLabels(0, 4))
+    }
+
+    @Test
+    fun zeroBasedTicksUseEvenStepsAndCoverTheObservedRange() {
+        val bounds = MetricChartScale.zeroBasedBounds(listOf(0L, 400L))
+        assertEquals(0L to 600L, bounds)
+        assertEquals(listOf("600", "400", "200", "0"), MetricChartScale.axisLabels(bounds.first, bounds.second))
+        assertEquals(0L to 3L, MetricChartScale.zeroBasedBounds(emptyList()))
     }
 
     @Test

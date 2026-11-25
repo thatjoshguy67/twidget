@@ -80,6 +80,9 @@ internal object AccountHandleMigration {
     fun mainKey(key: String, oldHandle: String, newHandle: String): String? {
         val old = oldHandle.lowercase(Locale.US)
         val next = newHandle.lowercase(Locale.US)
+        listOf("dashboard_cards", "dashboard_large_cards", "dashboard_interactions_v1").forEach { prefix ->
+            if (key == "$prefix:$old") return "$prefix:$next"
+        }
         val exactPrefixes = listOf("profile_", "history_", "milestone_target_", "milestone_label_", "milestone_show_percent_")
         exactPrefixes.forEach { prefix -> if (key == prefix + old) return prefix + next }
         listOf("followers", "following", "posts", "likes").forEach { metric ->
@@ -89,13 +92,14 @@ internal object AccountHandleMigration {
         return null
     }
 
-    private val direct = listOf("twidget_imported_analytics", "twidget_top_followers", "twidget_briefs")
+    private val direct = listOf("twidget_imported_analytics", "twidget_interactions", "twidget_top_followers", "twidget_briefs")
     private val goalSuffixes = listOf("goals", "configured", "metric", "target", "auto", "auto_all")
     private val streakSuffixes = listOf("version", "latest_original_post", "window_start", "checked_at", "complete")
-    private val stores = direct + listOf("twidget_account_goals", "twidget_daily_streak", "twidget_bangers", "twidget_analytics")
+    private val stores = direct + listOf("twidget_account_goals", "twidget_daily_streak", "twidget_bangers", "twidget_analytics", "twidget_interaction_ui")
 
     fun companionKey(store: String, key: String, old: String, next: String): String? = when {
         store in direct && key == old -> next
+        store == "twidget_interaction_ui" && key in listOf("$old:range", "$old:metric") -> next + key.removePrefix(old)
         store == "twidget_account_goals" && goalSuffixes.any { key == "${old}_$it" } -> next + key.removePrefix(old)
         store == "twidget_daily_streak" && (key == old || streakSuffixes.any { key == "${old}_$it" }) -> next + key.removePrefix(old)
         store in listOf("twidget_bangers", "twidget_analytics") && key.endsWith(":$old") -> key.removeSuffix(old) + next

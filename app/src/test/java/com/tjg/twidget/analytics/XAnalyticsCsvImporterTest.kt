@@ -11,6 +11,13 @@ import org.junit.Test
 import com.tjg.twidget.core.UiMessages
 
 class XAnalyticsCsvImporterTest {
+    @Test fun `blank optional interaction counts stay unknown`() {
+        val csv = "Date,New follows,Unfollows,Likes,Quotes\n\"Sat, Jul 11, 2026\",0,0,,3"
+        val row = XAnalyticsCsvImporter.parse(StringReader(csv), 100, LocalDate.of(2026, 7, 11)).movements.single()
+        assertEquals(null, row.likes)
+        assertEquals(3L, row.quotes)
+    }
+
     @Test
     fun `reconstructs follower totals backwards from selected account anchor`() {
         val csv = """

@@ -245,7 +245,7 @@ class MetricChartView @JvmOverloads constructor(
         if (widthAvailable <= 0f) return
         val barSlot = widthAvailable / labels.size
         val stride = barSlot
-        val barWidth = (barSlot * 0.54f).coerceIn(6f * density,
+        val barWidth = (barSlot * 0.54f).coerceAtMost(
             (if (compactCardInsets) 23f * resources.displayMetrics.density * cardDesignScale else 24f * density))
         fun heightFor(value: Long): Float {
             if (zeroBasedScale) return (chartHeight * (value - scaleMin) / scaleRange).coerceIn(0f, chartHeight)
@@ -336,6 +336,10 @@ class MetricChartView @JvmOverloads constructor(
                 canvas.drawText(dash, x + barWidth / 2 - axisLabelPaint.measureText(dash) / 2,
                     seriesBottom - 4f * density, axisLabelPaint)
                 return@forEachIndexed
+            }
+            if (zeroBasedScale && value == 0L && scaleMin == 0L) {
+                // A measured zero gets a baseline mark; an unknown slot is a dash.
+                barRect.top = (seriesBottom - 2f * density).coerceAtLeast(seriesTop)
             }
             if (zeroBasedScale && scaleMin < 0) {
                 val baseline = yFor(0)
@@ -555,7 +559,15 @@ internal object MetricChartScale {
     fun zeroBasedBounds(values: List<Long>): Pair<Long, Long> {
         val min = (values.minOrNull() ?: 0).coerceAtMost(0)
         val max = (values.maxOrNull() ?: 0).coerceAtLeast(0)
-        return if (min == max) 0L to 3L else min to max
+        if (min == max) return 0L to 3L
+        // Allocate whole, evenly spaced ticks on both sides of zero. The
+        // plotted bounds and labels must describe the same numeric scale.
+        val step = niceStep((max.toDouble() - min.toDouble()) / 3.0)
+        val lowerSteps = kotlin.math.ceil(-min.toDouble() / step).toLong()
+        val upperSteps = kotlin.math.ceil(max.toDouble() / step).toLong()
+        val totalSteps = lowerSteps + upperSteps
+        val spare = (3L - totalSteps).coerceAtLeast(0L)
+        return -(lowerSteps * step) to ((upperSteps + spare) * step)
     }
 
     fun axisLabels(min: Long, max: Long, tickCount: Int = 4): List<String> {

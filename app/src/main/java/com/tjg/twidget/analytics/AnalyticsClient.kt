@@ -114,10 +114,18 @@ object AnalyticsClient {
             bangerPostsScanned = hallOfFame?.postsScanned ?: previous?.bangerPostsScanned ?: 0,
             cachedAt = System.currentTimeMillis(),
         )
-        return TwidgetStore.withAccountGeneration(context, clean, generation) {
-            if (TwidgetStore.settings(context).dataSource == settings.dataSource) writeWithObservations(context, clean, analytics)
+        val result = TwidgetStore.withAccountGeneration(context, clean, generation) {
+            if (TwidgetStore.settings(context).dataSource == settings.dataSource) {
+                writeWithObservations(context, clean, analytics)
+                InteractionStore.recordAnalytics(context, clean, analytics)
+            }
             analytics
         }
+        if (settings.shareHistory) {
+            val userId = TwidgetStore.currentStats(context, clean).userId
+            runCatching { com.tjg.twidget.bridge.HistoryPool.syncInteractions(context, clean, userId, endpoint) }
+        }
+        return result
     }
 
     internal fun observations(context: Context, username: String, postUrl: String): List<PostObservation> {
@@ -209,6 +217,9 @@ object AnalyticsClient {
         return TwitterApisTimelineResult(statuses, incomplete)
     }
 
+    /** Read-only public weekly analytics for comparisons; does not update account caches. */
+    internal fun fetchPublic(username: String): PostAnalytics = fetchFxTwitter(username)
+
     private fun fetchFxTwitter(username: String): PostAnalytics {
         val profile = FxTwitterClient.fetchProfile(username)
         val now = System.currentTimeMillis()
@@ -263,6 +274,10 @@ object AnalyticsClient {
             text = tweetString(tweet, "text", "full_text").replace(Regex("\\s+"), " ").trim().take(180),
             views = tweetLong(tweet, "view_count", "viewCount", "views"),
             viewsKnown = listOf("view_count", "viewCount", "views").any { tweet.has(it) && !tweet.isNull(it) },
+            likesKnown = listOf("favorite_count", "favourite_count", "like_count", "likeCount", "likes").any { tweet.has(it) && !tweet.isNull(it) },
+            repostsKnown = listOf("retweet_count", "repost_count", "retweetCount", "repostCount", "reposts").any { tweet.has(it) && !tweet.isNull(it) },
+            repliesKnown = listOf("reply_count", "replyCount", "replies").any { tweet.has(it) && !tweet.isNull(it) },
+            quotesKnown = listOf("quote_count", "quoteCount", "quotes").any { tweet.has(it) && !tweet.isNull(it) },
             likes = likes,
             replies = replies,
             reposts = reposts,
@@ -382,6 +397,10 @@ object AnalyticsClient {
                     status.optString("conversation_id") != status.optString("id")),
             views = status.optLong("views"),
             viewsKnown = status.has("views") && !status.isNull("views"),
+            likesKnown = status.has("likes") && !status.isNull("likes"),
+            repostsKnown = status.has("reposts") && !status.isNull("reposts"),
+            repliesKnown = status.has("replies") && !status.isNull("replies"),
+            quotesKnown = status.has("quotes") && !status.isNull("quotes"),
             likes = likes,
             replies = replies,
             reposts = reposts,
@@ -573,6 +592,10 @@ object AnalyticsClient {
         .put("quotedPost", p.quotedPost?.let(::serializeQuotedPost) ?: JSONObject.NULL)
         .put("isReply", p.isReply)
         .put("viewsKnown", p.viewsKnown)
+        .put("likesKnown", p.likesKnown)
+        .put("repostsKnown", p.repostsKnown)
+        .put("repliesKnown", p.repliesKnown)
+        .put("quotesKnown", p.quotesKnown)
         .put("views", p.views)
         .put("likes", p.likes)
         .put("replies", p.replies)

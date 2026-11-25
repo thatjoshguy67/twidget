@@ -106,6 +106,12 @@ class MetricChartView @JvmOverloads constructor(
     private var known: List<Boolean> = emptyList()
     internal var zeroBasedScale: Boolean = false
     private var averageValues: List<Long> = emptyList()
+    private var unfollowValues: List<Long?> = emptyList()
+
+    fun setUnfollowSeries(values: List<Long?>) {
+        unfollowValues = values.takeIf { it.size == this.values.size } ?: emptyList()
+        invalidate()
+    }
     private var barGradient: LinearGradient? = null
     private var activeIndex = -1
     private val hideTooltipRunnable = Runnable { clearActiveBar() }
@@ -123,7 +129,7 @@ class MetricChartView @JvmOverloads constructor(
     var compactCardInsets: Boolean = false
         set(value) { field = value; invalidate() }
     /** Card radius minus its outer inset, supplied by the shared dashboard shell. */
-    internal var plotCornerRadiusPx: Float = 16f * resources.displayMetrics.density
+    internal var plotCornerRadiusPx: Float = 18f * resources.displayMetrics.density
         set(value) { if (field != value) { field = value; invalidate() } }
     /** The compact dashboard hides its summary and gives the plot a native, full-width inset. */
     internal var graphOnlyLayout: Boolean = false
@@ -143,6 +149,7 @@ class MetricChartView @JvmOverloads constructor(
         estimated = samples.map(HistorySample::estimated)
         values = samples.map(selector)
         averageValues = emptyList()
+        unfollowValues = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -166,6 +173,7 @@ class MetricChartView @JvmOverloads constructor(
         estimated = List(points.size) { false }
         values = points.map(ImportedChartPoint::value)
         averageValues = emptyList()
+        unfollowValues = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -189,7 +197,7 @@ class MetricChartView @JvmOverloads constructor(
             dateLabelPaint.getTextBounds(label, 0, label.length, bounds)
             bounds.height()
         } ?: 0
-        return glyphHeight + 3f * density + 2f
+        return glyphHeight + 6f * density
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
@@ -217,15 +225,17 @@ class MetricChartView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val narrow = graphOnlyLayout || (compactCardInsets && width / resources.displayMetrics.density < 190f)
         axisLabelPaint.textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
-            if (narrow && !graphOnlyLayout) 12f else 14f, resources.displayMetrics)
+            (if (compactCardInsets) 12f else 14f) * (if (compactCardInsets) cardDesignScale else 1f), resources.displayMetrics)
         dateLabelPaint.textSize = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP,
-            if (graphOnlyLayout) 12f else if (compactCardInsets) 10f else 12f, resources.displayMetrics)
+            (if (graphOnlyLayout) 12f else if (compactCardInsets) 10f else 12f) * (if (compactCardInsets) cardDesignScale else 1f), resources.displayMetrics)
         val labelInset = (if (compactCardInsets) 0f else 20f) * density
         val right = (if (compactCardInsets) 0f else 20f) * density
         val top = if (compactCardInsets) 0f else 12f * density
         val bottomLabels = bottomLabelSpace(density)
         val chartBottom = height - bottomLabels
-        val (seriesTop, seriesBottom) = MetricChartScale.insetPlot(top, chartBottom, 4f * density)
+        val hasUnfollows = unfollowValues.any { it != null && it > 0L }
+        val upperBottom = if (hasUnfollows) top + (chartBottom - top) * .66f else chartBottom
+        val (seriesTop, seriesBottom) = MetricChartScale.insetPlot(top, upperBottom, 4f * density)
         val chartHeight = seriesBottom - seriesTop
         if (chartHeight <= 0f) return
         // The numbered axis belongs to the current week's bars. Including the
@@ -349,12 +359,50 @@ class MetricChartView @JvmOverloads constructor(
             // Estimated (interpolated) bars render translucent so real data
             // reads solid at a glance.
             barPaint.alpha = if (estimated[index]) 80 else 255
-            canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
+            if (hasUnfollows) {
+                val corner = minOf(6f * density, barWidth / 2f)
+                val path = Path().apply {
+                    addRoundRect(barRect, floatArrayOf(barWidth/2f,barWidth/2f,barWidth/2f,barWidth/2f,
+                        corner,corner,corner,corner), Path.Direction.CW)
+                }
+                canvas.drawPath(path, barPaint)
+            } else canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
             barPaint.alpha = 255
         }
         barPaint.shader = null
+        if (hasUnfollows) {
+            val baseline = upperBottom + 2f * density
+            val lowerBottom = chartBottom - 4f * density
+            val lowerHeight = (lowerBottom - baseline).coerceAtLeast(1f)
+            val maximum = (unfollowValues.filterNotNull().maxOrNull() ?: 0L).coerceAtLeast(1L)
+            labels.indices.forEach { index ->
+                val amount = unfollowValues.getOrNull(index)
+                val x = left + index * stride + (barSlot - barWidth) / 2f
+                if (amount == null) {
+                    canvas.drawText("–", x, baseline + lowerHeight / 2f, axisLabelPaint)
+                } else if (amount > 0) {
+                    val end = baseline + lowerHeight * amount / maximum
+                    barPaint.shader = LinearGradient(0f, baseline, 0f, end,
+                        0xfff6bdbd.toInt(), 0xffff3838.toInt(), Shader.TileMode.CLAMP)
+                    barRect.set(x, baseline, x + barWidth, end)
+                    val corner = minOf(6f * density, barWidth / 2f)
+                    val path = Path().apply {
+                        addRoundRect(barRect, floatArrayOf(corner,corner,corner,corner,
+                            barWidth/2f,barWidth/2f,barWidth/2f,barWidth/2f), Path.Direction.CW)
+                    }
+                    canvas.drawPath(path, barPaint)
+                }
+            }
+            barPaint.shader = null
+        }
         canvas.restoreToCount(plotCheckpoint)
 
+        if (hasUnfollows) {
+            val maximum = unfollowValues.filterNotNull().maxOrNull()
+            val label = maximum?.let { "−${numberFormat.format(it)}" } ?: "–"
+            canvas.drawText(label, left - axisLabelPaint.measureText(label) - 6f * density,
+                chartBottom - 4f * density, axisLabelPaint)
+        }
         val axisTextBounds = android.graphics.Rect()
         axisLabels.forEachIndexed { index, label ->
             val y = seriesTop + chartHeight * index / (axisLabels.size - 1).coerceAtLeast(1)
@@ -364,7 +412,8 @@ class MetricChartView @JvmOverloads constructor(
                 axisLabels.lastIndex -> seriesBottom - axisTextBounds.bottom
                 else -> y - (axisTextBounds.top + axisTextBounds.bottom) / 2f
             }
-            canvas.drawText(label, labelInset, baseline, axisLabelPaint)
+            val gutter = (if (narrow) 6f else if (compactCardInsets) 10f else 8f) * density
+            canvas.drawText(label, left - gutter - axisLabelPaint.measureText(label), baseline, axisLabelPaint)
         }
         var nextLabelLeft = Float.POSITIVE_INFINITY
         // Place newest-first and check the final clamped bounds. Even when the
@@ -378,7 +427,7 @@ class MetricChartView @JvmOverloads constructor(
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
                     .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
                 if (labelX + labelWidth + 4f * resources.displayMetrics.density <= nextLabelLeft) {
-                    canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() - 2f else height - 8f * density, dateLabelPaint)
+                    canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() else height - 8f * density, dateLabelPaint)
                     nextLabelLeft = labelX
                 }
             }
@@ -392,7 +441,9 @@ class MetricChartView @JvmOverloads constructor(
             val x = left + activeIndex * stride + (barSlot - barWidth) / 2f
             drawTooltip(
                 canvas = canvas,
-                label = "$label  ${if (estimated[activeIndex]) "~" else ""}${if (known.getOrElse(activeIndex) { true }) numberFormat.format(value) else "--"}",
+                label = "$label  ${if (estimated[activeIndex]) "~" else ""}${if (known.getOrElse(activeIndex) { true }) numberFormat.format(value) else "--"}" +
+                    if (hasUnfollows) " · " + context.getString(com.tjg.twidget.R.string.chart_unfollows,
+                        unfollowValues.getOrNull(activeIndex)?.let(numberFormat::format) ?: "–") else "",
                 anchorX = x + barWidth / 2f,
                 anchorY = yFor(value),
                 chartLeft = left,
@@ -535,10 +586,10 @@ class MetricChartView @JvmOverloads constructor(
 }
 
 internal object MetricChartScale {
-    /** Background trends must never distort the numbered scale for the bars. */
+    /** Weekly totals determine the zoom; older averages must not flatten daily variation. */
     fun primaryAxisBounds(
         primary: List<Long>,
-        @Suppress("UNUSED_PARAMETER") background: List<Long>,
+        background: List<Long>,
     ): Pair<Long, Long> = axisBounds(primary)
 
     // Picks a [min, max] window for the y-axis. The highest observed value is
@@ -578,14 +629,24 @@ internal object MetricChartScale {
             minimumFractionDigits = 0
             isGroupingUsed = false
         }
-        return values.map { value ->
-            when {
-                kotlin.math.abs(value) >= 1_000_000_000 -> format.format(value / 1_000_000_000.0) + "b"
-                kotlin.math.abs(value) >= 1_000_000 -> format.format(value / 1_000_000.0) + "m"
-                kotlin.math.abs(value) >= 1_000 -> format.format(value / 1_000.0) + "k"
-                else -> format.format(value)
+        fun labels(digits: Int): List<String> {
+            format.maximumFractionDigits = digits
+            return values.map { value ->
+                when {
+                    kotlin.math.abs(value) >= 1_000_000_000 -> format.format(value / 1_000_000_000.0) + "b"
+                    kotlin.math.abs(value) >= 1_000_000 -> format.format(value / 1_000_000.0) + "m"
+                    kotlin.math.abs(value) >= 1_000 -> format.format(value / 1_000.0) + "k"
+                    else -> format.format(value)
+                }
             }
         }
+        for (digits in 1..3) {
+            val result = labels(digits)
+            if (result.distinct().size == result.size) return result
+        }
+        // A small zoom window around a large total needs full integers rather
+        // than repeated abbreviated ticks.
+        return values.map { NumberFormat.getIntegerInstance(AppLocales.applicationLocale()).format(it) }
     }
 
     /** Keep pill caps clear of the plot mask without changing the numeric range. */

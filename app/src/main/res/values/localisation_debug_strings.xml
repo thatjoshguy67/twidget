@@ -44,7 +44,7 @@
     <string name="l10n_debug_pass">PASS</string>
     <string name="l10n_debug_fail">FAIL</string>
     <string name="l10n_debug_checks_note">No model calls, settings changes or saved-review changes.</string>
-    <string name="l10n_nano_auto">Auto · Stable (Fast → Full)</string>
+    <string name="l10n_nano_auto">Auto · Stable / Preview / Default</string>
     <string name="l10n_nano_full">Stable · Full</string>
     <string name="l10n_nano_fast">Stable · Fast</string>
     <string name="l10n_nano_preview_full">Preview · Full</string>

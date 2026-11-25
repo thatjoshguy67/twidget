@@ -23,6 +23,42 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TopFollowersSearchInstrumentedTest {
+    @Test fun keyboardAnimationDoesNotShrinkTheFollowerViewport() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val username = "ime_viewport_fixture"
+        TopFollowersArchiveStore.seedFromTop(context,username,(1..30).map {
+            TopFollower("$it","keyboard$it","Follower $it",1000L-it,false,"")
+        })
+        try {
+            ActivityScenario.launch<TopFollowersBrowseActivity>(Intent(context,TopFollowersBrowseActivity::class.java)
+                .putExtra(TopFollowersBrowseActivity.EXTRA_USERNAME,username)).use { scenario ->
+                instrumentation.waitForIdleSync()
+                SystemClock.sleep(600)
+                var height = 0
+                val heights = mutableListOf<Int>()
+                scenario.onActivity { activity ->
+                    val list = activity.findViewById<RecyclerView>(R.id.top_followers_browse_list)
+                    height = list.height
+                    list.viewTreeObserver.addOnPreDrawListener { heights += list.height; true }
+                    activity.findViewById<com.tjg.twidget.ui.Sesl95SearchView>(R.id.top_followers_browse_search).expand()
+                }
+                SystemClock.sleep(1200)
+                instrumentation.waitForIdleSync()
+                scenario.onActivity { activity ->
+                    val root = activity.findViewById<View>(R.id.top_followers_browse_root)
+                    val insets = requireNotNull(ViewCompat.getRootWindowInsets(root))
+                    assertTrue("Keyboard is actually visible",insets.isVisible(WindowInsetsCompat.Type.ime()))
+                    assertEquals("IME never becomes root padding",0,root.paddingBottom)
+                    assertTrue("Every animation frame keeps a full-height list",heights.isNotEmpty() && heights.all { it == height })
+                    val search=activity.findViewById<View>(R.id.top_followers_browse_search)
+                    val location=IntArray(2).also(search::getLocationInWindow)
+                    assertTrue("Search remains above the keyboard",location[1]+search.height <= activity.window.decorView.height-insets.getInsets(WindowInsetsCompat.Type.ime()).bottom)
+                }
+            }
+        } finally { TopFollowersArchiveStore.clear(context,username) }
+    }
+
     @Test fun largeArchiveKeepsOnlyVisibleRowsAttached() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

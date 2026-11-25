@@ -44,7 +44,7 @@
     <string name="l10n_debug_pass">BESTANDEN</string>
     <string name="l10n_debug_fail">FEHLGESCHLAGEN</string>
     <string name="l10n_debug_checks_note">Keine Modellaufrufe oder Änderungen an Einstellungen und gespeicherten Analysen.</string>
-    <string name="l10n_nano_auto">Automatisch · Stabil (Schnell → Vollständig)</string>
+    <string name="l10n_nano_auto">Auto · Stable / Preview / Default</string>
     <string name="l10n_nano_full">Stabil · Vollständig</string>
     <string name="l10n_nano_fast">Stabil · Schnell</string>
     <string name="l10n_nano_preview_full">Vorschau · Vollständig</string>

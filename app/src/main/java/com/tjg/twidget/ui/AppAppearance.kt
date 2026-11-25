@@ -9,6 +9,16 @@ object AppAppearance {
     private const val KEY = "app_night_mode"
     private const val FONT_KEY = "app_font_family"
     private const val LOGO_KEY = "app_logo_style"
+    private const val OUTLINE_KEY = "app_outline_effects"
+
+    fun outlineEffects(context: Context): Boolean = context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE)
+        .getBoolean(OUTLINE_KEY, true)
+
+    fun setOutlineEffects(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(OUTLINE_KEY, enabled).apply()
+        SeslSurfaceHighlight.refreshWindows()
+    }
 
     fun logo(context: Context): String = context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE)
         .getString(LOGO_KEY, TwidgetStore.LOGO_TWITTER)

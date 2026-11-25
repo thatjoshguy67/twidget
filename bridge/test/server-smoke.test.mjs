@@ -57,6 +57,50 @@ async function startBridge(t, environment, { store, onOutput = () => {}, onStore
 
 const DAY = 24 * 60 * 60 * 1000;
 
+test("shared history exposes interval follower losses only for its current account ID", async t => {
+  const observation = { userId: '123', scanId: 'full-2', from: 1, to: 2, newFollowers: 1, lostFollowers: 1,
+    source: 'complete_follower_scans', semantics: 'observed_membership_changes_not_daily_unfollow_events' };
+  const base = await startBridge(t, { BRIDGE_API_TOKEN: '' }, { store: followerStore({
+    example: { userId: '123', followerChanges: [observation, { ...observation, userId: '999' }] },
+  }) });
+  const response = await fetch(`${base}/history/example`);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.userId, '123');
+  assert.deepEqual(body.followerChanges, [observation]);
+  assert.equal(body.history[0].unfollows, undefined);
+});
+
+test("default profile reports are private, replaceable, removable and do not enroll handles", async t => {
+  const base = await startBridge(t, { BRIDGE_API_TOKEN: "", HISTORY_ADMIN_TOKEN: "operator", EXPENSIVE_RATE_LIMIT_MAX: "100" });
+  const headers = { "Content-Type": "application/json", "X-Twidget-Install-Key": "a".repeat(64) };
+  const report = username => fetch(`${base}/installation/primary-profile`, { method: "POST", headers, body: JSON.stringify({ username }) });
+  assert.equal((await report("missing")).status, 409);
+  assert.equal((await fetch(`${base}/admin/audience`)).status, 401);
+  assert.equal((await fetch(`${base}/installation/primary-profile`)).status, 404);
+  assert.equal((await fetch(`${base}/history/example`)).status, 200);
+  assert.equal((await report("EXAMPLE")).status, 204);
+  const audience = async () => (await fetch(`${base}/admin/audience`, { headers: { Authorization: "Bearer operator" } })).json();
+  let data = await audience();
+  assert.equal(data.registeredAccounts, 1);
+  assert.equal(data.reportedInstallations, 1);
+  assert.deepEqual(data.primaryAccounts, [{ username: "example", primaryInstalls: 1, active7d: 1, active30d: 1 }]);
+  assert.ok(!JSON.stringify(data).includes("a".repeat(64)));
+  assert.equal((await report("example")).status, 204);
+  assert.equal((await audience()).reportedInstallations, 1);
+  assert.equal((await fetch(`${base}/installation/primary-profile`, { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"username":null}' })).status, 400);
+  assert.equal((await report(null)).status, 204);
+  data = await audience();
+  assert.equal(data.reportedInstallations, 0);
+  assert.deepEqual(data.accountsWithoutPrimaryReport, ["example"]);
+});
+
+test("self-hosted default reports require the configured bridge token", async t => {
+  const base = await startBridge(t, { BRIDGE_API_TOKEN: "private", HISTORY_ADMIN_TOKEN: "" });
+  assert.equal((await fetch(`${base}/installation/primary-profile`, { method: "POST" })).status, 401);
+  assert.equal((await fetch(`${base}/admin/audience`)).status, 404);
+});
+
 function followerStore(meta, topFollowers = {}) {
   return {
     version: 4,
@@ -104,6 +148,10 @@ test("scheduled refresh skips dormant accounts, queues active/legacy accounts, a
   });
   await waitFor(() => output.includes("Top Followers refresh skipped 2 dormant accounts"), 20_000);
   await waitFor(() => output.includes("scan completed for legacyunknown"));
+  await waitFor(async () => {
+    const saved = JSON.parse(await readFile(storePath, "utf8"));
+    return ["active", "running", "legacyrecent", "legacyunknown"].every(key => saved.topFollowers[key]?.status === "complete");
+  });
   const stored = JSON.parse(await readFile(storePath, "utf8"));
   assert.equal(stored.topFollowers.dormant, undefined);
   assert.equal(stored.topFollowers.legacyold, undefined);
@@ -453,9 +501,9 @@ test("bridge security and health defaults", async (t) => {
   assert.equal(deleted.status, 204);
 });
 
-test("weekly cadence reuses two-day snapshots on both preview and explicit starts", async (t) => {
+test("weekly cadence reuses two-day snapshots when daily checks are disabled", async (t) => {
   const now = Date.now();
-  const base = await startBridge(t, { TWITTERAPIS_API_KEY: "test-key" }, {
+  const base = await startBridge(t, { TWITTERAPIS_API_KEY: "test-key", TOP_FOLLOWERS_HEAD_CHECK: "0" }, {
     store: followerStore({ example: { topFollowersEnrolledAt: now - 20 * DAY } }, {
       example: completedFollowerScan(now - 2 * DAY),
     }),
@@ -463,7 +511,7 @@ test("weekly cadence reuses two-day snapshots on both preview and explicit start
   const settings = (await (await fetch(`${base}/health`)).json()).history.topFollowers;
   assert.equal(settings.fullScanDays, 7);
   assert.equal(settings.headCheck, false);
-  assert.equal(settings.headPages, 1);
+  assert.equal(settings.headRows, 100);
   assert.equal(settings.providerOrderingVerified, false);
   assert.equal(settings.refreshHours, 24);
   const preview = await (await fetch(`${base}/history/example/top-followers`)).json();
@@ -475,62 +523,117 @@ test("weekly cadence reuses two-day snapshots on both preview and explicit start
   assert.equal((await (await fetch(`${base}/history/example/top-followers/scan`)).json()).completedAt, now - 2 * DAY);
 });
 
-test("opt-in head checks cap provider pages and merge new followers without removing old ones", async (t) => {
-  const cursors = [];
+test("request budget pauses mid-scan with its cursor and previous snapshot intact", async (t) => {
+  let calls = 0;
   const provider = http.createServer((req, res) => {
-    const cursor = new URL(req.url, "http://localhost").searchParams.get("cursor") || "";
-    cursors.push(cursor);
-    const username = cursor ? "secondfan" : "newfan";
+    calls += 1;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({
-      users: [{ id: username, username, followers_count: cursor ? 50 : 100 }],
-      next_cursor: cursor ? "never-fetch" : "second-page",
-    }));
+    res.end(JSON.stringify({ users: [{ id: "new", username: "newfan", followers_count: 500 }], next_cursor: "saved-cursor" }));
   });
-  await new Promise((resolve) => provider.listen(0, "127.0.0.1", resolve));
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
   t.after(() => { provider.closeAllConnections(); provider.close(); });
-  for (const pages of [1, 2]) {
-    await t.test(`${pages} head pages`, async (t) => {
-      cursors.length = 0;
-      const now = Date.now();
-      const base = await startBridge(t, {
-        TWITTERAPIS_API_KEY: "test-key",
-        TEST_MOCK_UPSTREAM: "0",
-        TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
-        TOP_FOLLOWERS_HEAD_CHECK: "1",
-        TOP_FOLLOWERS_HEAD_PAGES: String(pages),
-      }, {
-        store: followerStore({ example: { topFollowersEnrolledAt: now } }, {
-          example: completedFollowerScan(now - 2 * DAY),
-        }),
+  let output = "";
+  let checkpointPath;
+  const now = Date.now();
+  const base = await startBridge(t, {
+    TWITTERAPIS_API_KEY: "test-key", TEST_MOCK_UPSTREAM: "0",
+    TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
+    TOP_FOLLOWERS_DAILY_REQUEST_LIMIT: "1",
+  }, {
+    store: followerStore({ example: { topFollowersEnrolledAt: now } }, {
+      example: completedFollowerScan(now - 8 * DAY),
+    }),
+    onOutput: value => { output += value; },
+    onStorePath: value => { checkpointPath = value; },
+  });
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(() => output.includes("top_followers_daily_budget_reached"));
+  assert.equal(calls, 1);
+  const progress = await (await fetch(`${base}/history/example/top-followers/scan`)).json();
+  assert.equal(progress.status, "running");
+  assert.equal(progress.pages, 1);
+  const stored = JSON.parse(await readFile(checkpointPath, "utf8"));
+  assert.equal(stored.topFollowers.example.cursor, "saved-cursor");
+  const cached = await (await fetch(`${base}/history/example/top-followers/all`)).json();
+  assert.equal(cached.followers[0].username, "oldfan");
+  const limited = await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" });
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  assert.equal(calls, 1);
+});
+
+test("one credit-empty response pauses other accounts before calling the provider", async (t) => {
+  let calls = 0;
+  const provider = http.createServer((req, res) => { calls += 1; res.writeHead(402); res.end(); });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const base = await startBridge(t, {
+    TWITTERAPIS_API_KEY: "test-key", TEST_MOCK_UPSTREAM: "0",
+    TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
+  }, { store: followerStore({ example: {}, another: {} }) });
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await (await fetch(`${base}/history/example/top-followers/scan`)).json()).status === "failed");
+  const blocked = await fetch(`${base}/history/another/top-followers/scan`, { method: "POST" });
+  assert.equal(blocked.status, 429);
+  assert.equal((await blocked.json()).error, "provider_credit_empty");
+  assert.equal(calls, 1);
+});
+
+test("daily scans scale with +200 growth and use actual page yields, preserving the full cache", async t => {
+  for (const pageSize of [50, 100]) {
+    await t.test(`${pageSize} rows per page`, async t => {
+      const old = Array.from({ length: 500 }, (_, i) => ({ id: String(i + 1), username: `fan${i + 1}`, name: "Cached", followers: 10, avatar: "", verified: false, mutual: null }));
+      const fresh = Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1001), username: `new${i}`, name: "New", followers_count: i === 199 ? 99999 : 20 }));
+      const all = [...fresh, ...old.map(v => ({ ...v, followers_count: 777 }))];
+      let calls = 0;
+      const provider = http.createServer((req, res) => {
+        calls += 1;
+        const url = new URL(req.url, "http://localhost");
+        assert.equal(url.searchParams.get("count"), "100");
+        const offset = Number(url.searchParams.get("cursor") || 0);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ users: all.slice(offset, offset + pageSize), next_cursor: String(offset + pageSize) }));
       });
-      const health = (await (await fetch(`${base}/health`)).json()).history.topFollowers;
-      assert.equal(health.headCheck, true);
-      assert.equal(health.headPages, pages);
+      await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+      t.after(() => { provider.closeAllConnections(); provider.close(); });
+      const now = Date.now();
+      const store = followerStore({ example: { topFollowersEnrolledAt: now } }, {
+        example: { ...completedFollowerScan(now - 2 * DAY), sourceFollowers: 1000, followers: old, scanned: old.length },
+      });
+      store.accounts.example = [{ ts: now, followers: 1200, followersKnown: true, src: "live" }];
+      store.primaryProfiles = { ["b".repeat(64)]: { username: "example", lastSeenAt: now } };
+      let checkpointPath;
+      const base = await startBridge(t, {
+        TWITTERAPIS_API_KEY: "test-key", TEST_MOCK_UPSTREAM: "0",
+        TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
+      }, { store, onStorePath: value => { checkpointPath = value; } });
       assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
       await waitFor(async () => (await (await fetch(`${base}/history/example/top-followers/scan`)).json()).status === "complete");
-      const archive = await (await fetch(`${base}/history/example/top-followers/all`)).json();
-      assert.equal(archive.scanKind, "head");
-      assert.equal(archive.fullCompletedAt, now - 2 * DAY);
-      assert.ok(archive.completedAt >= now);
-      assert.equal(archive.total, 1 + pages);
-      assert.equal(archive.followers[0].username, "newfan");
-      assert.equal(archive.followers.at(-1).username, "oldfan");
-      assert.deepEqual(cursors, pages === 1 ? [""] : ["", "second-page"]);
+      const archive = await (await fetch(`${base}/history/example/top-followers/all?limit=2000`)).json();
+      assert.equal(archive.total, 700);
+      assert.equal(archive.followers[0].username, "new199", "notable follower beyond the first 100 must be found");
+      assert.equal(archive.fullCompletedAt, now - 2 * DAY, "daily updates cannot postpone the weekly refresh");
+      assert.equal(archive.followers.find(v => v.username === "fan1").followers, 10, "cached counts retain their weekly refresh cadence");
+      assert.equal(calls, 400 / pageSize);
+      const saved = JSON.parse(await readFile(checkpointPath, "utf8")).topFollowers.example;
+      assert.equal(saved.sourceFollowers, 1200);
+      assert.equal(saved.processed, 400);
+      assert.equal(saved.targetRows, 400);
+      assert.ok(saved.knownStreak >= 100);
       assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 200);
-      assert.equal(cursors.length, pages, "same-day polling reuses the merged snapshot");
+      assert.equal(calls, 400 / pageSize);
     });
   }
 });
 
 test("invalid cadence settings fall back to safe defaults", async (t) => {
   const base = await startBridge(t, {
-    TOP_FOLLOWERS_FULL_SCAN_DAYS: "91", TOP_FOLLOWERS_HEAD_PAGES: "6", TOP_FOLLOWERS_HEAD_CHECK: "true",
+    TOP_FOLLOWERS_FULL_SCAN_DAYS: "91", TOP_FOLLOWERS_HEAD_ROWS: "0", TOP_FOLLOWERS_OVERLAP_ROWS: "-1",
   });
   const settings = (await (await fetch(`${base}/health`)).json()).history.topFollowers;
   assert.equal(settings.fullScanDays, 7);
-  assert.equal(settings.headPages, 1);
-  assert.equal(settings.headCheck, false);
+  assert.equal(settings.headRows, 100);
+  assert.equal(settings.headCheck, true);
 });
 
 test("a checkpointed terminal page is published on resume without fetching the first page again", async (t) => {
@@ -568,17 +671,17 @@ test("handle migration verifies destination identity and makes history identity 
 });
 
 
-test("legacy clients receive existing history and fresh observations without an ownership backfill", async t => {
+test("legacy history remains unbound while fresh observations acquire separate identity proof", async t => {
   const day = Math.floor(Date.now() / DAY) * DAY;
   const history = [3, 2, 1].map((age, i) => ({ ts: day - age * DAY, followers: 10 + i, following: 1, posts: 2, likes: 3, src: 'live' }));
   let storePath;
   const base = await startBridge(t, {}, { store: { version: 4, accounts: { example: history }, meta: { example: {} } }, onStorePath: value => { storePath = value; } });
   const profile = await fetch(`${base}/user/example`).then(r => r.json());
   assert.equal(profile.userId, '123456');
-  assert.equal(profile.historyUserId, '');
-  assert.deepEqual(profile.history.map(row => row.followers), [10, 11, 12, 1234]);
+  assert.equal(profile.historyUserId, '123456');
+  assert.deepEqual(profile.history.map(row => row.followers), [1234]);
   const pooled = await fetch(`${base}/history/example`).then(r => r.json());
-  assert.equal(pooled.userId, '');
+  assert.equal(pooled.userId, '123456');
   assert.deepEqual(pooled.history, profile.history);
   const cached = await fetch(`${base}/user/example`).then(r => r.json());
   assert.deepEqual(cached.history, profile.history);
@@ -627,4 +730,172 @@ test('interaction sync validates identity, merges snapshots and retains nulls', 
   assert.equal(saved.daily[0].shares, null);
   assert.equal(saved.posts[0].likes, 5);
   assert.equal(saved.posts[0].reposts, 3);
+});
+
+test("excluded test accounts stop persisted scans before budget reset and cannot spend on any trigger", async t => {
+  const now = Date.now();
+  let storePath;
+  const base = await startBridge(t, {
+    TWITTERAPIS_API_KEY: "test-key", TOP_FOLLOWERS_EXCLUDED_USERNAMES: "@ELONMUSK,apple",
+    TOP_FOLLOWERS_DAILY_REQUEST_LIMIT: "0", HISTORY_ADMIN_TOKEN: "operator", EXPENSIVE_RATE_LIMIT_MAX: "100",
+  }, {
+    store: followerStore({ elonmusk: { topFollowersEnrolledAt: now }, apple: { topFollowersEnrolledAt: now } }, {
+      elonmusk: { ...completedFollowerScan(now), status: "running", completedAt: 0, cursor: "next" },
+      apple: completedFollowerScan(now - 8 * DAY),
+    }), onStorePath: value => { storePath = value; },
+  });
+  const scan = await fetch(`${base}/history/elonmusk/top-followers/scan`).then(r => r.json());
+  assert.equal(scan.status, "failed");
+  assert.equal(scan.error, "top_followers_account_excluded");
+  for (const handle of ["ElonMusk", "apple"]) {
+    const response = await fetch(`${base}/history/${handle}/top-followers/scan`, { method: "POST" });
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error, "top_followers_account_excluded");
+  }
+  const cached = await fetch(`${base}/history/apple/top-followers`).then(r => r.json());
+  assert.equal(cached.top[0].username, "oldfan");
+  assert.equal((await fetch(`${base}/admin/top-followers/usage`)).status, 401);
+  const usage = await fetch(`${base}/admin/top-followers/usage`, { headers: { Authorization: "Bearer operator" } }).then(r => r.json());
+  assert.equal(usage.day.requests, 0);
+  assert.deepEqual(usage.excludedUsernames, ["apple", "elonmusk"]);
+  const stored = JSON.parse(await readFile(storePath, "utf8"));
+  assert.equal(stored.accounts.elonmusk.length, 1);
+  assert.equal(stored.topFollowers.apple.status, "complete");
+});
+
+test("real accounts retain scans and account-attributed allowance with exclusions configured", async t => {
+  const now = Date.now();
+  const base = await startBridge(t, {
+    TWITTERAPIS_API_KEY: "test-key", TOP_FOLLOWERS_EXCLUDED_USERNAMES: "elonmusk", HISTORY_ADMIN_TOKEN: "operator",
+    EXPENSIVE_RATE_LIMIT_MAX: "100",
+  }, { store: followerStore({ howtomen: { topFollowersEnrolledAt: now } }) });
+  assert.equal((await fetch(`${base}/history/howtomen/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/howtomen/top-followers/scan`).then(r => r.json())).status === "complete");
+  const usage = await fetch(`${base}/admin/top-followers/usage`, { headers: { Authorization: "Bearer operator" } }).then(r => r.json());
+  assert.equal(usage.day.requests, 1);
+  assert.equal(usage.day.byAccount.howtomen, 1);
+  assert.equal(usage.day.unattributed, 0);
+});
+
+test("tracked cache keeps weekly cadence and a primary report immediately enables daily checks", async t => {
+  const now = Date.now();
+  const base = await startBridge(t, { TWITTERAPIS_API_KEY: "test-key", HISTORY_ADMIN_TOKEN: "operator", EXPENSIVE_RATE_LIMIT_MAX: "100" }, {
+    store: followerStore({ example: { topFollowersEnrolledAt: now } }, { example: completedFollowerScan(now - 2 * DAY) }),
+  });
+  const settings = await fetch(`${base}/health`).then(r => r.json()).then(v => v.history.topFollowers);
+  assert.equal(settings.trackedRefreshHours, 168);
+  assert.equal(settings.trackedFullScanDays, 30);
+  assert.equal(settings.trackedDailyRequestLimit, 250);
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 200);
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).completedAt, now - 2 * DAY);
+  const report = await fetch(`${base}/installation/primary-profile`, { method: "POST", headers: {
+    "Content-Type": "application/json", "X-Twidget-Install-Key": "a".repeat(64),
+  }, body: JSON.stringify({ username: "example" }) });
+  assert.equal(report.status, 204);
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).completedAt > now);
+  const usage = await fetch(`${base}/admin/top-followers/usage`, { headers: { Authorization: "Bearer operator" } }).then(r => r.json());
+  assert.equal(usage.tracked.requests, 0);
+  assert.equal(usage.primary.requests, 1);
+});
+
+test("tracked resumes stop at their ceiling while primaries use the protected allowance", async t => {
+  const now = Date.now();
+  const running = { ...completedFollowerScan(now), status: "running", completedAt: 0, cursor: "", pages: 0, scanned: 0, followers: [] };
+  const store = followerStore({ first: {}, second: {}, primary: {}, cached: {} }, { first: running, second: running, primary: completedFollowerScan(now - 2 * DAY), cached: completedFollowerScan(now - 2 * DAY) });
+  store.primaryProfiles = { ["b".repeat(64)]: { username: "primary", lastSeenAt: now } };
+  const base = await startBridge(t, { TWITTERAPIS_API_KEY: "test-key", HISTORY_ADMIN_TOKEN: "operator",
+    TOP_FOLLOWERS_DAILY_REQUEST_LIMIT: "10", TOP_FOLLOWERS_TRACKED_DAILY_REQUEST_LIMIT: "1", EXPENSIVE_RATE_LIMIT_MAX: "100",
+  }, { store });
+  await fetch(`${base}/history/first/top-followers/scan`);
+  await waitFor(async () => (await fetch(`${base}/history/first/top-followers/scan`).then(r => r.json())).status === "complete");
+  const denied = await fetch(`${base}/history/second/top-followers/scan`, { method: "POST" });
+  assert.equal(denied.status, 429);
+  assert.equal((await denied.json()).error, "top_followers_tracked_daily_budget_reached");
+  assert.equal((await fetch(`${base}/history/cached/top-followers/scan`, { method: "POST" })).status, 200);
+  const second = await fetch(`${base}/history/second/top-followers/scan`).then(r => r.json());
+  assert.equal(second.status, "running"); assert.equal(second.pages, 0);
+  assert.equal((await fetch(`${base}/history/primary/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/primary/top-followers/scan`).then(r => r.json())).status === "complete");
+  const usage = await fetch(`${base}/admin/top-followers/usage`, { headers: { Authorization: "Bearer operator" } }).then(r => r.json());
+  assert.equal(usage.day.requests, 2); assert.equal(usage.tracked.requests, 1); assert.equal(usage.primary.requests, 1);
+});
+
+test("scheduler prioritises primary full scans over tracked head checks and uses separate full-scan clocks", async t => {
+  const now = Date.now(), calls = [];
+  const provider = http.createServer((req, res) => {
+    calls.push(new URL(req.url, "http://localhost").searchParams.get("username"));
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ users: [{ id: "42", username: "freshfan", followers_count: 10 }] }));
+  });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const store = followerStore({ tracked: { topFollowersLastSeenAt: now }, primary: { topFollowersLastSeenAt: now - 20 * DAY } }, {
+    tracked: completedFollowerScan(now - 8 * DAY), primary: completedFollowerScan(now - 8 * DAY),
+  });
+  store.primaryProfiles = { ["b".repeat(64)]: { username: "primary", lastSeenAt: now } };
+  let output = "", storePath;
+  await startBridge(t, { TWITTERAPIS_API_KEY: "test-key", TEST_MOCK_UPSTREAM: "0", TOP_FOLLOWERS_MAX_CONCURRENT: "1",
+    TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
+  }, { store, onOutput: value => { output += value; }, onStorePath: value => { storePath = value; } });
+  await waitFor(() => calls.length >= 2 && output.includes("scan completed for tracked"), 20000);
+  assert.deepEqual(calls, ["primary", "tracked"]);
+  const saved = JSON.parse(await readFile(storePath, "utf8"));
+  assert.equal(saved.topFollowers.primary.kind, "full");
+  assert.equal(saved.topFollowers.tracked.kind, "head");
+  assert.equal(saved.topFollowers.tracked.fullCompletedAt, now - 8 * DAY);
+});
+
+test("a primary request queues behind busy tracked work and starts at the next ten-page yield", async t => {
+  const now = Date.now(), calls = [];
+  let releaseFirst;
+  const provider = http.createServer((req, res) => {
+    const url = new URL(req.url, "http://localhost"), username = url.searchParams.get("username");
+    const offset = Number(url.searchParams.get("cursor") || 0);
+    calls.push(username);
+    const respond = () => {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ users: [{ id: String(offset + 100), username: `fan${offset}`, followers_count: 10 }],
+        ...(username === "tracked" ? { next_cursor: String(offset + 1) } : {}) }));
+    };
+    if (calls.length === 1) releaseFirst = respond;
+    else respond();
+  });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const store = followerStore({ tracked: { topFollowersEnrolledAt: now }, primary: { topFollowersEnrolledAt: now } }, {
+    tracked: { ...completedFollowerScan(now), status: "running", completedAt: 0, cursor: "", pages: 0, scanned: 0, followers: [] },
+  });
+  store.primaryProfiles = { ["b".repeat(64)]: { username: "primary", lastSeenAt: now } };
+  const base = await startBridge(t, { TWITTERAPIS_API_KEY: "test-key", TEST_MOCK_UPSTREAM: "0", TOP_FOLLOWERS_MAX_CONCURRENT: "1",
+    TOP_FOLLOWERS_DAILY_REQUEST_LIMIT: "20", TOP_FOLLOWERS_TRACKED_DAILY_REQUEST_LIMIT: "11", EXPENSIVE_RATE_LIMIT_MAX: "100",
+    TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
+  }, { store });
+  await fetch(`${base}/history/tracked/top-followers/scan`);
+  await waitFor(() => releaseFirst);
+  assert.equal((await fetch(`${base}/history/primary/top-followers/scan`, { method: "POST" })).status, 202);
+  releaseFirst();
+  await waitFor(() => calls.includes("primary"));
+  assert.deepEqual(calls.slice(0, 11), [...Array(10).fill("tracked"), "primary"]);
+  await waitFor(async () => (await fetch(`${base}/history/tracked/top-followers/scan`).then(r => r.json())).pages === 11);
+  const progress = await fetch(`${base}/history/tracked/top-followers/scan`).then(r => r.json());
+  assert.equal(progress.status, "running");
+});
+
+test("legacy enrollment verifies the requested ID without assigning old rows to it", async t => {
+  const day = Math.floor(Date.now() / DAY) * DAY;
+  let storePath;
+  const base = await startBridge(t, {}, { store: { version: 4, accounts: { example: [{ ts: day-DAY, followers: 7, src: 'live' }] }, meta: { example: {} } }, onStorePath: value => { storePath = value; } });
+  assert.equal((await fetch(`${base}/history/example?userId=999`)).status, 409);
+  const response = await fetch(`${base}/history/example?userId=123456`);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.userId, '123456');
+  assert.deepEqual(result.history.map(row => row.followers), [1234]);
+  assert.equal(result.legacyHistoryIdentity, 'handle-only');
+  assert.ok(result.legacyHistory.some(row => row.followers === 7));
+  await waitFor(async () => JSON.parse(await readFile(storePath, 'utf8')).meta.example.verifiedUserId === '123456');
+  const stored = JSON.parse(await readFile(storePath, 'utf8'));
+  assert.equal(stored.meta.example.userId, undefined);
+  assert.ok(stored.accounts.example.some(row => row.followers === 7));
 });

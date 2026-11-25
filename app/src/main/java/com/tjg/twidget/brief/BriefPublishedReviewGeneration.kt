@@ -18,8 +18,15 @@ internal class BriefReviewException(val reason: BriefReviewFailure) : Exception(
 /** Viewers share refreshes, including their analytics fetch; closing a page keeps the result. */
 internal object BriefPublishedReviewGeneration {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private data class Running(val language: String, val task: Deferred<BriefPublishedReviewAttempt>)
+    private data class Running(val language: String, val algorithmVersion: String, val task: Deferred<BriefPublishedReviewAttempt>)
     private val running = mutableMapOf<String, Running>()
+
+    internal fun isRunning(context: Context, target: BriefReviewTarget): Boolean {
+        val account = TwidgetStore.canonicalAccount(context, target.username)
+        val generation = TwidgetStore.accountGeneration(context, account)
+        val key = "${account.lowercase(java.util.Locale.US)}|$generation|${BriefPublishedReviewStore.postId(target.postUrl.orEmpty())}"
+        return synchronized(running) { running.containsKey(key) }
+    }
 
     suspend fun getOrGenerate(context: Context, subject: BriefReviewSubject,
         generate: suspend () -> BriefCoachGeneration): BriefSavedReview? =
@@ -31,22 +38,23 @@ internal object BriefPublishedReviewGeneration {
         val app = context.applicationContext
         val target = subject.target.copy(username = TwidgetStore.canonicalAccount(app, subject.target.username))
         val language = subject.input.language
+        val algorithmVersion = BriefAlgorithmContext.current(app).key
         val before = BriefPublishedReviewStore.read(app, target)
-        if (!force && before != null && BriefReviewFreshness.canReuse(before, language)) return BriefPublishedReviewAttempt(before)
+        if (!force && before != null && BriefReviewFreshness.canReuse(before, language, algorithmVersion = algorithmVersion)) return BriefPublishedReviewAttempt(before)
         val generation = TwidgetStore.accountGeneration(app, target.username)
         val key = "${target.username.lowercase(java.util.Locale.US)}|$generation|${BriefPublishedReviewStore.postId(target.postUrl.orEmpty())}"
         val task = synchronized(running) {
             val previous = running[key]
-            previous?.takeIf { it.language.equals(language, ignoreCase = true) }?.task ?: scope.async(start = CoroutineStart.LAZY) {
+            previous?.takeIf { it.language.equals(language, ignoreCase = true) && it.algorithmVersion == algorithmVersion }?.task ?: scope.async(start = CoroutineStart.LAZY) {
                 val saved = BriefPublishedReviewStore.read(app, target)
                 // A completed replacement between lookup and joining satisfies this request too.
-                if (saved != null && BriefReviewFreshness.matchesLanguage(saved, language) &&
+                if (saved != null && saved.result.algorithmVersion == algorithmVersion && BriefReviewFreshness.matchesLanguage(saved, language) &&
                     (saved.savedAt != before?.savedAt || (!force && BriefReviewFreshness.isFresh(saved)))) {
                     BriefPublishedReviewAttempt(saved)
                 } else try {
                     val current = prepare()
                     if (!current.input.language.equals(language, ignoreCase = true)) throw CancellationException("Review language changed")
-                    if (!force && saved != null && BriefReviewFreshness.matchesLanguage(saved, language) &&
+                    if (!force && saved != null && saved.result.algorithmVersion == algorithmVersion && BriefReviewFreshness.matchesLanguage(saved, language) &&
                         BriefReviewEvidenceFingerprint.same(saved.subject, current)) {
                         val checked = BriefPublishedReviewStore.markChecked(app, saved, generation)
                         return@async BriefPublishedReviewAttempt(checked, if (checked == null) BriefReviewFailure.POST_UNAVAILABLE else null)
@@ -67,7 +75,7 @@ internal object BriefPublishedReviewGeneration {
                     BriefPublishedReviewAttempt(saved, (error as? BriefReviewException)?.reason ?: reviewFailure(error))
                 }
             }.also { task ->
-                running[key] = Running(language, task)
+                running[key] = Running(language, algorithmVersion, task)
                 previous?.task?.cancel()
                 task.invokeOnCompletion { synchronized(running) { if (running[key]?.task === task) running.remove(key) } }
             }

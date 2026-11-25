@@ -23,7 +23,7 @@ import java.text.NumberFormat
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** The four cards share a range, while each account keeps its own selection. */
+/** Engagement composition cards share the account-scoped data range. */
 internal object InteractionCards {
     private val graphMetrics = listOf(InteractionMetric.LIKES, InteractionMetric.REPOSTS, InteractionMetric.REPLIES, InteractionMetric.SHARES)
     private val allMetrics = InteractionMetric.entries.toList()
@@ -96,146 +96,104 @@ internal object InteractionCards {
             data = InteractionStore.all(activity, account)
         }
         return when (card) {
-            DashboardCardType.INTERACTIONS -> graph(activity, account, data, days, metric)
-            DashboardCardType.INTERACTION_TOTALS -> totals(activity, data, days)
             DashboardCardType.ENGAGEMENT_MIX -> mix(activity, data, days)
             DashboardCardType.ORIGINAL_REPLIES -> split(activity, data, days)
             else -> error("Unsupported interaction card")
         }
     }
 
-    private fun graph(activity: MainActivity, account: String, data: InteractionData, days: Int, metric: InteractionMetric): View {
-        val root = surface(activity)
-        val header = row(activity)
-        addWeighted(header, heading(activity, R.string.interactions_title))
-        listOf(7 to R.string.interaction_range_7, 30 to R.string.interaction_range_30, 90 to R.string.interaction_range_90).forEach { (value, label) ->
-            header.addView(pill(activity, activity.getString(label), days == value) {
-                prefs(activity).edit().putInt(key(account, "range"), value).apply()
-                activity.render(refreshRemote = false)
-            })
-        }
-        root.addView(header)
-        val chips = row(activity)
-        graphMetrics.forEach { item -> addWeighted(chips, pill(activity, activity.getString(metricLabel(item)), item == metric) {
-            prefs(activity).edit().putString(key(account, "metric"), item.name).apply()
-            activity.render(refreshRemote = false)
-        }) }
-        root.addView(chips, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 6) })
-        val points = InteractionAggregation.series(data, metric, days)
-        val total = InteractionAggregation.total(points)
-        root.addView(text(activity, count(activity, total), 27f, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 5) })
-        root.addView(text(activity, activity.getString(R.string.interaction_range_description,
-            activity.getString(metricLabel(metric)), activity.getString(rangeLabel(days))), 12f, secondary = true))
-        if (points.all { it.value == null }) {
-            root.addView(text(activity, activity.getString(R.string.interaction_empty), 13f, secondary = true).apply { gravity = Gravity.CENTER_VERTICAL },
-                LinearLayout.LayoutParams(-1, 0, 1f))
-        } else {
-            val formatter = DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(AppLocales.applicationLocale(), "MMMd"), AppLocales.applicationLocale())
-            root.addView(MetricChartView(activity).apply {
-                compactCardInsets = true
-                zeroBasedScale = true
-                setOptionalSeries(points.map { it.date.format(formatter) to it.value })
-            }, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(activity, 4) })
-        }
-        root.addView(text(activity, activity.getString(R.string.interaction_by_post_date), 10f, secondary = true))
-        return root
-    }
-
-    private fun totals(activity: MainActivity, data: InteractionData, days: Int): View {
-        val root = surface(activity)
-        val header = row(activity)
-        addWeighted(header, heading(activity, R.string.interaction_stats_title))
-        header.addView(text(activity, activity.getString(R.string.compare_title), 14f, true).apply {
-            setTextColor(activity.getColor(R.color.interaction_replies_color))
-            contentDescription = activity.getString(R.string.compare_title)
-            minimumHeight = dp(activity, 40)
-            gravity = Gravity.CENTER
-            setPadding(dp(activity, 10), 0, dp(activity, 10), 0)
-            setOnClickListener { CompareSheet(activity).show() }
-        })
-        root.addView(header)
-        root.addView(text(activity, activity.getString(rangeLabel(days)), 12f, secondary = true))
-        val totals = InteractionAggregation.totals(data, days)
-        allMetrics.chunked(4).forEach { metrics ->
-            val group = row(activity)
-            metrics.forEach { metric ->
-                val value = count(activity, totals[metric])
-                val name = activity.getString(metricLabel(metric))
-                val cell = LinearLayout(activity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(text(activity, value, 18f, true).apply {
-                        maxLines = 1
-                        setAutoSizeTextTypeUniformWithConfiguration(10, 18, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
-                    }, LinearLayout.LayoutParams(-1, dp(activity, 26)))
-                    addView(text(activity, name, 12f, secondary = true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                    contentDescription = activity.getString(R.string.interaction_value_description, name, value)
-                }
-                addWeighted(group, cell)
-            }
-            repeat(4 - metrics.size) { addWeighted(group, View(activity)) }
-            root.addView(group, LinearLayout.LayoutParams(-1, 0, 1f))
-        }
-        return root
-    }
-
-    private fun mix(activity: MainActivity, data: InteractionData, days: Int): View {
-        val root = surface(activity)
-        root.addView(heading(activity, R.string.interaction_mix_title))
-        root.addView(text(activity, activity.getString(rangeLabel(days)), 12f, secondary = true))
+    internal fun mix(activity: MainActivity, data: InteractionData, days: Int): View {
+        val root = surface(activity).apply { setTag(R.id.dashboard_list_card, false); setPadding(dp(activity, 31), dp(activity, 12), dp(activity, 32), dp(activity, 12)) }
         val slices = InteractionAggregation.mix(data, days)
         val comparable = slices.all { it.percent != null }
         val content = row(activity)
-        val donut = InteractionDonutView(activity)
-        donut.setData(if (comparable) slices.map { it.count ?: 0L } else emptyList(),
-            if (comparable) slices.mapNotNull { it.count }.sum() else null)
-        content.addView(donut, LinearLayout.LayoutParams(0, -1, 1f))
-        val legend = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
-        slices.forEach { slice ->
+        content.addView(InteractionDonutView(activity).apply {
+            setData(if (comparable) slices.map { it.count ?: 0L } else emptyList(),
+                if (comparable) slices.mapNotNull { it.count }.sum() else null)
+        }, LinearLayout.LayoutParams(0, dp(activity, 150), .40f).apply { gravity = Gravity.CENTER_VERTICAL; marginEnd = dp(activity, 49) })
+        val legend = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(activity, 20)) }
+        legend.addView(text(activity, activity.getString(R.string.interaction_mix_title), 14f, true, true).apply {
+            TwidgetFonts.dashboardHeading(this)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(activity, 18) })
+        val icons = listOf(R.drawable.interaction_likes_icon,
+            R.drawable.interaction_reposts_icon,
+            R.drawable.interaction_replies_icon,
+            R.drawable.interaction_quotes_icon)
+        slices.forEachIndexed { index, slice ->
             val name = activity.getString(metricLabel(slice.metric))
             val amount = count(activity, slice.count)
             val percent = percentage(activity, slice.percent)
             val line = row(activity).apply {
-                val dot = View(activity).apply { background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL; setColor(activity.getColor(metricColor(slice.metric)))
-                } }
-                addView(dot, LinearLayout.LayoutParams(dp(activity, 9), dp(activity, 9)).apply { marginEnd = dp(activity, 7) })
-                addWeighted(this, text(activity, name, 12f).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-                addView(text(activity, amount, 12f, true))
-                addView(text(activity, percent, 12f, secondary = true), LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(activity, 7) })
-                minimumHeight = dp(activity, 31)
+                addView(android.widget.ImageView(activity).apply {
+                    setImageResource(icons[index])
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(dp(activity, 24), dp(activity, 24)).apply { marginEnd = dp(activity, 10) })
+                addWeighted(this, text(activity, name, 18f).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
+                addView(text(activity, amount, 18f, true).apply { maxLines = 1 },
+                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(activity, 8) })
                 contentDescription = activity.getString(R.string.interaction_slice_description, name, amount, percent)
             }
-            legend.addView(line, LinearLayout.LayoutParams(-1, -2))
+            legend.addView(line, LinearLayout.LayoutParams(-1, 0, 1f))
         }
-        content.addView(legend, LinearLayout.LayoutParams(0, -1, 1.35f))
+        content.addView(legend, LinearLayout.LayoutParams(0, -1, .60f))
         root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
         if (!comparable) root.addView(text(activity, activity.getString(R.string.interaction_mix_unavailable), 11f, secondary = true))
+        fun proportional(view: View) {
+            if (view is TextView) view.setTag(R.id.dashboard_design_proportional_text,
+                view.getTag(R.id.app_font_role) != TwidgetFonts.Role.DASHBOARD_HEADING)
+            if (view is ViewGroup) for (i in 0 until view.childCount) proportional(view.getChildAt(i))
+        }
+        proportional(root)
         return root
     }
 
-    private fun split(activity: MainActivity, data: InteractionData, days: Int): View {
-        val root = surface(activity)
-        root.addView(heading(activity, R.string.interaction_split_title))
+    internal fun split(activity: MainActivity, data: InteractionData, days: Int): View {
         val split = InteractionAggregation.split(data, days)
-        val hasPosts = split.originals + split.replies > 0
-        val values = row(activity)
-        listOf(Triple(R.string.interaction_original, split.originals, split.originalPercent), Triple(R.string.interaction_replies, split.replies, split.replyPercent)).forEachIndexed { index, (label, value, percent) ->
-            val amount = if (hasPosts) activity.getString(R.string.interaction_split_value, count(activity, value.toLong()), percentage(activity, percent)) else activity.getString(R.string.interaction_missing)
-            val cell = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                if (index == 1) gravity = Gravity.END
-                addView(text(activity, amount, 20f, true))
-                addView(text(activity, activity.getString(label), 12f, secondary = true))
-                contentDescription = activity.getString(R.string.interaction_value_description, activity.getString(label), amount)
-            }
-            addWeighted(values, cell)
+        val known = split.originals + split.replies > 0
+        return comparison(activity, R.string.interaction_split_title, R.string.interaction_original,
+            R.string.interaction_replies, if (known) split.originals.toLong() else null,
+            if (known) split.replies.toLong() else null, activity.getString(rangeLabel(days)),
+            activity.editModeController.cardSpan(DashboardCardType.ORIGINAL_REPLIES) > 1)
+    }
+
+    internal fun comparison(activity: MainActivity, title: Int, leftLabel: Int, rightLabel: Int,
+        left: Long?, right: Long?, range: String?, wide: Boolean): View {
+        val root = surface(activity).apply {
+            setTag(R.id.dashboard_list_card, false)
+            val inset = if (wide) 32 else 23
+            setPadding(dp(activity, inset), dp(activity, 12), dp(activity, inset), dp(activity, 23))
         }
-        root.addView(values, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(activity, 8) })
-        root.addView(InteractionSplitView(activity).apply { setSplit(split.originals, split.replies) }, LinearLayout.LayoutParams(-1, dp(activity, 14)))
-        val range = activity.getString(rangeLabel(days))
-        val footer = if (hasPosts) range else activity.getString(R.string.interaction_range_description, range, activity.getString(R.string.interaction_split_empty))
-        root.addView(text(activity, footer, 12f, secondary = true).apply { gravity = Gravity.CENTER },
-            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 7) })
+        root.addView(text(activity, activity.getString(title), 14f, true, true).apply {
+            TwidgetFonts.dashboardHeading(this)
+            gravity = Gravity.CENTER
+        })
+        root.addView(View(activity), LinearLayout.LayoutParams(-1, 0, 1f))
+        val values = row(activity)
+        fun value(amount: Long?) = text(activity, count(activity, amount), 40f, true).apply {
+            setTag(R.id.dashboard_card_span, if (wide) 140 else 79)
+            TwidgetFonts.setRole(this, TwidgetFonts.Role.INTERACTION_VALUE)
+            maxLines = 1
+            setAutoSizeTextTypeUniformWithConfiguration(16, 40, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+        }
+        values.addView(value(left), LinearLayout.LayoutParams(0, dp(activity, 50), 1f))
+        if (wide && range != null) values.addView(text(activity, range, 16f, true, true).apply { gravity = Gravity.CENTER })
+        values.addView(value(right).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, dp(activity, 50), 1f))
+        root.addView(values)
+        root.addView(InteractionSplitView(activity).apply { setValues(left, right) },
+            LinearLayout.LayoutParams(-1, dp(activity, 35)).apply { topMargin = dp(activity, 10) })
+        val labels = row(activity)
+        addWeighted(labels, text(activity, activity.getString(leftLabel), 16f).apply { maxLines = 1 })
+        addWeighted(labels, text(activity, activity.getString(rightLabel), 16f).apply { gravity = Gravity.END; maxLines = 1 })
+        root.addView(labels, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 10) })
+        root.contentDescription = listOfNotNull(activity.getString(title), range,
+            activity.getString(leftLabel) + ": " + count(activity,left), activity.getString(rightLabel) + ": " + count(activity,right)).joinToString(". ")
+        fun proportional(view: View) {
+            if (view is TextView) view.setTag(R.id.dashboard_design_proportional_text,
+                view.getTag(R.id.app_font_role) != TwidgetFonts.Role.DASHBOARD_HEADING)
+            if (view is ViewGroup) for (i in 0 until view.childCount) proportional(view.getChildAt(i))
+        }
+        proportional(root)
         return root
     }
 }

@@ -42,6 +42,7 @@ test("TwitterAPIs requests keep the provider key server-side and surface status"
   });
   assert.deepEqual(page, { users: [], nextCursor: "" });
   assert.match(request.url, /username=example/);
+  assert.match(request.url, /count=100/);
   assert.match(request.url, /cursor=cursor\+value/);
   assert.equal(request.options.headers.Authorization, "Bearer secret-key");
 

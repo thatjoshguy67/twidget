@@ -111,8 +111,27 @@
              .main, preserving home screen icons and pinned shortcuts. -->
         <activity-alias
             android:name=".MainActivity"
+            android:icon="@mipmap/ic_launcher_default"
             android:exported="true"
             android:theme="@style/Theme.Twidget.Launcher"
+            android:targetActivity=".main.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias android:name=".LauncherLight" android:enabled="false"
+            android:exported="true" android:icon="@mipmap/ic_launcher_light"
+            android:targetActivity=".main.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias android:name=".LauncherDark" android:enabled="false"
+            android:exported="true" android:icon="@mipmap/ic_launcher_dark"
             android:targetActivity=".main.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

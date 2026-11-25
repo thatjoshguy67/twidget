@@ -54,15 +54,25 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
         screen.addPreference(spacerCategory())
         screen.addPreference(categorySwitch(BriefContentCategory.TOP_TWEET, R.string.brief_content_top_tweet))
         screen.addPreference(categorySwitch(BriefContentCategory.WORST_TWEET, R.string.brief_content_worst_tweet))
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.CONVERSATIONS,
+            R.string.brief_content_conversations, R.string.brief_content_conversations_explainer))
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.CONTENT_PATTERNS,
+            R.string.brief_content_patterns, R.string.brief_content_patterns_explainer))
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.TOPICS,
+            R.string.brief_content_topics, R.string.brief_content_topics_explainer))
 
         screen.addPreference(explainedCategorySwitch(
             BriefContentCategory.POSTING_GUIDANCE,
             R.string.brief_content_posting_guidance,
             R.string.brief_posting_guidance_explainer,
         ))
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.EXPERIMENTS,
+            R.string.brief_content_experiments, R.string.brief_content_experiments_explainer))
 
         screen.addPreference(spacerCategory())
         screen.addPreference(categorySwitch(BriefContentCategory.FOLLOWERS, R.string.brief_content_followers))
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.AUDIENCE_MOMENTUM,
+            R.string.brief_content_momentum, R.string.brief_content_momentum_explainer))
         screen.addPreference(categorySwitch(BriefContentCategory.TOP_FOLLOWERS, R.string.brief_content_top_followers))
 
         screen.addPreference(spacerCategory())
@@ -77,7 +87,8 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
                 .show()
         })
 
-
+        screen.addPreference(explainedCategorySwitch(BriefContentCategory.WEEKLY_RECAP,
+            R.string.brief_content_recap, R.string.brief_content_recap_explainer))
 
         screen.addPreference(spacerCategory())
         screen.addPreference(navigableCategorySwitch(
@@ -92,13 +103,6 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
             }
         })
 
-        screen.addPreference(spacerCategory())
-        screen.addPreference(categorySwitch(BriefContentCategory.CONVERSATIONS, R.string.brief_content_conversations))
-        screen.addPreference(categorySwitch(BriefContentCategory.CONTENT_PATTERNS, R.string.brief_content_patterns))
-        screen.addPreference(categorySwitch(BriefContentCategory.AUDIENCE_MOMENTUM, R.string.brief_content_momentum))
-        screen.addPreference(categorySwitch(BriefContentCategory.WEEKLY_RECAP, R.string.brief_content_recap))
-        screen.addPreference(categorySwitch(BriefContentCategory.TOPICS, R.string.brief_content_topics))
-        screen.addPreference(categorySwitch(BriefContentCategory.EXPERIMENTS, R.string.brief_content_experiments))
         screen.addBottomInset()
         preferenceScreen = screen
     }
@@ -180,9 +184,12 @@ class BriefContentSettingsPreferenceFragment : InsetPreferenceFragment() {
     }
 
     private fun iconColor(category: BriefContentCategory): Int = when (category) {
-        BriefContentCategory.TOPICS, BriefContentCategory.EXPERIMENTS,
-        BriefContentCategory.CONVERSATIONS, BriefContentCategory.CONTENT_PATTERNS,
-        BriefContentCategory.AUDIENCE_MOMENTUM, BriefContentCategory.WEEKLY_RECAP -> R.color.oneui_accent
+        BriefContentCategory.CONVERSATIONS -> R.color.brief_content_icon_teal
+        BriefContentCategory.CONTENT_PATTERNS -> R.color.brief_content_icon_violet
+        BriefContentCategory.TOPICS -> R.color.brief_icon_top_tweet
+        BriefContentCategory.EXPERIMENTS -> R.color.brief_content_icon_pink
+        BriefContentCategory.AUDIENCE_MOMENTUM -> R.color.metric_green
+        BriefContentCategory.WEEKLY_RECAP -> R.color.oneui_accent
         BriefContentCategory.TOP_TWEET -> R.color.brief_icon_top_tweet
         BriefContentCategory.WORST_TWEET -> R.color.metric_red
         BriefContentCategory.TOP_FOLLOWERS,

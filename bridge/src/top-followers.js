@@ -3,6 +3,49 @@ const MAX_SCANNED = 10_000_000;
 const MAX_PAGES = 6_250;
 const DAY = 24 * 60 * 60 * 1000;
 
+// Membership differences are observations across an interval, not timestamped
+// unfollow events: suspensions/deletions can also remove a follower. Never
+// derive these gross counts by subtracting the two public follower totals.
+export function followerChangeObservation(before, after, counts, ownerId) {
+  if (!/^[0-9]+$/.test(ownerId || "") || before?.userId !== ownerId || after?.userId !== ownerId ||
+      before.kind === "head" || after.kind === "head" || before.status !== "complete" || after.status !== "complete" ||
+      !before.completedAt || after.completedAt <= before.completedAt || before.scanId === after.scanId) return null;
+  if (![counts?.newFollowers, counts?.lostFollowers].every(value => Number.isSafeInteger(value) && value >= 0)) return null;
+  return {
+    userId: ownerId, scanId: after.scanId, from: before.completedAt, to: after.completedAt,
+    newFollowers: counts.newFollowers, lostFollowers: counts.lostFollowers,
+    source: "complete_follower_scans", semantics: "observed_membership_changes_not_daily_unfollow_events",
+  };
+}
+
+export function followerChangesFor(meta) {
+  const ownerId = meta?.userId || meta?.verifiedUserId;
+  return (Array.isArray(meta?.followerChanges) ? meta.followerChanges : []).filter(row => row.userId === ownerId);
+}
+
+export function appendFollowerChange(meta, observation) {
+  return [...followerChangesFor(meta).filter(row => row.scanId !== observation.scanId), observation]
+    .sort((a, b) => a.to - b.to).slice(-366);
+}
+
+export function topFollowersScanPlan({ kind, snapshot, followersCount, buffer = 100, overlap = 100 }) {
+  const sourceFollowers = Number.isSafeInteger(followersCount) && followersCount >= 0 ? followersCount : null;
+  // Migrate older snapshots using their stored full-list size. A run of known
+  // followers is required too, even when the net count has not increased.
+  const baseline = snapshot?.sourceFollowers ?? snapshot?.total;
+  const delta = sourceFollowers !== null && Number.isSafeInteger(baseline) ? Math.max(0, sourceFollowers - baseline) : 0;
+  return {
+    kind, sourceFollowers, processed: 0, knownStreak: 0,
+    targetRows: kind === "head" ? Math.max(buffer, Math.ceil(delta * 1.5) + buffer) : 0,
+    overlapRows: overlap,
+  };
+}
+
+export function topFollowersHeadComplete(scan) {
+  return scan?.kind === "head" && Number(scan.processed || 0) >= Number(scan.targetRows || 100) &&
+    Number(scan.knownStreak || 0) >= Number(scan.overlapRows || 100);
+}
+
 export function canResumeTopFollowersScan(scan, { now = Date.now(), resumeMaxAgeMs = DAY, maxPages = MAX_PAGES } = {}) {
   return scan?.status === "failed" && now >= Number(scan.retryAt || 0) &&
     now - scan.startedAt <= resumeMaxAgeMs && scan.pages < maxPages &&
@@ -51,6 +94,9 @@ export function shouldRefreshTopFollowers({
   now = Date.now(),
   refreshMs = 24 * 60 * 60 * 1000,
 }) {
+  // Repeating a known-incomplete crawl cannot produce a full snapshot. Keep
+  // the last result and require an operator to resolve its capacity limit.
+  if (scan?.error === "top_followers_page_limit_reached") return false;
   if (scan?.status === "running") return false;
   if (scan?.status === "failed" && scan.retryAt) return now >= scan.retryAt;
   const lastAttemptAt = Math.max(

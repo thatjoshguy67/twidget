@@ -56,6 +56,7 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
             val posts = (liveCards + savedPosts.take(savedReviewLimit))
                 .filterNot { it.url in excludedPosts || BriefPublishedReviewStore.postId(it.url) in excludedIds }
                 .distinctBy { BriefPublishedReviewStore.postId(it.url) ?: it.url }
+                .sortedByDescending { it.timestamp }
             val content = findViewById<LinearLayout>(R.id.review_content)
             content.removeAllViews()
             fun open(target: BriefReviewTarget) = startRightSidePopOverActivity(BriefTweetReviewActivity.intent(this@BriefReviewListActivity, target))

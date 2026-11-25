@@ -72,14 +72,55 @@ import kotlinx.coroutines.withContext
 class TwidgetBriefActivity : FoldablePopOverActivity() {
     private lateinit var username: String
     private var renderedSnapshot: BriefSnapshot? = null
+    private val archiveUpdateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!intent?.getStringExtra("username").equals(username, true) || isFinishing || isDestroyed ||
+                debugScenario != BriefDebugScenario.REAL || renderedSnapshot == null) return
+            val scroll = findViewById<androidx.core.widget.NestedScrollView>(R.id.brief_scroll)
+            val y = scroll.scrollY
+            render(BriefEngine.rebuild(this@TwidgetBriefActivity, username))
+            scroll.post { scroll.scrollTo(0, y) }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        androidx.core.content.ContextCompat.registerReceiver(this, archiveUpdateReceiver,
+            android.content.IntentFilter(com.tjg.twidget.analytics.HistoricalAnalyticsWorker.ACTION_UPDATED),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(archiveUpdateReceiver) }
+        super.onStop()
+    }
     private var visiblePresentation: BriefPresentation? = null
     private var refreshReviewPreviews: (() -> Unit)? = null
+    private val rankedTweetDescriptions = mutableListOf<Triple<PostSummary, TextView, String>>()
+    private fun refreshTweetRankDescriptions() {
+        val bindings = rankedTweetDescriptions.toList()
+        lifecycleScope.launch {
+            val labels = withContext(Dispatchers.IO) {
+                bindings.map { (post, _, base) ->
+                    val saved = BriefPublishedReviewStore.read(this@TwidgetBriefActivity, BriefReviewTarget(username, postUrl = post.url))
+                    val evidence = saved?.let { BriefReviewSubjects.withRanking(this@TwidgetBriefActivity, it.subject).input.reviewEvidence }
+                        ?: AnalyticsClient.cached(this@TwidgetBriefActivity, username)?.let { BriefReviewEvidence.create(post, it, emptyList()) }
+                    evidence?.viewsRank?.let { "$base " + getString(R.string.review_preview_rank, it, evidence.viewsRankTotal) } ?: base
+                }
+            }
+            bindings.zip(labels).forEach { (binding, label) -> binding.second.text = label }
+        }
+    }
     private var localStatus = BriefLocalStatus.UNAVAILABLE
     private var debugScenario: BriefDebugScenario = BriefDebugScenario.REAL
     private var reloadOnResume = false
     private var checkContentOnResume = false
     private var entranceSections: List<View> = emptyList()
     private val cardEntranceAnimations = mutableListOf<AnimatorSet>()
+    private var entranceInProgress = false
+    private var entranceStarted = false
+    private var entranceGeneration = 0
+    private var pendingEntranceRender: Pair<BriefSnapshot, PostAnalytics?>? = null
     private var backgroundAnimator: ValueAnimator? = null
     private var loadingStatusIndex = 0
     private var loadingStatusRunnable: Runnable? = null
@@ -266,10 +307,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             }
             return
         }
-        if (renderedSnapshot != null) {
-            prepareBriefEntrance()
-            startPreparedBriefEntrance()
-        }
         // Returning from a child page/popover keeps the current presentation.
     }
 
@@ -347,6 +384,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefRunCache.providerMatches(BriefSettingsStore.provider(this), source.providerUsed)
 
     override fun onDestroy() {
+        entranceGeneration++
+        entranceInProgress = false
+        pendingEntranceRender = null
         cardEntranceAnimations.forEach { it.cancel() }
         cardEntranceAnimations.clear()
         apiKeyDialog?.dismiss()
@@ -607,6 +647,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun followerChartCard(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.brief_card_background)
+        com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(this, dp(28).toFloat())
+        com.tjg.twidget.ui.SeslSurfaceHighlight.applyTo(this)
         setPadding(0, dp(16), 0, 0)
 
         val stats = TwidgetStore.currentStats(this@TwidgetBriefActivity, username)
@@ -668,6 +710,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun topFollowersCard(card: BriefCard): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.brief_card_background)
+        com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(this, dp(28).toFloat())
+        com.tjg.twidget.ui.SeslSurfaceHighlight.applyTo(this)
         isClickable = true
         isFocusable = true
         applyBriefCardRipple()
@@ -739,6 +783,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         snapshot: BriefSnapshot,
         analytics: PostAnalytics? = AnalyticsClient.cached(this, username),
     ) {
+        // A refresh can finish while cached content is still revealing. Keep that
+        // presentation intact, then apply the latest data once every part settles.
+        if (entranceInProgress) {
+            pendingEntranceRender = snapshot to analytics
+            return
+        }
         renderedSnapshot = snapshot
         visiblePresentation = BriefStore.presentation(this, username, snapshot)
         val summary = visiblePresentation?.summary() ?: BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
@@ -750,13 +800,14 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val keepLinkCard = container.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.visibility == View.VISIBLE &&
             BriefChatGptLinkCard.canRemainVisible(this)
         container.removeAllViews()
+        rankedTweetDescriptions.clear()
         // Keep every review preview independent so masonry can balance unequal tweet heights.
         val reviews = if (debugScenario == BriefDebugScenario.REAL &&
             (snapshot.hasGeneratedNarrative || canUpdateIncrementally(snapshot))) {
             BriefPostCoachSection.create(this, username, analytics,
                 excludedPostUrls = snapshot.cards.mapNotNull { resolveBriefPost(it, analytics)?.url }.toSet())
         } else null
-        refreshReviewPreviews = reviews?.refreshDescriptions
+        refreshReviewPreviews = { reviews?.refreshDescriptions?.invoke(); refreshTweetRankDescriptions() }
         val sections = buildList {
             if (debugScenario == BriefDebugScenario.CHATGPT_LINK) {
                 add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity, preview = true) {} to 20)
@@ -773,6 +824,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }.mapIndexed { index, (section, topMargin) ->
             section to if (index == 0) 32 else topMargin
         }
+        refreshTweetRankDescriptions()
         entranceSections = sections.map { it.first }
         if (columns == 1) {
             container.orientation = LinearLayout.VERTICAL
@@ -851,6 +903,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
         addView(sectionLabel(description).apply {
             setLineSpacing(dp(2).toFloat(), 1f)
+            if (selectedPost != null) rankedTweetDescriptions += Triple(selectedPost, this, description)
         })
         val content = when (card.type) {
             BriefCardType.MILESTONE -> milestoneCard(card)
@@ -874,6 +927,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefCardType.INACTIVITY -> genericCard(card, warm = true)
             else -> genericCard(card)
         }
+        com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(content, dp(28).toFloat())
+        com.tjg.twidget.ui.SeslSurfaceHighlight.applyTo(content)
         addView(content, matchWrap(top = 10))
     }
 
@@ -1115,6 +1170,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun prepareBriefEntrance() {
+        if (entranceInProgress) return
+        entranceInProgress = true
+        entranceStarted = false
+        entranceGeneration++
         cardEntranceAnimations.forEach { it.cancel() }
         cardEntranceAnimations.clear()
         val title = findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
@@ -1155,21 +1214,37 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun startPreparedBriefEntrance() {
+        if (!entranceInProgress || entranceStarted) return
+        entranceStarted = true
+        val generation = entranceGeneration
         findViewById<View>(R.id.brief_scroll).post {
-            if (isFinishing || isDestroyed) return@post
+            if (isFinishing || isDestroyed || generation != entranceGeneration) return@post
+            val sections = entranceSections.toList()
+            var remaining = sections.size + 3 // Heading, description, footer and each card.
+            val finished = {
+                if (generation == entranceGeneration && --remaining == 0) {
+                    entranceInProgress = false
+                    entranceStarted = false
+                    val pending = pendingEntranceRender
+                    pendingEntranceRender = null
+                    pending?.let { (snapshot, analytics) -> render(snapshot, analytics) }
+                }
+            }
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
-                .startNowBriefTitleMotion(TITLE_DELAY_MS)
+                .startNowBriefTitleMotion(TITLE_DELAY_MS, onEnd = finished)
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body)
                 .startNowBriefMotion(COPY_DELAY_MS) {
-                    entranceSections.forEach { section ->
-                        startNowBriefCardEntrance(section, 0L)
+                    sections.forEach { section ->
+                        startNowBriefCardEntrance(section, 0L, finished)
                     }
+                    finished()
                 }
             startEntranceView(
                 findViewById(R.id.brief_footer),
                 FOOTER_DELAY_MS,
                 COPY_DURATION_MS,
                 PathInterpolator(0.2f, 0f, 0f, 1f),
+                finished,
             )
         }
     }
@@ -1185,6 +1260,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         delay: Long,
         duration: Long,
         interpolator: PathInterpolator,
+        onEnd: () -> Unit,
     ) {
         view.animate()
             .alpha(1f)
@@ -1192,10 +1268,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             .setStartDelay(delay)
             .setDuration(duration)
             .setInterpolator(interpolator)
+            .withEndAction(onEnd)
             .start()
     }
 
-    private fun startNowBriefCardEntrance(view: View, delay: Long) {
+    private fun startNowBriefCardEntrance(view: View, delay: Long, onEnd: () -> Unit) {
         val alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 1f).apply {
             duration = NOW_BRIEF_CARD_ALPHA_DURATION_MS
         }
@@ -1207,6 +1284,13 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             startDelay = delay
             playTogether(alpha, translation)
             cardEntranceAnimations += this
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                private var cancelled = false
+                override fun onAnimationCancel(animation: android.animation.Animator) { cancelled = true }
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    if (!cancelled) onEnd()
+                }
+            })
             start()
         }
     }
@@ -1220,7 +1304,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         includeFontPadding = false
         setTextColor(getColor(R.color.oneui_text_primary))
         textSize = size
-        typeface = Typeface.create("sec", if (bold) Typeface.BOLD else Typeface.NORMAL)
+        typeface = TwidgetFonts.forApp(this@TwidgetBriefActivity, if (bold) 700 else 400)
+        if (bold) TwidgetFonts.dashboardHeading(this)
     }
 
     private fun supportingText(value: String, size: Float) = TextView(this).apply {

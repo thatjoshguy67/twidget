@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Antworten und zitierte Tweets in deiner aktuellen Stichprobe im Verhältnis zu erfassten Aufrufen. Die Zahlen sind kumuliert und zählen keine einzelnen Personen.</string>
+    <string name="brief_content_patterns_explainer">Vergleiche die Aufrufe im Median für ähnlich alte Text-, Bild- und Video-Tweets. Wird bei ausreichend vergleichbaren Daten angezeigt.</string>
+    <string name="brief_content_momentum_explainer">Vergleiche deine Nettoänderung der Followerzahl in der zuletzt erfassten Woche mit der Vorwoche.</string>
+    <string name="brief_content_recap_explainer">Deine erfasste Followeränderung und eine Stichprobe von Tweets der letzten Woche. Aufrufe sind bisherige Gesamtzahlen.</string>
+    <string name="brief_content_topics_explainer">Sieh, welche wiederkehrenden Hashtags mehr Aufrufe im Median als andere ähnlich alte Tweets haben. Grundlage ist deine Stichprobe, keine Trendprognose.</string>
+    <string name="brief_content_experiments_explainer">Ein Format zum Testen anhand deiner aktuellen Inhaltsmuster. Vergleiche den nächsten Tweet bei ähnlichem Alter; Ergebnisse sind nicht garantiert.</string>
+</resources>

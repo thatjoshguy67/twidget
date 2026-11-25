@@ -52,6 +52,16 @@ class AnalyticsBlendPolicyTest {
         assertTrue((result.engagementRate ?: 0.0) > 0.0)
     }
 
+    @Test fun `reply only sample still supplies averages`() {
+        val reply = PostSummary("https://x.com/test/status/1", "reply", 120, 3, 1, 0, 0, 4,
+            0, "", "Test", "test", "", isReply = true)
+        val input = server(0, 0, 1).copy(postsAnalyzed = 0, recentReplies = listOf(reply, reply))
+        val result = AnalyticsBlendPolicy.blend(input, emptyList(), today)
+        assertEquals(120.0, result.avgViews!!, .001)
+        assertEquals(4.0, result.avgEngagements!!, .001)
+        assertEquals(1, result.livePosts)
+    }
+
     private fun imported(
         date: LocalDate,
         impressions: Long,

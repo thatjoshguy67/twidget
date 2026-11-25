@@ -105,6 +105,19 @@ object TwitterApisClient {
         return parseTimelinePage(HttpTransport.requireSuccess(response, "TwitterAPIs"))
     }
 
+    internal fun fetchConversationPage(context: Context, id: String, thread: Boolean): JSONObject {
+        require(id.matches(Regex("[0-9]+")))
+        val apiKey = SecureCredentialStore.read(context, SecureCredentialStore.TWITTERAPIS_API_KEY)
+        require(apiKey.isNotBlank())
+        val endpoint = if (thread) "thread" else "replies"
+        val response = HttpTransport.get("https://api.twitterapis.com/twitter/tweet/$endpoint?id=$id" +
+            if (thread) "" else "&sort=latest",
+            headers = mapOf("Authorization" to "Bearer ${apiKey.trim()}"),
+            connectTimeoutMs = 3000, readTimeoutMs = 5000, userAgent = "Twidget (Android)")
+        val root = JSONObject(HttpTransport.requireSuccess(response, "TwitterAPIs"))
+        return root.optJSONObject("data") ?: root
+    }
+
     internal fun parseTimelinePage(body: String): TwitterApisTimelinePage {
         val root = JSONObject(body)
         val container = root.optJSONObject("data") ?: root

@@ -6,7 +6,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { LocalHistoryRepository, PostgresHistoryRepository } from '../src/infrastructure.js';
-import { createTopFollowersActivityRecorder } from '../src/top-followers.js';
+import { createTopFollowersActivityRecorder, topFollowersScanPlan } from '../src/top-followers.js';
 
 async function repositoryFor(t, backend) {
   if (backend === 'json') {
@@ -107,6 +107,40 @@ for (const backend of ['json', 'postgres']) {
 }
 
 const follower = id => ({ id, username: 'fan' + id, name: 'Fan', followers: Number(id), verified: false, avatar: '', mutual: null });
+
+for (const backend of ['json', 'postgres']) {
+  test(`${backend}: delta plans and overlap survive a checkpoint without resetting weekly counts`, {
+    skip: backend === 'postgres' && !process.env.TWIDGET_TEST_POSTGRES_URL,
+  }, async t => {
+    const r = await repositoryFor(t, backend);
+    await r.registerAccount('example', [], 10, '123');
+    const full = crypto.randomUUID();
+    await r.startTopFollowersScan('example', full, Date.now(), { plan: { sourceFollowers: 1000 } });
+    await r.appendTopFollowersPage('example', full, [follower('1'), follower('2')], '');
+    await r.completeTopFollowersScan('example', full);
+    const before = await r.getTopFollowersSnapshot('example');
+    const plan = topFollowersScanPlan({ kind: 'head', snapshot: before, followersCount: 1200 });
+    const head = crypto.randomUUID();
+    await r.startTopFollowersScan('example', head, Date.now(), { kind: 'head', plan });
+    await r.appendTopFollowersPage('example', head, [follower('3'), { ...follower('1'), followers: 999 }, follower('2')], 'next');
+    const restarted = backend === 'json'
+      ? new LocalHistoryRepository({ filePath: r.filePath, maxHistoryDays: 400 })
+      : new PostgresHistoryRepository({ pool: r.pool, maxHistoryDays: 400 });
+    if (backend === 'json') await restarted.initialize();
+    const saved = await restarted.getTopFollowersScan('example');
+    assert.equal(saved.targetRows, 400);
+    assert.equal(saved.processed, 3);
+    assert.equal(saved.knownStreak, 2);
+    assert.equal(saved.sourceFollowers, 1200);
+    assert.equal(saved.cursor, 'next');
+    assert.equal((await restarted.getTopFollowersSnapshot('example')).total, 2);
+    await restarted.completeTopFollowersScan('example', head);
+    const after = await restarted.getTopFollowersSnapshot('example');
+    assert.equal(after.total, 3);
+    assert.equal(after.followers.find(v => v.id === '1').followers, 1);
+    assert.equal(after.fullCompletedAt, before.fullCompletedAt);
+  });
+}
 test('PostgreSQL: exact page counts, atomic head publication, weekly clock and rollback', { skip: !process.env.TWIDGET_TEST_POSTGRES_URL }, async t => {
   const r = await repositoryFor(t, 'postgres');
   await r.registerAccount('example', [], 10, '123456');

@@ -65,7 +65,7 @@ class MainActivity : EdgeToEdgeActivity() {
     private val bangerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val username = intent?.getStringExtra(BangerScanWorker.EXTRA_USERNAME) ?: return
-            if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed) return
+            if (!username.equals(selectedAccount, ignoreCase = true) || isFinishing || isDestroyed || editModeController.editMode) return
             analytics = AnalyticsClient.cached(this@MainActivity, selectedAccount)
             dashboardBinder.bindContent()
         }
@@ -204,7 +204,9 @@ class MainActivity : EdgeToEdgeActivity() {
         ContextCompat.registerReceiver(
             this,
             bangerUpdateReceiver,
-            IntentFilter(BangerScanWorker.ACTION_UPDATED),
+            IntentFilter(BangerScanWorker.ACTION_UPDATED).apply {
+                addAction(com.tjg.twidget.analytics.HistoricalAnalyticsWorker.ACTION_UPDATED)
+            },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         ContextCompat.registerReceiver(

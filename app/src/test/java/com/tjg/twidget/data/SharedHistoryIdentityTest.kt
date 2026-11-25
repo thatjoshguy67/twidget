@@ -7,6 +7,14 @@ import org.junit.Test
 
 class SharedHistoryIdentityTest {
     private val samples = """[{"ts":1791676800000,"followers":999}]"""
+    @Test fun matchingHandleHistoryCanFillTheChartOnlyAsEstimates() {
+        val response = """{"userName":"example","userId":"123","history":[],"legacyHistory":$samples}"""
+        val history = HistoryPool.availableHistory(response, "123", "example")!!
+        assertEquals(999L, history.single().followers)
+        assertTrue(history.single().estimated)
+        assertNull(HistoryPool.availableHistory(response, "other", "example"))
+        assertTrue(HistoryPool.availableHistory(response, "123", "different")!!.isEmpty())
+    }
     @Test fun sharedHistoryRequiresTheSamePermanentId() {
         assertNull(HistoryPool.ownedHistory("""{"userId":"999","history":$samples}""", "123"))
         assertNull(HistoryPool.ownedHistory("""{"history":$samples}""", "123"))

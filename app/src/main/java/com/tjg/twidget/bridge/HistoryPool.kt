@@ -31,13 +31,13 @@ object HistoryPool {
     private const val POOL_PREFS = "twidget_pool"
     private const val RETRY_DELAY_MS = 60 * 60 * 1000L
 
-    fun enrich(context: Context, stats: ProfileStats, settings: TwidgetSettings, endpoint: BridgeEndpoint): ProfileStats {
+    fun enrich(context: Context, stats: ProfileStats, settings: TwidgetSettings, endpoint: BridgeEndpoint, force: Boolean = false): ProfileStats {
         if (!settings.shareHistory) return stats
         if (stats.isPrivate == true) return stats
         val username = stats.userName.trim().trimStart('@')
         if (username.isBlank()) return stats
         // Pool state is per-day server-side; one exchange per account per day.
-        if (!needsSync(context, username)) return stats
+        if (!force && !needsSync(context, username)) return stats
         markAttempted(context, username)
         val pooled = runCatching { fetchPooledHistory(context, username, stats.userId, endpoint) }.getOrNull() ?: return stats
         runCatching { syncInteractions(context, username, stats.userId, endpoint) }
@@ -104,8 +104,18 @@ object HistoryPool {
 
     // Registers the account when unknown and returns the pooled history.
     private fun fetchPooledHistory(context: Context, username: String, userId: String, endpoint: BridgeEndpoint): List<HistorySample> {
-        val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}", null, endpoint.token)
-        return ownedHistory(body, userId) ?: throw IllegalStateException("Shared history account identity is not verified")
+        val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}?userId=${encode(userId)}", null, endpoint.token)
+        return availableHistory(body, userId, username) ?: throw IllegalStateException("Shared history account identity is not verified")
+    }
+
+    internal fun availableHistory(body: String, userId: String, username: String): List<HistorySample>? {
+        val verified = ownedHistory(body, userId) ?: return null
+        val root = JSONObject(body)
+        if (!root.optString("userName").trimStart('@').equals(username.trimStart('@'), true)) return verified
+        // Handle-only history is useful for chart context, but remains estimated:
+        // it cannot become evidence for deltas, ownership, or Brief claims.
+        val legacy = parseHistory(root.optJSONArray("legacyHistory") ?: JSONArray()).map { it.copy(estimated = true) }
+        return legacy + verified
     }
 
     internal fun ownedHistory(body: String, userId: String): List<HistorySample>? {

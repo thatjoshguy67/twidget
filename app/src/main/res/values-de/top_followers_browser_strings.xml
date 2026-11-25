@@ -7,4 +7,5 @@
     <string name="top_followers_browser_refresh_failed">Aktualisierung der Follower-Liste fehlgeschlagen. Versuche es erneut.</string>
     <string name="top_followers_browser_empty">Noch kein Follower-Ranking verfügbar.</string>
     <string name="top_followers_browser_no_results">Keine Follower passen zu deiner Suche.</string>
+    <string name="top_followers_browser_search_hint">Suchen</string>
 </resources>

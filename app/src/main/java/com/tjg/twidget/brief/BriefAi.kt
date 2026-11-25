@@ -30,7 +30,7 @@ internal fun briefRequiresApiKey(localStatus: BriefLocalStatus, cloudApiKey: Str
     localStatus == BriefLocalStatus.UNAVAILABLE && cloudApiKey.isBlank()
 
 enum class BriefNanoModelMode(val storageId: String, val label: String) {
-    AUTO_STABLE("auto_stable", "Auto · Stable (Fast → Full)"),
+    AUTO_STABLE("auto_stable", "Auto · All available models"),
     STABLE_FULL("stable_full", "Stable · Full"),
     STABLE_FAST("stable_fast", "Stable · Fast"),
     PREVIEW_FULL("preview_full", "Preview · Full"),
@@ -45,7 +45,7 @@ enum class BriefNanoModelMode(val storageId: String, val label: String) {
     })
 
     internal fun probeOrder(preferFull: Boolean = false): List<BriefNanoModelMode> = when (this) {
-        AUTO_STABLE -> if (preferFull) listOf(STABLE_FULL, STABLE_FAST) else listOf(STABLE_FAST, STABLE_FULL)
+        AUTO_STABLE -> if (preferFull) listOf(STABLE_FULL, PREVIEW_FULL, STABLE_FAST, PREVIEW_FAST, AUTO_STABLE) else listOf(STABLE_FULL, STABLE_FAST, PREVIEW_FULL, PREVIEW_FAST, AUTO_STABLE)
         else -> listOf(this)
     }
 
@@ -292,7 +292,7 @@ internal object GeminiNanoBriefProvider {
                 result.error?.let { append(" ($it)") }
             }
             if (result.status != BriefLocalStatus.UNAVAILABLE) {
-                if (!preferFull || result.status == BriefLocalStatus.AVAILABLE) {
+                if (result.status == BriefLocalStatus.AVAILABLE) {
                     return result.copy(attempts = attempts.joinToString(" · "))
                 }
                 if (downloadable == null) downloadable = result
@@ -308,7 +308,7 @@ internal object GeminiNanoBriefProvider {
         )
     }
 
-    private suspend fun probe(mode: BriefNanoModelMode): NanoProbe = runCatching {
+    internal suspend fun probe(mode: BriefNanoModelMode): NanoProbe = runCatching {
         val model = client(mode)
         try {
             val status = when (model.checkStatus()) {
@@ -484,7 +484,7 @@ internal object GeminiNanoBriefProvider {
         false
     }
 
-    internal fun client(mode: BriefNanoModelMode) = Generation.getClient(
+    internal fun client(mode: BriefNanoModelMode) = if (mode == BriefNanoModelMode.AUTO_STABLE) Generation.getClient() else Generation.getClient(
         generationConfig {
             modelConfig = modelConfig {
                 when (mode) {

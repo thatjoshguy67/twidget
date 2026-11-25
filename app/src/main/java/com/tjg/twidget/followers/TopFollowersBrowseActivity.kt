@@ -1,11 +1,7 @@
 package com.tjg.twidget.followers
 
-import android.animation.ValueAnimator
 import android.app.SearchManager
 import android.content.Intent
-import android.graphics.Outline
-import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -19,18 +15,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
-import android.view.ViewTreeObserver
-import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsAnimationCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.TextViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -43,7 +31,6 @@ import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.ProfileImageLoader
 import com.tjg.twidget.ui.TwidgetFonts
-import com.tjg.twidget.ui.VerifiedBadge
 import dev.oneuiproject.oneui.layout.ToolbarLayout
 import dev.oneuiproject.oneui.R as OneUiIconR
 
@@ -70,7 +57,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_top_followers_browse)
-        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(getColor(R.color.oneui_bg)))
         username = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
         if (username.isBlank()) {
             finish()
@@ -105,9 +91,6 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             true
         }
 
-        onBackPressedDispatcher.addCallback(this, collapseSearchOnBack)
-        searchFab = findViewById(R.id.top_followers_browse_search_fab)
-        searchContainer = findViewById(R.id.top_followers_browse_search_container)
         searchView = findViewById(R.id.top_followers_browse_search)
         // ToolbarLayout routes root overlays into its coordinator. Allow the search
         // button's elevation shadow outside the SearchView's tight layout bounds.
@@ -133,39 +116,34 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         }
         com.tjg.twidget.ui.KeyboardNavigation.register(this, "filters", R.string.floating_shortcut_filters, KeyEvent.KEYCODE_F,
             KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON) { searchFilters.show() }
-        // Read the delivered insets, rather than the previous root snapshot while it is dispatching.
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(searchView) { _, insets ->
-            val imeVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
-            searchView.onImeVisibilityChanged(imeVisible)
-            insets
+        var imeAnimating = false
+        fun positionSearch(insets: androidx.core.view.WindowInsetsCompat) {
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom
+            val navigation = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars()).bottom
+            searchView.translationY = -(ime - navigation).coerceAtLeast(0).toFloat()
         }
-        ViewCompat.setWindowInsetsAnimationCallback(
-            searchContainer,
-            object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
-                override fun onPrepare(animation: WindowInsetsAnimationCompat) {
-                    if ((animation.typeMask and WindowInsetsCompat.Type.ime()) != 0) imeAnimating = true
+        androidx.core.view.ViewCompat.setWindowInsetsAnimationCallback(toolbarLayout,
+            object : androidx.core.view.WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+                override fun onPrepare(animation: androidx.core.view.WindowInsetsAnimationCompat) {
+                    if (animation.typeMask and androidx.core.view.WindowInsetsCompat.Type.ime() != 0) imeAnimating = true
                 }
-
-                override fun onProgress(
-                    insets: WindowInsetsCompat,
-                    runningAnimations: MutableList<WindowInsetsAnimationCompat>,
-                ): WindowInsetsCompat {
-                    searchContainer.translationY = imeTranslationY(insets)
-                    findViewById<View>(android.R.id.content)?.invalidate()
+                override fun onProgress(insets: androidx.core.view.WindowInsetsCompat,
+                    running: MutableList<androidx.core.view.WindowInsetsAnimationCompat>): androidx.core.view.WindowInsetsCompat {
+                    positionSearch(insets)
                     return insets
                 }
-
-                override fun onEnd(animation: WindowInsetsAnimationCompat) {
-                    if ((animation.typeMask and WindowInsetsCompat.Type.ime()) != 0) {
+                override fun onEnd(animation: androidx.core.view.WindowInsetsAnimationCompat) {
+                    if (animation.typeMask and androidx.core.view.WindowInsetsCompat.Type.ime() != 0) {
                         imeAnimating = false
-                        ViewCompat.getRootWindowInsets(toolbarLayout)?.let {
-                            searchContainer.translationY = imeTranslationY(it)
-                        }
-                        findViewById<View>(android.R.id.content)?.invalidate()
+                        androidx.core.view.ViewCompat.getRootWindowInsets(toolbarLayout)?.let(::positionSearch)
                     }
                 }
-            },
-        )
+            })
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(searchView) { _, insets ->
+            if (!imeAnimating) positionSearch(insets)
+            searchView.onImeVisibilityChanged(insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()))
+            insets
+        }
         query = savedInstanceState?.getString(STATE_QUERY).orEmpty()
         searchView.setQuery(query, false)
         if (query.isNotEmpty() || savedInstanceState?.getBoolean("search_expanded") == true) {
@@ -184,7 +162,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
             }
         })
         // Float search over the full-height list.
-        applyEdgeToEdgeInsets(toolbarLayout) { navigationInset ->
+        applyEdgeToEdgeInsets(toolbarLayout, padRootForIme = false) { navigationInset ->
             searchView.updateBottomMarginForNavigationBar(
                 if (intent.getBooleanExtra(EXTRA_POPOVER, false)) dp(8) else 0, navigationInset)
         }
@@ -498,13 +476,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
                 val follower = ranked.follower
                 boundFollower = follower
                 rank.text = ranked.rank.toString()
-                name.text = VerifiedBadge.decorate(
-                    itemView.context,
-                    follower.name,
-                    follower.verified,
-                    null,
-                    (18 * itemView.resources.displayMetrics.density).toInt(),
-                )
+                name.text = follower.name
                 handle.text = "@${follower.username}"
                 count.text = TwidgetStore.compactNumber(follower.followers)
                 divider.visibility = if (showDivider) View.VISIBLE else View.INVISIBLE
@@ -566,29 +538,7 @@ class TopFollowersBrowseActivity : FoldablePopOverActivity() {
         }
     }
 
-    private fun launchVoiceSearch(sviEnabled: Boolean) {
-        if (sviEnabled) {
-            try {
-                voiceSearch.launch(Intent(ACTION_HONEYVOICE_RECOGNIZE_SPEECH))
-                return
-            } catch (_: ActivityNotFoundException) {
-                // Fall back to standard Google speech recognition if Honeyvoice is unavailable.
-            }
-        }
-        try {
-            voiceSearch.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.top_followers_browser_search))
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            })
-        } catch (_: ActivityNotFoundException) {
-            // A recognizer can be removed after SESL checks its availability.
-            searchView.requestFocus()
-        }
-    }
-
     companion object {
-        private const val ACTION_HONEYVOICE_RECOGNIZE_SPEECH = "samsung.honeyboard.honeyvoice.action.RECOGNIZE_SPEECH"
         private const val STATE_QUERY = "top_followers_query"
         const val EXTRA_USERNAME = "username"
     }

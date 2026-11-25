@@ -31,6 +31,12 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
         // Apply after AppCompat installs the themed decor so the parent One UI
         // theme cannot restore an opaque navigation-bar colour afterwards.
         applyEdgeToEdge()
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        @Suppress("DEPRECATION")
+        window.setNavigationBarColor(android.graphics.Color.TRANSPARENT)
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.isNavigationBarContrastEnforced = false
+        }
     }
 
     override fun onContentChanged() {
@@ -62,6 +68,17 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
      * floating controls can use [onNavigationBarInset] to handle the navigation
      * edge themselves while keeping their scrolling viewport full height.
      */
+    private val navigationPadding = java.util.WeakHashMap<View, Int>()
+
+    private fun scrollingViews(view: View): List<View> {
+        if (view is androidx.core.widget.NestedScrollView ||
+            view is android.widget.ScrollView ||
+            view is androidx.recyclerview.widget.RecyclerView) return listOf(view)
+        return (view as? ViewGroup)?.let { group ->
+            (0 until group.childCount).flatMap { scrollingViews(group.getChildAt(it)) }
+        }.orEmpty()
+    }
+
     protected fun applyEdgeToEdgeInsets(
         root: View,
         padRootForIme: Boolean = true,
@@ -76,11 +93,14 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime()) && ime.bottom > 0
             val topPadding = if (SeslToolbarCompatibility.applyTopInset(view, safe.top)) 0 else safe.top
             // Screens with floating controls handle their navigation inset in the callback.
-            // Other screens keep their entire content viewport above system navigation.
-            val bottomPadding = when {
-                !padRootForIme -> 0
-                onNavigationBarInset == null -> maxOf(ime.bottom, safe.bottom)
-                else -> ime.bottom
+            // Scroll containers keep an end inset while their viewport draws behind navigation.
+            val scrollers = if (onNavigationBarInset == null) scrollingViews(view) else emptyList()
+            val bottomPadding = if (padRootForIme) ime.bottom else 0
+            scrollers.forEach { scroll ->
+                val original = navigationPadding.getOrPut(scroll) { scroll.paddingBottom }
+                (scroll as ViewGroup).clipToPadding = false
+                scroll.setPadding(scroll.paddingLeft, scroll.paddingTop, scroll.paddingRight,
+                    original + (safe.bottom - bottomPadding).coerceAtLeast(0))
             }
             view.setPadding(safe.left, topPadding, safe.right, bottomPadding)
             // The drawer surface stops above system navigation even when the
@@ -96,6 +116,14 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             insets
         }
         ViewCompat.requestApplyInsets(root)
+    }
+
+    /** Pinned footers extend their surface beneath navigation while protecting buttons. */
+    protected fun applyFooterScreenInsets(root: View, footer: View) {
+        val bottom = footer.paddingBottom
+        applyEdgeToEdgeInsets(root) { inset ->
+            footer.setPadding(footer.paddingLeft, footer.paddingTop, footer.paddingRight, bottom + inset)
+        }
     }
 
     /** Preference lists own navigation padding so their viewport reaches the window edge. */

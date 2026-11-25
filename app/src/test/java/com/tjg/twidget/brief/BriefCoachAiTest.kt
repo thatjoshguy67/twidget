@@ -95,11 +95,36 @@ class BriefCoachAiTest {
         assertNull(BriefCoachAi.parse(response(quote = "Twidget shipped a new feature"), packet))
         assertNull(BriefCoachAi.parse(response(ids = listOf("p99")), packet))
         assertNull(BriefCoachAi.parse(response(ids = emptyList()), packet))
-        assertNull(BriefCoachAi.parse(response(quote = ""), packet))
+        assertNotNull(BriefCoachAi.parse(response(quote = ""), packet))
         assertNotNull(BriefCoachAi.parse("```json\n${response()}\n```", packet))
         assertNull(BriefCoachAi.parse("```json\n${response().dropLast(10)}\n```", packet))
         assertNull(BriefCoachAi.parse(response().dropLast(10), packet))
         assertNotNull(BriefCoachAi.parse(response().replace("\"needsDetails\":true", "\"needsDetails\":\"true\""), packet))
+    }
+
+    @Test fun `whole post advice accepts absent empty or null quotes while supplied quotes remain exact`() {
+        val packet = input().packet()
+        for (mode in listOf("missing", "empty", "null", "id-empty", "id-null")) {
+            val json = JSONObject(response())
+            val item = json.getJSONArray("suggestions").getJSONObject(0).apply { remove("quote") }
+            when (mode) {
+                "empty" -> item.put("quote", "")
+                "null" -> item.put("quote", JSONObject.NULL)
+                "id-empty" -> item.put("quoteId", "")
+                "id-null" -> item.put("quoteId", JSONObject.NULL)
+            }
+            assertEquals(mode, "", BriefCoachAi.parse(json.toString(), packet)!!.suggestions.single().quote)
+        }
+        val specific = JSONObject(response()).apply {
+            getJSONArray("suggestions").getJSONObject(0).apply { remove("quote"); put("quoteId", "q0") }
+        }
+        assertEquals(packet.passages["q0"], BriefCoachAi.parse(specific.toString(), packet)!!.suggestions.single().quote)
+        specific.getJSONArray("suggestions").getJSONObject(0).put("quoteId", "made-up")
+        assertNull(BriefCoachAi.parse(specific.toString(), packet))
+        val text = "EXPLANATION: Your post could make its audience clearer.\nACTION: State who benefits.\nREASON: Your text does not identify its audience.\nSOURCES: subject"
+        assertEquals("", BriefCoachAi.parseText(text, packet)!!.suggestions.single().quote)
+        assertEquals("", BriefCoachAi.parseText(text + "\nPASSAGE:", packet)!!.suggestions.single().quote)
+        assertTrue(BriefCoachAi.prompt(input(), packet).contains("Do not force an excerpt"))
     }
 
     @Test fun `valid citations cannot legitimise invented figures in factual narration`() = runBlocking {
@@ -231,7 +256,7 @@ class BriefCoachAiTest {
         assertTrue(BriefCoachAi.prompt(subject, subject.packet()).contains("Preserve the author's intent and facts"))
     }
 
-    @Test fun `history is own mature comparable data chosen by relevance not winning counts`() {
+    @Test fun `history includes recent young posts without using them as mature benchmarks`() {
         val target = post("subject", "Android widgets and post feedback", 1000, 10)
         val quiet = post("quiet", "Android widgets now show post feedback", 1000, 0)
         val loud = post("loud", "Unrelated football news", 1_000_000, 100_000)
@@ -241,10 +266,24 @@ class BriefCoachAiTest {
         val early = quiet.copy(url = "https://x.com/example/status/early", timestamp = now - 2 * 3_600_000L)
         val snapshot = analytics(listOf(target, quiet, loud, foreign, old, early), listOf(reply))
         val subject = BriefCoachAi.review(target, snapshot, report, strings, now)
-        assertEquals(listOf(quiet, loud), subject.history)
+        assertEquals(listOf(early, quiet, loud), subject.history)
         assertEquals(0, subject.history.first().likes.toInt())
         assertTrue(BriefCoachAi.review(target, snapshot.copy(cachedAt = now - 3 * 86_400_000L), report, strings, now).history.isEmpty())
         assertTrue(BriefCoachAi.review(target, snapshot.copy(userName = "other"), report, strings, now).history.isEmpty())
+    }
+
+    @Test fun `review prompt prioritises measured performance and labels prior peer interpretations`() {
+        val peer = post("peer", "A recent post", 2000, 30)
+        val subject = input().copy(history = listOf(peer), peerReviewNotes = mapOf(peer.url to "A possible content explanation."))
+        val packet = subject.packet(cloud = true)
+        val example = packet.data.getJSONArray("historyExamples").getJSONObject(0)
+        assertEquals("analysed", example.getString("reviewStatus"))
+        assertEquals("A possible content explanation.", example.getString("priorReviewInterpretation"))
+        assertFalse(example.getBoolean("sameAgeBaseline"))
+        val prompt = BriefCoachAi.prompt(subject, packet)
+        assertTrue(prompt.contains("2–4 sentences"))
+        assertTrue(prompt.contains("not a measurement or independent"))
+        assertTrue(prompt.contains("Do not spend the explanation recapping replies"))
     }
 
     @Test fun `reply history excludes originals and keeps quiet replies`() {
@@ -297,7 +336,8 @@ class BriefCoachAiTest {
 
 
     @Test fun `auto may fall back to cloud while local only never calls it`() = runBlocking {
-        assertEquals(listOf(BriefNanoModelMode.STABLE_FULL, BriefNanoModelMode.STABLE_FAST), BriefNanoModelMode.AUTO_STABLE.probeOrder(preferFull = true))
+        assertEquals(listOf(BriefNanoModelMode.STABLE_FULL, BriefNanoModelMode.PREVIEW_FULL, BriefNanoModelMode.STABLE_FAST,
+            BriefNanoModelMode.PREVIEW_FAST, BriefNanoModelMode.AUTO_STABLE), BriefNanoModelMode.AUTO_STABLE.probeOrder(preferFull = true))
         BriefNanoModelMode.entries.filter { it != BriefNanoModelMode.AUTO_STABLE }.forEach {
             assertEquals(listOf(it), it.probeOrder(preferFull = true))
         }

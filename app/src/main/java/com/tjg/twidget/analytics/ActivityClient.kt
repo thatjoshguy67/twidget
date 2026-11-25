@@ -22,11 +22,12 @@ object ActivityClient {
     private const val TWITTERAPIS_STALE_MS = 6 * 60 * 60 * 1000L
     private const val WEEK_MS = 7 * 24 * 60 * 60 * 1000L
 
-    fun refresh(context: Context, username: String): StreakSnapshot {
+    fun refresh(context: Context, username: String, reportFailure: Boolean = false): StreakSnapshot {
         val clean = TwidgetStore.canonicalAccount(context, username)
         val generation = TwidgetStore.accountGeneration(context, clean)
         val now = System.currentTimeMillis()
         val activity = runCatching { fetchActivity(context, clean, now) }.getOrElse {
+            if (reportFailure) throw it
             OriginalActivity(emptySet(), now - WEEK_MS, now, complete = false)
         }
         return TwidgetStore.withAccountGeneration(context, clean, generation) {
@@ -76,7 +77,7 @@ object ActivityClient {
         val endpoint = TwidgetStore.bridgeEndpoint(settings)
         return when (settings.dataSource) {
             TwidgetStore.DATA_SOURCE_FXTWITTER -> ProviderFallback.directThenOptionalFallback(
-                direct = { fetchFxTwitterActivity(username, now) },
+                direct = { fetchFxTwitterActivity(context, username, now) },
                 fallback = if (settings.shareHistory) ({ fetchBridgeActivity(context, username, endpoint, now) }) else null,
             )
             TwidgetStore.DATA_SOURCE_TWITTERAPIS -> ProviderFallback.directThenOptionalFallback(
@@ -98,7 +99,8 @@ object ActivityClient {
         val analytics = JSONObject(body)
         val weekAgo = now - WEEK_MS
         val timestamps = buildSet {
-            val activity = analytics.optJSONArray("activityTimestamps")
+            val activity = analytics.optJSONArray("activityTimestamps") ?:
+                analytics.optJSONObject("dashboardStats")?.optJSONArray("originalPostTimestamps")
             if (activity != null) {
                 for (index in 0 until activity.length()) {
                     activity.optLong(index).takeIf { it in weekAgo..now }?.let(::add)
@@ -111,8 +113,9 @@ object ActivityClient {
         return OriginalActivity(
             timestamps,
             weekAgo,
-            now,
-            complete = analytics.has("activityTimestamps") && analytics.optBoolean("activityComplete", true),
+            analytics.optLong("cachedAt", now),
+            complete = if (analytics.has("activityTimestamps")) analytics.optBoolean("activityComplete", false)
+                else analytics.optJSONObject("dashboardStats")?.optBoolean("complete", false) == true,
         )
     }
 
@@ -124,8 +127,8 @@ object ActivityClient {
         return OriginalActivity(timestamps, timeline.windowStartAt, timeline.checkedAt, complete = !timeline.incomplete)
     }
 
-    private fun fetchFxTwitterActivity(username: String, now: Long): OriginalActivity {
-        val timeline = WeeklyTimelineRepository.fxTwitter(username)
+    private fun fetchFxTwitterActivity(context: Context, username: String, now: Long): OriginalActivity {
+        val timeline = WeeklyTimelineRepository.fxTwitter(username, TwidgetStore.currentStats(context, username).userId)
         val requested = username.lowercase(Locale.US)
         val timestamps = timeline.statuses.mapNotNull {
             fxActivityTimestamp(it, requested, timeline.windowStartAt, timeline.checkedAt)

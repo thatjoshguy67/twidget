@@ -88,7 +88,7 @@ internal object BriefPublishedReviewStore {
 
     fun posts(context: Context, username: String, limit: Int): List<PostSummary> = synchronized(TwidgetStore) {
         val owner = TwidgetStore.canonicalAccount(context, username)
-        database(context).query("reviews", arrayOf("post"), "account=?", arrayOf(account(owner)), null, null, "saved_at DESC", limit.coerceAtLeast(1).toString()).use { cursor ->
+        database(context).query("reviews", arrayOf("post"), "account=?", arrayOf(account(owner)), null, null, "CAST(post_id AS INTEGER) DESC", limit.coerceAtLeast(1).toString()).use { cursor ->
             buildList { while (cursor.moveToNext()) runCatching {
                 NetworkResponseParsers.parseBridgePost(JSONObject(cursor.getString(0)))
             }.getOrNull()?.let(::add) }

@@ -38,7 +38,16 @@ import kotlin.math.roundToInt
 /** The decorative subset of One UI 9.5's SeslStrokeDrawable, on the existing SESL9 geometry. */
 internal object SeslSurfaceHighlight {
     private data class Foreground(val original: Drawable?, val combined: Drawable, val rim: SeslRimDrawable,
-        val radius: Float, val light: Boolean)
+        val radius: Float, val light: Boolean, val emphasized: Boolean)
+    private val windows = java.util.WeakHashMap<View, Unit>()
+
+    fun refreshWindows() {
+        windows.keys.toList().forEach { root ->
+            applyTo(root)
+            root.invalidate()
+        }
+    }
+
     private val drawerFade = PathInterpolator(.22f, .25f, 0f, 1f)
 
     /** SESL 9.5's ResponsivePaneElevationConcept fades only the rim as the rail opens. */
@@ -55,9 +64,16 @@ internal object SeslSurfaceHighlight {
         view.setTag(R.id.sesl_surface_radius, radius)
     }
 
+    /** Brief's layered cards need a little more separation than dashboard tiles. */
+    fun markBrief(view: View, radius: Float) {
+        mark(view, radius)
+        view.setTag(R.id.brief_surface_outline_host, true)
+    }
+
     /** Called by the shared window observer, including lazily inflated menus and dialogs. */
     fun applyTo(root: View) {
-        val themed = !Settings.System.getString(root.context.contentResolver,
+        windows[root] = Unit
+        val themed = !AppAppearance.outlineEffects(root.context) || !Settings.System.getString(root.context.contentResolver,
             "current_sec_active_themepackage").isNullOrEmpty()
         visit(root, themed)
     }
@@ -70,9 +86,10 @@ internal object SeslSurfaceHighlight {
         // independent rounded surfaces. Their native children own the chrome.
         val layoutHost = view.id == R.id.notice_detail_back ||
             view.id == dev.oneuiproject.oneui.design.R.id.drawer_panel
-        if (layoutHost) remove(view)
+        val dashboardContent = view.getTag(R.id.dashboard_card_content) == true
+        if (layoutHost || dashboardContent) remove(view)
         val radius = when {
-            layoutHost -> 0f
+            layoutHost || dashboardContent -> 0f
             view is FloatingGroupLayout.SeslProjectionView.SeslProjectionBackgroundView ->
                 view.resources.getDimension(com.google.android.material.R.dimen.sesl_projection_bg_radius)
             view.id == androidx.appcompat.R.id.parentPanel ->
@@ -149,24 +166,37 @@ internal object SeslSurfaceHighlight {
     }
 
     internal fun attach(view: View, radius: Float, lightOverride: Boolean? = null) {
+        windows[view] = Unit
+        if (view.getTag(R.id.dashboard_card_content) == true || !AppAppearance.outlineEffects(view.context)) {
+            remove(view)
+            return
+        }
         val previous = view.getTag(R.id.sesl_surface_highlight) as? Foreground
-        val light = lightOverride ?: TypedValue().let {
+        val dashboard = view.getTag(R.id.dashboard_surface_outline_host) == true
+        val emphasized = view.getTag(R.id.brief_surface_outline_host) == true
+        // A card's themed context and drawer state must not change its rim strength.
+        val light = if (dashboard) view.resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK != android.content.res.Configuration.UI_MODE_NIGHT_YES
+        else lightOverride ?: TypedValue().let {
             view.context.theme.resolveAttribute(androidx.appcompat.R.attr.isLightTheme, it, true) && it.data != 0
         }
         if (previous != null && view.foreground === previous.combined &&
-            previous.radius == radius && previous.light == light) return
+            previous.radius == radius && previous.light == light && previous.emphasized == emphasized) return
         val original = if (view.foreground === previous?.combined) previous?.original else view.foreground
-        val rim = SeslRimDrawable(view.resources.displayMetrics.density, radius, light) {
+        val rim = SeslRimDrawable(view.resources.displayMetrics.density, radius, light, emphasized, fitToBounds = dashboard) {
             if (view.id == androidx.appcompat.R.id.search_plate_frame)
                 view.findViewById<View>(androidx.appcompat.R.id.search_plate)?.background
+            else if (dashboard) (view as? ViewGroup)?.children?.firstOrNull {
+                it.getTag(R.id.dashboard_card_content) == true
+            }?.background ?: view.background
             else view.background
         }
-        rim.alpha = drawerRimAlpha(view)
+        rim.alpha = if (dashboard) 255 else drawerRimAlpha(view)
         val combined = if (original == null) rim else LayerDrawable(arrayOf(original, rim)).apply {
             setPaddingMode(LayerDrawable.PADDING_MODE_STACK)
         }
         view.foreground = combined
-        view.setTag(R.id.sesl_surface_highlight, Foreground(original, combined, rim, radius, light))
+        view.setTag(R.id.sesl_surface_highlight, Foreground(original, combined, rim, radius, light, emphasized))
     }
 
     internal fun remove(view: View) {
@@ -196,6 +226,8 @@ internal class SeslRimDrawable(
     private val width: Float,
     private val fallbackRadius: Float,
     private val light: Boolean,
+    private val emphasized: Boolean = false,
+    private val fitToBounds: Boolean = false,
     private val background: () -> Drawable? = { null },
 ) : Drawable() {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = width }
@@ -217,12 +249,12 @@ internal class SeslRimDrawable(
         outline.setEmpty()
         background()?.getOutline(outline)
         if (outline.getRect(outlineRect) && !outlineRect.isEmpty && outline.radius > 0f) {
-            rect.set(outlineRect)
+            if (!fitToBounds) rect.set(outlineRect)
             radius = outline.radius
         }
         val gradient = gradientBackground(background())
         if (gradient != null && !gradient.bounds.isEmpty) {
-            rect.set(gradient.bounds)
+            if (!fitToBounds) rect.set(gradient.bounds)
             if (gradient.cornerRadius > 0f) radius = gradient.cornerRadius
         }
         if (radius <= 0f) return
@@ -230,7 +262,11 @@ internal class SeslRimDrawable(
             shaderTop = rect.top
             shaderBottom = rect.bottom
             paint.shader = LinearGradient(0f, rect.top, 0f, rect.bottom,
-                intArrayOf(if (light) 0xB3FFFFFF.toInt() else 0x1AFFFFFF, 0x00FFFFFF),
+                intArrayOf(if (light) {
+                    if (emphasized) 0xE0FFFFFF.toInt() else 0xB3FFFFFF.toInt()
+                } else {
+                    if (emphasized) 0x30FFFFFF else 0x1AFFFFFF
+                }, 0x00FFFFFF),
                 floatArrayOf(0f, .75f), Shader.TileMode.CLAMP)
         }
         rect.inset(width / 2f, width / 2f)

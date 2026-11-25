@@ -5,9 +5,12 @@ import dev.oneuiproject.oneui.R as OneUiIconR
 
 object BriefVisuals {
     fun categoryIcon(category: BriefContentCategory): Int = when (category) {
-        BriefContentCategory.TOPICS, BriefContentCategory.EXPERIMENTS,
-        BriefContentCategory.CONVERSATIONS, BriefContentCategory.CONTENT_PATTERNS,
-        BriefContentCategory.AUDIENCE_MOMENTUM, BriefContentCategory.WEEKLY_RECAP -> OneUiIconR.drawable.ic_oui_equalizer_2
+        BriefContentCategory.CONVERSATIONS -> OneUiIconR.drawable.ic_oui_message_chat
+        BriefContentCategory.CONTENT_PATTERNS -> OneUiIconR.drawable.ic_oui_list_grid
+        BriefContentCategory.AUDIENCE_MOMENTUM -> R.drawable.ic_brief_momentum
+        BriefContentCategory.WEEKLY_RECAP -> OneUiIconR.drawable.ic_oui_calendar_week
+        BriefContentCategory.TOPICS -> OneUiIconR.drawable.ic_oui_tag
+        BriefContentCategory.EXPERIMENTS -> OneUiIconR.drawable.ic_oui_labs_outline
         BriefContentCategory.TWEET_REVIEWS -> R.drawable.ic_review_settings_ai
         BriefContentCategory.TOP_TWEET -> R.drawable.ic_streak_fire
         BriefContentCategory.WORST_TWEET -> OneUiIconR.drawable.ic_oui_delete_outline

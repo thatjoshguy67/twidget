@@ -13,11 +13,16 @@ export async function fetchTwitterApisFollowersPage({
   cursor = "",
   apiKey,
   endpoint = DEFAULT_ENDPOINT,
+  count = 100,
   fetchImpl = fetch,
 }) {
   if (!apiKey) throw new TopFollowersProviderError(0, "TwitterAPIs is not configured");
   const url = new URL(endpoint);
   url.searchParams.set("username", username);
+  if (count !== null) {
+    if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error("invalid_follower_page_size");
+    url.searchParams.set("count", String(count));
+  }
   if (cursor) url.searchParams.set("cursor", cursor);
   const response = await fetchImpl(url, {
     headers: {

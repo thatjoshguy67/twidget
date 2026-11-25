@@ -73,8 +73,9 @@ internal object DashboardCardDesign {
             view.translationY = baseline.translationY * scale
             if (view is CardValueTextView) {
                 val smallValue = (baseline.textSp ?: 60f) <= 24f
-                view.applyDesignScale(if (smallValue) 1f else scale)
-                if (smallValue && baseline.height > 0) params?.height = baseline.height
+                val graphValue = root.findViewById<View>(R.id.dashboard_graph_summary) != null
+                view.applyDesignScale(if (smallValue && !graphValue) 1f else scale)
+                if (smallValue && !graphValue && baseline.height > 0) params?.height = baseline.height
             } else if (view is TextView && baseline.textSp != null) {
                 // Labels and body copy retain native readable sizes. Large display lettering
                 // alone fits proportionally to the card's available row height.
@@ -123,9 +124,11 @@ internal object DashboardCardDesign {
         // narrower on the portrait Fold. Landscape retains the Figma proportions.
         root.findViewById<View>(R.id.dashboard_graph_summary)?.let { summary ->
             val compact = widthPx > 0 && widthPx / density < 340f
-            val inset = (12f * density).roundToInt()
-            root.setPadding(inset, inset, inset, inset)
-            summary.setPadding(0, 0, 0, 0)
+            val horizontalInset = (10f * density).roundToInt()
+            val verticalInset = horizontalInset
+            root.setPadding(horizontalInset, verticalInset, horizontalInset, verticalInset)
+            val summaryInset = (8f * density * scale).roundToInt()
+            summary.setPadding(summaryInset, 0, summaryInset, 0)
             summary.layoutParams.width = minOf((158f * density * scale).roundToInt(), (widthPx * .34f).roundToInt())
             summary.visibility = if (compact) View.GONE else View.VISIBLE
             root.findViewById<TextView>(R.id.dashboard_graph_heading)?.apply {
@@ -137,7 +140,7 @@ internal object DashboardCardDesign {
             (summary.parent as? ViewGroup)?.let { body ->
                 (0 until body.childCount).map { body.getChildAt(it) }.filterIsInstance<MetricChartView>().firstOrNull()?.let { chart ->
                     chart.graphOnlyLayout = compact
-                    chart.plotCornerRadiusPx = ((cornerRadius(root.background) ?: 28f * density) - root.paddingEnd).coerceAtLeast(0f)
+                    chart.plotCornerRadiusPx = 18f * density
                     val headingGravity = if (root.hasOnClickListeners() || chart.onChartTapListener != null)
                         android.view.Gravity.START else android.view.Gravity.CENTER_HORIZONTAL
                     root.findViewById<TextView>(R.id.dashboard_graph_heading)?.gravity =
@@ -147,17 +150,17 @@ internal object DashboardCardDesign {
                         for (index in 0 until column.childCount) {
                             val text = column.getChildAt(index) as? TextView ?: continue
                             text.gravity = android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL
-                            if (text.id != R.id.metric_label && text !is CardValueTextView) {
+                            if (text.id != R.id.metric_label && text.id != R.id.stat_detail && text !is CardValueTextView) {
                                 TwidgetFonts.setRole(text, TwidgetFonts.Role.CHART_VALUE)
                             }
                         }
                     }
-                    (chart.layoutParams as ViewGroup.MarginLayoutParams).marginStart = if (compact) 0 else (16 * density).roundToInt()
+                    (chart.layoutParams as ViewGroup.MarginLayoutParams).marginStart = if (compact) 0 else (10f * density * scale).roundToInt()
                 }
             }
             root.findViewById<TextView>(R.id.metric_label)?.apply {
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-                TwidgetFonts.dashboardHeading(this)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f * scale)
+                typeface = TwidgetFonts.forApp(root.context, 600)
             }
         }
         DashboardCardDensity.apply(root, widthPx)

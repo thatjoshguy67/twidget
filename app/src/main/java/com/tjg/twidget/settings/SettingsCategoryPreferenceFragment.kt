@@ -181,6 +181,8 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
 
     private fun data(screen: androidx.preference.PreferenceScreen) {
         val context = requireContext()
+        screen.addPreference(category(R.string.settings_cloud_ai_provider))
+        CloudAiSettings.populate(this, screen) { buildScreen() }
         screen.addPreference(category(R.string.analytics))
         screen.addPreference(SettingsListPreference(context).apply {
             key = "data_source_pref"
@@ -527,6 +529,9 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
                 true
             }
         })
+        screen.addPreference(category(R.string.settings_app_icon))
+        screen.addPreference(AppIconSettings.preference(context))
+        screen.addPreference(InsetPreferenceCategory(context))
         val logoValues = arrayOf(TwidgetStore.LOGO_X, TwidgetStore.LOGO_TWITTER)
         val logoLabels = arrayOf(getString(R.string.widget_logo_x), getString(R.string.widget_logo_twitter))
         val logoRow = CardItemView(context).apply { title = getString(R.string.settings_app_logo_style) }
@@ -559,6 +564,18 @@ class SettingsCategoryPreferenceFragment : InsetPreferenceFragment() {
         logoRow.setOnLongClickListener { openLogoPicker(); true }
         logoPreference.setOnPreferenceClickListener { openLogoPicker(); true }
         screen.addPreference(logoPreference)
+        screen.addPreference(InsetPreferenceCategory(context))
+        screen.addDescribedPreference(SwitchPreferenceCompat(context).apply {
+            key = "settings_outline_effects"
+            isPersistent = false
+            title = getString(R.string.settings_outline_effects)
+            summary = getString(R.string.settings_outline_effects_summary)
+            isChecked = AppAppearance.outlineEffects(context)
+            setOnPreferenceChangeListener { _, value ->
+                AppAppearance.setOutlineEffects(context, value as Boolean)
+                true
+            }
+        })
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()

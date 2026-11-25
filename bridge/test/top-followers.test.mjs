@@ -1,6 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createTopFollowersActivityRecorder, prepareTopFollowersCache, shouldRefreshTopFollowers, topFollowersRefreshKind } from "../src/top-followers.js";
+import { createTopFollowersActivityRecorder, prepareTopFollowersCache, shouldRefreshTopFollowers, topFollowersRefreshKind, topFollowersScanPlan, topFollowersHeadComplete } from "../src/top-followers.js";
+
+test("growth scales rows instead of assuming the provider honors count=100", () => {
+  const plan = topFollowersScanPlan({ kind: "head", snapshot: { sourceFollowers: 1000 }, followersCount: 1200 });
+  assert.equal(plan.targetRows, 400);
+  assert.equal(topFollowersHeadComplete({ ...plan, processed: 399, knownStreak: 200 }), false);
+  assert.equal(topFollowersHeadComplete({ ...plan, processed: 400, knownStreak: 99 }), false);
+  assert.equal(topFollowersHeadComplete({ ...plan, processed: 400, knownStreak: 100 }), true);
+  for (const followersCount of [1000, 950, null]) {
+    const churn = topFollowersScanPlan({ kind: "head", snapshot: { sourceFollowers: 1000 }, followersCount });
+    assert.equal(churn.targetRows, 100);
+    assert.equal(topFollowersHeadComplete({ ...churn, processed: 300, knownStreak: 0 }), false);
+  }
+  assert.equal(topFollowersScanPlan({ kind: "head", snapshot: { total: 500 }, followersCount: 700 }).targetRows, 400);
+});
+
+test("page-limited full crawls are not automatically purchased again", () => {
+  const scan = { status: "failed", error: "top_followers_page_limit_reached", retryAt: 1 };
+  assert.equal(shouldRefreshTopFollowers({ scan, now: 1e12 }), false);
+  assert.equal(topFollowersRefreshKind({ scan, now: 1e12 }), null);
+});
 
 test("Top Followers activity writes are hourly, per account, and preserve metadata", async () => {
   const hour = 60 * 60 * 1000;

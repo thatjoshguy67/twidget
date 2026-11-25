@@ -100,6 +100,12 @@ class AboutActivity : FoldablePopOverActivity() {
         findViewById<View>(R.id.about_aaron_credit).setOnClickListener {
             openUrl(getString(R.string.link_aaron))
         }
+        findViewById<View>(R.id.about_wigettagaming_credit).setOnClickListener {
+            openUrl("https://x.com/WigettaGaming")
+        }
+        findViewById<View>(R.id.about_damanmikey_credit).setOnClickListener {
+            openUrl("https://github.com/DaDevMikey/Kairo")
+        }
         findViewById<View>(R.id.about_evowizz_credit).setOnClickListener {
             openUrl(getString(R.string.link_evowizz))
         }
@@ -658,20 +664,27 @@ class AboutActivity : FoldablePopOverActivity() {
             AppBarLayout.OnOffsetChangedListener { appBar, verticalOffset ->
                 val range = appBar.totalScrollRange.coerceAtLeast(1)
                 val progress = abs(verticalOffset).toFloat() / range
-                content.alpha = ((progress - 0.25f) / 0.55f).coerceIn(0f, 1f)
+                // Follow the drag continuously, including short, slow swipes. Starting
+                // the reveal early avoids a blank interval before the credits appear.
+                content.alpha = smoothFade((progress - 0.05f) / 0.75f)
                 // Clear the fixed hero before it passes behind the pinned,
                 // transparent toolbar during collapse.
-                header.alpha = (1f - progress * 2f).coerceIn(0f, 1f)
+                header.alpha = 1f - smoothFade(progress * 2f)
                 if (header.alpha == 0f) findViewById<AnimatedTitleView>(R.id.about_header_title).finish()
                 // The gradient belongs to the expanded hero; scrolling settles
                 // the page onto the plain One UI background.
                 // Let the hero recede early in the scroll, leaving the settled
                 // One UI background in place for the remainder of the page.
-                gradientFade.alpha = (progress * 2f).coerceIn(0f, 1f)
-                hint.alpha = (1f - progress * 2f).coerceIn(0f, 1f)
+                gradientFade.alpha = smoothFade(progress * 2f)
+                hint.alpha = 1f - smoothFade(progress * 2f)
                 hint.visibility = if (hint.alpha == 0f) View.INVISIBLE else View.VISIBLE
             }
         )
+    }
+
+    private fun smoothFade(value: Float): Float {
+        val fraction = value.coerceIn(0f, 1f)
+        return fraction * fraction * (3f - 2f * fraction)
     }
 
     private fun openUrl(url: String) {
@@ -683,9 +696,11 @@ class AboutActivity : FoldablePopOverActivity() {
         loadCreditAvatar(R.id.about_kingowen_credit, KINGOWEN_X_USERNAME)
         loadCreditAvatar(R.id.about_aaron_credit, AARON_X_USERNAME)
         loadCreditAvatar(R.id.about_evowizz_credit, EVOWIZZ_X_USERNAME)
+        loadCreditAvatar(R.id.about_damanmikey_credit, "DaDevMikey", "https://github.com/DaDevMikey.png")
+        loadCreditAvatar(R.id.about_wigettagaming_credit, "WigettaGaming")
     }
 
-    private fun loadCreditAvatar(rowId: Int, username: String) {
+    private fun loadCreditAvatar(rowId: Int, username: String, avatarUrl: String = "https://unavatar.io/twitter/$username") {
         val row = findViewById<CardItemView>(rowId).apply {
             iconSize = (34 * resources.displayMetrics.density).toInt()
             icon = getDrawable(R.drawable.avatar_twidget)
@@ -693,7 +708,7 @@ class AboutActivity : FoldablePopOverActivity() {
         ProfileImageLoader.loadInto(
             this,
             row.getIconImageView(),
-            "https://unavatar.io/twitter/$username",
+            avatarUrl,
         )
     }
 

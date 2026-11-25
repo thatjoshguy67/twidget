@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Context del fil: %1$d tuits connectats.</string>
+    <string name="review_replies_unavailable">La font de dades actual no ofereix el text de les respostes.</string>
+    <string name="review_replies_empty">No s’ha obtingut el text de respostes del públic; no s’ha pogut valorar la recepció.</string>
+    <string name="review_replies_sample">Mostra de %1$d respostes del públic; no representa tota l’audiència.</string>
+</resources>

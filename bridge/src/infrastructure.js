@@ -2,7 +2,8 @@ import { mergeInteractionData } from "./interactions.js";
 import fs from "node:fs";
 import path from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-import { canResumeTopFollowersScan, topFollowersAttemptBlocked, topFollowersRetryState } from "./top-followers.js";
+import { appendFollowerChange, followerChangeObservation, canResumeTopFollowersScan, topFollowersAttemptBlocked, topFollowersRetryState } from "./top-followers.js";
+import { PRIMARY_PROFILE_RETENTION_DAYS, primaryProfileSummary } from "./primary-profiles.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -108,7 +109,7 @@ export class LocalHistoryRepository {
     this.sampleRetentionDays = sampleRetentionDays;
     this.inactiveAccountDays = inactiveAccountDays;
     this.now = now;
-    this.store = { version: 4, accounts: {}, meta: {}, access: {}, topFollowers: {}, interactions: {} };
+    this.store = { version: 4, accounts: {}, meta: {}, access: {}, topFollowers: {}, interactions: {}, primaryProfiles: {} };
     this.revision = 0;
     this.persistedRevision = 0;
     this.flushPromise = null;
@@ -126,6 +127,7 @@ export class LocalHistoryRepository {
         access: objectValue(parsed?.access),
         topFollowers: objectValue(parsed?.topFollowers),
         interactions: objectValue(parsed?.interactions),
+        primaryProfiles: objectValue(parsed?.primaryProfiles),
       };
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -141,7 +143,31 @@ export class LocalHistoryRepository {
   async countAccounts() { return Object.keys(this.store.accounts).length; }
   async hasAccount(key) { return Object.hasOwn(this.store.accounts, key); }
   async listAccounts() { return Object.keys(this.store.accounts).sort(); }
-  async getHistory(key, { touch = false } = {}) {
+  async recordPrimaryProfile(hash, username, maxInstallations) {
+    const reports = this.store.primaryProfiles;
+    if (username === null) {
+      delete reports[hash];
+    } else {
+      if (!Object.hasOwn(this.store.accounts, username)) return "account_missing";
+      this.prunePrimaryProfiles();
+      if (!Object.hasOwn(reports, hash) && Object.keys(reports).length >= maxInstallations) return "capacity";
+      reports[hash] = { username, lastSeenAt: this.now() };
+    }
+    await this.persist();
+    return "ok";
+  }
+  prunePrimaryProfiles() {
+    let deleted = 0;
+    for (const [hash, report] of Object.entries(this.store.primaryProfiles)) {
+      if (report.lastSeenAt < this.now() - PRIMARY_PROFILE_RETENTION_DAYS * DAY_MS || !Object.hasOwn(this.store.accounts, report.username)) {
+        delete this.store.primaryProfiles[hash];
+        deleted += 1;
+      }
+    }
+    return deleted;
+  }
+  async primaryProfileCounts() { return primaryProfileSummary(Object.values(this.store.primaryProfiles), this.now()); }
+  async getHistory(key, { touch = false, all = false } = {}) {
     if (touch && Object.hasOwn(this.store.accounts, key)) {
       const now = this.now();
       if (now - Number(this.store.access[key] || 0) >= DAY_MS) {
@@ -149,7 +175,7 @@ export class LocalHistoryRepository {
         await this.persist();
       }
     }
-    return normalizeStoredSamples(this.store.accounts[key], this.maxHistoryDays, this.sampleRetentionDays, this.now());
+    return normalizeStoredSamples(this.store.accounts[key], all ? Number.MAX_SAFE_INTEGER : this.maxHistoryDays, this.sampleRetentionDays, this.now());
   }
   async getInteractions(key) { return this.store.interactions[key] || { daily: [], posts: [] }; }
   async storeInteractions(key, data, { expectedUserId } = {}) {
@@ -231,6 +257,9 @@ export class LocalHistoryRepository {
     this.store.access[newKey] = Math.max(this.store.access[oldKey] || 0, this.store.access[newKey] || 0);
     if (!this.store.topFollowers[newKey] && this.store.topFollowers[oldKey]) this.store.topFollowers[newKey] = this.store.topFollowers[oldKey];
     this.store.interactions[newKey] = mergeInteractionData(this.store.interactions[newKey], this.store.interactions[oldKey] || { daily: [], posts: [] });
+    for (const report of Object.values(this.store.primaryProfiles)) {
+      if (report.username === oldKey) report.username = newKey;
+    }
     this.removeAccountState(oldKey);
     await this.persist();
     return { moved: true };
@@ -247,6 +276,9 @@ export class LocalHistoryRepository {
     delete this.store.access[key];
     delete this.store.topFollowers[key];
     delete this.store.interactions[key];
+    for (const [hash, report] of Object.entries(this.store.primaryProfiles)) {
+      if (report.username === key) delete this.store.primaryProfiles[hash];
+    }
     return existed;
   }
   async getTopFollowersScan(key) {
@@ -267,11 +299,17 @@ export class LocalHistoryRepository {
     const previous = existing?.status === "complete" ? existing : existing?.previous;
     const kind = options.kind === "head" && previous ? "head" : "full";
     const scan = {
+      ...options.plan,
+      userId: this.store.meta[key]?.userId || this.store.meta[key]?.verifiedUserId || "",
       kind,
+      baseScanId: kind === "head" ? previous.scanId : "",
       fullCompletedAt: kind === "head" ? Number(previous.fullCompletedAt || previous.lastFullCompletedAt || previous.completedAt || 0) : 0,
       scanId, status: "running", cursor: "", pages: 0, scanned: 0,
       startedAt: now, updatedAt: now, completedAt: 0, error: "",
       followers: kind === "head" ? previous.followers.map(value => ({ ...value })) : [],
+      ...(kind === "head" && previous ? { fullBaseline: previous.kind === "head" ? previous.fullBaseline : {
+        ...topFollowersScanSummary(previous), followers: previous.followers.map(value => ({ id: value.id })),
+      } } : {}),
       ...(previous?.status === "complete" ? { previous } : {}),
     };
     scan.scanned = scan.followers.length;
@@ -288,7 +326,16 @@ export class LocalHistoryRepository {
       index = followerIndex(scan.followers);
       this.scanIdentities.set(scan, index);
     }
+    let previousIndex;
+    if (scan.kind === "head" && scan.previous) {
+      previousIndex = this.scanIdentities.get(scan.previous);
+      if (!previousIndex) {
+        previousIndex = followerIndex(scan.previous.followers);
+        this.scanIdentities.set(scan.previous, previousIndex);
+      }
+    }
     for (const value of followers) {
+      if (scan.kind === "head") scan.knownStreak = indexedFollower(previousIndex, value) ? Number(scan.knownStreak || 0) + 1 : 0;
       if (!topFollowerIdentity(value)) continue;
       const row = indexedFollower(index, value);
       if (row) { if (scan.kind !== "head") Object.assign(row, value); }
@@ -298,6 +345,7 @@ export class LocalHistoryRepository {
         indexFollower(index, added);
       }
     }
+    scan.processed = Number(scan.processed || 0) + followers.length;
     scan.failureCount = 0;
     scan.retryAt = 0;
     scan.cursor = cursor;
@@ -317,6 +365,21 @@ export class LocalHistoryRepository {
     scan.updatedAt = now;
     if (scan.kind !== "head") scan.lastFullCompletedAt = now;
     scan.fullCompletedAt = scan.kind === "head" ? scan.fullCompletedAt : scan.lastFullCompletedAt;
+    if (scan.kind !== "head" && scan.previous) {
+      const before = scan.previous.kind === "head" ? scan.previous.fullBaseline : scan.previous;
+      const ids = values => {
+        if (!values || values.some(row => !/^[0-9]+$/.test(row.id || ""))) return null;
+        const result = new Set(values.map(row => row.id));
+        return result.size === values.length ? result : null;
+      };
+      const oldIds = ids(before?.followers), newIds = ids(scan.followers);
+      const meta = this.store.meta[key] || {};
+      const observation = oldIds && newIds ? followerChangeObservation(before, scan, {
+        newFollowers: [...newIds].filter(id => !oldIds.has(id)).length,
+        lostFollowers: [...oldIds].filter(id => !newIds.has(id)).length,
+      }, meta.userId || meta.verifiedUserId) : null;
+      if (observation) this.store.meta[key] = { ...meta, followerChanges: appendFollowerChange(meta, observation) };
+    }
     delete scan.previous;
     await this.persist();
     return topFollowersScanSummary(scan);
@@ -360,6 +423,7 @@ export class LocalHistoryRepository {
   }
   async prune() {
     const now = this.now();
+    const deletedPrimaryProfiles = this.prunePrimaryProfiles();
     let deletedAccounts = 0;
     let deletedSamples = 0;
     if (this.inactiveAccountDays > 0) {
@@ -385,7 +449,7 @@ export class LocalHistoryRepository {
         this.store.accounts[key] = kept;
       }
     }
-    if (deletedAccounts || deletedSamples) await this.persist();
+    if (deletedAccounts || deletedSamples || deletedPrimaryProfiles) await this.persist();
     return { deletedAccounts, deletedSamples };
   }
   async importLegacyStore(parsed) {
@@ -490,6 +554,14 @@ export class PostgresHistoryRepository {
       CREATE INDEX IF NOT EXISTS twidget_history_accounts_last_accessed_idx
         ON twidget_history_accounts (last_accessed_at);
 
+      CREATE TABLE IF NOT EXISTS twidget_primary_profiles (
+        installation_hash char(64) PRIMARY KEY,
+        username varchar(15) NOT NULL REFERENCES twidget_history_accounts(username) ON DELETE CASCADE,
+        last_seen_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS twidget_primary_profiles_username_idx ON twidget_primary_profiles(username);
+      CREATE INDEX IF NOT EXISTS twidget_primary_profiles_last_seen_idx ON twidget_primary_profiles(last_seen_at);
+
       CREATE TABLE IF NOT EXISTS twidget_top_follower_scans (
         scan_id uuid PRIMARY KEY,
         username varchar(15) NOT NULL REFERENCES twidget_history_accounts(username) ON DELETE CASCADE,
@@ -519,6 +591,8 @@ export class PostgresHistoryRepository {
         ON twidget_top_followers (scan_id, lower(follower_username));
       CREATE INDEX IF NOT EXISTS twidget_top_follower_scans_username_completed_idx
         ON twidget_top_follower_scans (username, completed_at DESC);
+      CREATE INDEX IF NOT EXISTS twidget_top_followers_identity_idx
+        ON twidget_top_followers (scan_id, follower_id) WHERE follower_id <> '';
       CREATE INDEX IF NOT EXISTS twidget_top_followers_rank_idx
         ON twidget_top_followers (scan_id, followers DESC, follower_username);
 
@@ -567,7 +641,41 @@ export class PostgresHistoryRepository {
     const result = await this.pool.query("SELECT username FROM twidget_history_accounts ORDER BY username");
     return result.rows.map((row) => row.username);
   }
-  async getHistory(key, { touch = false } = {}) {
+  async recordPrimaryProfile(hash, username, maxInstallations) {
+    if (username === null) {
+      await this.pool.query("DELETE FROM twidget_primary_profiles WHERE installation_hash = $1", [hash]);
+      return "ok";
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Bound cardinality across replicas, and prevent deletion between validation and insertion.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('twidget_primary_profiles'))");
+      const account = await client.query("SELECT username FROM twidget_history_accounts WHERE username = $1 FOR KEY SHARE", [username]);
+      if (!account.rowCount) { await client.query("ROLLBACK"); return "account_missing"; }
+      await client.query("DELETE FROM twidget_primary_profiles WHERE last_seen_at < now() - ($1::int * interval '1 day')", [PRIMARY_PROFILE_RETENTION_DAYS]);
+      const capacity = await client.query(`SELECT
+        EXISTS(SELECT 1 FROM twidget_primary_profiles WHERE installation_hash = $1) AS existing,
+        (SELECT count(*) FROM twidget_primary_profiles)::int AS total`, [hash]);
+      if (!capacity.rows[0].existing && capacity.rows[0].total >= maxInstallations) {
+        await client.query("ROLLBACK"); return "capacity";
+      }
+      await client.query(`INSERT INTO twidget_primary_profiles (installation_hash, username) VALUES ($1, $2)
+        ON CONFLICT (installation_hash) DO UPDATE SET username = EXCLUDED.username, last_seen_at = now()`, [hash, username]);
+      await client.query("COMMIT");
+      return "ok";
+    } catch (error) { await client.query("ROLLBACK"); throw error; }
+    finally { client.release(); }
+  }
+  async primaryProfileCounts() {
+    const result = await this.pool.query(`SELECT username, count(*)::int AS "primaryInstalls",
+      count(*) FILTER (WHERE last_seen_at >= now() - interval '7 days')::int AS "active7d",
+      count(*) FILTER (WHERE last_seen_at >= now() - interval '30 days')::int AS "active30d"
+      FROM twidget_primary_profiles WHERE last_seen_at >= now() - ($1::int * interval '1 day')
+      GROUP BY username ORDER BY "primaryInstalls" DESC, username`, [PRIMARY_PROFILE_RETENTION_DAYS]);
+    return result.rows;
+  }
+  async getHistory(key, { touch = false, all = false } = {}) {
     if (touch) {
       await this.pool.query(`
         UPDATE twidget_history_accounts SET last_accessed_at = now()
@@ -589,7 +697,7 @@ export class PostgresHistoryRepository {
       ORDER BY sample_date
     `, params);
     return capSamples(result.rows.map(sampleFromRow), {
-      maxHistoryDays: this.maxHistoryDays,
+      maxHistoryDays: all ? Number.MAX_SAFE_INTEGER : this.maxHistoryDays,
       sampleRetentionDays: this.sampleRetentionDays,
       now: Date.now(),
     });
@@ -686,7 +794,9 @@ export class PostgresHistoryRepository {
         ORDER BY completed_at DESC LIMIT 1
       `, [key]) : { rows: [] };
       const source = previous.rows[0];
-      const plan = { kind: source ? "head" : "full" };
+      const account = await client.query("SELECT metadata FROM twidget_history_accounts WHERE username = $1", [key]);
+      const owner = account.rows[0]?.metadata || {};
+      const plan = { ...options.plan, userId: owner.userId || owner.verifiedUserId || "", kind: source ? "head" : "full", baseScanId: source?.scan_id || "" };
       if (source) plan.fullCompletedAt = Number(source.scan_state?.fullCompletedAt || source.scan_state?.lastFullCompletedAt || source.completed_at_ms || 0);
       const inserted = await client.query(`
         INSERT INTO twidget_top_follower_scans (scan_id, username, status, scan_state, scanned)
@@ -723,6 +833,17 @@ export class PostgresHistoryRepository {
         return null;
       }
       const state = { ...current.rows[0].scan_state };
+      if (state.kind === "head" && state.baseScanId) {
+        const known = await client.query(`
+          SELECT follower_id, lower(follower_username) AS username FROM twidget_top_followers
+          WHERE scan_id = $1::uuid AND
+            ((follower_id <> '' AND follower_id = ANY($2::text[])) OR lower(follower_username) = ANY($3::text[]))
+        `, [state.baseScanId, followers.map(v => v.id || ""), followers.map(v => v.username.toLowerCase())]);
+        const ids = new Set(known.rows.map(v => v.follower_id).filter(Boolean));
+        const names = new Set(known.rows.map(v => v.username));
+        for (const value of followers) state.knownStreak = ids.has(value.id) || names.has(value.username.toLowerCase()) ? Number(state.knownStreak || 0) + 1 : 0;
+      }
+      state.processed = Number(state.processed || 0) + followers.length;
       state.failureCount = 0;
       state.retryAt = 0;
       const lastIndex = await client.query("SELECT COALESCE(max(scan_index), -1) + 1 AS next_index FROM twidget_top_followers WHERE scan_id = $1::uuid", [scanId]);
@@ -800,7 +921,41 @@ export class PostgresHistoryRepository {
                   extract(epoch from updated_at) * 1000 AS updated_at_ms,
                   extract(epoch from completed_at) * 1000 AS completed_at_ms
       `, [scanId, key, JSON.stringify(state)]);
-      if (updated.rows[0]) await client.query("DELETE FROM twidget_top_follower_scans WHERE username = $1 AND scan_id <> $2::uuid", [key, scanId]);
+      if (updated.rows[0]) {
+        if (state.kind !== "head") {
+          const previous = await client.query(`
+            SELECT scan_id::text, scan_state, extract(epoch from completed_at) * 1000 AS completed_at_ms
+            FROM twidget_top_follower_scans WHERE username = $1 AND status = 'complete' AND scan_id <> $2::uuid
+              AND scan_state->>'kind' IS DISTINCT FROM 'head' ORDER BY completed_at DESC LIMIT 1
+          `, [key, scanId]);
+          if (previous.rows[0]) {
+            const before = previous.rows[0];
+            const differences = await client.query(`
+              WITH old_ids AS (SELECT follower_id FROM twidget_top_followers WHERE scan_id = $1::uuid),
+                   new_ids AS (SELECT follower_id FROM twidget_top_followers WHERE scan_id = $2::uuid)
+              SELECT (SELECT count(*) FROM (SELECT follower_id FROM new_ids EXCEPT SELECT follower_id FROM old_ids) n)::int AS gained,
+                     (SELECT count(*) FROM (SELECT follower_id FROM old_ids EXCEPT SELECT follower_id FROM new_ids) n)::int AS lost,
+                     (SELECT count(*) = count(DISTINCT follower_id) AND bool_and(follower_id ~ '^[0-9]+$') FROM old_ids)
+                     AND (SELECT count(*) = count(DISTINCT follower_id) AND bool_and(follower_id ~ '^[0-9]+$') FROM new_ids) AS valid
+            `, [before.scan_id, scanId]);
+            const account = await client.query("SELECT metadata FROM twidget_history_accounts WHERE username = $1 FOR UPDATE", [key]);
+            const meta = account.rows[0]?.metadata || {};
+            const counts = differences.rows[0];
+            const observation = counts?.valid ? followerChangeObservation({
+              ...before.scan_state, status: "complete", scanId: before.scan_id, completedAt: Number(before.completed_at_ms),
+            }, topFollowersScanFromRow(updated.rows[0]), { newFollowers: counts.gained, lostFollowers: counts.lost },
+            meta.userId || meta.verifiedUserId) : null;
+            if (observation) await client.query(`
+              UPDATE twidget_history_accounts SET metadata = metadata || jsonb_build_object('followerChanges', $2::jsonb) WHERE username = $1
+            `, [key, JSON.stringify(appendFollowerChange(meta, observation))]);
+          }
+        }
+        // Head checks cannot detect losses. Keep the last complete full scan
+        // as their baseline until the next full scan has recorded its changes.
+        await client.query(`DELETE FROM twidget_top_follower_scans WHERE username = $1 AND scan_id <> $2::uuid
+          AND scan_id <> (SELECT scan_id FROM twidget_top_follower_scans WHERE username = $1 AND status = 'complete'
+            AND scan_state->>'kind' IS DISTINCT FROM 'head' ORDER BY completed_at DESC LIMIT 1)`, [key, scanId]);
+      }
       await client.query("COMMIT");
       return updated.rows[0] ? topFollowersScanFromRow(updated.rows[0]) : null;
     } catch (error) { await client.query("ROLLBACK"); throw error; }
@@ -1003,6 +1158,7 @@ export class PostgresHistoryRepository {
         await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [newKey, JSON.stringify(mergeInteractionData(targetInteractions, sourceInteractions))]);
       }
       await client.query("UPDATE twidget_top_follower_scans SET username = $2 WHERE username = $1", [oldKey, newKey]);
+      await client.query("UPDATE twidget_primary_profiles SET username = $2 WHERE username = $1", [oldKey, newKey]);
       await client.query("DELETE FROM twidget_history_accounts WHERE username = $1", [oldKey]);
       await client.query("COMMIT");
       return { moved: true };
@@ -1016,6 +1172,7 @@ export class PostgresHistoryRepository {
   async prune() {
     let deletedAccounts = 0;
     let deletedSamples = 0;
+    await this.pool.query("DELETE FROM twidget_primary_profiles WHERE last_seen_at < now() - ($1::int * interval '1 day')", [PRIMARY_PROFILE_RETENTION_DAYS]);
     if (this.inactiveAccountDays > 0) {
       const result = await this.pool.query(
         "DELETE FROM twidget_history_accounts WHERE last_accessed_at < now() - ($1::int * interval '1 day')",
@@ -1184,7 +1341,12 @@ function objectValue(value) { return value && typeof value === "object" && !Arra
 
 function topFollowersScanSummary(scan) {
   return {
+    userId: String(scan.userId || ""),
     kind: scan.kind === "head" ? "head" : "full",
+    baseScanId: String(scan.baseScanId || ""),
+    sourceFollowers: Number.isSafeInteger(scan.sourceFollowers) ? scan.sourceFollowers : null,
+    targetRows: Number(scan.targetRows || 100), overlapRows: Number(scan.overlapRows || 100),
+    processed: Number(scan.processed || 0), knownStreak: Number(scan.knownStreak || 0),
     fullCompletedAt: Number(scan.fullCompletedAt || scan.lastFullCompletedAt || (scan.kind !== "head" ? scan.completedAt : 0) || 0),
     lastFullCompletedAt: Number(scan.fullCompletedAt || scan.lastFullCompletedAt || (scan.kind !== "head" && scan.status === "complete" ? scan.completedAt : 0) || 0),
     failureCount: Number(scan.failureCount || 0), retryAt: Number(scan.retryAt || 0),

@@ -71,7 +71,7 @@
     <string name="coach_paragraph_factor">A dense opening may make the key point harder to scan. Length alone does not imply a ranking penalty.</string>
     <string name="coach_paragraph_step">Lead with the main point and move supporting detail into a second paragraph.</string>
     <string name="coach_ai_local_note">Gemini Nano analyses this post and selected history on your device. Suggestions are AI hypotheses, not proven causes.</string>
-    <string name="coach_ai_cloud_note">Cloud feedback sends this post, draft text, attached images or video previews, and selected public history to Google using your saved Gemini API key.</string>
+    <string name="coach_ai_cloud_note">Cloud reviews send this post, attachments, and available public history and conversation context to your selected cloud provider.</string>
     <string name="coach_ai_generate">Get AI suggestions</string>
     <string name="coach_ai_generate_cloud">Get suggestions with cloud AI</string>
     <string name="coach_ai_thinking">Thinking about your post and its context…</string>
@@ -87,7 +87,7 @@
     <string name="coach_ai_source_counts">%1$s views · %2$s public interactions · observed at %3$s hours old</string>
     <string name="coach_ai_unknown">Unknown</string>
     <string name="coach_ai_question">Context that would help</string>
-    <string name="coach_ai_auto_note">Auto uses Gemini Nano first. If needed, this post, draft text, attached images or video previews, and selected public history are sent to Google using your saved Gemini key.</string>
+    <string name="coach_ai_auto_note">Auto uses Gemini Nano first. If cloud fallback is needed, post content, attachments and selected public history go to your configured cloud provider.</string>
     <string name="coach_ai_media">Media context</string>
     <string name="coach_ai_media_image">Attachment %1$d (entry %2$d): image included in AI context.</string>
     <string name="coach_ai_media_video">Attachment %1$d (entry %2$d): video preview or frame included. Motion and audio were not inspected.</string>

@@ -26,8 +26,9 @@ internal object BriefReviewFreshness {
     private const val HOUR = 3_600_000L
     fun matchesLanguage(review: BriefSavedReview, language: String): Boolean =
         review.subject.input.language.equals(language, ignoreCase = true)
-    fun canReuse(review: BriefSavedReview, language: String, now: Long = System.currentTimeMillis()): Boolean =
-        matchesLanguage(review, language) && isFresh(review, now)
+    fun canReuse(review: BriefSavedReview, language: String, now: Long = System.currentTimeMillis(),
+        algorithmVersion: String = BriefAlgorithmContext.bundledKey): Boolean =
+        review.result.algorithmVersion == algorithmVersion && matchesLanguage(review, language) && isFresh(review, now)
     fun lifetime(postedAt: Long, savedAt: Long): Long = when {
         postedAt <= 0 -> 12 * HOUR
         savedAt - postedAt < 24 * HOUR -> 4 * HOUR
@@ -57,6 +58,8 @@ internal object BriefReviewEvidenceFingerprint {
         }
         return JSONObject().put("post", subject.post?.let(AnalyticsClient::serializePost))
             .put("text", input.text).put("complete", input.complete)
+            .put("conversation", input.conversation?.json()?.apply { remove("observedAt") } ?: JSONObject.NULL)
+            .put("peerReviewNotes", JSONObject(input.peerReviewNotes.toSortedMap()))
             .put("history", posts(input.history)).put("peers", posts(evidence?.peers.orEmpty()))
             .put("changes", JSONArray(changes.map(::JSONArray))).toString()
     }

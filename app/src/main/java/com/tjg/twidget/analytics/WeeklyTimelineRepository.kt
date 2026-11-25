@@ -22,10 +22,16 @@ internal object WeeklyTimelineRepository {
     private val cache = SharedRequestCache<Timeline>(60_000L)
     data class Timeline(val statuses: List<JSONObject>, val windowStartAt: Long, val checkedAt: Long, val incomplete: Boolean)
 
-    fun fxTwitter(username: String): Timeline = cache.get("fx:${username.lowercase(Locale.US)}") {
+    fun invalidateCompleted(username: String) {
+        val suffix = ":${username.trim().trimStart('@').lowercase(Locale.US)}"
+        cache.invalidateCompleted { it.endsWith(suffix) }
+    }
+
+    fun fxTwitter(username: String, userId: String = ""): Timeline = cache.get("fx:${username.lowercase(Locale.US)}") {
         val now = System.currentTimeMillis()
         val weekAgo = now - WEEK_MS
-        val encoded = URLEncoder.encode(username, StandardCharsets.UTF_8.name())
+        val identity = userId.takeIf { it.matches(Regex("[0-9]+")) }?.let { "id:$it" } ?: username
+        val encoded = URLEncoder.encode(identity, StandardCharsets.UTF_8.name())
         val statuses = mutableListOf<JSONObject>()
         val seenIds = mutableSetOf<String>()
         val seenCursors = mutableSetOf<String>()
@@ -34,11 +40,18 @@ internal object WeeklyTimelineRepository {
         var reachedWindowBoundary = false
         while (pages < MAX_ANALYTICS_PAGES && statuses.size < MAX_ANALYTICS_STATUSES) {
             val query = buildString {
-                append("?count=$ANALYTICS_PAGE_SIZE")
+                append("?count=$ANALYTICS_PAGE_SIZE&with_replies=true")
                 if (cursor.isBlank()) append("&since=$weekAgo")
                 else append("&cursor=${URLEncoder.encode(cursor, StandardCharsets.UTF_8.name())}")
             }
-            val body = HttpTransport.requireSuccess(HttpTransport.get("https://api.fxtwitter.com/2/profile/$encoded/statuses$query"), "FxTwitter timeline")
+            val body = try {
+                HttpTransport.requireSuccess(HttpTransport.get("https://api.fxtwitter.com/2/profile/$encoded/statuses$query"), "FxTwitter timeline")
+            } catch (error: HttpTransport.HttpException) {
+                // A reply timeline may advertise a continuation cursor which the
+                // upstream rejects. Keep the observed first page as sampled data.
+                if (error.code == 404 && cursor.isNotBlank() && statuses.isNotEmpty()) break
+                throw error
+            }
             if (body.isBlank()) {
                 reachedWindowBoundary = true
                 break

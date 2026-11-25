@@ -155,19 +155,19 @@ class DashboardCardVariantsInstrumentedTest {
                         fun bounds(view: View) = android.graphics.Rect(0, 0, view.width, view.height).also {
                             (tile as android.view.ViewGroup).offsetDescendantRectToMyCoords(view, it)
                         }
-                        val inset = (12f * activity.resources.displayMetrics.density).roundToInt()
-                        for (id in listOf(R.id.dashboard_post_heading,
-                            R.id.dashboard_post_body, R.id.dashboard_post_divider)) {
+                        val inset = (14f * activity.resources.displayMetrics.density).roundToInt()
+                        assertEquals("Heading follows the platform icon and its gutter", inset + activity.dp(26), bounds(tile.findViewById(R.id.dashboard_post_heading)).left)
+                        for (id in listOf(R.id.dashboard_post_body, R.id.dashboard_post_divider)) {
                             assertEquals("Tweet content shares one left inset", inset, bounds(tile.findViewById(id)).left)
                         }
                         assertEquals("Report pill shares the right inset", width - inset, bounds(report).right)
                         assertTrue("Heading and report pill share a vertical centre instead of mismatched baselines",
                             kotlin.math.abs(bounds(tile.findViewById(R.id.dashboard_post_heading)).centerY() - bounds(report).centerY()) <= 1)
                         val body = tile.findViewById<TextView>(R.id.dashboard_post_body)
-                        assertEquals("The redundant author block no longer consumes preview height", 1, (body.parent as ViewGroup).childCount)
+                        assertEquals("The date-only metadata accompanies the paragraph", 2, (body.parent as ViewGroup).childCount)
                         assertEquals("The divider already supplies the section gap", 0, body.paddingTop)
-                        assertTrue("The paragraph has room for three full lines and a final faded line", body.height >= body.lineHeight * 4)
-                        assertEquals("Paragraph ends at the bottom inset", height - inset, bounds(body).bottom)
+                        assertTrue("The dated paragraph retains at least three complete lines", body.height >= body.lineHeight * 3)
+                        assertEquals("Paragraph ends at the bottom inset", height - activity.dp(10), bounds(body).bottom)
                         val media = tile.findViewById<android.view.ViewGroup>(R.id.dashboard_post_media)
                         assertEquals("The two shadowed previews remain stacked without a badge", 2, media.childCount)
                         if (media.visibility == View.VISIBLE) {
@@ -177,7 +177,7 @@ class DashboardCardVariantsInstrumentedTest {
                             assertTrue("Thumbnail fits inside the content row", media.getChildAt(0).height <= media.height)
                         }
                         assertTrue("The post itself remains actionable", tile.hasOnClickListeners())
-                        assertFalse("Media no longer intercepts the card with a separate viewer",
+                        assertTrue("Media opens the annotated viewer",
                             tile.findViewById<View>(R.id.dashboard_post_media).hasOnClickListeners())
                     }
                     val opened = mutableListOf<android.content.Intent>()

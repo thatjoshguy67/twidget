@@ -11,7 +11,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.graphics.Typeface
 import android.os.Build
 import android.text.Layout
 import android.text.StaticLayout
@@ -32,7 +31,7 @@ class OnboardingTitleAnimationView @JvmOverloads constructor(
     private val fadeInterpolator = PathInterpolator(0.333f, 0f, 0.667f, 1f)
     private val movementInterpolator = PathInterpolator(0.22f, 0.25f, 0f, 1f)
     private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-        typeface = Typeface.create("sec", Typeface.BOLD)
+        typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(context, weight = 700)
     }
     @get:androidx.annotation.ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
     private val usesHardwareBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

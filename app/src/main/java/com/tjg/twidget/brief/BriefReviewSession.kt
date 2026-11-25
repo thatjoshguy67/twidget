@@ -33,6 +33,18 @@ internal data class BriefReviewState(val subject: BriefReviewSubject? = null,
     val savedAt: Long? = null, val failure: BriefReviewFailure? = null)
 
 internal object BriefReviewSubjects {
+    fun withRanking(context: Context, subject: BriefReviewSubject): BriefReviewSubject {
+        val evidence = subject.input.reviewEvidence ?: return subject
+        val analytics = AnalyticsClient.cached(context, subject.target.username)
+        val candidates = analytics?.let { it.reviewPosts + it.recentPosts + it.recentReplies + it.historicalPosts }.orEmpty() +
+            BriefPublishedReviewStore.posts(context, subject.target.username, 100) + evidence.rankingPosts
+        val posts = candidates.filter { it.isReply == evidence.post.isReply && it.authorUserName.equals(subject.target.username, true) &&
+            com.tjg.twidget.analytics.PostAgeComparison.valid(it) }
+            .distinctBy { BriefPublishedReviewStore.postId(it.url) ?: it.url }
+            .sortedByDescending(PostSummary::timestamp).take(10)
+        return subject.copy(input = subject.input.copy(reviewEvidence = evidence.copy(rankingPosts = posts)))
+    }
+
     /** Only a missing/stale cache merits a recovery fetch; deleted accounts and disabled content do not. */
     fun needsAnalyticsRefresh(context: Context, target: BriefReviewTarget): Boolean {
         val account = TwidgetStore.canonicalAccount(context, target.username)
@@ -55,6 +67,16 @@ internal object BriefReviewSubjects {
         }
         return load()
     }
+    /** Refresh is best effort once we already have a reviewable subject. */
+    internal suspend fun refreshAvailable(subject: BriefReviewSubject, refresh: suspend () -> Unit,
+        reload: () -> BriefReviewSubject?, onFailure: (Exception) -> Unit = {}): BriefReviewSubject {
+        try { refresh() } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            onFailure(error)
+        }
+        return reload() ?: subject
+    }
+
     /** Rebuild native evidence copy too when the analytics cache has already gone away. */
     fun fromSaved(saved: BriefSavedReview, strings: BriefStrings): BriefReviewSubject {
         if (BriefReviewFreshness.matchesLanguage(saved, strings.languageTag)) return saved.subject
@@ -67,7 +89,10 @@ internal object BriefReviewSubjects {
             posts.filterNot(PostSummary::isReply), bestCandidates = posts, cachedAt = observedAt).copy(banger = post)
         val report = requireNotNull(BriefPostCoach.review(post, analytics, strings, observedAt))
         val input = BriefCoachAi.review(post, analytics, report, strings, observedAt).copy(
-            history = subject.input.history, observedAt = evidence.observedAt, reviewEvidence = evidence, reviewCitations = evidence.citations(strings))
+            history = subject.input.history, observedAt = evidence.observedAt, reviewEvidence = evidence, reviewCitations = evidence.citations(strings),
+            conversation = subject.input.conversation, entries = subject.input.entries, text = subject.input.text,
+            kind = subject.input.kind, complete = subject.input.complete,
+            mediaCount = subject.input.mediaCount, media = subject.input.media)
         return subject.copy(input = input)
     }
 
@@ -86,7 +111,8 @@ internal object BriefReviewSubjects {
         val evidence = BriefReviewEvidence.create(post, analytics, AnalyticsClient.observations(context, account, post.url))
         val input = BriefCoachAi.review(post, analytics, report, strings, now)
             .copy(observedAt = evidence.observedAt, reviewEvidence = evidence, reviewCitations = evidence.citations(strings))
-        return BriefReviewSubject(target.copy(username = account), input, post = post)
+        val conversation = BriefReviewConversations.cached(post, analytics.recentPosts + analytics.recentReplies)
+        return BriefReviewSubject(target.copy(username = account), conversation.apply(input), post = post)
     }
 
     /** A verified handle migration changes account identity, not the original tweet URL or quoted author. */
@@ -105,7 +131,7 @@ internal object BriefReviewSubjects {
             post.copy(authorUserName = account) else post
         return analytics.copy(best = analytics.best?.let(::own), worst = analytics.worst?.let(::own),
             banger = analytics.banger?.let(::own), recentPosts = analytics.recentPosts.map(::own),
-            recentReplies = analytics.recentReplies.map(::own))
+            recentReplies = analytics.recentReplies.map(::own), reviewPosts = analytics.reviewPosts.map(::own), historicalPosts = analytics.historicalPosts.map(::own))
     }
 }
 
@@ -162,12 +188,18 @@ internal class BriefReviewSession(application: Application) : AndroidViewModel(a
             mutableState.value = BriefReviewState()
         generation = viewModelScope.launch {
             try {
+                val algorithm = withContext(Dispatchers.IO) {
+                    if (BriefReviewPolicy.blocked(BriefSettingsStore.provider(context), BriefSettingsStore.cloudApiKey(context).isNotBlank()) == null)
+                        kotlinx.coroutines.runInterruptible { BriefAlgorithmContext.refresh(context) }
+                    else BriefAlgorithmContext.current(context)
+                }
                 val saved = withContext(Dispatchers.IO) {
                     if (target.fromDashboard || BriefSettingsStore.contentEnabled(context, BriefContentCategory.TWEET_REVIEWS))
                         BriefPublishedReviewStore.read(context, target) else null
                 }
-                if (saved != null && !force && BriefReviewFreshness.canReuse(saved, language)) {
-                    mutableState.value = BriefReviewState(saved.subject, BriefReviewPhase.COMPLETE, saved.result, saved.savedAt)
+                if (saved != null && !force && BriefReviewFreshness.canReuse(saved, language, algorithmVersion = algorithm.key)) {
+                    val ranked = withContext(Dispatchers.IO) { BriefReviewSubjects.withRanking(context, saved.subject) }
+                    mutableState.value = BriefReviewState(ranked, BriefReviewPhase.COMPLETE, saved.result, saved.savedAt)
                     return@launch
                 }
                 lastAttemptAt = System.currentTimeMillis()
@@ -180,7 +212,7 @@ internal class BriefReviewSession(application: Application) : AndroidViewModel(a
                 }
                 if (subject == null) { mutableState.value = BriefReviewState(phase = BriefReviewPhase.MISSING); return@launch }
                 val matching = saved?.takeIf { BriefReviewFreshness.matchesLanguage(it, language) }
-                val key = BriefReviewResults.key(subject, BriefProviderMode.CLOUD, BriefNanoModelMode.AUTO_STABLE)
+                val key = BriefReviewResults.key(subject, BriefProviderMode.CLOUD, BriefNanoModelMode.AUTO_STABLE) + "|" + algorithm.key
                 val draftSaved = if (subject.draft == null) null else withContext(Dispatchers.IO) {
                     BriefPublishedReviewStore.readDraft(context, subject, key)
                 }
@@ -202,18 +234,23 @@ internal class BriefReviewSession(application: Application) : AndroidViewModel(a
                     val attempt = BriefPublishedReviewGeneration.attempt(context, subject, force,
                         prepare = {
                             val analytics = AnalyticsClient.cached(context, target.username)
-                            if (force || saved != null || analytics == null || System.currentTimeMillis() - analytics.cachedAt >= 15 * 60_000L) {
-                                try { AnalyticsClient.refresh(context, target.username) }
-                                catch (error: Exception) {
-                                    if (error is CancellationException) throw error
-                                    throw BriefReviewException(BriefReviewFailure.ANALYTICS)
-                                }
-                            }
-                            BriefReviewSubjects.load(context, target) ?: saved?.let { BriefReviewSubjects.fromSaved(it, strings) }
-                                ?: throw BriefReviewException(BriefReviewFailure.POST_UNAVAILABLE)
+                            val refreshed = BriefReviewSubjects.refreshAvailable(subject,
+                                refresh = {
+                                    if (force || saved != null || analytics == null || System.currentTimeMillis() - analytics.cachedAt >= 15 * 60_000L)
+                                        AnalyticsClient.refresh(context, target.username)
+                                },
+                                reload = { BriefReviewSubjects.load(context, target) },
+                                onFailure = { error ->
+                                    BriefReviewDebugLog.record(context, "ANALYTICS_FALLBACK", org.json.JSONObject()
+                                        .put("type", error.javaClass.simpleName)
+                                        .put("status", (error as? com.tjg.twidget.core.HttpTransport.HttpException)?.code)
+                                        .put("observedAt", subject.input.observedAt))
+                                })
+                            BriefReviewComparisons.enrich(context, BriefReviewConversations.enrich(context, BriefReviewSubjects.withRanking(context, refreshed)))
                         }, generate = { current -> BriefAiCoordinator.coach(context, current.input) })
                     val review = attempt.review?.takeIf { BriefReviewFreshness.matchesLanguage(it, language) }
-                    mutableState.value = BriefReviewState(review?.subject ?: subject,
+                    val ranked = withContext(Dispatchers.IO) { BriefReviewSubjects.withRanking(context, review?.subject ?: subject) }
+                    mutableState.value = BriefReviewState(ranked,
                         if (attempt.failure == null && review != null) BriefReviewPhase.COMPLETE else BriefReviewPhase.FAILED,
                         review?.result, review?.savedAt, attempt.failure)
                     return@launch

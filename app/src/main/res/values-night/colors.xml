@@ -34,7 +34,8 @@
     <color name="widget_setting_seek_bar_thumb_tint">@color/oneui_accent</color>
     <color name="widget_setting_seek_bar_tick_mark_solid_color">#77777A</color>
     <!-- Onboarding radial gradient (top-center origin) — Figma dark theme -->
-    <color name="onboarding_grad_start">#101012</color>
+    <!-- Keep the dark endpoint neutral when display modes lift near-black shades. -->
+    <color name="onboarding_grad_start">#101010</color>
     <color name="onboarding_grad_center">#081928</color>
     <color name="onboarding_grad_end">#00233F</color>
     <!-- Glass pill button + input on the gradient -->
@@ -43,7 +44,8 @@
     <!-- Transparent-ish widget preview card on the add-widget step -->
     <color name="onboarding_widget_card">#4D000000</color>
     <!-- "You're all set" settle: blue drains to the bottom, near-black takes over -->
-    <color name="onboarding_settle_fade">#00010102</color>
+    <color name="onboarding_settle_fade">#00010101</color>
+    <color name="onboarding_settle_background">#010101</color>
     <color name="import_grad_start">#003B66</color>
     <color name="import_grad_center">#081928</color>
     <color name="import_grad_end">#010102</color>

@@ -39,4 +39,22 @@ class BriefReviewRecoveryTest {
         } catch (_: CancellationException) { }
         assertNull(BriefReviewSubjects.recoverMissing(target, { null }, { true }, { }))
     }
+    @Test fun existingEvidenceSurvivesFailedAnalyticsRefreshWithoutChangingItsTimestamp() = runBlocking {
+        var failures = 0
+        val current = BriefReviewSubjects.refreshAvailable(subject,
+            refresh = { throw java.io.IOException("offline") }, reload = { null }, onFailure = { failures++ })
+        assertSame(subject, current)
+        assertEquals(1L, current.input.observedAt)
+        assertEquals(1, failures)
+    }
+
+    @Test fun successfulRefreshUsesNewEvidenceAndCancellationStillPropagates() = runBlocking {
+        val newer = subject.copy(input = subject.input.copy(observedAt = 2L))
+        assertSame(newer, BriefReviewSubjects.refreshAvailable(subject, {}, { newer }))
+        try {
+            BriefReviewSubjects.refreshAvailable(subject, { throw CancellationException("cancelled") }, { subject })
+            fail("Expected cancellation")
+        } catch (_: CancellationException) { }
+    }
+
 }

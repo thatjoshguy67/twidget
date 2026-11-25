@@ -20,9 +20,14 @@ class MetricChartScaleTest {
     }
 
     @Test
-    fun largeAxisLabelsUseAtMostOneDecimal() {
+    fun largeAxisLabelsRetainEnoughPrecisionForDistinctTicks() {
         assertEquals(listOf("8.1k", "8k", "7.9k"), MetricChartScale.axisLabels(7_903, 8_053, 3))
-        assertEquals(listOf("1.3m", "1.2m", "1.2m"), MetricChartScale.axisLabels(1_234_000, 1_256_000, 3))
+        assertEquals(listOf("1.26m", "1.25m", "1.23m"), MetricChartScale.axisLabels(1_234_000, 1_256_000, 3))
+    }
+
+    @Test fun nearFlatTotalsNeverCollapseToOneAxisLabel() {
+        val labels = MetricChartScale.axisLabels(8070,8090)
+        assertEquals(4,labels.distinct().size)
     }
 
     @Test
@@ -52,14 +57,14 @@ class MetricChartScaleTest {
     }
 
     @Test
-    fun accountAverageDoesNotFlattenCurrentBars() {
+    fun olderAccountAverageDoesNotFlattenTheWeeklyTotals() {
         val bounds = MetricChartScale.primaryAxisBounds(
             primary = listOf(7_651L, 7_655L, 7_652L, 7_654L, 7_656L, 7_658L, 7_665L),
             background = listOf(6_650L, 6_660L, 6_665L, 6_670L, 6_675L, 6_680L, 6_685L),
         )
 
         assertEquals(7_635L to 7_665L, bounds)
-        assertEquals(0.466f, MetricChartScale.yFraction(7_651L, bounds.first, bounds.second), 0.001f)
+        assertEquals(14f/30f, MetricChartScale.yFraction(7_651L, bounds.first, bounds.second), 0.001f)
         assertEquals(0f, MetricChartScale.yFraction(7_665L, bounds.first, bounds.second))
     }
 

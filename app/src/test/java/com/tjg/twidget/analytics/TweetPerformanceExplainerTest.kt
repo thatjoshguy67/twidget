@@ -152,10 +152,11 @@ class TweetPerformanceExplainerTest {
     }
 
     @Test
-    fun rejectsMissingFutureAndOutOfWindowTimestamps() {
-        for (timestamp in listOf(0L, now + hour, now - 8 * 24 * hour)) {
+    fun rejectsMissingAndFutureTimestampsButAllowsHistoricalObservations() {
+        for (timestamp in listOf(0L, now + hour)) {
             assertEquals(null, PostAgeComparison.age(post(timestamp = timestamp), analytics()))
         }
+        assertEquals(8 * 24 * hour, PostAgeComparison.age(post(timestamp = now - 8 * 24 * hour), analytics()))
     }
 
     @Test

@@ -7,4 +7,5 @@
     <string name="top_followers_browser_refresh_failed">No se pudo actualizar la lista completa de seguidores. Inténtalo de nuevo.</string>
     <string name="top_followers_browser_empty">Aún no hay ninguna clasificación de seguidores disponible.</string>
     <string name="top_followers_browser_no_results">Ningún seguidor coincide con tu búsqueda.</string>
+    <string name="top_followers_browser_search_hint">Buscar</string>
 </resources>

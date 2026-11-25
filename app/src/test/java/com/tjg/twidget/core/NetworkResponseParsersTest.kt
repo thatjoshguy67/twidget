@@ -12,6 +12,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetworkResponseParsersTest {
+    @Test fun sharedFieldsKeepUnknownCountersUnknownAndRetainAvailableProfileDetails() {
+        val profile = NetworkResponseParsers.parseBridgeProfile("""{"userId":"123","userName":"example",
+          "followersCount":0,"statusesCount":12,"likeCount":0,"bio":"About me","website":"https://example.com",
+          "profileMetadata":{"fields":{"followersCount":false,"statusesCount":true,"likeCount":false},
+          "expiresAt":"2026-11-25T19:00:00Z"}}""")
+        assertFalse(profile.followersKnown)
+        assertFalse(profile.likesKnown)
+        assertTrue(profile.postsKnown)
+        assertEquals("About me", profile.profileDetails.bio)
+        assertEquals("https://example.com", profile.profileDetails.website)
+        assertNull(profile.profileDetails.location)
+        assertEquals(java.time.Instant.parse("2026-11-25T19:00:00Z").toEpochMilli(), profile.profileExpiresAt)
+        val fx = NetworkResponseParsers.parseFxTwitterUser(JSONObject("""{"user":{"screen_name":"example","statuses":37}}"""), "example")
+        assertTrue(fx.postsKnown)
+        assertEquals(37L, fx.statusesCount)
+    }
+
+    @Test fun bridgeProfileRetainsTheSourceObservationTime() {
+        val stats = NetworkResponseParsers.parseBridgeProfile("""{"userName":"example","followersCount":10,
+            "profileMetadata":{"fetchedAt":"2026-11-20T12:00:00Z","cacheStatus":"hit"}}""")
+        assertEquals(java.time.Instant.parse("2026-11-20T12:00:00Z").toEpochMilli(), stats.syncedAt)
+    }
+
     @org.junit.Test fun permanentIdsAreReadWithoutMistakingPostIdsForAccountIds() {
         org.junit.Assert.assertEquals("1234567890123456789", NetworkResponseParsers.parseFxTwitterUser(
             org.json.JSONObject("""{"user":{"id":"1234567890123456789","screen_name":"renamed"}}"""), "old",
@@ -216,7 +239,7 @@ class NetworkResponseParsersTest {
         assertEquals(0.05, analytics.engagementRate, 0.0001)
         assertEquals(8.0, analytics.medianLikes, 0.0001)
         assertEquals(2.0, analytics.medianReplies, 0.0001)
-        assertEquals(3.0, analytics.medianShares, 0.0001)
+        assertEquals(0.0, analytics.medianShares, 0.0001) // Unsupported shares from old bridge caches are ignored.
         assertEquals("Best https://t.co/link", analytics.best?.text)
         assertEquals("", analytics.best?.authorAvatar)
         assertEquals(listOf("https://example.com/story"), analytics.best?.links?.map(PostLink::url))

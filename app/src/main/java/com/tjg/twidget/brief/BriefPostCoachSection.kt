@@ -52,7 +52,9 @@ internal object BriefPostCoachSection {
             descriptionLoad = (activity as? LifecycleOwner)?.lifecycleScope?.launch {
                 val copy = withContext(Dispatchers.IO) {
                     descriptions.map { (post, _) -> BriefReviewPreviewCopy.description(post,
-                        BriefPublishedReviewStore.read(activity, BriefReviewTarget(username, postUrl = post.url)), strings) }
+                        BriefPublishedReviewStore.read(activity, BriefReviewTarget(username, postUrl = post.url))?.let { saved ->
+                            saved.copy(subject = BriefReviewSubjects.withRanking(activity, saved.subject))
+                        }, strings) }
                 }
                 descriptions.zip(copy).forEach { (binding, text) -> binding.second.text = text }
             }

@@ -35,6 +35,7 @@ internal object DashboardStatContext {
         root.setTag(R.id.dashboard_stat_expanded, expanded)
         val panel = root.findViewById<LinearLayout>(R.id.dashboard_stat_context) ?: return
         panel.removeAllViews()
+        panel.gravity = Gravity.TOP
         val compactDetail = root.findViewById<TextView>(R.id.stat_detail)?.text ?: ""
         root.setTag(R.id.dashboard_stat_detail_compact, compactDetail)
         root.setTag(R.id.dashboard_stat_detail_expanded, compactDetail)
@@ -73,10 +74,10 @@ internal object DashboardStatContext {
                 compactCardInsets = true
                 zeroBasedScale = true
                 setOptionalSeries(labels.zip(values).map { (label, value) -> label to value?.toLong() })
-            }, LinearLayout.LayoutParams(-1, 0, 1f).apply { bottomMargin = dp(6) })
+            }, LinearLayout.LayoutParams(-1, 0, 1f))
             return true
         }
-        val data = activity.analytics
+        val data = com.tjg.twidget.analytics.HistoricalPostArchive.forStats(activity.analytics)
         val posts = data?.recentPosts.orEmpty().sortedBy { it.timestamp }
         val real = history.filterNot { it.estimated }.sortedBy { it.timestamp }
         val period = DashboardPeriods.label(real)
@@ -106,17 +107,35 @@ internal object DashboardStatContext {
                 val days = DailyStreakStore.activeDays(activity, stats.userName)
                 val week = (6L downTo 0L).map { LocalDate.now().minusDays(it) }
                 descriptions += string(R.string.dashboard_activity_week)
-                val hasPlot = bars(week.map { day -> when {
-                    day.toString() in days -> 1.0
-                    snapshot.activityComplete && day.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() >= snapshot.activityWindowStartAt -> 0.0
-                    else -> null
-                } }, week.map { it.toString() })
+                panel.gravity = Gravity.CENTER_VERTICAL
+                panel.addView(LinearLayout(activity).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    week.forEach { day ->
+                        val active = day.toString() in days
+                        val known = active || snapshot.activityComplete && day.atStartOfDay(java.time.ZoneId.systemDefault())
+                            .toInstant().toEpochMilli() >= snapshot.activityWindowStartAt
+                        addView(LinearLayout(activity).apply {
+                            orientation = LinearLayout.VERTICAL
+                            gravity = Gravity.CENTER
+                            addView(View(activity).apply {
+                                background = android.graphics.drawable.GradientDrawable().apply {
+                                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                                    val muted = activity.getColor(R.color.oneui_text_secondary)
+                                    setColor(if (active) activity.getColor(R.color.metric_green) else if (known) (muted and 0x00ffffff) or 0x33000000 else android.graphics.Color.TRANSPARENT)
+                                    if (!known) setStroke(dp(1), (muted and 0x00ffffff) or 0x66000000)
+                                }
+                                contentDescription = day.format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL).withLocale(AppLocales.applicationLocale())) + ": " +
+                                    activity.getString(if (active) R.string.streak_day_active else if (known) R.string.streak_day_inactive else R.string.streak_day_unknown)
+                            }, LinearLayout.LayoutParams(dp(18), dp(18)))
+                            addView(text(day.format(java.time.format.DateTimeFormatter.ofPattern("EEEEE", AppLocales.applicationLocale())), 11f).apply {
+                                gravity = Gravity.CENTER
+                            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+                        }, LinearLayout.LayoutParams(0, -2, 1f))
+                    }
+                }, LinearLayout.LayoutParams(-1, -2))
                 val best = "${string(R.string.dashboard_best_streak)} ${snapshot.longestStreak}"
                 descriptions += best
-                if (hasPlot) root.setTag(R.id.dashboard_stat_detail_expanded, best) else {
-                    caption(string(R.string.dashboard_activity_week))
-                    row(string(R.string.dashboard_best_streak), snapshot.longestStreak.toString())
-                }
+                root.setTag(R.id.dashboard_stat_detail_expanded, best)
             }
             DashboardCardType.POST_RATE -> {
                 val points = DashboardDailyPosts.points(fullHistory, stats)

@@ -14,6 +14,7 @@ data class PostMedia(
     val alt: String,
     val width: Long,
     val height: Long,
+    val playbackUrl: String = "",
 )
 
 /** A single quoted source, kept separate from the account's own text and measurements. */
@@ -46,6 +47,10 @@ data class PostSummary(
     val repliesKnown: Boolean = true,
     val quotesKnown: Boolean = true,
     val quotedPost: QuotedPost? = null,
+    val conversationId: String = "",
+    val replyToId: String = "",
+    val observedAt: Long = 0L,
+    val bookmarks: Long? = null,
 )
 
 /**
@@ -84,6 +89,10 @@ data class PostAnalytics(
     val recentPosts: List<PostSummary> = emptyList(),
     /** Kept separately so replies never change original-post totals or benchmarks. */
     val recentReplies: List<PostSummary> = emptyList(),
+    val reviewPosts: List<PostSummary> = emptyList(),
+    val historicalPosts: List<PostSummary> = emptyList(),
+    val historicalCheckedAt: Long = 0L,
+    val archiveCoverage: ArchiveCoverage = ArchiveCoverage(),
 )
 
 enum class TweetPerformanceDirection { STRONG, QUIET }

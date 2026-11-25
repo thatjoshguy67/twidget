@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Contexte du fil : %1$d tweets liés.</string>
+    <string name="review_replies_unavailable">Le texte des réponses n’est pas disponible avec la source de données actuelle.</string>
+    <string name="review_replies_empty">Aucun texte de réponse du public n’a été renvoyé ; l’accueil ne peut pas être évalué.</string>
+    <string name="review_replies_sample">%1$d réponses du public échantillonnées ; elles ne représentent pas toute l’audience.</string>
+</resources>

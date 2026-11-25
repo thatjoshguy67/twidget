@@ -58,6 +58,7 @@ object AnalyticsClient {
     }
 
     fun isStale(context: Context, analytics: PostAnalytics?): Boolean {
+        if (TwidgetStore.settings(context).shareHistory && analytics?.historicalCheckedAt == 0L) return true
         val staleAfter = if (TwidgetStore.settings(context).dataSource == TwidgetStore.DATA_SOURCE_TWITTERAPIS) {
             TWITTERAPIS_STALE_MS
         } else {
@@ -88,32 +89,59 @@ object AnalyticsClient {
         val previous = cached(context, clean)
         val settings = TwidgetStore.settings(context)
         val endpoint = TwidgetStore.bridgeEndpoint(settings)
-        val weekly = when (settings.dataSource) {
+        val weeklyAttempt = runCatching { when (settings.dataSource) {
             TwidgetStore.DATA_SOURCE_FXTWITTER -> ProviderFallback.directThenOptionalFallback(
-                direct = { fetchFxTwitter(clean) },
-                // Sharing history is the bridge opt-in: only then does the
-                // bridge remain an optional fallback, and a healthy FxTwitter
-                // setup never contacts it either way.
-                fallback = if (settings.shareHistory) ({ fetchBridge(context, clean, endpoint) }) else null,
+                direct = { if (settings.shareHistory) fetchBridge(context, clean, endpoint)
+                    else fetchFxTwitter(clean, TwidgetStore.currentStats(context, clean).userId) },
+                fallback = if (settings.shareHistory) ({ fetchFxTwitter(clean, TwidgetStore.currentStats(context, clean).userId) }) else null,
             )
             TwidgetStore.DATA_SOURCE_TWITTERAPIS -> ProviderFallback.directThenOptionalFallback(
                 direct = { fetchTwitterApis(context, clean) },
                 fallback = { fetchBridge(context, clean, endpoint) },
             )
             else -> fetchBridge(context, clean, endpoint)
-        }
+        } }
         val hallOfFame = runCatching {
             BangerClient.refresh(context, clean, settings, endpoint)
         }.getOrNull()
         if (hallOfFame != null && !hallOfFame.complete && !hallOfFame.capped) {
             BangerScanWorker.enqueue(context, clean)
         }
+        var archiveCheckedAt = previous?.historicalCheckedAt ?: 0L
+        var coverage = previous?.archiveCoverage ?: ArchiveCoverage()
+        var archiveRoot: JSONObject? = null
+        val history = if (settings.shareHistory || settings.dataSource in setOf(TwidgetStore.DATA_SOURCE_DEFAULT, TwidgetStore.DATA_SOURCE_SELF_HOSTED)) runCatching {
+            val userId = TwidgetStore.currentStats(context, clean).userId
+            if (userId.isBlank()) previous?.historicalPosts.orEmpty() else {
+                val encoded = URLEncoder.encode(clean, StandardCharsets.UTF_8.name())
+                val raw = read("${endpoint.url}/analytics/$encoded?all=true", endpoint.token, logContext = context)
+                val root = JSONObject(raw)
+                HistoricalPostArchive.requireIdentity(root, clean, userId)
+                archiveRoot = root
+                HistoricalPostArchive.parse(root, clean, userId).also {
+                    archiveCheckedAt = System.currentTimeMillis()
+                    coverage = HistoricalPostArchive.coverage(root)
+                }
+            }
+        }.getOrElse { previous?.historicalPosts.orEmpty() } else emptyList()
+        val weekly = weeklyAttempt.getOrElse { error ->
+            if (history.isEmpty()) throw error
+            // Archive counters can still feed general cards while a weekly read
+            // is unavailable; old posts never become this week's winners.
+            analyticsFromPosts(clean, TwidgetStore.currentStats(context, clean).followersCount, 0, true,
+                emptyList(), cachedAt = System.currentTimeMillis())
+        }
         val analytics = weekly.copy(
+            historicalPosts = history,
+            historicalCheckedAt = archiveCheckedAt,
+            archiveCoverage = coverage,
             banger = hallOfFame?.post ?: previous?.banger,
             bangerComplete = hallOfFame?.complete ?: previous?.bangerComplete ?: false,
             bangerPostsScanned = hallOfFame?.postsScanned ?: previous?.bangerPostsScanned ?: 0,
-            cachedAt = System.currentTimeMillis(),
-        )
+            cachedAt = weekly.cachedAt,
+        ).let { data -> archiveRoot?.let { root -> HistoricalPostArchive.merge(data, root, clean,
+            TwidgetStore.currentStats(context, clean).userId, archiveCheckedAt) } ?: data }
+            .let { it.copy(reviewPosts = ReviewPostRetention.merge(it, previous)) }
         val result = TwidgetStore.withAccountGeneration(context, clean, generation) {
             if (TwidgetStore.settings(context).dataSource == settings.dataSource) {
                 writeWithObservations(context, clean, analytics)
@@ -125,7 +153,22 @@ object AnalyticsClient {
             val userId = TwidgetStore.currentStats(context, clean).userId
             runCatching { com.tjg.twidget.bridge.HistoryPool.syncInteractions(context, clean, userId, endpoint) }
         }
+        HistoricalAnalyticsWorker.enqueue(context, clean)
         return result
+    }
+
+    /** A background archive page updates general cards and Brief without replacing weekly analytics. */
+    internal fun cacheArchive(context: Context, username: String, root: JSONObject, userId: String) = synchronized(TwidgetStore) {
+        HistoricalPostArchive.requireIdentity(root, username, userId)
+        val previous = cached(context, username) ?: analyticsFromPosts(username,
+            TwidgetStore.currentStats(context, username).followersCount, 0, true, emptyList(), cachedAt = 0L)
+        val updated = HistoricalPostArchive.merge(previous, root, username, userId, System.currentTimeMillis())
+        writeWithObservations(context, username, updated)
+        InteractionStore.recordAnalytics(context, username, updated)
+        val activity = com.tjg.twidget.data.DailyStreakStore.snapshot(context, username)
+        com.tjg.twidget.data.DailyStreakStore.mergeOriginalActivity(context, username,
+            updated.historicalPosts.filter { !it.isReply }.map { it.timestamp }.toSet(),
+            activity.activityWindowStartAt, activity.activityCheckedAt, activity.activityComplete)
     }
 
     internal fun observations(context: Context, username: String, postUrl: String): List<PostObservation> {
@@ -135,11 +178,22 @@ object AnalyticsClient {
         return PostObservationHistory.read(root?.optJSONArray(PostObservationHistory.FIELD), postUrl)
     }
 
-    private fun writeWithObservations(context: Context, username: String, analytics: PostAnalytics) {
+    private fun writeWithObservations(context: Context, username: String, analytics: PostAnalytics) = synchronized(TwidgetStore) {
         val cacheKey = key(context, username)
         val previous = prefs(context).getString(cacheKey, null)
             ?.let { runCatching { JSONObject(it) }.getOrNull() }
-        val encoded = serialize(analytics).put(PostObservationHistory.FIELD,
+        val previousAnalytics = previous?.let { runCatching { NetworkResponseParsers.parseBridgeAnalytics(it) }.getOrNull() }
+        val withArchive = if (HistoricalAnalyticsWorker.allowed(TwidgetStore.settings(context)) && previousAnalytics != null) {
+            val posts = (analytics.historicalPosts + previousAnalytics.historicalPosts).groupBy { it.url }
+                .values.map { observations -> observations.maxBy { it.observedAt } }
+                .sortedByDescending { it.timestamp }.take(2000)
+            analytics.copy(historicalPosts = posts,
+                archiveCoverage = if (previousAnalytics.historicalCheckedAt > analytics.historicalCheckedAt)
+                    previousAnalytics.archiveCoverage else analytics.archiveCoverage,
+                historicalCheckedAt = maxOf(analytics.historicalCheckedAt, previousAnalytics.historicalCheckedAt))
+        } else analytics
+        val retained = withArchive.copy(reviewPosts = ReviewPostRetention.merge(withArchive, previousAnalytics))
+        val encoded = serialize(retained).put(PostObservationHistory.FIELD,
             PostObservationHistory.record(previous?.takeIf { it.optString("userName").equals(analytics.userName, true) }
                 ?.optJSONArray(PostObservationHistory.FIELD), analytics))
         prefs(context).edit().putString(cacheKey, encoded.toString()).apply()
@@ -173,7 +227,7 @@ object AnalyticsClient {
             sampled = timeline.incomplete,
             posts = posts,
             bestCandidates = statuses.mapNotNull { parseTwitterApisPost(it, username, weekAgo, now, includeReplies = true) },
-            cachedAt = now,
+            cachedAt = timeline.checkedAt,
         )
     }
 
@@ -220,11 +274,12 @@ object AnalyticsClient {
     /** Read-only public weekly analytics for comparisons; does not update account caches. */
     internal fun fetchPublic(username: String): PostAnalytics = fetchFxTwitter(username)
 
-    private fun fetchFxTwitter(username: String): PostAnalytics {
-        val profile = FxTwitterClient.fetchProfile(username)
+    private fun fetchFxTwitter(username: String, userId: String = ""): PostAnalytics {
+        val profile = if (userId.matches(Regex("[0-9]+"))) FxTwitterClient.fetchProfileById(userId) else FxTwitterClient.fetchProfile(username)
+        require(profile.userName.equals(username, true)) { "Account handle changed; refresh the profile first." }
         val now = System.currentTimeMillis()
         val weekAgo = now - WEEK_MS
-        val timeline = WeeklyTimelineRepository.fxTwitter(username)
+        val timeline = WeeklyTimelineRepository.fxTwitter(username, profile.userId)
         val statuses = timeline.statuses
         val requested = username.lowercase(Locale.US)
         val posts = statuses
@@ -237,7 +292,7 @@ object AnalyticsClient {
             sampled = timeline.incomplete,
             posts = posts,
             bestCandidates = statuses.filter { isOwnWeeklyPost(it, requested, weekAgo, now, includeReplies = true) }.map(::parseFxPost),
-            cachedAt = System.currentTimeMillis(),
+            cachedAt = timeline.checkedAt,
         )
     }
 
@@ -278,6 +333,8 @@ object AnalyticsClient {
             repostsKnown = listOf("retweet_count", "repost_count", "retweetCount", "repostCount", "reposts").any { tweet.has(it) && !tweet.isNull(it) },
             repliesKnown = listOf("reply_count", "replyCount", "replies").any { tweet.has(it) && !tweet.isNull(it) },
             quotesKnown = listOf("quote_count", "quoteCount", "quotes").any { tweet.has(it) && !tweet.isNull(it) },
+            bookmarks = tweetLong(tweet, "bookmark_count", "bookmarkCount", "bookmarks").takeIf {
+                listOf("bookmark_count", "bookmarkCount", "bookmarks").any { key -> tweet.has(key) && !tweet.isNull(key) } },
             likes = likes,
             replies = replies,
             reposts = reposts,
@@ -296,6 +353,8 @@ object AnalyticsClient {
                 it.length <= 10_000 && !tweetBoolean(tweet, "truncated", "isTruncated")
             },
             isReply = isReply || (conversationId.isNotBlank() && id.isNotBlank() && conversationId != id),
+            conversationId = conversationId.takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
+            replyToId = tweetString(tweet, "in_reply_to_status_id", "in_reply_to_status_id_str", "inReplyToId", "in_reply_to_tweet_id").takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
             quotedPost = (tweet.optJSONObject("quoted_tweet") ?: tweet.optJSONObject("quoted_status") ?: tweet.optJSONObject("quote"))?.let { quoted ->
                 val source = quoted.optJSONObject("author") ?: quoted.optJSONObject("user") ?: JSONObject()
                 val handle = tweetString(source, "userName", "username", "screen_name")
@@ -324,7 +383,6 @@ object AnalyticsClient {
         val engagements = posts.map { it.engagements }
         val likes = posts.map { it.likes }
         val replies = posts.map { it.replies }
-        val shares = posts.map { it.reposts + it.quotes }
         val totalViews = views.sum()
         val totalEngagements = engagements.sum()
         val count = posts.size
@@ -352,7 +410,6 @@ object AnalyticsClient {
             cachedAt = cachedAt,
             medianLikes = median(likes),
             medianReplies = median(replies),
-            medianShares = median(shares),
             recentPosts = posts.take(50),
             recentReplies = bestCandidates.filter(PostSummary::isReply)
                 .distinctBy(PostSummary::url).sortedByDescending(PostSummary::timestamp).take(50),
@@ -395,12 +452,15 @@ object AnalyticsClient {
                 hasValue(status, "in_reply_to_status_id_str") ||
                 (hasValue(status, "conversation_id") && hasValue(status, "id") &&
                     status.optString("conversation_id") != status.optString("id")),
+            conversationId = status.optString("conversation_id").takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
+            replyToId = status.optString("in_reply_to_status_id").ifBlank { status.optString("in_reply_to_status_id_str") }.ifBlank { status.optString("replying_to_status") }.takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
             views = status.optLong("views"),
             viewsKnown = status.has("views") && !status.isNull("views"),
             likesKnown = status.has("likes") && !status.isNull("likes"),
             repostsKnown = status.has("reposts") && !status.isNull("reposts"),
             repliesKnown = status.has("replies") && !status.isNull("replies"),
             quotesKnown = status.has("quotes") && !status.isNull("quotes"),
+            bookmarks = status.optLong("bookmarks").takeIf { status.has("bookmarks") && !status.isNull("bookmarks") && it >= 0 },
             likes = likes,
             replies = replies,
             reposts = reposts,
@@ -447,6 +507,7 @@ object AnalyticsClient {
                     alt = item.optString("altText"),
                     width = item.optLong("width"),
                     height = item.optLong("height"),
+                    playbackUrl = safeWebUrl(item.optString("url")).takeIf { item.optString("type") !in listOf("photo", "image") }.orEmpty(),
                 ).takeIf { url.isNotBlank() }
             }
             .take(4)
@@ -543,7 +604,7 @@ object AnalyticsClient {
         else (sorted[middle - 1].toDouble() + sorted[middle]) / 2.0
     }
 
-    private fun serialize(a: PostAnalytics): JSONObject = JSONObject()
+    internal fun serialize(a: PostAnalytics): JSONObject = JSONObject()
         .put("userName", a.userName)
         .put("followers", a.followers)
         .put("postsAnalyzed", a.postsAnalyzed)
@@ -572,8 +633,7 @@ object AnalyticsClient {
             "benchmarks",
             JSONObject()
                 .put("medianLikes", a.medianLikes)
-                .put("medianReplies", a.medianReplies)
-                .put("medianShares", a.medianShares),
+                .put("medianReplies", a.medianReplies),
         )
         .apply {
             a.best?.let { put("best", serializePost(it)) }
@@ -581,6 +641,14 @@ object AnalyticsClient {
             a.banger?.let { put("banger", serializePost(it)) }
             put("recentPosts", JSONArray(a.recentPosts.map(::serializePost)))
             put("recentReplies", JSONArray(a.recentReplies.map(::serializePost)))
+            put("reviewPosts", JSONArray(a.reviewPosts.map(::serializePost)))
+            put("historicalPosts", JSONArray(a.historicalPosts.map(::serializePost)))
+            put("historicalCheckedAt", a.historicalCheckedAt)
+            put("archiveState", JSONObject().put("postCount", a.archiveCoverage.postCount).put("replyCount", a.archiveCoverage.replyCount)
+                .put("backfill", JSONObject().put("status", a.archiveCoverage.status).put("oldestPostAt", a.archiveCoverage.scannedThroughAt))
+                .put("coverage", JSONObject().put("earliestPostAt", a.archiveCoverage.earliestPostAt)
+                    .put("latestPostAt", a.archiveCoverage.latestPostAt)
+                    .put("replyCoverage", if (a.archiveCoverage.replyInclusive) "reply_inclusive_timeline" else "incidental_or_unknown")))
             put("bangerComplete", a.bangerComplete)
             put("bangerPostsScanned", a.bangerPostsScanned)
         }
@@ -590,7 +658,8 @@ object AnalyticsClient {
         .put("text", p.text)
         .put("fullText", p.fullText ?: JSONObject.NULL)
         .put("quotedPost", p.quotedPost?.let(::serializeQuotedPost) ?: JSONObject.NULL)
-        .put("isReply", p.isReply)
+        .put("observedAt", p.observedAt).put("isReply", p.isReply).put("conversationId", p.conversationId).put("replyToId", p.replyToId)
+        .put("bookmarks", p.bookmarks ?: JSONObject.NULL).put("bookmarksKnown", p.bookmarks != null)
         .put("viewsKnown", p.viewsKnown)
         .put("likesKnown", p.likesKnown)
         .put("repostsKnown", p.repostsKnown)
@@ -621,7 +690,7 @@ object AnalyticsClient {
 
     private fun serializeMedia(media: PostMedia): JSONObject = JSONObject()
         .put("type", media.type)
-        .put("url", media.url)
+        .put("url", media.url).put("playbackUrl", media.playbackUrl)
         .put("alt", media.alt)
         .put("width", media.width)
         .put("height", media.height)

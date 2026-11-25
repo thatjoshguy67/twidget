@@ -34,6 +34,10 @@ All notable changes to Twidget are documented here.
   previews and selective haptics. Add Undo for moves/removals and an accessible
   destination picker while preserving card sizes.
 
+- Update Your Brief cards independently, keeping unchanged descriptions through
+  the day and refreshing the summary when its supporting evidence changes.
+  Preserve completed wording when another card needs a retry.
+
 - Use the same adaptive lettering and fitting rules for compact and expanded
   follower-count cards, including during live resizing.
 

@@ -18,9 +18,10 @@ class BriefNanoModelModeTest {
     }
 
     @Test
-    fun automaticStableSelectionTriesFastThenFull() {
+    fun automaticSelectionTriesFullThenOtherAvailableModelsAndPlatformDefault() {
         assertEquals(
-            listOf(BriefNanoModelMode.STABLE_FAST, BriefNanoModelMode.STABLE_FULL),
+            listOf(BriefNanoModelMode.STABLE_FULL, BriefNanoModelMode.STABLE_FAST,
+                BriefNanoModelMode.PREVIEW_FULL, BriefNanoModelMode.PREVIEW_FAST, BriefNanoModelMode.AUTO_STABLE),
             BriefNanoModelMode.AUTO_STABLE.probeOrder(),
         )
     }

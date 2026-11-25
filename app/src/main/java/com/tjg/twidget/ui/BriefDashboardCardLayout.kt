@@ -8,6 +8,8 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.ColorFilter
 import android.graphics.ComposeShader
 import android.graphics.LinearGradient
@@ -49,6 +51,34 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     private var titleShimmerAnimator: ValueAnimator? = null
     private var titleShimmerProgress = -1f
 
+    /** Colour the existing glow artwork without changing its alpha, shape or blur. */
+    fun setGlowType(type: com.tjg.twidget.brief.BriefCardType) {
+        val color = when (type) {
+            com.tjg.twidget.brief.BriefCardType.GROWTH,
+            com.tjg.twidget.brief.BriefCardType.MILESTONE,
+            com.tjg.twidget.brief.BriefCardType.TOP_FOLLOWER,
+            com.tjg.twidget.brief.BriefCardType.POST,
+            com.tjg.twidget.brief.BriefCardType.STREAK -> 0xFF4CCB88.toInt()
+            com.tjg.twidget.brief.BriefCardType.SLOWDOWN,
+            com.tjg.twidget.brief.BriefCardType.INACTIVITY,
+            com.tjg.twidget.brief.BriefCardType.WORST_POST -> 0xFFFFA052.toInt()
+            else -> null
+        }
+        glowBitmapPaint.colorFilter = color?.let {
+            // Preserve the source luminance and transparency; only its hue changes.
+            val r = Color.red(it).toFloat()
+            val g = Color.green(it).toFloat()
+            val b = Color.blue(it).toFloat()
+            val luminance = .2126f * r + .7152f * g + .0722f * b
+            fun row(channel: Float) = floatArrayOf(
+                .2126f * channel / luminance, .7152f * channel / luminance,
+                .0722f * channel / luminance, 0f, 0f,
+            )
+            ColorMatrixColorFilter(ColorMatrix(row(r) + row(g) + row(b) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
+        }
+        invalidate()
+    }
+
     private val smartThingsAiColors = intArrayOf(
         0xFFBDFAA5.toInt(),
         0xFF88E6E3.toInt(),
@@ -82,6 +112,7 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     }
 
     override fun draw(canvas: Canvas) {
+        if (!AppAppearance.outlineEffects(context)) SeslSurfaceHighlight.remove(this)
         if (width > 0 && height > 0) {
             val w = width.toFloat()
             val h = height.toFloat()
@@ -186,13 +217,7 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         updateShadows()
-        var p = parent
-        while (p is android.view.ViewGroup) {
-            p.clipChildren = false
-            p.clipToPadding = false
-            if (p.id == R.id.main_toolbar_layout) break
-            p = p.parent
-        }
+
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -311,7 +336,11 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val inset = dp(12)
+        val metrics = com.tjg.twidget.widget.BriefWidgetArtworkRenderer.tallCardMetrics(
+            MeasureSpec.getSize(widthMeasureSpec) / resources.displayMetrics.density,
+            MeasureSpec.getSize(heightMeasureSpec) / resources.displayMetrics.density,
+        )
+        val inset = dp(metrics.textInsetDp.roundToInt())
         setPadding(inset, inset, inset, inset)
         val icon = findViewById<View>(R.id.brief_dashboard_icon)
         fun artwork(size: Int, gap: Int) {
@@ -321,7 +350,7 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
                 (layoutParams as LayoutParams).bottomMargin = dp(gap)
             }
         }
-        artwork(32, 8)
+        artwork(metrics.iconSizeDp.roundToInt(), metrics.textGapDp.roundToInt())
         if (icon?.visibility == View.GONE) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
             return
@@ -330,10 +359,12 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
         val body = findViewById<TextView>(R.id.brief_dashboard_message)
         title?.apply {
             setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,
-                if ((MeasureSpec.getSize(widthMeasureSpec) / resources.displayMetrics.density).roundToInt() < 340) 22f else 24f)
+                if (MeasureSpec.getSize(heightMeasureSpec) <= dp(160)) minOf(metrics.titleSizeSp, 22f) else metrics.titleSizeSp)
             paint.isFakeBoldText = false
             maxLines = 3
         }
+        body?.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+            if (MeasureSpec.getSize(heightMeasureSpec) <= dp(160)) minOf(metrics.bodySizeSp, 14f) else metrics.bodySizeSp)
         body?.maxLines = 3
         if (title != null && body != null && MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
             val width = MeasureSpec.makeMeasureSpec((MeasureSpec.getSize(widthMeasureSpec) - inset * 2).coerceAtLeast(1), MeasureSpec.EXACTLY)
@@ -342,22 +373,12 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
                 text.measure(width, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
                 return text.measuredHeight
             }
-            var available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp(32 + 8)).coerceAtLeast(0)
+            var available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp((metrics.iconSizeDp + metrics.textGapDp).roundToInt())).coerceAtLeast(0)
             var gap = dp(6)
             var titleLines = 3
             var titleHeight = intrinsic(title, titleLines)
             val bodyHeights = (1..3).associateWith { intrinsic(body, it) }
             val minimumBody = bodyHeights.getValue(1)
-            val compactAvailable = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp(28 + 4)).coerceAtLeast(0)
-            // Measure the actual selected font and emphasis spans. Reserving two
-            // nominal body line-heights used to force a perfectly usable title to one line.
-            if (titleHeight + gap + minimumBody > available ||
-                (bodyHeights.getValue(2) > minimumBody && titleHeight + gap + bodyHeights.getValue(2) > available &&
-                    titleHeight + dp(4) + bodyHeights.getValue(2) <= compactAvailable)) {
-                artwork(28, 4)
-                available = compactAvailable
-                gap = dp(4)
-            }
             while (titleLines > 1 && titleHeight + gap + minimumBody > available) {
                 titleHeight = intrinsic(title, --titleLines)
             }

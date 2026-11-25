@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Thread-Kontext: %1$d verbundene Tweets.</string>
+    <string name="review_replies_unavailable">Antworttexte sind über die aktuelle Datenquelle nicht verfügbar.</string>
+    <string name="review_replies_empty">Es wurden keine Antworttexte des Publikums geliefert; die Reaktionen konnten nicht bewertet werden.</string>
+    <string name="review_replies_sample">%1$d Publikumsantworten in der Stichprobe; sie repräsentiert nicht das gesamte Publikum.</string>
+</resources>

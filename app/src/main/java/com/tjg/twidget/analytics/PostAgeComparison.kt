@@ -19,10 +19,13 @@ object PostAgeComparison {
 
     // cachedAt is the observation time. Advancing the clock must not make a
     // cached two-hour count look like a measured two-day count.
-    fun age(post: PostSummary, analytics: PostAnalytics): Long? =
-        if (analytics.cachedAt > 0L && post.timestamp in 1..analytics.cachedAt) {
-            (analytics.cachedAt - post.timestamp).takeIf { it in HOUR_MS..analytics.windowDays * DAY_MS }
-        } else null
+    fun age(post: PostSummary, analytics: PostAnalytics): Long? {
+        if (maxOf(analytics.cachedAt, analytics.historicalCheckedAt) <= 0 || post.observedAt > maxOf(analytics.cachedAt, analytics.historicalCheckedAt)) return null
+        val observed = post.observedAt.takeIf { it > 0 } ?: analytics.cachedAt
+        return if (observed > 0 && post.timestamp in 1..observed)
+            (observed - post.timestamp).takeIf { it >= HOUR_MS }
+        else null
+    }
 
     fun similarAge(left: PostSummary, right: PostSummary, analytics: PostAnalytics): Boolean {
         val a = age(left, analytics) ?: return false

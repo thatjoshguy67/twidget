@@ -1,16 +1,16 @@
 <resources>
     <string name="interactions_title">Interactions</string>
     <string name="interaction_stats_title">Post stats</string>
-    <string name="interaction_mix_title">Engagement Mix</string>
-    <string name="interaction_split_title">Original vs Replies</string>
+    <string name="interaction_mix_title">Engagement mix</string>
+    <string name="interaction_split_title">Tweets vs Replies</string>
     <string name="interaction_likes">Likes</string>
     <string name="interaction_reposts">Reposts</string>
     <string name="interaction_replies">Replies</string>
     <string name="interaction_shares">Shares</string>
-    <string name="interaction_quotes">Quotes</string>
+    <string name="interaction_quotes">Quote retweets</string>
     <string name="interaction_bookmarks">Bookmarks</string>
     <string name="interaction_views">Views</string>
-    <string name="interaction_original">Original</string>
+    <string name="interaction_original">Tweets</string>
     <string name="interaction_total">total</string>
     <string name="interaction_range_7">7D</string>
     <string name="interaction_range_30">30D</string>

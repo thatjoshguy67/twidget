@@ -45,11 +45,14 @@ internal object BriefReviewViews {
             textSize = size
             includeFontPadding = false
             typeface = TwidgetFonts.forApp(context, if (bold) 700 else 400)
+            if (bold) TwidgetFonts.dashboardHeading(this)
             setTextColor(context.getColor(if (secondary) R.color.oneui_text_secondary else R.color.oneui_text_primary))
             setLineSpacing(dp(context, 1).toFloat(), 1f)
         }
     fun card(context: Context) = column(context).apply {
         setBackgroundResource(R.drawable.brief_card_background)
+        com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(this, dp(context, 28).toFloat())
+        com.tjg.twidget.ui.SeslSurfaceHighlight.applyTo(this)
         setPadding(dp(context, 14), dp(context, 14), dp(context, 14), dp(context, 14))
     }
     fun label(context: Context, value: CharSequence) = text(context, value).apply {

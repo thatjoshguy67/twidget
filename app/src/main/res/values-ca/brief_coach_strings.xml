@@ -71,7 +71,7 @@
     <string name="coach_paragraph_factor">Un inici dens pot dificultar trobar la idea principal. La longitud per si sola no implica una penalització en la classificació.</string>
     <string name="coach_paragraph_step">Comença per la idea principal i trasllada els detalls de suport a un segon paràgraf.</string>
     <string name="coach_ai_local_note">Gemini Nano analitza aquesta publicació i l\'historial seleccionat al teu dispositiu. Els suggeriments són hipòtesis de la IA, no causes demostrades.</string>
-    <string name="coach_ai_cloud_note">Els consells al núvol envien aquesta publicació, el text de l\'esborrany, les imatges adjuntes o vistes prèvies de vídeo i l\'historial públic seleccionat a Google mitjançant la teva clau d\'API de Gemini desada.</string>
+    <string name="coach_ai_cloud_note">Les anàlisis al núvol envien aquest tuit, els fitxers adjunts i l’historial i context públic de conversa disponibles al teu proveïdor al núvol.</string>
     <string name="coach_ai_generate">Obtenir suggeriments de la IA</string>
     <string name="coach_ai_generate_cloud">Obtenir suggeriments amb la IA al núvol</string>
     <string name="coach_ai_thinking">Pensant en la teva publicació i el seu context…</string>
@@ -87,7 +87,7 @@
     <string name="coach_ai_source_counts">%1$s visualitzacions · %2$s interaccions públiques · observat a les %3$s hores de la seva publicació</string>
     <string name="coach_ai_unknown">Desconegut</string>
     <string name="coach_ai_question">Context que ajudaria</string>
-    <string name="coach_ai_auto_note">El mode automàtic utilitza Gemini Nano primer. Si cal, aquesta publicació, el text de l\'esborrany, les imatges adjuntes o vistes prèvies de vídeo i l\'historial públic seleccionat s\'envien a Google mitjançant la teva clau de Gemini desada.</string>
+    <string name="coach_ai_auto_note">Auto utilitza Gemini Nano primer. Si cal el núvol, el contingut, els fitxers adjunts i una selecció de l’historial públic s’envien al proveïdor al núvol configurat.</string>
     <string name="coach_ai_media">Context multimèdia</string>
     <string name="coach_ai_media_image">Adjunt %1$d (publicació %2$d): imatge inclosa en el context de la IA.</string>
     <string name="coach_ai_media_video">Adjunt %1$d (publicació %2$d): vista prèvia o fotograma de vídeo inclòs. No s\'han examinat el moviment ni l\'àudio.</string>

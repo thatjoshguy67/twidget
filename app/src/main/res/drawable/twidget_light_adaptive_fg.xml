@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Figma's 500px foreground occupies the same 72dp safe area as stable. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetTop="16.666667%"
+    android:insetBottom="16.666667%"
+    android:insetLeft="16.666667%"
+    android:insetRight="16.666667%">
+    <bitmap
+        android:src="@drawable/twidget_light_fg"
+        android:gravity="fill"
+        android:filter="true" />
+</inset>

@@ -66,7 +66,7 @@ object TwidgetFonts {
     internal fun editorialTypeface(context: Context, weight: Int, width: Int, italic: Boolean = false,
         roundness: Int = 0): Typeface = googleAppTypeface(context, weight, italic, width, roundness)
 
-    enum class Role { LABEL, SUMMARY, DASHBOARD_VALUE, DASHBOARD_EDITORIAL, STREAK_VALUE, CHART_VALUE, CHART_DELTA, CODE }
+    enum class Role { DASHBOARD_HEADING, LABEL, SUMMARY, DASHBOARD_VALUE, INTERACTION_VALUE, DASHBOARD_EDITORIAL, STREAK_VALUE, CHART_VALUE, CHART_DELTA, CODE }
     private var codeTypeface: Typeface? = null
 
     fun setRole(view: TextView, role: Role) {
@@ -75,8 +75,8 @@ object TwidgetFonts {
     }
 
     fun dashboardHeading(view: TextView, weight: Int = 700) {
-        if (view.getTag(R.id.app_font_role) != Role.LABEL) view.typeface = forApp(view.context, weight)
-        setRole(view, Role.LABEL)
+        setRole(view, Role.DASHBOARD_HEADING)
+        view.paint.isFakeBoldText = false
     }
 
     private data class TextBaseline(
@@ -202,6 +202,7 @@ object TwidgetFonts {
         if (view is TextView) {
             val current = view.typeface ?: Typeface.DEFAULT
             val stored = view.getTag(R.id.app_font_baseline) as? TextBaseline
+            if (view.getTag(R.id.app_font_role) == Role.DASHBOARD_HEADING) view.paint.isFakeBoldText = false
             val binding = FontBinding(font, view.getTag(R.id.app_font_role), view.tag, view.id,
                 view.parent is androidx.appcompat.widget.Toolbar)
             // Discovery still sees dynamically added rows, but unchanged text needs no lookup or font work.
@@ -225,7 +226,9 @@ object TwidgetFonts {
                 summary -> 400
                 else -> baseline.weight
             }
-            val desired = if (view.getTag(R.id.app_font_role) == Role.CODE)
+            val desired = if (view.getTag(R.id.app_font_role) == Role.DASHBOARD_HEADING)
+                forApp(view.context, font, 700, false)
+                else if (view.getTag(R.id.app_font_role) == Role.CODE)
                 codeTypeface ?: (ResourcesCompat.getFont(view.context, R.font.google_sans_code)
                     ?: Typeface.MONOSPACE).also { codeTypeface = it }
                 else if (view.getTag(R.id.app_font_role) == Role.DASHBOARD_EDITORIAL)
@@ -233,6 +236,8 @@ object TwidgetFonts {
                 else forApp(view.context, font, 400, false)
                 else if (view.getTag(R.id.app_font_role) == Role.CHART_DELTA)
                 forApp(view.context, font, 400, baseline.italic)
+                else if (view.getTag(R.id.app_font_role) == Role.INTERACTION_VALUE)
+                googleAppTypeface(view.context, 700, false, (view.getTag(R.id.dashboard_card_span) as? Int) ?: 140, 0)
                 else if (view.getTag(R.id.app_font_role) == Role.CHART_VALUE)
                 forApp(view.context, font, 700, false)
                 else if (view.getTag(R.id.app_font_role) in setOf(Role.DASHBOARD_VALUE, Role.STREAK_VALUE))
@@ -248,7 +253,7 @@ object TwidgetFonts {
                 // In particular, a 500/600 face must not be replaced by a normal/bold cut.
                 view.paint.typeface = desired
             }
-            if (view.getTag(R.id.app_font_role) == Role.CHART_VALUE) view.paint.isFakeBoldText = false
+            if (view.getTag(R.id.app_font_role) in setOf(Role.CHART_VALUE, Role.DASHBOARD_HEADING)) view.paint.isFakeBoldText = false
             baseline.appliedFace = view.typeface
             baseline.appliedSize = view.textSize
             baseline.binding = binding

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Thread context: %1$d connected tweets.</string>
+    <string name="review_replies_unavailable">Reply text is unavailable from the current data source.</string>
+    <string name="review_replies_empty">No audience reply text was returned; reception could not be assessed.</string>
+    <string name="review_replies_sample">%1$d audience replies sampled; this does not represent the whole audience.</string>
+</resources>

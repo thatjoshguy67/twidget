@@ -15,7 +15,7 @@ class BriefSettingsActivity : FoldablePopOverActivity() {
         findViewById<ToolbarLayout>(R.id.preference_toolbar_layout).apply {
             setTitle(getString(R.string.brief_settings_title))
             setNavigationButtonOnClickListener { onBackPressedDispatcher.onBackPressed() }
-            if (savedInstanceState == null) setExpanded(true, false)
+            if (savedInstanceState == null) setExpanded(false, false)
         }
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()

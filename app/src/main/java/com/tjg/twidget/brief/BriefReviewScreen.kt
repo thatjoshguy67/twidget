@@ -124,7 +124,7 @@ internal class BriefReviewScreen(private val context: Context, private val callb
     }
 
     private fun loading() {
-        add(BriefReviewViews.column(context).apply {
+        add(BriefReviewLoadingLayout(context).apply {
             gravity = Gravity.CENTER
             minimumHeight = dp(170)
             setPadding(dp(19), dp(40), dp(19), dp(40))
@@ -140,7 +140,6 @@ internal class BriefReviewScreen(private val context: Context, private val callb
                 accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
             }, BriefReviewViews.params(context, 20))
         }, 0)
-        note(R.string.coach_ai_cloud_note)
     }
 
     private fun message(res: Int, retry: Boolean = true) {
@@ -219,6 +218,23 @@ internal class BriefReviewScreen(private val context: Context, private val callb
     }
 
     private fun performance(evidence: BriefReviewEvidence, showObservedAt: Boolean = false) {
+        evidence.viewsRank?.let { rank ->
+            add(BriefReviewViews.card(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(BriefReviewViews.column(context).apply {
+                    addView(text(context.getString(R.string.review_performance_ranking), 18f, bold = true))
+                    addView(text(if (evidence.viewsRankTotal == 1) context.getString(R.string.review_rank_only_post)
+                        else context.getString(R.string.review_rank_comparison, evidence.viewsRankTotal - 1), 14f),
+                        BriefReviewViews.params(context, 11))
+                }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(text(context.getString(R.string.review_views_rank, rank, evidence.viewsRankTotal), 38f, bold = true).apply {
+                    setTag(R.id.dashboard_card_span, 130)
+                    com.tjg.twidget.ui.TwidgetFonts.setRole(this, com.tjg.twidget.ui.TwidgetFonts.Role.INTERACTION_VALUE)
+                    maxLines = 1
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(11) })
+            }, 10)
+        }
         add(BriefReviewViews.column(context).apply {
             addView(statsRow(listOf(Triple(R.string.brief_metric_impressions,
                 if (evidence.post.viewsKnown) evidence.post.views else null, OneUiIconR.drawable.ic_oui_equalizer_2),

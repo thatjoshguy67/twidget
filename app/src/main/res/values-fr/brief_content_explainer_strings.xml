@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Réponses et tweets cités dans ton échantillon récent, par rapport aux vues enregistrées. Ce sont des totaux cumulés, pas des personnes uniques.</string>
+    <string name="brief_content_patterns_explainer">Compare la médiane des vues des tweets avec texte, images et vidéos du même âge. Affiché si les données comparables sont suffisantes.</string>
+    <string name="brief_content_momentum_explainer">Compare la variation nette de tes abonnés sur la dernière semaine enregistrée avec la semaine précédente.</string>
+    <string name="brief_content_recap_explainer">La variation enregistrée de tes abonnés et un échantillon de tweets publiés la semaine dernière. Les vues sont des totaux cumulés.</string>
+    <string name="brief_content_topics_explainer">Découvre quels hashtags récurrents ont une médiane de vues supérieure aux autres tweets du même âge. Basé sur ton échantillon, pas sur des prévisions de tendance.</string>
+    <string name="brief_content_experiments_explainer">Un format à tester selon tes tendances de contenu récentes. Compare le prochain tweet au même âge ; les résultats ne sont pas garantis.</string>
+</resources>

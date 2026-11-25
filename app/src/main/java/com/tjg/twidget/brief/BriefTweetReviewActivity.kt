@@ -121,9 +121,8 @@ class BriefTweetReviewActivity : FoldablePopOverActivity() {
 
     private fun addKey() {
         keyDialog?.dismiss()
-        keyDialog = BriefApiKeyDialog.show(this, required = true) {
-            session.open(target, force = true)
-        }
+        forceFirstOpen = true
+        startRightSidePopOverActivity(Intent(this, com.tjg.twidget.settings.BriefSettingsActivity::class.java))
     }
 
     private fun openPost(post: PostSummary) {

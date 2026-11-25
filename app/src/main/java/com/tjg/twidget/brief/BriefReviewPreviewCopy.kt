@@ -26,7 +26,7 @@ internal object BriefReviewPreviewCopy {
                 strings.quantityText(R.plurals.review_preview_interaction_count,
                     BriefStrings.quantity(evidence.interactions), strings.number(evidence.interactions)))
             else strings.text(R.string.review_preview_interactions, subject, strings.number(evidence.interactions))
-            listOf(counts, comparison(evidence, strings)).filter(String::isNotBlank).joinToString(" ")
+            listOf(counts, evidence.viewsRank?.let { strings.text(R.string.review_preview_rank, it, evidence.viewsRankTotal) }.orEmpty(), comparison(evidence, strings)).filter(String::isNotBlank).joinToString(" ")
         }
         return listOfNotNull(age, body).joinToString(" ")
     }

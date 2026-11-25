@@ -37,12 +37,13 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     private val landingPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var externalX = 0f
     private var externalY = 0f
+    private var externalPointerInside = false
     private var lastExternalX = Float.NaN
     private var lastExternalY = Float.NaN
     private val externalScroll = object : Runnable {
         override fun run() {
             val view = recycler ?: return
-            if (external == null) return
+            if (external == null || !externalPointerInside) return
             val edge = activity.dp(64)
             val distance = when {
                 externalY < edge -> -((edge - externalY) / edge * activity.dp(8)).toInt()
@@ -61,6 +62,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     val isDragging get() = dragging != null || external != null
     fun span(card: DashboardCardType): Int = overrides[card.id] ?: card.span(activity, account.ifBlank { activity.selectedAccount })
 
+    private val heldViewport = Rect()
     private val callback = object : ItemTouchHelper.Callback() {
         override fun getMovementFlags(view: RecyclerView, holder: RecyclerView.ViewHolder): Int =
             if (editing && holder is CardHolder && external == null && !binder.isResizing)
@@ -89,6 +91,20 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                 after = from.bindingAdapterPosition < to.bindingAdapterPosition)
             return true
         }
+        override fun onMoved(view: RecyclerView, source: RecyclerView.ViewHolder, from: Int,
+            target: RecyclerView.ViewHolder, to: Int, x: Int, y: Int) {
+            // The default implementation calls prepareForDrop, which scrolls
+            // Linear/GridLayoutManager to the target after each reorder.
+            // ItemTouchHelper already keeps the dragged card under the pointer.
+        }
+        override fun interpolateOutOfBoundsScroll(view: RecyclerView, size: Int, outOfBounds: Int,
+            totalSize: Int, elapsed: Long): Int {
+            val pointer = (view as? DashboardRecyclerView)?.lastTouchY ?: return 0
+            val edge = activity.dp(64)
+            if (pointer.isNaN() || (outOfBounds < 0 && pointer >= edge) ||
+                (outOfBounds > 0 && pointer <= view.height - edge)) return 0
+            return super.interpolateOutOfBoundsScroll(view, size, outOfBounds, totalSize, elapsed)
+        }
         override fun onSwiped(holder: RecyclerView.ViewHolder, direction: Int) = Unit
         override fun onSelectedChanged(holder: RecyclerView.ViewHolder?, state: Int) {
             super.onSelectedChanged(holder, state)
@@ -111,7 +127,27 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                     activity.dp(28).toFloat(), activity.dp(28).toFloat(), landingPaint)
                 tile.alpha = 1f
             }
-            super.onChildDraw(canvas, view, holder, dx, dy, state, active)
+            val tile = holder.itemView
+            var horizontalOffset = dx
+            var verticalOffset = dy
+            if (state == ItemTouchHelper.ACTION_STATE_DRAG && view.getLocalVisibleRect(heldViewport)) {
+                // Use the visible rectangle, including ancestor toolbar clipping,
+                // rather than the RecyclerView's potentially off-screen bounds.
+                val margin = activity.dp(8)
+                val left = maxOf(view.paddingLeft, heldViewport.left) + margin
+                val right = minOf(view.width - view.paddingRight, heldViewport.right) - margin
+                val top = maxOf(view.paddingTop, heldViewport.top) + margin
+                val bottom = heldViewport.bottom - margin
+                fun offset(value: Float, start: Int, end: Int, origin: Int, size: Int): Float =
+                    if (end - start >= size) value.coerceIn((start - origin).toFloat(), (end - origin - size).toFloat())
+                    else (start - origin).toFloat()
+                // Full-width cards retain their normal gutters when there is no
+                // room for extra shadow clearance.
+                horizontalOffset = offset(dx, if (right-left >= tile.width) left else maxOf(view.paddingLeft, heldViewport.left),
+                    if (right-left >= tile.width) right else minOf(view.width-view.paddingRight, heldViewport.right), tile.left, tile.width)
+                verticalOffset = offset(dy, top, bottom, tile.top, tile.height)
+            }
+            super.onChildDraw(canvas, view, holder, horizontalOffset, verticalOffset, state, active)
         }
         override fun clearView(view: RecyclerView, holder: RecyclerView.ViewHolder) {
             super.clearView(view, holder)
@@ -169,7 +205,17 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> external != null && event.localState == external
                 DragEvent.ACTION_DRAG_LOCATION -> {
-                    externalX = event.x; externalY = event.y; updateExternalTarget(); true
+                    externalX = event.x; externalY = event.y
+                    if (!externalPointerInside) {
+                        externalPointerInside = true
+                        view.postOnAnimation(externalScroll)
+                    }
+                    updateExternalTarget(); true
+                }
+                DragEvent.ACTION_DRAG_EXITED -> {
+                    externalPointerInside = false
+                    view.removeCallbacks(externalScroll)
+                    true
                 }
                 DragEvent.ACTION_DROP -> { activity.editModeController.finishDashboardDrag(true); true }
                 DragEvent.ACTION_DRAG_ENDED -> { activity.editModeController.finishDashboardDrag(false); true }
@@ -232,7 +278,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         cancelled = false
         lastExternalX = Float.NaN; lastExternalY = Float.NaN
         replace((items + card).distinct().sortedBy { order.indexOf(it.id) })
-        recycler?.apply { scrollToPosition(items.indexOf(card) + 1); postOnAnimation(externalScroll) }
+        externalPointerInside = false
     }
     private fun updateExternalTarget(force: Boolean = false) {
         val view = recycler ?: return
@@ -256,6 +302,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         cancelNativeDrag()
         val added = external
         external = null
+        externalPointerInside = false
         recycler?.removeCallbacks(externalScroll)
         overrides.clear()
         val saved = order.mapNotNull(DashboardCardType::fromId).filter { it in items }

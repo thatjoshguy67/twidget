@@ -67,7 +67,7 @@ class Sesl95SearchView @JvmOverloads constructor(context: Context, attrs: Attrib
         button.layoutParams = button.layoutParams.apply { width = fabSize; height = fabSize }
         val fill = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(context.getColor(R.color.oneui_card_bg))
+            setColor(context.getColor(R.color.follower_search_bar_bg))
         }
         button.background = RippleDrawable(ColorStateList.valueOf(0x33777777), fill,
             GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(-1) })

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_manage_cloud_providers">Gestiona els proveïdors al núvol</string>
+    <string name="streak_day_inactive">Cap publicació</string>
+    <string name="app_icon_light">Clara</string>
+    <string name="settings_outline_effects_summary">Utilitza efectes de contorn de One UI 9.5 en elements de l’aplicació, com ara targetes, navegació i botons.</string>
+    <string name="streak_day_active">Publicat</string>
+    <string name="app_icon_selected">S’ha seleccionat la icona %1$s</string>
+    <string name="review_performance_ranking">Classificació de rendiment</string>
+    <string name="settings_outline_effects">Efectes de contorn</string>
+    <string name="review_views_rank_context">Comparat amb les teves piulades elegibles més recents d’una edat i un format semblants, fins a deu en total. Els totals de visualitzacions iguals comparteixen posició.</string>
+    <string name="review_views_rank">%1$d/%2$d</string>
+    <string name="review_rank_comparison">Classificat per visualitzacions registrades entre %1$d altres piulades recents. Els empats comparteixen posició.</string>
+    <string name="review_rank_only_post">Aquesta és l’única piulada elegible disponible actualment.</string>
+    <string name="review_preview_rank">Posició %1$d/%2$d per visualitzacions.</string>
+    <string name="app_icon_dark">Fosca</string>
+    <string name="settings_cloud_ai_provider">Proveïdor d’IA al núvol</string>
+    <string name="settings_app_icon">Icona de l’aplicació</string>
+    <string name="chart_unfollows">Deixen de seguir: %1$s</string>
+    <string name="analytics_historical_sample">Entre %1$d publicacions i respostes desades</string>
+    <string name="streak_day_unknown">Activitat no disponible</string>
+    <string name="analytics_posts_replies_coverage">Entre %1$d publicacions i respostes de la mostra</string>
+    <string name="analytics_historical_originals">Entre %1$d publicacions originals desades</string>
+    <string name="app_icon_default">Predeterminada</string>
+</resources>

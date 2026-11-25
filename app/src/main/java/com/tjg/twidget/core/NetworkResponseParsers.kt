@@ -29,7 +29,7 @@ internal object NetworkResponseParsers {
             userName = user.optString("screen_name").trimStart('@'),
             followersCount = user.optLong("followers"),
             followingsCount = user.optLong("following"),
-            statusesCount = user.optLong("tweets"),
+            statusesCount = user.optLong("statuses", user.optLong("tweets")),
             likeCount = user.optLong("likes"),
             profileImage = user.optString("avatar_url"),
             isVerified = user.optJSONObject("verification")?.optBoolean("verified", false)
@@ -38,7 +38,7 @@ internal object NetworkResponseParsers {
             syncedAt = System.currentTimeMillis(),
             followersKnown = user.has("followers") && !user.isNull("followers"),
             followingKnown = user.has("following") && !user.isNull("following"),
-            postsKnown = user.has("tweets") && !user.isNull("tweets"),
+            postsKnown = (user.has("statuses") && !user.isNull("statuses")) || (user.has("tweets") && !user.isNull("tweets")),
             likesKnown = user.has("likes") && !user.isNull("likes"),
         )
     }
@@ -81,6 +81,13 @@ internal object NetworkResponseParsers {
             else -> JSONObject(root)
         }
         val user = bridgeUserObject(json)
+        val availability = json.optJSONObject("profileMetadata")?.optJSONObject("fields")
+        fun known(field: String, flag: String, keys: Set<String>): Boolean = when {
+            user.has("${field}Known") -> user.optBoolean("${field}Known")
+            user.has(flag) -> user.optBoolean(flag)
+            availability?.has(field) == true -> availability.optBoolean(field)
+            else -> hasLong(user, keys)
+        }
         return ProfileStats(
             userId = listOf("userId", "id_str", "rest_id", "id").firstNotNullOfOrNull { key ->
                 user.optString(key).takeIf { it.matches(Regex("[0-9]+")) }
@@ -92,14 +99,19 @@ internal object NetworkResponseParsers {
             statusesCount = findLong(user, setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count")),
             likeCount = findLong(user, setOf("likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count")),
             profileImage = bridgeProfileImageUrl(user),
+            profileDetails = com.tjg.twidget.data.SharedProfileDetails.fromJson(user),
+            profileExpiresAt = runCatching { java.time.Instant.parse(json.optJSONObject("profileMetadata")?.optString("expiresAt")).toEpochMilli() }
+                .getOrDefault(0L),
             isVerified = findBoolean(user, setOf("isVerified", "verified", "blueVerified", "blue_verified", "is_blue_verified", "verifiedType", "verified_type")),
             isPrivate = findBoolean(user, setOf("isPrivate", "private", "protected", "isProtected", "is_protected", "protectedProfile")),
             history = parseBridgeHistory(json, user),
             historyUserId = json.optString("historyUserId"),
-            followersKnown = hasLong(user, setOf("followersCount", "followers_count", "followerCount", "follower_count")),
-            followingKnown = hasLong(user, setOf("followingsCount", "followingCount", "friends_count", "following_count")),
-            postsKnown = hasLong(user, setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count")),
-            likesKnown = hasLong(user, setOf("likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count")),
+            syncedAt = runCatching { java.time.Instant.parse(json.optJSONObject("profileMetadata")?.optString("fetchedAt")).toEpochMilli() }
+                .getOrNull()?.takeIf { it > 0 } ?: System.currentTimeMillis(),
+            followersKnown = known("followersCount", "followersKnown", setOf("followersCount", "followers_count", "followerCount", "follower_count")),
+            followingKnown = known("followingsCount", "followingKnown", setOf("followingsCount", "followingCount", "friends_count", "following_count")),
+            postsKnown = known("statusesCount", "postsKnown", setOf("statusesCount", "statusCount", "tweetCount", "tweetsCount", "statuses_count")),
+            likesKnown = known("likeCount", "likesKnown", setOf("likeCount", "likesCount", "favouritesCount", "favoritesCount", "favourites_count", "favorites_count")),
         )
     }
 
@@ -142,7 +154,8 @@ internal object NetworkResponseParsers {
         return PostAnalytics(
             userName = json.optString("userName"),
             followers = json.optLong("followers"),
-            postsAnalyzed = json.optInt("postsAnalyzed"),
+            postsAnalyzed = json.optInt("postsAnalyzed", json.optInt("postCount",
+                json.optJSONObject("dashboardStats")?.optInt("originalPostCount") ?: 0)),
             statusesInspected = json.optInt("statusesInspected", json.optInt("postsAnalyzed")),
             isSampled = json.optBoolean("isSampled", false),
             windowDays = json.optInt("windowDays", 7),
@@ -163,8 +176,11 @@ internal object NetworkResponseParsers {
             cachedAt = json.optLong("cachedAt", System.currentTimeMillis()),
             medianLikes = benchmarks.optDouble("medianLikes", 0.0),
             medianReplies = benchmarks.optDouble("medianReplies", 0.0),
-            medianShares = benchmarks.optDouble("medianShares", 0.0),
             recentPosts = parseBridgePosts(json.optJSONArray("recentPosts")),
+            reviewPosts = parseBridgePosts(json.optJSONArray("reviewPosts")).take(10),
+            historicalPosts = parseBridgePosts(json.optJSONArray("historicalPosts")).take(2000),
+            historicalCheckedAt = json.optLong("historicalCheckedAt", 0L),
+            archiveCoverage = com.tjg.twidget.analytics.HistoricalPostArchive.coverage(json.optJSONObject("archiveState") ?: JSONObject()),
             recentReplies = parseBridgePosts(json.optJSONArray("recentReplies"))
                 .filter { it.isReply }.take(50),
         )
@@ -194,6 +210,11 @@ internal object NetworkResponseParsers {
                 !json.isNull("fullText") && it.isNotBlank() && it.length <= 10_000
             },
             isReply = json.optBoolean("isReply", false),
+            observedAt = json.optLong("observedAt", 0L),
+            bookmarks = json.optLong("bookmarks").takeIf { json.has("bookmarks") && !json.isNull("bookmarks") &&
+                json.optBoolean("bookmarksKnown", true) && it >= 0 },
+            conversationId = json.optString("conversationId").takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
+            replyToId = json.optString("replyToId").takeIf { it.matches(Regex("[0-9]+")) }.orEmpty(),
             viewsKnown = json.optBoolean("viewsKnown", json.has("views") && !json.isNull("views")),
             likesKnown = json.optBoolean("likesKnown", json.has("likes") && !json.isNull("likes")),
             repostsKnown = json.optBoolean("repostsKnown", json.has("reposts") && !json.isNull("reposts")),
@@ -243,6 +264,7 @@ internal object NetworkResponseParsers {
                 PostMedia(
                     type = item.optString("type"),
                     url = safeWebUrl(item.optString("url")),
+                    playbackUrl = safeWebUrl(item.optString("playbackUrl")),
                     alt = item.optString("alt"),
                     width = item.optLong("width"),
                     height = item.optLong("height"),

@@ -119,10 +119,10 @@ internal class TopFollowersCardBinder(
             minimumHeight = 0
             background = rounded(cardColor, 28f)
             clipToOutline = true
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setPadding(0, 0, 0, 0)
             setTag(R.id.dashboard_list_card, true)
             addView(header(activity.getString(R.string.top_followers_results_title), account, openBrowserEnabled = true),
-                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             state.top.take(if (activity.resources.configuration.fontScale >= 1.6f) 2 else 3).forEachIndexed { index, follower ->
                 addView(resultRow(index + 1, follower, index < 2),
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -138,8 +138,9 @@ internal class TopFollowersCardBinder(
     ): View {
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(24)
-            setPadding(0, 0, 0, 0)
+            minimumHeight = dp(if (openBrowserEnabled) 48 else 24)
+            if (openBrowserEnabled) setPadding(dp(12), dp(12), dp(12), dp(12))
+            else setPadding(0, 0, 0, 0)
             if (openBrowserEnabled) {
                 isClickable = true
                 isFocusable = true
@@ -151,6 +152,11 @@ internal class TopFollowersCardBinder(
                 contentDescription = "$title. ${activity.getString(R.string.top_followers_view_all)}"
                 setOnClickListener { openBrowse(account) }
             }
+            addView(android.widget.ImageView(activity).apply {
+                setImageResource(R.drawable.dashboard_platform_icon)
+                imageTintList = ColorStateList.valueOf(secondaryColor)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(10) })
             addView(label(title, 14f, secondaryColor, 700).apply {
                 com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this)
                 gravity = Gravity.CENTER_VERTICAL or if (openBrowserEnabled) Gravity.START else Gravity.CENTER_HORIZONTAL
@@ -168,13 +174,12 @@ internal class TopFollowersCardBinder(
     private fun resultRow(rank: Int, follower: TopFollower, divider: Boolean): View = FrameLayout(activity).apply {
         isClickable = true
         isFocusable = true
-        // One bounded target owns the complete row, including its avatar and
-        // follower count. The mask gives every row the same rounded grey
-        // pressed surface instead of separate, inconsistent child targets.
+        // The whole row is one target. The outer card clips the feedback at
+        // its edges; inset pills crowd the rank, avatar and follower count.
         foreground = RippleDrawable(
             ColorStateList.valueOf(rippleColor),
             null,
-            rounded(cardColor, 24f),
+            ColorDrawable(Color.WHITE),
         )
         contentDescription = activity.getString(
             R.string.top_follower_accessibility,
@@ -186,7 +191,7 @@ internal class TopFollowersCardBinder(
         setOnClickListener { openXProfile(follower.username) }
         addView(LinearLayout(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, 0)
+            setPadding(dp(12), 0, dp(12), 0)
             addView(label(rank.toString(), 20f, primaryColor, 200).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(dp(24), LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(ImageView(activity).apply {
@@ -223,8 +228,8 @@ internal class TopFollowersCardBinder(
 
     private fun FrameLayout.addDivider() {
         addView(View(activity).apply { setBackgroundColor(dividerColor) }, matchFrameParams(1).apply {
-            leftMargin = 0
-            rightMargin = 0
+            leftMargin = dp(12)
+            rightMargin = dp(12)
             gravity = Gravity.BOTTOM
         })
     }

@@ -22,7 +22,8 @@ internal fun coachAllowsCloudFallback(mode: BriefProviderMode, keyConfigured: Bo
 
 internal sealed interface BriefCoachGeneration {
     data class Success(val feedback: BriefCoachFeedback, val cloud: Boolean,
-        val inspectedMediaIds: Set<String> = emptySet(), val completeText: Boolean = true) : BriefCoachGeneration
+        val inspectedMediaIds: Set<String> = emptySet(), val completeText: Boolean = true,
+        val algorithmVersion: String = BriefAlgorithmContext.bundledKey) : BriefCoachGeneration
     data object Unavailable : BriefCoachGeneration
     data class Failure(val reason: BriefReviewFailure) : BriefCoachGeneration
 }
@@ -44,6 +45,8 @@ internal object BriefCoachAiRunner {
     suspend fun generate(context: Context, input: BriefCoachInput, cloud: Boolean,
         allowCloudFallback: Boolean = false, onResponse: (String) -> Unit = {}): BriefCoachGeneration {
         if (cloud && BriefSettingsStore.cloudApiKey(context).isBlank()) return BriefCoachGeneration.Failure(BriefReviewFailure.MISSING_KEY)
+        val algorithm = if (cloud) runInterruptible(Dispatchers.IO) { BriefAlgorithmContext.refresh(context) }
+            else BriefAlgorithmContext.current(context)
         val prepared = input
         return pipeline(load = {
             BriefCoachMedia.load(context, input)
@@ -54,6 +57,7 @@ internal object BriefCoachAiRunner {
                         val key = BriefSettingsStore.cloudApiKey(context)
                         if (key.isBlank()) return@run BriefCoachGeneration.Failure(BriefReviewFailure.MISSING_KEY)
                         val result = generateWith(prepared, true, images,
+                            algorithm = algorithm,
                             onInvalid = {
                                 Log.d("BriefCoachAi", "validation=$it")
                                 BriefReviewDebugLog.record(context, "VALIDATION", JSONObject().put("reason", it)
@@ -167,6 +171,7 @@ internal object BriefCoachAiRunner {
         accepts: (BriefCoachFeedback) -> Boolean = { true },
         onTransientFailure: (Int) -> Unit = {},
         retryDelay: suspend () -> Unit = { delay(1_000L) },
+        algorithm: BriefAlgorithmContext.Snapshot = BriefAlgorithmContext.bundled,
         request: suspend (String, List<BriefCoachImage>) -> String?): BriefCoachGeneration {
         // A compact retry accommodates smaller combined budgets; omitted images are explicitly marked unseen.
         var invalidReason: String? = null
@@ -193,12 +198,12 @@ internal object BriefCoachAiRunner {
                 (if (it == "numeric_evidence") "A numerical performance claim or measurement reference in your explanation or reason was not valid. The app already displays the recorded statistics separately. For this retry, discuss wording and image context qualitatively: do not include counts, rates, percentages, durations, or measurementReferences tokens in possibleExplanation or reason. Keep evidenceIds for the observations you use. Product names and version numbers are still allowed. " else "") +
                 "Use only the allowed quoteIds and evidenceIds. " +
                 if (cloud) "Follow the exact JSON schema." else "Return the exact labelled plain-text format above; no JSON or markdown." }.orEmpty()
-            val prompt = if (cloud) BriefCoachAi.prompt(input, packet) else BriefCoachAi.textPrompt(input, packet)
+            val prompt = if (cloud) BriefCoachAi.prompt(input, packet, algorithm) else BriefCoachAi.textPrompt(input, packet)
             val raw = requestCurrent(prompt + correction, selected) ?: continue
             val feedback = (if (!cloud) BriefCoachAi.parseText(raw, packet) else null)
                 ?: BriefCoachAi.parse(raw, packet) { reason -> invalidReason = reason; onInvalid(reason) } ?: continue
             if (!accepts(feedback)) { invalidReason = "feedback_validation"; onInvalid(invalidReason); continue }
-            return BriefCoachGeneration.Success(feedback, cloud, ids, packet.textComplete)
+            return BriefCoachGeneration.Success(feedback, cloud, ids, packet.textComplete, if (cloud) algorithm.key else "")
         }
         return BriefCoachGeneration.Unavailable
     }

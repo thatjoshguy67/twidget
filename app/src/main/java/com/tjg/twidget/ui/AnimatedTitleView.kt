@@ -13,7 +13,6 @@ import android.graphics.Shader
 import android.os.Build
 import kotlin.math.roundToInt
 import android.graphics.Paint
-import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -33,7 +32,7 @@ class AnimatedTitleView @JvmOverloads constructor(
     private val fadeInterpolator = PathInterpolator(0.333f, 0f, 0.667f, 1f)
     private val movementInterpolator = PathInterpolator(0.22f, 0.25f, 0f, 1f)
     private val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-        typeface = Typeface.create("sec", Typeface.BOLD)
+        typeface = TwidgetFonts.forApp(context, weight = 700)
     }
     @get:androidx.annotation.ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
     private val usesHardwareBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

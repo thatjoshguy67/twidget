@@ -80,7 +80,7 @@ internal class MainPostAnalyticsBinder(
     private fun postAnalyticsShell(label: String, body: String, post: PostSummary?, account: String = ""): View {
         val surface = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(cardDp(12), cardDp(12), cardDp(12), cardDp(12))
+            setPadding(cardDp(14), cardDp(10), cardDp(14), cardDp(10))
             // Let thumbnail shadows fade into the inset; the card outline owns clipping.
             clipChildren = false
             clipToPadding = false
@@ -104,6 +104,11 @@ internal class MainPostAnalyticsBinder(
                 gravity = Gravity.CENTER_VERTICAL
                 isBaselineAligned = false
                 minimumHeight = cardDp(24)
+                addView(ImageView(activity).apply {
+                    setImageResource(R.drawable.dashboard_platform_icon)
+                    imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_secondary))
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }, LinearLayout.LayoutParams(cardDp(16), cardDp(16)).apply { marginEnd = cardDp(10) })
                 addView(TextView(activity).apply {
                     id = R.id.dashboard_post_heading
                     text = label
@@ -118,7 +123,13 @@ internal class MainPostAnalyticsBinder(
                 if (post != null) {
                     val button = LayoutInflater.from(activity).inflate(R.layout.view_dashboard_report_button, this, false)
                     button.setTag(R.id.dashboard_design_line_height, 16f)
-                    (button as? TextView)?.typeface = TwidgetFonts.forApp(activity, 700)
+                    (button as? TextView)?.apply {
+                        typeface = TwidgetFonts.forApp(activity, 700)
+                        val icon = AppCompatResources.getDrawable(activity, R.drawable.dashboard_review_icon)?.mutate()
+                        icon?.setTint(activity.getColor(R.color.oneui_text_primary))
+                        icon?.setBounds(0,0,cardDp(16),cardDp(16))
+                        setCompoundDrawablesRelative(icon,null,null,null)
+                    }
                     button.setOnClickListener {
                         activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity,
                             BriefReviewTarget(account, postUrl = post.url, fromDashboard = true)))
@@ -140,12 +151,26 @@ internal class MainPostAnalyticsBinder(
                 clipToPadding = false
             }
             val copy = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+            if (post != null && post.timestamp > 0) copy.addView(TextView(activity).apply {
+                text = PostCardDate.format(post.timestamp, locale = com.tjg.twidget.core.AppLocales.applicationLocale()) + ", " + android.text.format.DateFormat.getTimeFormat(activity).format(java.util.Date(post.timestamp))
+                if (post.isReply) {
+                    val icon = androidx.core.content.ContextCompat.getDrawable(activity, R.drawable.interaction_replies_icon)?.mutate()
+                    icon?.setTint(activity.getColor(R.color.oneui_text_secondary))
+                    icon?.setBounds(0, 0, cardDp(14), cardDp(14))
+                    layoutDirection = activity.resources.configuration.layoutDirection
+                    setCompoundDrawablesRelative(icon, null, null, null)
+                    compoundDrawablePadding = cardDp(6)
+                }
+                textSize = 12f
+                includeFontPadding = false
+                setTextColor(activity.getColor(R.color.oneui_text_secondary))
+            }, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = cardDp(10) })
             copy.addView(com.tjg.twidget.ui.DashboardFadingTextView(activity).apply {
                 id = R.id.dashboard_post_body
                 text = post?.let(::formattedPostText) ?: body.ifBlank { "--" }
                 includeFontPadding = false
                 setTextColor(activity.getColor(R.color.oneui_text_primary))
-                textSize = 13f
+                textSize = 14f
                 typeface = TwidgetFonts.forApp(activity, 400)
                 maxLines = Int.MAX_VALUE
                 ellipsize = null
@@ -173,6 +198,7 @@ internal class MainPostAnalyticsBinder(
                         }, android.widget.FrameLayout.LayoutParams(cardDp(112), cardDp(88), Gravity.CENTER))
                     }
                     contentDescription = activity.getString(R.string.post_media) + ": " + media.size
+                    setOnClickListener { DashboardMediaViewer.open(activity, media, post.url) }
                 },
                     LinearLayout.LayoutParams(cardDp(151), LinearLayout.LayoutParams.MATCH_PARENT))
             }

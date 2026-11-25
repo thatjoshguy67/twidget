@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Replies and quote tweets in your recent tweet sample, relative to recorded views. Counts are cumulative, not unique people.</string>
+    <string name="brief_content_patterns_explainer">Compare median views for text, image and video tweets of similar age. Shown when there is enough comparable data.</string>
+    <string name="brief_content_momentum_explainer">Compare your net follower change over the latest recorded week with the previous week.</string>
+    <string name="brief_content_recap_explainer">Your recorded follower change and a sample of tweets published in the past week. View counts are lifetime totals.</string>
+    <string name="brief_content_topics_explainer">See which recurring hashtags have higher median views than other tweets of similar age. Based on your sample, not predicted trends.</string>
+    <string name="brief_content_experiments_explainer">A format to try based on your recent content patterns. Compare the next tweet at a similar age; results are not guaranteed.</string>
+</resources>

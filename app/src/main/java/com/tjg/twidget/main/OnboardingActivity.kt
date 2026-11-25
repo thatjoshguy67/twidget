@@ -97,6 +97,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         if (addAccountMode) step = STEP_PROFILE
         if (startedOnWidgetStep) step = STEP_WIDGETS
         setContentView(R.layout.activity_onboarding)
+        applyFooterScreenInsets(findViewById(R.id.onboarding_content), findViewById(R.id.onboarding_footer))
         primaryButtonBaseElevation = findViewById<AppCompatButton>(R.id.primary_button).elevation
         findViewById<AdaptiveCoordinatorLayout>(R.id.onboarding_root).configureAdaptiveMargin(
             AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,

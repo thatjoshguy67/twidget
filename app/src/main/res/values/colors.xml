@@ -49,6 +49,7 @@
     <color name="onboarding_widget_card">#73FFFFFF</color>
     <!-- "You're all set" settle: blue drains to the bottom, near-white takes over -->
     <color name="onboarding_settle_fade">#00F1F1F3</color>
+    <color name="onboarding_settle_background">@color/oneui_bg</color>
     <color name="import_grad_start">#8DCCFF</color>
     <color name="import_grad_center">#CDE6FA</color>
     <color name="import_grad_end">#F1F1F3</color>

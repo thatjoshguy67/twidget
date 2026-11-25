@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_manage_cloud_providers">Gérer les fournisseurs cloud</string>
+    <string name="streak_day_inactive">Aucune publication</string>
+    <string name="app_icon_light">Claire</string>
+    <string name="settings_outline_effects_summary">Utiliser les effets de contour de style One UI 9.5 sur les éléments de l’application, comme les cartes, la navigation et les boutons.</string>
+    <string name="streak_day_active">Publié</string>
+    <string name="app_icon_selected">Icône %1$s sélectionnée</string>
+    <string name="review_performance_ranking">Classement des performances</string>
+    <string name="settings_outline_effects">Effets de contour</string>
+    <string name="review_views_rank_context">Comparaison avec vos tweets admissibles les plus récents d’âge et de format similaires, jusqu’à dix au total. Les totaux de vues identiques partagent le même rang.</string>
+    <string name="review_views_rank">%1$d/%2$d</string>
+    <string name="review_rank_comparison">Classé selon les vues enregistrées parmi %1$d autres tweets récents. Les ex æquo partagent le même rang.</string>
+    <string name="review_rank_only_post">Il s’agit du seul tweet admissible actuellement disponible.</string>
+    <string name="review_preview_rank">Classé %1$d/%2$d selon les vues.</string>
+    <string name="app_icon_dark">Sombre</string>
+    <string name="settings_cloud_ai_provider">Fournisseur d’IA cloud</string>
+    <string name="settings_app_icon">Icône de l’application</string>
+    <string name="chart_unfollows">Désabonnements : %1$s</string>
+    <string name="analytics_historical_sample">Sur %1$d publications et réponses enregistrées</string>
+    <string name="streak_day_unknown">Activité indisponible</string>
+    <string name="analytics_posts_replies_coverage">Sur %1$d publications et réponses échantillonnées</string>
+    <string name="analytics_historical_originals">Sur %1$d publications originales enregistrées</string>
+    <string name="app_icon_default">Par défaut</string>
+</resources>

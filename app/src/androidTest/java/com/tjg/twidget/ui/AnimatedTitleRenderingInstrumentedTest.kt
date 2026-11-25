@@ -15,6 +15,34 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @SdkSuppress(minSdkVersion = Build.VERSION_CODES.S)
 class AnimatedTitleRenderingInstrumentedTest {
+    @Test fun animatedTitlesUseSelectedAppFont() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val savedFont = AppAppearance.font(context)
+        try {
+            for (font in AppAppearance.Font.entries) {
+                AppAppearance.setFont(context, font)
+                instrumentation.runOnMainSync {
+                    val expected = TwidgetFonts.forApp(context, weight = 700)
+                    val titles = listOf(
+                        AnimatedTitleView(context),
+                        com.tjg.twidget.main.OnboardingTitleAnimationView(context),
+                    )
+                    for (title in titles) {
+                        // These Canvas views bypass the global TextView font binding.
+                        val paintField = title.javaClass.getDeclaredField("titlePaint").apply {
+                            isAccessible = true
+                        }
+                        val paint = paintField.get(title) as android.text.TextPaint
+                        assertEquals("${title.javaClass.simpleName} must use $font", expected, paint.typeface)
+                    }
+                }
+            }
+        } finally {
+            AppAppearance.setFont(context, savedFont)
+        }
+    }
+
     @Test fun aboutUsesHardwareGlyphsAndClearsBlurWhenFinished() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         ActivityScenario.launch(AboutActivity::class.java).use { scenario ->

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Respostes i tuits citats de la teva mostra recent, en relació amb les visualitzacions registrades. Són totals acumulats, no persones úniques.</string>
+    <string name="brief_content_patterns_explainer">Compara la mediana de visualitzacions dels tuits de text, imatge i vídeo amb una antiguitat semblant. Es mostra quan hi ha prou dades comparables.</string>
+    <string name="brief_content_momentum_explainer">Compara el teu canvi net de seguidors de la darrera setmana registrada amb la setmana anterior.</string>
+    <string name="brief_content_recap_explainer">El teu canvi de seguidors registrat i una mostra de tuits publicats la darrera setmana. Les visualitzacions són totals acumulats.</string>
+    <string name="brief_content_topics_explainer">Consulta quines etiquetes recurrents tenen una mediana de visualitzacions superior a altres tuits d’antiguitat semblant. Es basa en la teva mostra, no en tendències previstes.</string>
+    <string name="brief_content_experiments_explainer">Un format per provar segons els teus patrons de contingut recents. Compara el tuit següent amb una antiguitat semblant; els resultats no estan garantits.</string>
+</resources>

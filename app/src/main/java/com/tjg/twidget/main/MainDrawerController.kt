@@ -59,8 +59,6 @@ internal class MainDrawerController(
     private val drawerAvatarItemIds = mutableSetOf<Int>()
     private val downloadingDrawerAvatarUrls = mutableSetOf<String>()
     private var showingEditNavigation = false
-    private var expandedBeforeEditing = false
-    private var hiddenBeforeEditing = false
     private var lastHeader: List<Any?>? = null
     private var lastRenderedTitle: String? = null
     private var lastDrawerClosedState: Boolean? = null
@@ -307,15 +305,9 @@ internal class MainDrawerController(
 
     private fun renderEditModeNavigation(layout: ToolbarLayout) {
         if (!showingEditNavigation) {
-            expandedBeforeEditing = layout.isExpanded
-            hiddenBeforeEditing = layout.appBarLayout.seslIsHided()
-            // Change the title and app-bar geometry together. Animating the old
-            // collapsing title while replacing it with the edit title makes both
-            // headers briefly appear and moves the dashboard underneath the hold.
-            layout.setExpanded(expanded = false, animate = false)
-            // Keep the app bar's measured height and scroll ranges intact.
-            // Removing expansion rebuilds them and loses the dashboard offset.
-            layout.appBarLayout.seslAllowStartNestedScroll(false)
+            // Retain the native offset: regular edit header at the top,
+            // floating controls when scrolled. Mode changes never move the page.
+            layout.appBarLayout.seslAllowStartNestedScroll(true)
             showingEditNavigation = true
         }
         layout.showNavigationButton = true
@@ -331,9 +323,6 @@ internal class MainDrawerController(
     private fun renderDrawerNavigation(layout: ToolbarLayout) {
         if (showingEditNavigation) {
             layout.appBarLayout.seslAllowStartNestedScroll(true)
-            val scrollY = if (activity.findViewById<View>(R.id.dashboard_content)?.canScrollVertically(-1) == true) 1 else 0
-            layout.setExpanded(expanded = expandedBeforeEditing && scrollY == 0, animate = false)
-            if (hiddenBeforeEditing && scrollY > 0) layout.appBarLayout.seslSetHide(true, false)
             showingEditNavigation = false
         }
         layout.showNavigationButton = activity.resources.configuration.screenWidthDp < 600

@@ -50,7 +50,7 @@ internal object BriefReviewDebug {
             appendLine(context.getString(R.string.l10n_debug_cache_age, AppLocales.integer(((now - saved.savedAt) / 60_000L).coerceAtLeast(0)), AppLocales.integer(lifetime / 3_600_000)))
             appendLine(context.getString(R.string.l10n_debug_cache_language, saved.subject.input.language, language))
             appendLine(context.getString(R.string.l10n_debug_language_matches, yes(context, BriefReviewFreshness.matchesLanguage(saved, language))))
-            appendLine(context.getString(R.string.l10n_debug_fresh_reuse, yes(context, BriefReviewFreshness.isFresh(saved, now)), yes(context, BriefReviewFreshness.canReuse(saved, language, now))))
+            appendLine(context.getString(R.string.l10n_debug_fresh_reuse, yes(context, BriefReviewFreshness.isFresh(saved, now)), yes(context, BriefReviewFreshness.canReuse(saved, language, now, BriefAlgorithmContext.current(context).key))))
             appendLine(context.getString(R.string.l10n_debug_cloud_media, yes(context, saved.result.cloud), AppLocales.integer(saved.result.inspectedMediaIds.size.toLong())))
             appendLine(context.getString(R.string.l10n_debug_suggestions_panels, AppLocales.integer(saved.result.feedback.suggestions.size.toLong()), saved.result.feedback.panelIds.joinToString()))
             append(context.getString(R.string.l10n_debug_failed_refresh))

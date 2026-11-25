@@ -63,6 +63,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
         }
         stats = TwidgetStore.currentStats(this, username)
         setContentView(R.layout.activity_import_analytics)
+        applyFooterScreenInsets(findViewById(R.id.import_content), findViewById(R.id.import_footer))
         findViewById<AdaptiveCoordinatorLayout>(R.id.import_root).configureAdaptiveMargin(
             AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
             setOf(findViewById<View>(R.id.import_content)),

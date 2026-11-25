@@ -7,4 +7,5 @@
     <string name="top_followers_browser_refresh_failed">No s\'ha pogut actualitzar la llista completa de seguidors. Torna-ho a provar.</string>
     <string name="top_followers_browser_empty">Encara no hi ha cap classificació de seguidors disponible.</string>
     <string name="top_followers_browser_no_results">Cap seguidor coincideix amb la teva cerca.</string>
+    <string name="top_followers_browser_search_hint">Buscar</string>
 </resources>

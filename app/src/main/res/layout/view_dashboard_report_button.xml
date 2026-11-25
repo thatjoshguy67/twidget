@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.appcompat.widget.AppCompatButton xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/dashboard_view_report"
     style="@style/Twidget.WrappingButton"
     android:layout_width="wrap_content"
@@ -17,5 +18,9 @@
     android:includeFontPadding="false"
     android:text="@string/dashboard_view_report"
     android:textAllCaps="false"
+    android:background="@drawable/dashboard_report_chip"
+    app:backgroundTint="@null"
+    android:textColor="@color/oneui_text_primary"
+    android:drawablePadding="4dp"
     android:textSize="12sp"
     android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />

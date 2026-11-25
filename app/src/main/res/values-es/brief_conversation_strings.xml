@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Contexto del hilo: %1$d tuits conectados.</string>
+    <string name="review_replies_unavailable">La fuente de datos actual no ofrece el texto de las respuestas.</string>
+    <string name="review_replies_empty">No se obtuvo el texto de respuestas del público; no se pudo evaluar la recepción.</string>
+    <string name="review_replies_sample">Muestra de %1$d respuestas del público; no representa a toda la audiencia.</string>
+</resources>

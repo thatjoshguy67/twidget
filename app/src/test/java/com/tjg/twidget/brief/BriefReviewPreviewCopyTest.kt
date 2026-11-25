@@ -26,7 +26,7 @@ class BriefReviewPreviewCopyTest {
         assertEquals("You replied 2 days ago. Review this reply’s performance and what to try next.",
             BriefReviewPreviewCopy.description(post().copy(isReply = true), null, strings, now))
         val copy = BriefReviewPreviewCopy.description(post(), saved(peers = peers()), strings, now)
-        assertEquals("You posted this 2 days ago. Your tweet had 1,000 views and 15 public interactions when reviewed. It received fewer views and interactions than your similar tweets.", copy)
+        assertEquals("You posted this 2 days ago. Your tweet had 1,000 views and 15 public interactions when reviewed. Ranked 4/4 by views. It received fewer views and interactions than your similar tweets.", copy)
         assertFalse(copy.contains("possible cause"))
         val single = post().copy(views = 1, likes = 1, replies = 0, reposts = 0, quotes = 0)
         assertTrue(BriefReviewPreviewCopy.description(single, saved(single), strings, now)

@@ -32,13 +32,13 @@ object InteractionStore {
         synchronized(TwidgetStore) { AccountPreferences.open(context, PREFS).edit().remove(key(username)).apply() }
     }
     fun recordAnalytics(context: Context, username: String, analytics: PostAnalytics) {
-        val posts = (analytics.recentPosts + analytics.recentReplies).mapNotNull { post ->
+        val posts = (analytics.recentPosts + analytics.recentReplies + analytics.historicalPosts).distinctBy { it.url }.mapNotNull { post ->
             val id = Regex("/status/([0-9]+)").find(post.url)?.groupValues?.get(1) ?: return@mapNotNull null
             if (post.timestamp <= 0L) return@mapNotNull null
-            InteractionPost(id, post.timestamp, analytics.cachedAt, post.isReply, InteractionCounts(
+            InteractionPost(id, post.timestamp, post.observedAt.takeIf { it > 0 } ?: analytics.cachedAt, post.isReply, InteractionCounts(
                 post.likes.takeIf { post.likesKnown }, post.reposts.takeIf { post.repostsKnown },
                 post.replies.takeIf { post.repliesKnown }, null, post.quotes.takeIf { post.quotesKnown },
-                null, post.views.takeIf { post.viewsKnown },
+                post.bookmarks, post.views.takeIf { post.viewsKnown },
             ))
         }
         merge(context, username, InteractionData(posts = posts))

@@ -19,8 +19,10 @@ internal object DashboardCardDensity {
         fun dp(value: Float) = (value * density).roundToInt()
 
         root.findViewById<View>(R.id.dashboard_stat_header)?.let { header ->
-            val inset = dp(12f)
-            root.setPadding(inset, inset, inset, inset)
+            val panel = root.findViewById<ViewGroup>(R.id.dashboard_stat_context)
+            val graph = panel != null && (0 until panel.childCount).any { panel.getChildAt(it) is MetricChartView }
+            val inset = dp(if (graph) 10f else 14f)
+            root.setPadding(inset, dp(10f), inset, dp(10f))
             header.minimumHeight = dp(24f)
             val label = root.findViewById<TextView>(R.id.metric_label)
             TextViewCompat.setAutoSizeTextTypeWithDefaults(label, TextViewCompat.AUTO_SIZE_TEXT_TYPE_NONE)
@@ -45,8 +47,8 @@ internal object DashboardCardDensity {
         }
 
         root.findViewById<View>(R.id.dashboard_post_heading)?.let { label ->
-            val inset = dp(12f)
-            root.setPadding(inset, inset, inset, inset)
+            val inset = dp(14f)
+            root.setPadding(inset, dp(10f), inset, dp(10f))
             (label.parent as View).minimumHeight = dp(24f)
             (label.layoutParams as ViewGroup.MarginLayoutParams).apply {
                 marginStart = 0

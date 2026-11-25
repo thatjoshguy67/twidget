@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Respuestas y tuits citados en tu muestra reciente, en relación con las visualizaciones registradas. Son totales acumulados, no personas únicas.</string>
+    <string name="brief_content_patterns_explainer">Compara la mediana de visualizaciones de tuits de texto, imagen y vídeo con una antigüedad similar. Se muestra cuando hay suficientes datos comparables.</string>
+    <string name="brief_content_momentum_explainer">Compara tu cambio neto de seguidores en la última semana registrada con la semana anterior.</string>
+    <string name="brief_content_recap_explainer">Tu cambio de seguidores registrado y una muestra de tuits publicados la última semana. Las visualizaciones son totales acumulados.</string>
+    <string name="brief_content_topics_explainer">Consulta qué hashtags recurrentes tienen una mediana de visualizaciones mayor que otros tuits de antigüedad similar. Se basa en tu muestra, no en tendencias previstas.</string>
+    <string name="brief_content_experiments_explainer">Un formato que probar según tus patrones de contenido recientes. Compara el siguiente tuit con una antigüedad similar; los resultados no están garantizados.</string>
+</resources>

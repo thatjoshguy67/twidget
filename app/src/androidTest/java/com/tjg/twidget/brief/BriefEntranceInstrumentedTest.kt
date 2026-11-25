@@ -13,6 +13,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tjg.twidget.R
+import com.tjg.twidget.analytics.PostAnalytics
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.FoldablePopOverActivity
 import com.tjg.twidget.ui.TweetPopOverLauncher
@@ -55,7 +56,45 @@ class BriefEntranceInstrumentedTest {
                     if (first == null) android.os.SystemClock.sleep(30)
                 }
                 assertNotNull("Initial opening still has an entrance animation", first)
+                lateinit var refreshed: BriefSnapshot
+                scenario.onActivity { activity ->
+                    val field = TwidgetBriefActivity::class.java.getDeclaredField("renderedSnapshot").apply { isAccessible = true }
+                    val original = field.get(activity) as BriefSnapshot
+                    val sections = activity.findViewById<android.view.ViewGroup>(R.id.brief_cards)
+                    val originalCard = sections.getChildAt(0)
+                    val render = TwidgetBriefActivity::class.java.getDeclaredMethod("render", BriefSnapshot::class.java, PostAnalytics::class.java)
+                        .apply { isAccessible = true }
+                    // Refresh timestamps and per-card content can change during a cached reveal.
+                    val intermediate = original.copy(generatedAt = original.generatedAt + 1)
+                    refreshed = intermediate.copy(generatedAt = intermediate.generatedAt + 1,
+                        cards = intermediate.cards.mapIndexed { index, card ->
+                            if (index == 0) card.copy(body = "Updated card evidence.") else card
+                        })
+                    render.invoke(activity, intermediate, null)
+                    render.invoke(activity, refreshed, null)
+                    assertSame("Background updates must not cancel heading motion", first, animation(activity))
+                    assertTrue(first!!.isStarted)
+                    assertSame("Revealing cards must stay mounted", originalCard, sections.getChildAt(0))
+                    assertEquals("Latest data waits until the reveal finishes", original, field.get(activity))
+                }
                 scenario.onActivity { first!!.end() }
+                val finishDeadline = android.os.SystemClock.uptimeMillis() + 10_000
+                var revealing = true
+                while (revealing && android.os.SystemClock.uptimeMillis() < finishDeadline) {
+                    scenario.onActivity { activity ->
+                        revealing = TwidgetBriefActivity::class.java.getDeclaredField("entranceInProgress").run {
+                            isAccessible = true; getBoolean(activity)
+                        }
+                    }
+                    if (revealing) android.os.SystemClock.sleep(30)
+                }
+                assertFalse("The reveal must settle and release pending data", revealing)
+                scenario.onActivity { activity ->
+                    assertEquals(refreshed, TwidgetBriefActivity::class.java.getDeclaredField("renderedSnapshot").run {
+                        isAccessible = true; get(activity)
+                    })
+                    assertTrue(activity.findViewById<android.view.ViewGroup>(R.id.brief_cards).getChildAt(0).alpha == 1f)
+                }
                 settle()
                 instrumentation.addMonitor(monitor)
                 scenario.onActivity { activity ->

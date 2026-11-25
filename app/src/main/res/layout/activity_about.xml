@@ -16,7 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:alpha="0"
-        android:background="@color/oneui_bg" />
+        android:background="@color/onboarding_settle_background" />
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/about_app_bar"
@@ -41,7 +41,7 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             app:contentScrim="@android:color/transparent"
-            app:layout_scrollFlags="exitUntilCollapsed|scroll"
+            app:layout_scrollFlags="exitUntilCollapsed|scroll|noSnap|noScrollHold"
             app:statusBarScrim="@android:color/transparent">
 
             <LinearLayout
@@ -143,12 +143,8 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-        <dev.oneuiproject.oneui.widget.RoundedNestedScrollView
+        <androidx.core.widget.NestedScrollView
             android:id="@+id/about_scroll"
-            app:roundedCorners="all"
-            app:roundedCornerColor="@color/oneui_bg"
-            app:edgeInsetLeft="10dp"
-            app:edgeInsetRight="10dp"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@android:color/transparent"
@@ -229,6 +225,30 @@
                     app:summary="@string/about_aaron_summary"
                     app:summaryMaxLines="4"
                     app:title="@string/about_aaron_title" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_wigettagaming_credit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:showTopDivider="true"
+                    app:fullWidthDivider="true"
+                    app:title="WigettaGaming"
+                    app:summary="Thank you for adding the Spanish and Catalan translations."
+                    app:summaryMaxLines="4" />
+
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/about_damanmikey_credit"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:showTopDivider="true"
+                    app:fullWidthDivider="true"
+                    app:title="DaManMikey"
+                    app:summary="Thank you for the Gemini Nano implementation in Kairo."
+                    app:summaryMaxLines="4" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/about_evowizz_credit"
@@ -317,7 +337,7 @@
             </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
 
             </LinearLayout>
-        </dev.oneuiproject.oneui.widget.RoundedNestedScrollView>
+        </androidx.core.widget.NestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <LinearLayout

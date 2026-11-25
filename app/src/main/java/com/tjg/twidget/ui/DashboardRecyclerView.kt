@@ -16,14 +16,30 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
         clipChildren = false
         clipToPadding = false
     }
+    internal var lastTouchY = Float.NaN
+        private set
     var onGestureCancelled: (() -> Unit)? = null
     var columnCount: Int
         get() = (layoutManager as? GridLayoutManager)?.spanCount ?: 2
         set(value) { (layoutManager as? GridLayoutManager)?.spanCount = value.coerceAtLeast(1) }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE) {
+            lastTouchY = event.y
+        }
         if (event.actionMasked == MotionEvent.ACTION_CANCEL) onGestureCancelled?.invoke()
         return super.dispatchTouchEvent(event)
+    }
+
+    override fun canScrollVertically(direction: Int): Boolean {
+        if (direction < 0) {
+            val manager = layoutManager
+            // The zero-height notice header is skipped by GridLayoutManager's
+            // scrollbar estimate, which otherwise reports an offset at the top.
+            val first = manager?.findViewByPosition(0)
+            if (first != null && manager.getDecoratedTop(first) >= paddingTop) return false
+        }
+        return super.canScrollVertically(direction)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

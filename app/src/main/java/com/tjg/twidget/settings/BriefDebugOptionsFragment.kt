@@ -45,6 +45,10 @@ internal enum class BriefDebugPage(val title: Int) {
 open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
     private val page get() = BriefDebugPage.from(arguments?.getString(BriefDebugPage.EXTRA))
     private var diagnostics: BriefAiDiagnostics? = null
+    private var nanoOptions: Map<BriefNanoModelMode, String> = emptyMap()
+
+    private fun nanoOptionLabel(mode: BriefNanoModelMode): String = nanoOptions[mode]
+        ?: mode.localizedLabel(requireContext())
     private var busy = false
     private var reviewSelection: String? = null
     private var testResult: String? = null
@@ -189,9 +193,9 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         screen.addPreference(ListPreference(context).apply {
             key = "nano_config"; title = getString(R.string.debug_nano_config); isPersistent = false
             isEnabled = !busy
-            entries = BriefNanoModelMode.entries.map { it.localizedLabel(context) }.toTypedArray()
+            entries = BriefNanoModelMode.entries.map { nanoOptionLabel(it) }.toTypedArray()
             entryValues = BriefNanoModelMode.entries.map { it.storageId }.toTypedArray()
-            value = mode.storageId; summary = mode.localizedLabel(context)
+            value = mode.storageId; summary = nanoOptionLabel(mode)
             setOnPreferenceChangeListener { _, value ->
                 BriefAiCoordinator.setNanoModelMode(context, BriefNanoModelMode.fromStorageId(value as String)); diagnostics = null
                 refreshNano(); true
@@ -336,7 +340,29 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         BriefTweetReviewActivity.intent(requireContext(), target).putExtra(BriefTweetReviewActivity.EXTRA_DEBUG_FORCE, force))
     private fun open(page: BriefDebugPage) = requireActivity().startSettingsSubActivity(
         Intent(requireContext(), BriefDebugActivity::class.java).putExtra(BriefDebugPage.EXTRA, page.name))
-    private fun refreshNano() = work { diagnostics = BriefAiCoordinator.diagnostics(requireContext(), username) }
+    private fun refreshNano() = work {
+        nanoOptions = BriefNanoModelMode.entries.associateWith { mode ->
+            if (mode == BriefNanoModelMode.AUTO_STABLE) {
+                mode.localizedLabel(requireContext())
+            } else {
+                val probe = com.tjg.twidget.brief.GeminiNanoBriefProvider.probe(mode)
+                val state = when (probe.status) {
+                    com.tjg.twidget.brief.BriefLocalStatus.AVAILABLE -> "Ready"
+                    com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADABLE -> "Download required"
+                    com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADING -> "Downloading"
+                    com.tjg.twidget.brief.BriefLocalStatus.UNAVAILABLE -> "Unavailable"
+                }
+                buildString {
+                    append(probe.modelName ?: "Model name unavailable")
+                    append(" · ").append(mode.localizedLabel(requireContext()))
+                    append(" · ").append(state)
+                    probe.tokenLimit?.let { append(" · ").append(it).append(" tokens") }
+                    probe.error?.let { append(" · ").append(it) }
+                }
+            }
+        }
+        diagnostics = BriefAiCoordinator.diagnostics(requireContext(), username)
+    }
     private fun yes(value: Boolean) = getString(if (value) R.string.l10n_debug_yes else R.string.l10n_debug_no)
     private fun cloudConfig() = getString(R.string.l10n_debug_cloud_config,
         GeminiCloudBriefProvider.ENDPOINT.substringAfter("/models/").substringBefore(':'),

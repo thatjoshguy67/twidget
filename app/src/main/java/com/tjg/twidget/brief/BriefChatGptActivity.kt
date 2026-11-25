@@ -46,7 +46,7 @@ class BriefChatGptActivity : FragmentActivity() {
             val account = withContext(Dispatchers.IO) {
                 val prefs = BriefOpenAi.prefs(this@BriefChatGptActivity)
                 val host = prefs.getString("host", null) ?: "urn:uuid:${java.util.UUID.randomUUID()}".also { check(prefs.edit().putString("host", it).commit()) }
-                val previous = if (intent.getBooleanExtra("new_account", false)) null else BriefOpenAi.active(this@BriefChatGptActivity)
+                val previous = BriefOpenAi.active(this@BriefChatGptActivity)
                 val state = random(); val nonce = random(); val verifier = random()
                 val server = ServerSocket(0, 4, InetAddress.getByName("127.0.0.1"))
                 listener = server; server.soTimeout = 180_000
@@ -115,7 +115,7 @@ class BriefChatGptActivity : FragmentActivity() {
             BriefOpenAi.prefs(this@BriefChatGptActivity).edit().putString("account", account.getString("client_id")).putString("method", "chatgpt").remove("last_sign_in_error").apply()
             BriefStore.resetAi(this@BriefChatGptActivity, com.tjg.twidget.data.TwidgetStore.settings(this@BriefChatGptActivity).username)
             respondToBrowser(true)
-            startActivity(Intent(this@BriefChatGptActivity, com.tjg.twidget.settings.BriefSettingsActivity::class.java)
+            startActivity(com.tjg.twidget.settings.SettingsCategoryActivity.intent(this@BriefChatGptActivity, com.tjg.twidget.settings.SettingsPage.DATA)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         } catch (error: Exception) {
             if (error is kotlinx.coroutines.CancellationException) throw error
@@ -128,7 +128,7 @@ class BriefChatGptActivity : FragmentActivity() {
                 "Could not reach OpenAI. Check your connection and try signing in again."
             else "ChatGPT sign-in failed at $stage. Please try again."
             Toast.makeText(this@BriefChatGptActivity, message, Toast.LENGTH_LONG).show()
-            startActivity(Intent(this@BriefChatGptActivity, com.tjg.twidget.settings.BriefSettingsActivity::class.java)
+            startActivity(com.tjg.twidget.settings.SettingsCategoryActivity.intent(this@BriefChatGptActivity, com.tjg.twidget.settings.SettingsPage.DATA)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         } finally { listener?.close(); listener = null; returnSocket?.close(); returnSocket = null; awaitingReturn = false; finish() }
     }

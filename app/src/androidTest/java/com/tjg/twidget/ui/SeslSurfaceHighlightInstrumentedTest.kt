@@ -36,6 +36,70 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class SeslSurfaceHighlightInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private var previousOutlineSetting = true
+
+    @org.junit.Before fun enableOutlinesForRenderingTests() {
+        previousOutlineSetting = AppAppearance.outlineEffects(instrumentation.targetContext)
+        instrumentation.runOnMainSync { AppAppearance.setOutlineEffects(instrumentation.targetContext, true) }
+    }
+
+    @org.junit.After fun restoreOutlineSetting() {
+        instrumentation.runOnMainSync { AppAppearance.setOutlineEffects(instrumentation.targetContext, previousOutlineSetting) }
+    }
+
+
+    @Test fun globalToggleDefaultsOnAndRestoresOriginalForegrounds() {
+        val context = instrumentation.targetContext
+        val prefs = context.getSharedPreferences(com.tjg.twidget.data.TwidgetStore.PREFS, android.content.Context.MODE_PRIVATE)
+        val present = prefs.contains("app_outline_effects")
+        val previous = AppAppearance.outlineEffects(context)
+        instrumentation.runOnMainSync {
+            try {
+                prefs.edit().remove("app_outline_effects").commit()
+                assertTrue("Outline effects default on", AppAppearance.outlineEffects(context))
+                val original = android.graphics.drawable.ColorDrawable(android.graphics.Color.RED)
+                val surface = android.view.View(context).apply { foreground = original }
+                val root = android.widget.FrameLayout(context).apply { addView(surface) }
+                SeslSurfaceHighlight.mark(surface, 26f)
+                SeslSurfaceHighlight.applyTo(root)
+                assertTrue(surface.foreground !== original)
+                AppAppearance.setOutlineEffects(context, false)
+                assertSame("Disabling removes only the decorative layer", original, surface.foreground)
+                SeslSurfaceHighlight.attach(surface, 26f)
+                assertSame("Direct attachments respect disabled setting", original, surface.foreground)
+                assertFalse(AppAppearance.outlineEffects(context))
+                AppAppearance.setOutlineEffects(context, true)
+                assertTrue("Enabling reapplies the rim to existing windows", surface.foreground !== original)
+                SeslSurfaceHighlight.remove(surface)
+                assertSame(original, surface.foreground)
+            } finally {
+                AppAppearance.setOutlineEffects(context, previous)
+                if (!present) prefs.edit().remove("app_outline_effects").commit()
+            }
+        }
+    }
+
+
+    @Test fun dashboardRimFollowsSurfaceCornersAndCurrentBoundsAcrossSizes() {
+        for (width in listOf(80, 240, 480)) for (radius in listOf(12f, 28f)) {
+            val surface = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = radius
+                setBounds(0, 0, 600, 300) // Content can retain its target size during resize.
+            }
+            val actual = SeslRimDrawable(2f, 40f, true, fitToBounds = true) { surface }
+            val expected = SeslRimDrawable(2f, radius, true)
+            fun pixels(drawable: android.graphics.drawable.Drawable): IntArray {
+                val bitmap = Bitmap.createBitmap(width, 100, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(0, 0, width, 100)
+                drawable.draw(Canvas(bitmap))
+                return IntArray(width * 100).also {
+                    bitmap.getPixels(it, 0, width, 0, 0, width, 100)
+                    bitmap.recycle()
+                }
+            }
+            org.junit.Assert.assertArrayEquals("Surface radius $radius at width $width", pixels(expected), pixels(actual))
+        }
+    }
 
     @Test fun rimFadesDownwardAndLeavesInteriorClearInBothThemes() {
         for (light in listOf(true, false)) {

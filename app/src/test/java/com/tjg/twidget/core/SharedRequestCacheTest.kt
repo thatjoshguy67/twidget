@@ -18,6 +18,7 @@ class SharedRequestCacheTest {
         try {
             val first = pool.submit<Int> { cache.get("a") { calls.incrementAndGet(); started.countDown(); check(release.await(5, TimeUnit.SECONDS)); 42 } }
             assertTrue(started.await(5, TimeUnit.SECONDS))
+            cache.invalidateCompleted { true } // Active work must stay shared during explicit refresh.
             val second = pool.submit<Int> { cache.get("a") { calls.incrementAndGet(); 99 } }
             release.countDown()
             assertEquals(42, first.get(5, TimeUnit.SECONDS))
@@ -33,4 +34,13 @@ class SharedRequestCacheTest {
         assertEquals(2, cache.get("b") { 2 })
         assertEquals(3, cache.get("a") { 3 })
     }
+    @Test fun explicitRefreshInvalidatesOnlyCompletedResultsForTheSelectedAccount() {
+        val cache = SharedRequestCache<Int>(60_000)
+        assertEquals(1, cache.get("fx:alice") { 1 })
+        assertEquals(2, cache.get("fx:bob") { 2 })
+        cache.invalidateCompleted { it.endsWith(":alice") }
+        assertEquals(3, cache.get("fx:alice") { 3 })
+        assertEquals(2, cache.get("fx:bob") { 4 })
+    }
+
 }

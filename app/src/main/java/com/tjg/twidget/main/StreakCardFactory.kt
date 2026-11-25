@@ -47,7 +47,7 @@ internal object StreakCardFactory {
             }
             findViewById<TextView>(R.id.brief_streak_state).apply {
                 text = context.getString(label(state))
-                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(context, 700)
+                com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this)
                 setTextColor(Color.rgb(132, 132, 135))
             }
             contentDescription = "${context.getString(label(state))}. $title"
@@ -112,7 +112,7 @@ internal object StreakCardFactory {
             findViewById<TextView>(R.id.metric_label).apply {
                 text = context.getString(R.string.dashboard_tweet_streak)
                 setTextColor(Color.rgb(132, 132, 135))
-                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(context, 700)
+                com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT

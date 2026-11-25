@@ -9,4 +9,10 @@
     <item name="schedule_link_preview_pending" type="id" />
     <item name="history_notice_dismiss" type="id" />
     <item name="preview_widget" type="id" />
+    <item name="dashboard_content_layout_resource" type="id" />
+    <item name="dashboard_surface_outline_host" type="id" />
+    <item name="dashboard_jiggle" type="id" />
+    <item name="brief_surface_outline_host" type="id" />
+    <item name="dashboard_mode_transition" type="id" />
+    <item name="dashboard_jiggle_amount" type="id" />
 </resources>

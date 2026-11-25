@@ -94,7 +94,8 @@ class BriefPostCoachTest {
         val evidence = BriefReviewEvidence.create(old, snapshot, emptyList())
         assertEquals(0L, evidence.observedAt)
         assertEquals(setOf("performance", "interaction_breakdown"), evidence.panelIds)
-        assertTrue(BriefCoachAi.review(old, snapshot, report, strings, now).history.isEmpty())
+        assertEquals(peers, BriefCoachAi.review(old, snapshot, report, strings, now).history)
+        assertTrue(evidence.peers.isEmpty())
         assertNull(BriefPostCoach.review(old.copy(views = 1), snapshot, strings, now))
         assertTrue(BriefPostCoach.reviewTargets(snapshot.copy(banger = old.copy(authorUserName = "other")), "example", now).none { it.url == old.url })
     }

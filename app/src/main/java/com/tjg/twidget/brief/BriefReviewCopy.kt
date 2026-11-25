@@ -15,7 +15,7 @@ internal object BriefReviewCopy {
         question = feedback.question?.let(BriefVoicePolicy::withoutEmDashes),
     )
 
-    private val reference = Regex("(?<![\\p{L}\\p{N}_])(?:[empq]\\d+|quoted_post|interaction_breakdown|history_comparison|weekly_trend)(?![\\p{L}\\p{N}_])",
+    private val reference = Regex("(?<![\\p{L}\\p{N}_])(?:(?:thread|parent|reply)_\\d+|[empq]\\d+|quoted_post|interaction_breakdown|history_comparison|weekly_trend)(?![\\p{L}\\p{N}_])",
         RegexOption.IGNORE_CASE)
 
     fun clean(feedback: BriefCoachFeedback, input: BriefCoachInput, strings: BriefStrings): BriefCoachFeedback {
@@ -25,6 +25,8 @@ internal object BriefReviewCopy {
             else when {
                 id.matches(Regex("m\\d+")) -> strings.text(R.string.review_copy_attachment, id.drop(1).toLongOrNull()?.plus(1) ?: 1)
                 id.matches(Regex("q\\d+")) -> strings.text(R.string.review_copy_wording)
+                id.startsWith("reply_") -> strings.text(R.string.review_reply)
+                id.startsWith("thread_") || id.startsWith("parent_") -> strings.text(R.string.review_copy_wording)
                 id == "quoted_post" -> strings.text(R.string.review_quoted_tweet)
                 id.matches(Regex("p\\d+")) -> strings.text(R.string.review_copy_history)
                 else -> strings.text(R.string.review_copy_measurements)

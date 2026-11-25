@@ -71,7 +71,7 @@
     <string name="coach_paragraph_factor">Un inicio denso puede dificultar encontrar la idea principal. La longitud por sí sola no implica una penalización en la clasificación.</string>
     <string name="coach_paragraph_step">Empieza por la idea principal y traslada los detalles de apoyo a un segundo párrafo.</string>
     <string name="coach_ai_local_note">Gemini Nano analiza esta publicación y el historial seleccionado en tu dispositivo. Las sugerencias son hipótesis de IA, no causas demostradas.</string>
-    <string name="coach_ai_cloud_note">Los consejos en la nube envían esta publicación, el texto del borrador, las imágenes adjuntas o vistas previas de vídeo y el historial público seleccionado a Google mediante tu clave de API de Gemini guardada.</string>
+    <string name="coach_ai_cloud_note">Los análisis en la nube envían este tuit, los archivos adjuntos y el historial y contexto público de la conversación disponibles a tu proveedor en la nube.</string>
     <string name="coach_ai_generate">Obtener sugerencias de IA</string>
     <string name="coach_ai_generate_cloud">Obtener sugerencias con IA en la nube</string>
     <string name="coach_ai_thinking">Pensando en tu publicación y su contexto…</string>
@@ -87,7 +87,7 @@
     <string name="coach_ai_source_counts">%1$s visualizaciones · %2$s interacciones públicas · observado a las %3$s horas de su publicación</string>
     <string name="coach_ai_unknown">Desconocido</string>
     <string name="coach_ai_question">Contexto que ayudaría</string>
-    <string name="coach_ai_auto_note">El modo automático usa Gemini Nano primero. Si es necesario, esta publicación, el texto del borrador, las imágenes adjuntas o vistas previas de vídeo y el historial público seleccionado se envían a Google mediante tu clave de Gemini guardada.</string>
+    <string name="coach_ai_auto_note">Auto usa Gemini Nano primero. Si se necesita la nube, el contenido, los archivos adjuntos y una selección del historial público se envían al proveedor en la nube configurado.</string>
     <string name="coach_ai_media">Contexto multimedia</string>
     <string name="coach_ai_media_image">Adjunto %1$d (publicación %2$d): imagen incluida en el contexto de IA.</string>
     <string name="coach_ai_media_video">Adjunto %1$d (publicación %2$d): vista previa o fotograma de vídeo incluido. No se examinaron el movimiento ni el audio.</string>

@@ -47,11 +47,11 @@ internal object BriefPostCoach {
     fun reviewablePosts(analytics: PostAnalytics?, username: String, now: Long): List<PostSummary> {
         if (!fresh(analytics, username, now)) return emptyList()
         analytics!!
-        val originals = analytics.recentPosts.filterNot(PostSummary::isReply)
-        val replies = analytics.recentReplies.filter { it.isReply && interactions(it) >= 10.0 }
+        val originals = (analytics.reviewPosts.ifEmpty { analytics.recentPosts }).filterNot(PostSummary::isReply)
+        val replies = (analytics.reviewPosts.ifEmpty { analytics.recentReplies }).filter { it.isReply && interactions(it) >= 10.0 }
         return (originals.sortedByDescending(PostSummary::timestamp) + replies.sortedByDescending(::interactions))
             .filter { ownValid(it, username) && PostAgeComparison.age(it, analytics) != null }
-            .distinctBy(PostSummary::url)
+            .distinctBy(PostSummary::url).sortedByDescending(PostSummary::timestamp)
     }
 
     /** Explicit dashboard selections also include young/quiet replies and the older all-time winner.
@@ -59,8 +59,8 @@ internal object BriefPostCoach {
     fun reviewTargets(analytics: PostAnalytics?, username: String, now: Long): List<PostSummary> {
         if (!fresh(analytics, username, now)) return emptyList()
         analytics!!
-        return (reviewablePosts(analytics, username, now) + listOfNotNull(analytics.best, analytics.worst, analytics.banger))
-            .filter { ownValid(it, username) && it.timestamp in 1..analytics.cachedAt }
+        return (reviewablePosts(analytics, username, now) + analytics.recentReplies + analytics.reviewPosts + analytics.historicalPosts + listOfNotNull(analytics.best, analytics.worst, analytics.banger))
+            .filter { ownValid(it, username) && it.timestamp in 1..maxOf(analytics.cachedAt, analytics.historicalCheckedAt) }
             .distinctBy(PostSummary::url)
     }
 
@@ -195,8 +195,10 @@ internal object BriefPostCoach {
     }
 
     internal fun comparisonPeers(post: PostSummary, analytics: PostAnalytics): List<PostSummary> =
-        (if (post.isReply) analytics.recentReplies else analytics.recentPosts).filter {
-            it.url != post.url && it.isReply == post.isReply && ownValid(it, analytics.userName) &&
+        (analytics.reviewPosts.ifEmpty { if (post.isReply) analytics.recentReplies else analytics.recentPosts }).filter {
+            (PostAgeComparison.age(post, analytics) ?: Long.MAX_VALUE) <= analytics.windowDays * DAY &&
+                (PostAgeComparison.age(it, analytics) ?: Long.MAX_VALUE) <= analytics.windowDays * DAY &&
+                it.url != post.url && it.isReply == post.isReply && ownValid(it, analytics.userName) &&
                 it.media.isEmpty() == post.media.isEmpty() && (it.quotedPost != null) == (post.quotedPost != null) && it.viewsKnown && PostAgeComparison.similarAge(post, it, analytics)
         }.distinctBy(PostSummary::url)
 
@@ -229,7 +231,7 @@ internal object BriefPostCoach {
     }
 
     private fun fresh(analytics: PostAnalytics?, username: String, now: Long): Boolean = analytics != null &&
-        sameAccount(analytics.userName, username) && analytics.cachedAt in 1..now && now - analytics.cachedAt <= 2 * DAY
+        sameAccount(analytics.userName, username) && maxOf(analytics.cachedAt, analytics.historicalCheckedAt) in 1..now && now - maxOf(analytics.cachedAt, analytics.historicalCheckedAt) <= 2 * DAY
 
     private fun ownValid(post: PostSummary, username: String): Boolean = PostAgeComparison.valid(post) &&
         sameAccount(post.authorUserName, username)

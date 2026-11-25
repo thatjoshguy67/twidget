@@ -14,7 +14,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 object RettiwtClient {
-    fun refresh(context: Context, accountUsername: String = TwidgetStore.settings(context).username): ProfileStats {
+    fun refresh(context: Context, accountUsername: String = TwidgetStore.settings(context).username, forceSharedHistory: Boolean = false): ProfileStats {
         val generation = TwidgetStore.accountGeneration(context, accountUsername)
         val previous = TwidgetStore.currentStats(context, accountUsername)
         val attempt = runCatching { refreshProfile(context, accountUsername) }
@@ -34,7 +34,9 @@ object RettiwtClient {
             }
             refreshed.copy(userId = previous.userId)
         } else fetched ?: attempt.getOrThrow()
-        return profile.copy(accountGeneration = generation, requestedUsername = accountUsername)
+        val owned = profile.copy(accountGeneration = generation, requestedUsername = accountUsername)
+        val settings = TwidgetStore.settings(context)
+        return HistoryPool.enrich(context, owned, settings, TwidgetStore.bridgeEndpoint(settings), force = forceSharedHistory)
     }
 
     private fun refreshProfile(context: Context, accountUsername: String): ProfileStats {
@@ -75,8 +77,7 @@ object RettiwtClient {
         // fallback; with it off the app talks to FxTwitter only.
         if (settings.dataSource == TwidgetStore.DATA_SOURCE_FXTWITTER) {
             try {
-                val stats = finalize(FxTwitterClient.fetchProfile(username), username)
-                return HistoryPool.enrich(context, stats, settings, endpoint)
+                return finalize(FxTwitterClient.fetchProfile(username), username)
             } catch (error: Exception) {
                 if (!settings.shareHistory) throw error
                 lastError = error
@@ -166,7 +167,7 @@ object RettiwtClient {
             fullName = parsed.fullName.ifBlank { requestedUsername },
             userName = username,
             profileImage = highResolutionProfileImageUrl(parsed.profileImage).ifBlank { fallbackAvatarUrl(username) },
-            syncedAt = System.currentTimeMillis(),
+            syncedAt = parsed.syncedAt,
         )
     }
 

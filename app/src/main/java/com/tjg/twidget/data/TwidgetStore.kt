@@ -45,7 +45,22 @@ data class ProfileStats(
     val userId: String = "",
     val requestedUsername: String? = null,
     val historyUserId: String = "",
+    val profileDetails: SharedProfileDetails = SharedProfileDetails(),
+    val profileExpiresAt: Long = 0,
 )
+
+data class SharedProfileDetails(val bio: String? = null, val bannerImage: String? = null,
+    val location: String? = null, val website: String? = null, val accountCreatedAt: String? = null) {
+    fun toJson(): JSONObject = JSONObject().put("bio", bio ?: JSONObject.NULL)
+        .put("bannerImage", bannerImage ?: JSONObject.NULL).put("location", location ?: JSONObject.NULL)
+        .put("website", website ?: JSONObject.NULL).put("accountCreatedAt", accountCreatedAt ?: JSONObject.NULL)
+    companion object {
+        fun fromJson(json: JSONObject): SharedProfileDetails {
+            fun text(key: String): String? = (json.opt(key) as? String)?.take(10_000)
+            return SharedProfileDetails(text("bio"), text("bannerImage"), text("location"), text("website"), text("accountCreatedAt"))
+        }
+    }
+}
 
 data class HistorySample(
     val dayLabel: String,
@@ -166,8 +181,6 @@ object TwidgetStore {
     val DEFAULT_DASHBOARD_CARDS = listOf(
         "milestone",
         "followers",
-        "interactions",
-        "interaction_totals",
         "engagement_mix",
         "original_replies",
         "follower_count",
@@ -1250,6 +1263,7 @@ object TwidgetStore {
         .put("statusesCount", stats.statusesCount)
         .put("likeCount", stats.likeCount)
         .put("profileImage", stats.profileImage)
+        .put("profileDetails", stats.profileDetails.toJson()).put("profileExpiresAt", stats.profileExpiresAt)
         .put("statusFieldsKnown", stats.isVerified != null || stats.isPrivate != null)
         .apply {
             stats.isVerified?.let { put("isVerified", it) }
@@ -1270,6 +1284,8 @@ object TwidgetStore {
         statusesCount = json.optLong("statusesCount", 0),
         likeCount = json.optLong("likeCount", 0),
         profileImage = json.optString("profileImage", ""),
+        profileDetails = SharedProfileDetails.fromJson(json.optJSONObject("profileDetails") ?: JSONObject()),
+        profileExpiresAt = json.optLong("profileExpiresAt"),
         isVerified = if (json.optBoolean("statusFieldsKnown", false) && json.has("isVerified")) json.optBoolean("isVerified") else null,
         isPrivate = if (json.optBoolean("statusFieldsKnown", false) && json.has("isPrivate")) json.optBoolean("isPrivate") else null,
         syncedAt = json.optLong("syncedAt", 0L),
@@ -1389,7 +1405,7 @@ internal fun prioritizeDashboardCard(cards: List<String>, cardId: String): List<
     if (cardId in cards) listOf(cardId) + cards.filterNot { it == cardId } else cards
 
 internal fun addInteractionDashboardCards(cards: List<String>): List<String> {
-    val added = listOf("interactions", "interaction_totals", "engagement_mix", "original_replies").filterNot { it in cards }
+    val added = listOf("engagement_mix", "original_replies").filterNot { it in cards }
     val index = cards.indexOf("followers").let { if (it < 0) cards.size else it + 1 }
     return cards.take(index) + added + cards.drop(index)
 }

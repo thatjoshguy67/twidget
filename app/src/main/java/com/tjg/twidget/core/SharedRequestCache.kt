@@ -7,6 +7,10 @@ internal class SharedRequestCache<T>(private val ttlMillis: Long, private val ca
     private data class Entry<T>(val task: FutureTask<T>, var completedAt: Long = 0L)
     private val entries = LinkedHashMap<String, Entry<T>>(capacity, 0.75f, true)
 
+    fun invalidateCompleted(matches: (String) -> Boolean) {
+        synchronized(entries) { entries.entries.removeAll { matches(it.key) && it.value.task.isDone } }
+    }
+
     fun get(key: String, fetch: () -> T): T {
         val entry = synchronized(entries) {
             val now = System.currentTimeMillis()

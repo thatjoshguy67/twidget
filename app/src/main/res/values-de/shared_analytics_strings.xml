@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_manage_cloud_providers">Cloud-Anbieter verwalten</string>
+    <string name="streak_day_inactive">Kein Beitrag</string>
+    <string name="app_icon_light">Hell</string>
+    <string name="settings_outline_effects_summary">Kontureffekte im Stil von One UI 9.5 für App-Elemente wie Karten, Navigation und Schaltflächen verwenden.</string>
+    <string name="streak_day_active">Gepostet</string>
+    <string name="app_icon_selected">App-Symbol %1$s ausgewählt</string>
+    <string name="review_performance_ranking">Leistungsrang</string>
+    <string name="settings_outline_effects">Kontureffekte</string>
+    <string name="review_views_rank_context">Verglichen mit deinen neuesten geeigneten Tweets ähnlichen Alters und Formats, insgesamt bis zu zehn. Gleiche Aufrufzahlen teilen sich einen Rang.</string>
+    <string name="review_views_rank">%1$d/%2$d</string>
+    <string name="review_rank_comparison">Nach erfassten Aufrufen mit %1$d anderen aktuellen Tweets verglichen. Gleichstände teilen sich einen Rang.</string>
+    <string name="review_rank_only_post">Dies ist derzeit der einzige geeignete Tweet.</string>
+    <string name="review_preview_rank">Rang %1$d/%2$d nach Aufrufen.</string>
+    <string name="app_icon_dark">Dunkel</string>
+    <string name="settings_cloud_ai_provider">Cloud-KI-Anbieter</string>
+    <string name="settings_app_icon">App-Symbol</string>
+    <string name="chart_unfollows">Entfolgungen: %1$s</string>
+    <string name="analytics_historical_sample">Aus %1$d gespeicherten Beiträgen und Antworten</string>
+    <string name="streak_day_unknown">Aktivität nicht verfügbar</string>
+    <string name="analytics_posts_replies_coverage">Aus %1$d Beiträgen und Antworten der Stichprobe</string>
+    <string name="analytics_historical_originals">Aus %1$d gespeicherten Originalbeiträgen</string>
+    <string name="app_icon_default">Standard</string>
+</resources>

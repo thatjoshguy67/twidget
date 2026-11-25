@@ -37,6 +37,7 @@ data class InteractionPost(val id: String, val createdAt: Long, val capturedAt: 
 data class InteractionData(val daily: List<InteractionDay> = emptyList(), val posts: List<InteractionPost> = emptyList())
 data class InteractionPoint(val date: LocalDate, val value: Long?)
 data class InteractionSlice(val metric: InteractionMetric, val count: Long?, val percent: Int?)
+data class InteractionMix(val slices: List<InteractionSlice>, val sampledPosts: Int? = null)
 data class InteractionSplit(val originals: Int, val replies: Int, val originalPercent: Int, val replyPercent: Int)
 
 object InteractionAggregation {
@@ -58,7 +59,10 @@ object InteractionAggregation {
     fun total(points: List<InteractionPoint>): Long? = points.mapNotNull { it.value }.let { if (it.isEmpty()) null else it.sum() }
     fun totals(data: InteractionData, days: Int, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): Map<InteractionMetric, Long?> =
         InteractionMetric.entries.associateWith { total(series(data, it, days, today)) }
-    fun mix(data: InteractionData, days: Int, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): List<InteractionSlice> {
+    fun mix(data: InteractionData, days: Int, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): List<InteractionSlice> =
+        mixSummary(data, days, today).slices
+
+    fun mixSummary(data: InteractionData, days: Int, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): InteractionMix {
         val metrics = listOf(InteractionMetric.LIKES, InteractionMetric.REPOSTS, InteractionMetric.REPLIES, InteractionMetric.QUOTES)
         val metricSeries = metrics.map { series(data, it, days, today) }
         val values = metricSeries.map(::total)
@@ -69,7 +73,22 @@ object InteractionAggregation {
             present == 0 || present == metrics.size
         }
         val shares = if (comparable && values.all { it != null }) percentages(values.filterNotNull()) else null
-        return metrics.indices.map { InteractionSlice(metrics[it], values[it], shares?.get(it)) }
+        if (shares == null) {
+            // Account exports may omit quotes entirely. Use one common post
+            // sample for ALL categories, never daily activity for three slices
+            // and lifetime post counters for the fourth.
+            val first = today.minusDays((days - 1).toLong())
+            val posts = data.posts.filter { post ->
+                val date = Instant.ofEpochMilli(post.createdAt).atZone(ZoneOffset.UTC).toLocalDate()
+                !date.isBefore(first) && !date.isAfter(today) && metrics.all { post.counts.value(it) != null }
+            }
+            if (posts.isNotEmpty()) {
+                val counts = metrics.map { metric -> posts.sumOf { requireNotNull(it.counts.value(metric)) } }
+                val percentages = percentages(counts)
+                return InteractionMix(metrics.indices.map { InteractionSlice(metrics[it], counts[it], percentages[it]) }, posts.size)
+            }
+        }
+        return InteractionMix(metrics.indices.map { InteractionSlice(metrics[it], values[it], shares?.get(it)) })
     }
     fun split(data: InteractionData, days: Int, today: LocalDate = LocalDate.now(ZoneOffset.UTC)): InteractionSplit {
         val first = today.minusDays((days - 1).toLong())

@@ -54,4 +54,26 @@ class InteractionAggregationTest {
         val data = InteractionData(daily = listOf(InteractionDay(today, InteractionCounts(likes = 2))))
         assertNull(InteractionAggregation.mix(data, 1, today).first().percent)
     }
+    @Test fun csvWithoutQuotesFallsBackToOneCompletePostSample() {
+        val complete = post("1", today, 20).copy(counts = InteractionCounts(likes = 20, reposts = 2, replies = 3, quotes = 1))
+        val incomplete = post("2", today, 100).copy(counts = InteractionCounts(likes = 100, reposts = 5, replies = 9))
+        val data = InteractionData(
+            daily = listOf(InteractionDay(today, InteractionCounts(likes = 374, reposts = 5, replies = 63))),
+            posts = listOf(complete, incomplete, post("old", today.minusDays(8), 1000)),
+        )
+        val mix = InteractionAggregation.mixSummary(data, 7, today)
+        assertEquals(1, mix.sampledPosts)
+        assertEquals(listOf(20L, 2L, 3L, 1L), mix.slices.map { it.count })
+        assertEquals(100, mix.slices.sumOf { it.percent ?: 0 })
+        assertEquals(374L, InteractionAggregation.series(data, InteractionMetric.LIKES, 1, today).single().value)
+    }
+    @Test fun completeDailyMixKeepsItsCsvCounts() {
+        val data = InteractionData(
+            daily = listOf(InteractionDay(today, InteractionCounts(likes = 374, reposts = 5, replies = 63, quotes = 2))),
+            posts = listOf(post("1", today, 20)),
+        )
+        val mix = InteractionAggregation.mixSummary(data, 7, today)
+        assertNull(mix.sampledPosts)
+        assertEquals(listOf(374L, 5L, 63L, 2L), mix.slices.map { it.count })
+    }
 }

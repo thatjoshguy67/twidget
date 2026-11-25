@@ -104,7 +104,8 @@ internal object InteractionCards {
 
     internal fun mix(activity: MainActivity, data: InteractionData, days: Int): View {
         val root = surface(activity).apply { setTag(R.id.dashboard_list_card, false); setPadding(dp(activity, 31), dp(activity, 12), dp(activity, 32), dp(activity, 12)) }
-        val slices = InteractionAggregation.mix(data, days)
+        val mix = InteractionAggregation.mixSummary(data, days)
+        val slices = mix.slices
         val comparable = slices.all { it.percent != null }
         val content = row(activity)
         content.addView(InteractionDonutView(activity).apply {
@@ -138,7 +139,9 @@ internal object InteractionCards {
         }
         content.addView(legend, LinearLayout.LayoutParams(0, -1, .60f))
         root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
-        if (!comparable) root.addView(text(activity, activity.getString(R.string.interaction_mix_unavailable), 11f, secondary = true))
+        val caption = mix.sampledPosts?.let { activity.getString(R.string.analytics_posts_replies_coverage, it) }
+            ?: activity.getString(R.string.interaction_mix_unavailable).takeUnless { comparable }
+        caption?.let { root.addView(text(activity, it, 11f, secondary = true)) }
         fun proportional(view: View) {
             if (view is TextView) view.setTag(R.id.dashboard_design_proportional_text,
                 view.getTag(R.id.app_font_role) != TwidgetFonts.Role.DASHBOARD_HEADING)

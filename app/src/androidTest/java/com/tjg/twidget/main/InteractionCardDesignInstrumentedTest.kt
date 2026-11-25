@@ -312,10 +312,14 @@ class InteractionCardDesignInstrumentedTest {
             daily = listOf(InteractionDay(LocalDate.now(ZoneOffset.UTC), InteractionCounts(likes=49,reposts=2,replies=8,quotes=1))),
             posts = (0 until 16).map { InteractionPost("fixture-$it", now, now, it >= 4, InteractionCounts()) },
         )
+        val csvWithoutQuotes = InteractionData(
+            daily = listOf(InteractionDay(LocalDate.now(ZoneOffset.UTC), InteractionCounts(likes=374,reposts=5,replies=63))),
+            posts = listOf(InteractionPost("1", now, now, false, InteractionCounts(likes=49,reposts=2,replies=8,quotes=1))),
+        )
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 val density = activity.resources.displayMetrics.density
-                for ((name, input) in listOf("populated" to data, "missing" to InteractionData())) {
+                for ((name, input) in listOf("populated" to data, "missing" to InteractionData(), "csv_without_quotes" to csvWithoutQuotes)) {
                     for (widthDp in listOf(262, 400, 538)) {
                     for (heightDp in listOf(160, 214)) {
                         val cards = listOf("mix" to InteractionCards.mix(activity,input,7), "split" to InteractionCards.split(activity,input,7),
@@ -348,6 +352,32 @@ class InteractionCardDesignInstrumentedTest {
                             }
                             val bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
                             card.draw(Canvas(bitmap))
+                            if (kind == "mix" && name == "csv_without_quotes") {
+                                val texts = mutableListOf<String>()
+                                var donut: InteractionDonutView? = null
+                                fun inspect(view: View) {
+                                    if (view is TextView) texts += view.text.toString()
+                                    if (view is InteractionDonutView) donut = view
+                                    if (view is ViewGroup) for (i in 0 until view.childCount) inspect(view.getChildAt(i))
+                                }
+                                inspect(card)
+                                assertTrue("CSV without quotes identifies its common post sample",
+                                    texts.contains(activity.getString(com.tjg.twidget.R.string.analytics_posts_replies_coverage, 1)))
+                                assertTrue("Missing CSV quotes do not disable a complete sampled mix",
+                                    !texts.contains(activity.getString(com.tjg.twidget.R.string.interaction_mix_unavailable)))
+                                requireNotNull(donut).let { chart ->
+                                    val image = Bitmap.createBitmap(chart.width, chart.height, Bitmap.Config.ARGB_8888)
+                                    chart.draw(Canvas(image))
+                                    val colored = (0 until image.height).sumOf { y -> (0 until image.width).count { x ->
+                                        val pixel = image.getPixel(x, y)
+                                        android.graphics.Color.alpha(pixel) > 0 &&
+                                            maxOf(android.graphics.Color.red(pixel), android.graphics.Color.green(pixel), android.graphics.Color.blue(pixel)) -
+                                            minOf(android.graphics.Color.red(pixel), android.graphics.Color.green(pixel), android.graphics.Color.blue(pixel)) > 30
+                                    } }
+                                    assertTrue("The sampled mix renders colored arcs", colored > chart.width)
+                                    image.recycle()
+                                }
+                            }
                             File(activity.filesDir,"interaction-$kind-$name-$widthDp-$heightDp.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
                             bitmap.recycle()
                             check(card)

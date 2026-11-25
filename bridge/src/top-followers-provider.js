@@ -1,7 +1,46 @@
 const DEFAULT_ENDPOINT = "https://api.twitterapis.com/twitter/user/followers_v2";
 
+// Use the immutable ID: the public handle-resolution path can return 404
+// even while the ID-based follower list is available.
+export async function fetchFxFollowersPage({ userId, cursor = "", count = 100, fetchImpl = fetch,
+  endpoint = "https://api.fxtwitter.com/2/profile" }) {
+  if (!/^[0-9]+$/.test(userId || "")) throw new Error("followers_identity_required");
+  if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error("invalid_follower_page_size");
+  const url = new URL(`${endpoint.replace(/\/$/, "")}/id:${userId}/followers`);
+  url.searchParams.set("count", String(count));
+  if (cursor) url.searchParams.set("cursor", cursor);
+  const response = await fetchImpl(url, {
+    headers: { "User-Agent": "Twidget Bridge" }, signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new TopFollowersProviderError(response.status, "FxTwitter follower list unavailable");
+  return parseFxFollowersPage(await response.json());
+}
+
+export function parseFxFollowersPage(body) {
+  // A missing/malformed list is never an empty terminal page. Reject malformed
+  // rows too, rather than silently dropping identities and inventing losses.
+  if (body?.code !== 200 || !Array.isArray(body.results) || !body.cursor ||
+      !(body.cursor.bottom === null || typeof body.cursor.bottom === "string")) {
+    throw new Error("invalid_fx_followers_page");
+  }
+  const users = body.results.map(value => {
+    if (!/^[0-9]+$/.test(value?.id || "") || !Number.isSafeInteger(value.followers) || value.followers < 0) {
+      throw new Error("invalid_fx_follower");
+    }
+    const user = normalizeProviderFollower({ ...value, username: value.screen_name,
+      avatar: value.avatar_url, verified: value.verification?.verified === true });
+    if (!user) throw new Error("invalid_fx_follower");
+    return user;
+  });
+  // Empty pages with a continuation cursor do not prove the list is complete.
+  if (!users.length && body.cursor.bottom) throw new Error("fx_followers_empty_continuation");
+  const nextCursor = boundedString(body.cursor.bottom, 4096);
+  if (nextCursor === null) throw new Error("invalid_fx_followers_cursor");
+  return { users, nextCursor };
+}
+
 export class TopFollowersProviderError extends Error {
-  constructor(status, message = "TwitterAPIs request failed") {
+  constructor(status, message = "Follower provider request failed") {
     super(message);
     this.name = "TopFollowersProviderError";
     this.status = Number(status || 0);

@@ -94,5 +94,6 @@ test('unverified, recycled, partial and backwards scan comparisons remain unknow
     assert.equal(followerChangeObservation({ ...before, ...invalid }, after, counts, '123'), null);
   }
   assert.equal(followerChangeObservation(after, before, counts, '123'), null);
+  assert.equal(followerChangeObservation(before, { ...after, provider: 'fxtwitter' }, counts, '123'), null);
   assert.equal(followerChangeObservation(before, after, { newFollowers: 0, lostFollowers: -1 }, '123'), null);
 });

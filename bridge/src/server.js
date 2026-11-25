@@ -24,6 +24,7 @@ import { TopFollowersPriority } from "./top-followers-priority.js";
 import { mountPrimaryProfileRoutes } from "./primary-profiles.js";
 import {
   fetchTwitterApisFollowersPage,
+  fetchFxFollowersPage,
   TopFollowersProviderError,
 } from "./top-followers-provider.js";
 import {
@@ -96,6 +97,10 @@ const historyStorePath = process.env.HISTORY_STORE_PATH ||
 const historyBackend = String(process.env.HISTORY_BACKEND || "json").trim().toLowerCase();
 const redisUrl = String(process.env.REDIS_URL || "").trim();
 const twitterApisApiKey = String(process.env.TWITTERAPIS_API_KEY || "").trim();
+const topFollowersProvider = String(process.env.TOP_FOLLOWERS_PROVIDER || "fxtwitter").trim().toLowerCase();
+if (!["fxtwitter", "twitterapis"].includes(topFollowersProvider)) throw new Error("invalid_top_followers_provider");
+const topFollowersConfigured = topFollowersProvider === "fxtwitter" || Boolean(twitterApisApiKey);
+const fxFollowersEndpoint = String(process.env.FXTWITTER_FOLLOWERS_ENDPOINT || "https://api.fxtwitter.com/2/profile").trim();
 const twitterApisFollowersEndpoint = String(process.env.TWITTERAPIS_FOLLOWERS_ENDPOINT ||
   "https://api.twitterapis.com/twitter/user/followers_v2").trim();
 
@@ -127,7 +132,8 @@ const topFollowersPriority = new TopFollowersPriority({
 await topFollowersPriority.refresh();
 const topFollowersBudget = new TopFollowersBudget({
   pool: historyRepository.pool,
-  filePath: `${historyStorePath}.top-followers-budget.json`,
+  filePath: topFollowersProvider === "twitterapis" ? `${historyStorePath}.top-followers-budget.json` : `${historyStorePath}.fx-followers-budget.json`,
+  provider: topFollowersProvider,
   dailyLimit: topFollowersDailyRequests,
   monthlyLimit: topFollowersMonthlyRequests,
   trackedDailyLimit: topFollowersTrackedDailyRequests,
@@ -138,6 +144,12 @@ for (const key of topFollowersExcluded) {
   const scan = await historyRepository.getTopFollowersScan(key);
   if (scan?.status === "running") {
     await historyRepository.failTopFollowersScan(key, scan.scanId, "top_followers_account_excluded");
+  }
+}
+for (const key of await historyRepository.listAccounts()) {
+  const scan = await historyRepository.getTopFollowersScan(key);
+  if (scan?.status === "running" && (scan.provider || "twitterapis") !== topFollowersProvider) {
+    await historyRepository.failTopFollowersScan(key, scan.scanId, "provider_changed");
   }
 }
 const recordTopFollowersActivity = createTopFollowersActivityRecorder(historyRepository);
@@ -297,7 +309,8 @@ app.get("/health", async (_req, res) => {
       analyticsImport: true,
       archiveBackfill: waybackEnabled,
       topFollowers: {
-        serverScans: Boolean(twitterApisApiKey),
+        serverScans: topFollowersConfigured,
+        provider: topFollowersProvider,
         freshnessHours: topFollowersFreshMs / (60 * 60 * 1000),
         refreshHours: topFollowersRefreshMs / (60 * 60 * 1000),
         trackedRefreshHours: topFollowersTrackedRefreshMs / 3600000,
@@ -609,7 +622,7 @@ app.post("/history/:username/top-followers/scan", trackTopFollowersActivity, asy
     res.status(403).json({ error: "top_followers_account_excluded" });
     return;
   }
-  if (!twitterApisApiKey) {
+  if (!topFollowersConfigured) {
     res.status(503).json({ error: "top_followers_scan_not_configured" });
     return;
   }
@@ -641,13 +654,14 @@ app.post("/history/:username/top-followers/scan", trackTopFollowersActivity, asy
 });
 
 async function refreshTopFollowersOnReturn(key, username, snapshot, meta, req) {
-  if (topFollowersExcluded.has(key) || !twitterApisApiKey || (!meta.topFollowersEnrolledAt && !snapshot && !meta.topFollowers)) return;
+  if (topFollowersExcluded.has(key) || !topFollowersConfigured || (!meta.topFollowersEnrolledAt && !snapshot && !meta.topFollowers)) return;
   if (!(await topFollowersRefreshDecision(key, snapshot || meta.topFollowers))) return;
   await startClientTopFollowersScan(key, username, req);
 }
 
 async function topFollowersRefreshDecision(key, snapshot, scan, now = Date.now()) {
   await topFollowersPriority.refresh();
+  if (scan && (scan.provider || "twitterapis") !== topFollowersProvider) return "full";
   return topFollowersPriority.refreshKind(key, snapshot, scan, now, topFollowersHeadCheck);
 }
 
@@ -1343,12 +1357,12 @@ async function prepareTopFollowersScan(key, kind, snapshot) {
     ? latest.followers : null;
   const plan = topFollowersScanPlan({ kind, snapshot, followersCount, buffer: topFollowersHeadRows, overlap: topFollowersOverlapRows });
   return historyRepository.startTopFollowersScan(key, crypto.randomUUID(), Date.now(), {
-    kind, plan, refreshMs: kind === "head" ? topFollowersPriority.cadence(key).refreshMs : 0,
+    kind, plan: { ...plan, provider: topFollowersProvider }, refreshMs: kind === "head" ? topFollowersPriority.cadence(key).refreshMs : 0,
   });
 }
 
 async function scheduleTopFollowersRefreshes(accounts) {
-  if (!twitterApisApiKey) return;
+  if (!topFollowersConfigured) return;
   if (!(await topFollowersBudget.status()).allowed) return;
   await topFollowersPriority.refresh();
   const now = Date.now();
@@ -1460,7 +1474,7 @@ async function runTopFollowersJob(key, username, initial) {
     }
     while (scan.pages < pageLimit) {
       if (shuttingDown) return;
-      const page = await withUpstreamSlot(() => fetchTopFollowersProviderPage(username, scan.cursor));
+      const page = await withUpstreamSlot(() => fetchTopFollowersProviderPage(username, scan.cursor, 100, scan.userId));
       if (shuttingDown) return;
       if (!page.users.length) {
         if (!scan.scanned) throw new Error("top_followers_unavailable");
@@ -1501,7 +1515,7 @@ async function runTopFollowersJob(key, username, initial) {
 }
 
 async function runTopFollowersBenchmark() {
-  if (topFollowersExcluded.has(topFollowersBenchmarkUsername.toLowerCase()) || topFollowersBenchmarkRunning || shuttingDown || !twitterApisApiKey) return;
+  if (topFollowersProvider !== "twitterapis" || topFollowersExcluded.has(topFollowersBenchmarkUsername.toLowerCase()) || topFollowersBenchmarkRunning || shuttingDown || !twitterApisApiKey) return;
   topFollowersBenchmarkRunning = true;
   try {
     await topFollowersBudget.retryBenchmark(topFollowersBenchmarkRetryId);
@@ -1522,7 +1536,7 @@ async function runTopFollowersBenchmark() {
   }
 }
 
-async function fetchTopFollowersProviderPage(username, cursor, count = 100) {
+async function fetchTopFollowersProviderPage(username, cursor, count = 100, userId = "") {
   // This is inside the upstream slot, immediately before every paid request.
   // It covers initial scans, scheduled work, resumes, and every replica.
   assertTopFollowersAllowed(topFollowersExcluded, username);
@@ -1540,6 +1554,9 @@ async function fetchTopFollowersProviderPage(username, cursor, count = 100) {
     };
   }
   try {
+    if (topFollowersProvider === "fxtwitter") {
+      return await fetchFxFollowersPage({ userId, cursor, count, endpoint: fxFollowersEndpoint });
+    }
     return await fetchTwitterApisFollowersPage({ username, cursor, count, apiKey: twitterApisApiKey, endpoint: twitterApisFollowersEndpoint });
   } catch (error) {
     const code = topFollowersFailureCode(error);
@@ -1572,6 +1589,7 @@ function topFollowersScanResponse(username, scan) {
     completedAt: scan.completedAt,
     fullCompletedAt: scan.fullCompletedAt,
     scanKind: scan.kind,
+    provider: scan.provider || "twitterapis",
     ...(scan.error ? { error: scan.error } : {}),
   };
 }

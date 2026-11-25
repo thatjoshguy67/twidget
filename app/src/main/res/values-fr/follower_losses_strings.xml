@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="followers_observed_losses">%1$s perdus · %2$s</string>
+</resources>

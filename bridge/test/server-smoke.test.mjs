@@ -29,6 +29,7 @@ async function startBridge(t, environment, { store, onOutput = () => {}, onStore
       HISTORY_STORE_PATH: storePath,
       WAYBACK_BACKFILL: "0",
       TEST_MOCK_UPSTREAM: "1",
+      TOP_FOLLOWERS_PROVIDER: "twitterapis",
       ...environment,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -898,4 +899,58 @@ test("legacy enrollment verifies the requested ID without assigning old rows to 
   const stored = JSON.parse(await readFile(storePath, 'utf8'));
   assert.equal(stored.meta.example.userId, undefined);
   assert.ok(stored.accounts.example.some(row => row.followers === 7));
+});
+
+test("Fx follower scans need no key, use immutable IDs, and publish interval losses", async t => {
+  const requests = [];
+  const provider = http.createServer((req, res) => {
+    const url = new URL(req.url, "http://localhost");
+    requests.push({ path: url.pathname, cursor: url.searchParams.get("cursor"), auth: req.headers.authorization });
+    const id = url.searchParams.has("cursor") ? "3" : "1";
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ code: 200, results: [{ id, screen_name: `fan${id}`, name: "Fan", followers: 10 }],
+      cursor: { top: null, bottom: id === "1" ? "fx-next" : null } }));
+  });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const now = Date.now();
+  const before = { ...completedFollowerScan(now - 8 * DAY), provider: "fxtwitter", userId: "123", kind: "full",
+    scanned: 2, followers: ["1", "2"].map(id => ({ id, username: `fan${id}`, name: "Fan", followers: 10, avatar: "", verified: false })) };
+  const store = followerStore({ example: { userId: "123" } }, { example: before });
+  store.primaryProfiles = { ["a".repeat(64)]: { username: "example", lastSeenAt: now } };
+  const base = await startBridge(t, { TOP_FOLLOWERS_PROVIDER: "fxtwitter", TWITTERAPIS_API_KEY: "", TEST_MOCK_UPSTREAM: "0",
+    FXTWITTER_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/profile` },
+    { store });
+  assert.equal((await fetch(`${base}/health`).then(r => r.json())).history.topFollowers.provider, "fxtwitter");
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).status === "complete");
+  assert.deepEqual(requests, [
+    { path: "/profile/id:123/followers", cursor: null, auth: undefined },
+    { path: "/profile/id:123/followers", cursor: "fx-next", auth: undefined },
+  ]);
+  const history = await fetch(`${base}/history/example`).then(r => r.json());
+  assert.equal(history.followerChanges.length, 1, JSON.stringify(history));
+  assert.equal(history.followerChanges[0].lostFollowers, 1);
+  assert.equal(history.followerChanges[0].newFollowers, 1);
+  assert.equal(history.history[0].unfollows, undefined);
+});
+
+test("Fx failure after migration retains the paid snapshot and never reports its followers as lost", async t => {
+  const requests = [];
+  const provider = http.createServer((req, res) => { requests.push(req.url); res.writeHead(404).end('{}'); });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const now = Date.now();
+  const old = { ...completedFollowerScan(now - 2 * DAY), userId: "123" };
+  const running = { ...old, scanId: "paid-running", status: "running", cursor: "paid-cursor", previous: old };
+  const base = await startBridge(t, { TOP_FOLLOWERS_PROVIDER: "fxtwitter", TWITTERAPIS_API_KEY: "", TEST_MOCK_UPSTREAM: "0",
+    FXTWITTER_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/profile` },
+    { store: followerStore({ example: { userId: "123" } }, { example: running }) });
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).status === "failed");
+  assert.equal(requests.length, 1);
+  assert.ok(!requests[0].includes("paid-cursor"));
+  const archive = await fetch(`${base}/history/example/top-followers/all`).then(r => r.json());
+  assert.equal(archive.total, 1);
+  assert.deepEqual((await fetch(`${base}/history/example`).then(r => r.json())).followerChanges, []);
 });

@@ -59,3 +59,24 @@ test('Postgres tracked ceiling reserves the rest of the global allowance for pri
     await pool.end(); await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`); await admin.end();
   }
 });
+
+test('Fx request limits stay independent of paid usage and credit pauses', { skip: !process.env.TWIDGET_TEST_PGLITE_MODULE }, async () => {
+  const { PGlite } = await import(process.env.TWIDGET_TEST_PGLITE_MODULE);
+  const db = new PGlite();
+  const query = async (sql, parameters) => {
+    const result = await db.query(sql, parameters);
+    return { ...result, rowCount: result.affectedRows ?? result.rows.length };
+  };
+  const pool = { query, connect: async () => ({ query, release() {} }) };
+  try {
+    const paid = new TopFollowersBudget({ pool, dailyLimit: 10 });
+    const fx = new TopFollowersBudget({ pool, dailyLimit: 10, provider: 'fxtwitter' });
+    await paid.initialize(); await fx.initialize();
+    await paid.reserve('example'); await paid.pause('provider_credit_empty');
+    await fx.reserve('example');
+    assert.equal((await paid.status()).allowed, false);
+    assert.equal((await fx.status()).allowed, true);
+    assert.equal((await paid.usage()).day.requests, 1);
+    assert.equal((await fx.usage()).day.requests, 1);
+  } finally { await db.close(); }
+});

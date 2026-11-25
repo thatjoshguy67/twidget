@@ -15,8 +15,9 @@ export class TopFollowersBudgetPause extends Error {
 // Reserve before calling the provider; failed calls are never refunded, so
 // our accounting errs on the side of less spend if billing is uncertain.
 export class TopFollowersBudget {
-  constructor({ pool = null, filePath, dailyLimit = 1250, monthlyLimit = 37500, trackedDailyLimit = dailyLimit, now = Date.now }) {
+  constructor({ pool = null, filePath, dailyLimit = 1250, monthlyLimit = 37500, trackedDailyLimit = dailyLimit, now = Date.now, provider = "twitterapis" }) {
     this.pool = pool;
+    this.table = provider === "fxtwitter" ? "twidget_fx_followers_budget" : "twidget_top_followers_budget";
     this.filePath = filePath;
     this.dailyLimit = dailyLimit;
     this.monthlyLimit = monthlyLimit;
@@ -27,10 +28,10 @@ export class TopFollowersBudget {
 
   async initialize() {
     if (this.pool) {
-      await this.pool.query(`CREATE TABLE IF NOT EXISTS twidget_top_followers_budget (
+      await this.pool.query(`CREATE TABLE IF NOT EXISTS ${this.table} (
         id integer PRIMARY KEY CHECK (id = 1), state jsonb NOT NULL
       )`);
-      await this.pool.query("INSERT INTO twidget_top_followers_budget (id, state) VALUES (1, '{}'::jsonb) ON CONFLICT DO NOTHING");
+      await this.pool.query(`INSERT INTO ${this.table} (id, state) VALUES (1, '{}'::jsonb) ON CONFLICT DO NOTHING`);
     } else {
       try { JSON.parse(await fs.readFile(this.filePath, "utf8")); }
       catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -68,7 +69,7 @@ export class TopFollowersBudget {
   async usage() {
     let state;
     if (this.pool) {
-      const result = await this.pool.query("SELECT state FROM twidget_top_followers_budget WHERE id = 1");
+      const result = await this.pool.query(`SELECT state FROM ${this.table} WHERE id = 1`);
       if (!result.rows[0]) throw new Error("top_followers_budget_missing");
       state = structuredClone(result.rows[0].state);
     } else {
@@ -132,11 +133,11 @@ export class TopFollowersBudget {
       const client = await this.pool.connect();
       try {
         await client.query("BEGIN");
-        const result = await client.query("SELECT state FROM twidget_top_followers_budget WHERE id = 1 FOR UPDATE");
+        const result = await client.query(`SELECT state FROM ${this.table} WHERE id = 1 FOR UPDATE`);
         if (!result.rows[0]) throw new Error("top_followers_budget_missing");
         const state = result.rows[0].state;
         const value = change(state, this.now());
-        await client.query("UPDATE twidget_top_followers_budget SET state = $1::jsonb WHERE id = 1", [JSON.stringify(state)]);
+        await client.query(`UPDATE ${this.table} SET state = $1::jsonb WHERE id = 1`, [JSON.stringify(state)]);
         await client.query("COMMIT");
         return value;
       } catch (error) {

@@ -388,6 +388,8 @@ internal class MainDashboardBinder(
             .filterIsInstance<com.tjg.twidget.ui.CardValueTextView>().firstOrNull()
         val label = root.findViewById<TextView>(R.id.metric_label).text
         return inflateCard(R.layout.metric_card_small_stat).apply {
+            setTag(R.id.dashboard_stat_detail_compact, null)
+            setTag(R.id.dashboard_stat_detail_expanded, null)
             findViewById<TextView>(R.id.metric_label).text = label
             findViewById<com.tjg.twidget.ui.CardValueTextView>(R.id.followers_value).apply {
                 text = value.text
@@ -397,6 +399,11 @@ internal class MainDashboardBinder(
             findViewById<TextView>(R.id.stat_detail).apply {
                 text = delta?.text
                 delta?.let { setTextColor(it.currentTextColor) }
+            }
+            (root.getTag(R.id.dashboard_stat_detail_expanded) as? CharSequence)?.let { detail ->
+                setTag(R.id.dashboard_stat_detail_compact, delta?.text)
+                setTag(R.id.dashboard_stat_detail_expanded, detail)
+                findViewById<TextView>(R.id.stat_detail).setTextColor(activity.getColor(R.color.oneui_text_secondary))
             }
             setTag(R.id.dashboard_stat_expanded, true)
             body.removeView(chart)
@@ -829,6 +836,15 @@ internal class MainDashboardBinder(
             }
             contentDescription = listOf(activity.getString(R.string.followers),
                 findViewById<TextView>(R.id.followers_value).text, findViewById<TextView>(R.id.followers_delta).text).joinToString(". ")
+            if (TwidgetStore.settings(activity).shareHistory && stats.isPrivate != true) {
+                com.tjg.twidget.bridge.FollowerLossStore.latest(activity, stats.userId)?.takeIf { it.lost > 0 }?.let { loss ->
+                    val range = android.text.format.DateUtils.formatDateRange(activity, loss.from, loss.to,
+                        android.text.format.DateUtils.FORMAT_SHOW_DATE or android.text.format.DateUtils.FORMAT_ABBREV_MONTH)
+                    val detail = activity.getString(R.string.followers_observed_losses, fullCount(loss.lost), range)
+                    setTag(R.id.dashboard_stat_detail_expanded, "${findViewById<TextView>(R.id.followers_delta).text}\n$detail")
+                    contentDescription = "$contentDescription. $detail"
+                }
+            }
             findViewById<MetricChartView>(R.id.followers_chart).apply {
                 compactCardInsets = true
                 setData(week) { it.followers }

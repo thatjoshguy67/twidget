@@ -60,14 +60,33 @@ Android sends the configured bridge token as both a Bearer token and the legacy
 `X-Rettiwt-Api-Key` header. Do not ship a private token inside a publicly
 distributed APK.
 
-Top Followers provider credentials remain server-side. When a shared-history
+Top Followers defaults to public FxTwitter (`TOP_FOLLOWERS_PROVIDER=fxtwitter`).
+It uses `/2/profile/id:<account-id>/followers`, since handle-based resolution
+can fail even while numeric-ID lists work. No X login cookies or provider key
+are needed. A self-hoster can explicitly select `twitterapis` to keep the old
+server-side provider; there is no automatic paid fallback. FxTwitter request
+limits use a separate ledger, so old paid usage or credit pauses cannot block
+free scans. Existing concurrency, daily/monthly request ceilings and activity
+limits still bound public-source traffic. The page-size benchmark applies only
+to the paid provider.
+
+Only complete, ID-bound scans from the same provider produce observed losses.
+Switching providers starts a new full baseline and discards old in-progress
+cursors, preserving the last completed ranking if a request fails. Snapshot
+losses include deletions/suspensions and cover the interval between scans;
+they are not daily unfollow events or a historical backfill. `followerChanges`
+in the history response carries these intervals. Android shows a dated lost-
+followers total on the expanded followers card when a recent observation exists;
+CSV unfollows remain a separate daily series.
+
+When a shared-history
 user first asks to find their top follower, that request enrolls the account in
 server-owned full scans once per `TOP_FOLLOWERS_FULL_SCAN_DAYS` (default 7,
 allowed 1–90 days), including while phones are offline, as long as a client has used Top
 Followers within `TOP_FOLLOWERS_ACTIVE_DAYS` (default 7, allowed 1–365 days).
 Preview, archive, scan-status, and scan-start requests record activity, with
 metadata writes throttled to once per hour per account in each bridge process.
-Dormant accounts keep their stale ranking but stop starting paid scans; scans
+Dormant accounts keep their stale ranking but stop starting scans; scans
 already running still resume. A returning preview reader receives that stale
 ranking immediately and triggers a refresh when due through the same capacity, global
 daily, and per-IP daily limits as an explicit scan request. Legacy accounts use

@@ -8,6 +8,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // derive these gross counts by subtracting the two public follower totals.
 export function followerChangeObservation(before, after, counts, ownerId) {
   if (!/^[0-9]+$/.test(ownerId || "") || before?.userId !== ownerId || after?.userId !== ownerId ||
+      (before.provider || "twitterapis") !== (after.provider || "twitterapis") ||
       before.kind === "head" || after.kind === "head" || before.status !== "complete" || after.status !== "complete" ||
       !before.completedAt || after.completedAt <= before.completedAt || before.scanId === after.scanId) return null;
   if (![counts?.newFollowers, counts?.lostFollowers].every(value => Number.isSafeInteger(value) && value >= 0)) return null;

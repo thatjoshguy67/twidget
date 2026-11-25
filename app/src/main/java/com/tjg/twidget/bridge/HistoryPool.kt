@@ -105,7 +105,9 @@ object HistoryPool {
     // Registers the account when unknown and returns the pooled history.
     private fun fetchPooledHistory(context: Context, username: String, userId: String, endpoint: BridgeEndpoint): List<HistorySample> {
         val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}?userId=${encode(userId)}", null, endpoint.token)
-        return availableHistory(body, userId, username) ?: throw IllegalStateException("Shared history account identity is not verified")
+        val history = availableHistory(body, userId, username) ?: throw IllegalStateException("Shared history account identity is not verified")
+        FollowerLossStore.decode(body, userId)?.let { FollowerLossStore.save(context, userId, it) }
+        return history
     }
 
     internal fun availableHistory(body: String, userId: String, username: String): List<HistorySample>? {

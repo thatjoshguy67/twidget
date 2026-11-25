@@ -288,8 +288,8 @@ export class LocalHistoryRepository {
   async startTopFollowersScan(key, scanId, now = this.now(), options = {}) {
     options = typeof options === "string" ? { kind: options } : options;
     const existing = this.store.topFollowers[key];
-    if (topFollowersAttemptBlocked(existing, now, options.refreshMs)) return topFollowersScanSummary(existing);
-    if (canResumeTopFollowersScan(existing, { ...options, now })) {
+    if ((!options.plan?.provider || (existing?.provider || "twitterapis") === options.plan.provider) && topFollowersAttemptBlocked(existing, now, options.refreshMs)) return topFollowersScanSummary(existing);
+    if ((!options.plan?.provider || (existing?.provider || "twitterapis") === options.plan.provider) && canResumeTopFollowersScan(existing, { ...options, now })) {
       existing.status = "running";
       existing.error = "";
       existing.updatedAt = now;
@@ -778,11 +778,11 @@ export class PostgresHistoryRepository {
         ORDER BY (status = 'running') DESC, updated_at DESC LIMIT 1 FOR UPDATE
       `, [key]);
       const existing = current.rows[0] ? topFollowersScanFromRow(current.rows[0]) : null;
-      if (topFollowersAttemptBlocked(existing, now, options.refreshMs)) {
+      if ((!options.plan?.provider || (existing?.provider || "twitterapis") === options.plan.provider) && topFollowersAttemptBlocked(existing, now, options.refreshMs)) {
         await client.query("COMMIT");
         return existing;
       }
-      if (canResumeTopFollowersScan(existing, { ...options, now })) {
+      if ((!options.plan?.provider || (existing?.provider || "twitterapis") === options.plan.provider) && canResumeTopFollowersScan(existing, { ...options, now })) {
         await client.query("UPDATE twidget_top_follower_scans SET status = 'running', error = '', updated_at = now() WHERE scan_id = $1::uuid", [existing.scanId]);
         await client.query("COMMIT");
         return { ...existing, status: "running", error: "", updatedAt: now };
@@ -1342,6 +1342,7 @@ function objectValue(value) { return value && typeof value === "object" && !Arra
 function topFollowersScanSummary(scan) {
   return {
     userId: String(scan.userId || ""),
+    provider: scan.provider || "twitterapis",
     kind: scan.kind === "head" ? "head" : "full",
     baseScanId: String(scan.baseScanId || ""),
     sourceFollowers: Number.isSafeInteger(scan.sourceFollowers) ? scan.sourceFollowers : null,

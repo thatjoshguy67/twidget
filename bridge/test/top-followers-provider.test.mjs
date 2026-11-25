@@ -4,7 +4,41 @@ import {
   fetchTwitterApisFollowersPage,
   parseTwitterApisFollowersPage,
   TopFollowersProviderError,
+  fetchFxFollowersPage,
+  parseFxFollowersPage,
 } from "../src/top-followers-provider.js";
+
+const fxUser = { id: "1", screen_name: "fan", name: "Fan", followers: 42,
+  avatar_url: "https://pbs.twimg.com/a_normal.jpg", verification: { verified: true } };
+
+test("FxTwitter uses account IDs and its bottom cursor without account credentials", async () => {
+  let request;
+  const page = await fetchFxFollowersPage({ userId: "123", cursor: "next|value", fetchImpl: async (url, options) => {
+    request = { url: new URL(url), options };
+    return { ok: true, json: async () => ({ code: 200, results: [fxUser], cursor: { top: "previous", bottom: "next2" } }) };
+  } });
+  assert.equal(request.url.pathname, "/2/profile/id:123/followers");
+  assert.equal(request.url.searchParams.get("cursor"), "next|value");
+  assert.equal(request.options.headers.Authorization, undefined);
+  assert.equal(page.nextCursor, "next2");
+  assert.equal(page.users[0].username, "fan");
+  assert.equal(page.users[0].verified, true);
+  assert.equal(page.users[0].avatar, "https://pbs.twimg.com/a_400x400.jpg");
+  assert.equal(page.users[0].mutual, null);
+});
+
+test("unavailable, malformed and incomplete Fx lists cannot masquerade as terminal pages", async () => {
+  await assert.rejects(fetchFxFollowersPage({ userId: "123", fetchImpl: async () => ({ ok: false, status: 404 }) }),
+    error => error instanceof TopFollowersProviderError && error.status === 404);
+  await assert.rejects(fetchFxFollowersPage({ userId: "handle" }), /identity_required/);
+  for (const body of [
+    { code: 404, results: [], cursor: { bottom: null } },
+    { code: 200, results: [] },
+    { code: 200, results: [], cursor: { bottom: "more" } },
+    { code: 200, results: [{ ...fxUser, id: "" }], cursor: { bottom: null } },
+  ]) assert.throws(() => parseFxFollowersPage(body));
+  assert.deepEqual(parseFxFollowersPage({ code: 200, results: [], cursor: { bottom: null } }), { users: [], nextCursor: "" });
+});
 
 test("TwitterAPIs follower pages are normalized and deduplicated", () => {
   const page = parseTwitterApisFollowersPage({

@@ -132,7 +132,8 @@ internal object BriefInsightPolicy {
             Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate() == end.minusDays(14) }.maxByOrNull { it.timestamp } ?: return null
         val previous = stats.followersCount - week - old.followers
         return card(BriefCardType.AUDIENCE_MOMENTUM, R.string.brief_momentum_title,
-            strings.text(R.string.brief_momentum_body, signed(week, strings), signed(previous, strings)),
+            strings.text(R.string.brief_momentum_body, signed(week, strings), signed(previous, strings)) +
+                if (stats.followerContext?.overlapsDecline(stats, history, now) == true) " " + strings.text(R.string.follower_event_caveat) else "",
             listOf(BriefMetric(strings.text(R.string.brief_insight_this_week), signed(week, strings)),
                 BriefMetric(strings.text(R.string.brief_insight_previous_week), signed(previous, strings)),
                 metric(R.string.brief_insight_followers, stats.followersCount, strings)), stats.syncedAt, strings).copy(chartPoints = followerPoints(stats, history, 14, strings))

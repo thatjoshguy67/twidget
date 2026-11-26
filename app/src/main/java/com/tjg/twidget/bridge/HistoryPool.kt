@@ -39,10 +39,10 @@ object HistoryPool {
         // A follower reconciliation can finish after today's first profile sync.
         if (!force && !needsSync(context, username)) return stats
         markAttempted(context, username)
-        val pooled = runCatching { fetchPooledHistory(context, username, stats.userId, endpoint) }.getOrNull() ?: return stats
+        val (pooled, followerContext) = runCatching { fetchPooledHistory(context, username, stats.userId, endpoint) }.getOrNull() ?: return stats
         runCatching { syncInteractions(context, username, stats.userId, endpoint) }
         markSynced(context, username)
-        return if (pooled.isEmpty()) stats else stats.copy(history = stats.history + pooled, historyUserId = stats.userId)
+        return stats.copy(history = stats.history + pooled, historyUserId = stats.userId, followerContext = followerContext ?: stats.followerContext)
     }
 
     fun importAnalytics(
@@ -103,11 +103,11 @@ object HistoryPool {
     }
 
     // Registers the account when unknown and returns the pooled history.
-    private fun fetchPooledHistory(context: Context, username: String, userId: String, endpoint: BridgeEndpoint): List<HistorySample> {
+    private fun fetchPooledHistory(context: Context, username: String, userId: String, endpoint: BridgeEndpoint): Pair<List<HistorySample>, com.tjg.twidget.data.FollowerContext?> {
         val body = request(context, "GET", "${endpoint.url}/history/${encode(username)}?userId=${encode(userId)}", null, endpoint.token)
         val history = availableHistory(body, userId, username) ?: throw IllegalStateException("Shared history account identity is not verified")
         FollowerLossStore.decode(body, userId)?.let { FollowerLossStore.save(context, userId, it) }
-        return history
+        return history to com.tjg.twidget.data.FollowerContext.parse(JSONObject(body).optJSONObject("followerContext"))
     }
 
     internal fun availableHistory(body: String, userId: String, username: String): List<HistorySample>? {

@@ -82,7 +82,7 @@ internal object BriefContextPolicy {
                 format.format(start), format.format(end),
                 (if (delta > 0) "+" else "") + strings.number(delta),
                 strings.number(anchor.followers), strings.number(stats.followersCount),
-            ),
+            ) + if (stats.followerContext?.overlapsDecline(stats, history, now) == true) " " + strings.text(R.string.follower_event_caveat) else "",
             metrics = listOf(
                 BriefMetric(strings.text(R.string.brief_stat_net_change), (if (delta > 0) "+" else "") + strings.number(delta)),
                 BriefMetric(format.format(start), strings.number(anchor.followers)),

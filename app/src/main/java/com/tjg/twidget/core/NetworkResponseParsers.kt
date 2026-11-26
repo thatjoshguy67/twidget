@@ -89,6 +89,7 @@ internal object NetworkResponseParsers {
             else -> hasLong(user, keys)
         }
         return ProfileStats(
+            followerContext = com.tjg.twidget.data.FollowerContext.parse(json.optJSONObject("followerContext")),
             userId = listOf("userId", "id_str", "rest_id", "id").firstNotNullOfOrNull { key ->
                 user.optString(key).takeIf { it.matches(Regex("[0-9]+")) }
             }.orEmpty(),

@@ -47,6 +47,7 @@ data class ProfileStats(
     val historyUserId: String = "",
     val profileDetails: SharedProfileDetails = SharedProfileDetails(),
     val profileExpiresAt: Long = 0,
+    val followerContext: FollowerContext? = null,
 )
 
 data class SharedProfileDetails(val bio: String? = null, val bannerImage: String? = null,
@@ -981,7 +982,7 @@ object TwidgetStore {
         // of every number.
         val next = mergeByDay(saved + stats.history + sampleFor(stats))
         prefs(context).edit()
-            .putString(profileKey(username), statsToJson(stats.copy(userName = username, userId = stats.userId.ifBlank { existingStats?.userId.orEmpty() })).toString())
+            .putString(profileKey(username), statsToJson(stats.copy(userName = username, userId = stats.userId.ifBlank { existingStats?.userId.orEmpty() }, followerContext = stats.followerContext ?: existingStats?.followerContext)).toString())
             .putString(historyKey(username), JSONArray(next.map { historyToJson(it) }).toString())
             .apply()
         if (username.equals(settings(context).username, true)) {
@@ -1264,6 +1265,7 @@ object TwidgetStore {
         .put("likeCount", stats.likeCount)
         .put("profileImage", stats.profileImage)
         .put("profileDetails", stats.profileDetails.toJson()).put("profileExpiresAt", stats.profileExpiresAt)
+        .put("followerContext", stats.followerContext?.toJson())
         .put("statusFieldsKnown", stats.isVerified != null || stats.isPrivate != null)
         .apply {
             stats.isVerified?.let { put("isVerified", it) }
@@ -1286,6 +1288,7 @@ object TwidgetStore {
         profileImage = json.optString("profileImage", ""),
         profileDetails = SharedProfileDetails.fromJson(json.optJSONObject("profileDetails") ?: JSONObject()),
         profileExpiresAt = json.optLong("profileExpiresAt"),
+        followerContext = FollowerContext.parse(json.optJSONObject("followerContext")),
         isVerified = if (json.optBoolean("statusFieldsKnown", false) && json.has("isVerified")) json.optBoolean("isVerified") else null,
         isPrivate = if (json.optBoolean("statusFieldsKnown", false) && json.has("isPrivate")) json.optBoolean("isPrivate") else null,
         syncedAt = json.optLong("syncedAt", 0L),

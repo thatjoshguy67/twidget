@@ -30,6 +30,18 @@ class BriefAiCardResponseTest {
     )
 
     @Test
+    fun negativeFollowerChangeCannotBecomeCloserToGoalThroughGeneratedCopy() {
+        val card = BriefCard("follower-loss", BriefCardType.FOLLOWER_CONTEXT,
+            "Follower change", "Your follower change was -20.", 70)
+        val negative = source.copy(followersToday = -20, followersWeek = -20, cards = listOf(card))
+        val result = BriefAiCardResponse.apply(negative,
+            """[{"i":"follower-loss","t":"Follower change","b":"Your follower change was -20, moving you closer to your goal."}]""",
+            BriefProviderUsed.CLOUD, strings)
+        assertEquals(null, result.snapshot)
+        assertEquals(0, result.appliedCards)
+    }
+
+    @Test
     fun measuredContextAcceptsModelWrittenDescriptionsFromItsEvidence() {
         for (type in listOf(BriefCardType.POST_CONTEXT, BriefCardType.FOLLOWER_CONTEXT)) {
             val card = BriefCard("context", type, "Recorded context", "300 recorded views so far. This is a sample.", 70)

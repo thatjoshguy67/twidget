@@ -1,0 +1,5 @@
+<resources>
+    <string name="follower_event_context_needed">Growth uncertain</string>
+    <string name="follower_event_caveat">This loss overlaps unusual declines across tracked accounts. The cause is unconfirmed; follower changes alone cannot establish poorer content performance.</string>
+    <string name="follower_event_chart_heading">Followers · widespread decline</string>
+</resources>

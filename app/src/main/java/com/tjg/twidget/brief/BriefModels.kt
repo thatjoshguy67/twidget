@@ -187,8 +187,8 @@ data class BriefEditorialSummary(
             }
             val title = strings.text(
                 when {
-                    hasGoal && (followersToday > 0L || followersWeek > 0L) -> R.string.brief_summary_title_moving_closer
-                    followersToday > 0L || followersWeek > 0L -> R.string.brief_summary_title_momentum
+                    hasGoal && (followersWeek > 0L || (followersWeek == 0L && followersToday > 0L)) -> R.string.brief_summary_title_moving_closer
+                    followersWeek > 0L || (followersWeek == 0L && followersToday > 0L) -> R.string.brief_summary_title_momentum
                     followersToday < 0L || followersWeek < 0L -> R.string.brief_summary_title_reset
                     BriefCardType.POSTING_GUIDE in types || BriefCardType.SCHEDULE_GUIDE in types ->
                         R.string.brief_summary_title_next_move
@@ -207,7 +207,7 @@ data class BriefEditorialSummary(
                 if (hasGoal) {
                     add(
                         strings.text(
-                            if (followersToday > 0L || followersWeek > 0L) {
+                            if (followersWeek > 0L || (followersWeek == 0L && followersToday > 0L)) {
                                 R.string.brief_summary_goal_closer
                             } else {
                                 R.string.brief_summary_goal_in_view
@@ -311,7 +311,7 @@ data class BriefEditorialSummary(
             }
             if (followerSentence == null) return supportingSentence
             val followerContext = when {
-                hasGoal && (followersToday > 0L || followersWeek > 0L) ->
+                hasGoal && (followersWeek > 0L || (followersWeek == 0L && followersToday > 0L)) ->
                     strings.text(R.string.brief_summary_goal_closer)
                 else -> supportingSentence.takeUnless { it == watching }
             }

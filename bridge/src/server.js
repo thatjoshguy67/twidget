@@ -1,3 +1,4 @@
+import { followerEventService } from "./follower-events.js";
 import { backfillAnalytics, fetchTimelinePage } from "./analytics-backfill.js";
 import { fxProfileUrl, fxUserId } from "./fx-profile.js";
 import { AnalyticsArchive } from "./analytics-archive.js";
@@ -125,6 +126,7 @@ const topFollowersPerIpDailyLimiter = redisClient
   ? new RedisFixedWindowLimiter({ client: redisClient, prefix: "twidget:rate:top-followers-ip-daily", windowMs: 24 * 60 * 60 * 1000 })
   : new LocalFixedWindowLimiter({ windowMs: 24 * 60 * 60 * 1000, maxKeys: maxTrackedIps });
 const historyRepository = await createHistoryRepository();
+const followerContext = followerEventService(historyRepository);
 const analyticsArchive = new AnalyticsArchive(historyRepository);
 await analyticsArchive.initialize();
 const topFollowersPriority = new TopFollowersPriority({
@@ -467,6 +469,11 @@ app.get(["/official/user/:username", "/x/user/:username", "/api/x/user/:username
 // Analytics imports submit movements rather than totals and are admitted only
 // after reconstruction matches independent live and stored follower anchors.
 
+app.get("/context/follower-events", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json(await followerContext());
+});
+
 app.get("/history/:username", async (req, res) => {
   const username = cleanUsername(req.params.username);
   if (!username) {
@@ -524,7 +531,7 @@ app.get("/history/:username", async (req, res) => {
     }
   }
   const meta = await historyRepository.getMeta(key);
-  res.json({ userName: username, userId: meta.userId || meta.verifiedUserId || "",
+  res.json({ followerContext: await followerContext(), userName: username, userId: meta.userId || meta.verifiedUserId || "",
     followerChanges: followerChangesFor(meta),
     history: !meta.userId && meta.verifiedUserId ? meta.verifiedHistory || [] : await historyRepository.getHistory(key, { touch: true, all }),
     ...(!meta.userId && meta.verifiedUserId ? { legacyHistory: await historyRepository.getHistory(key, { touch: true, all }), legacyHistoryIdentity: "handle-only" } : {}),
@@ -1911,6 +1918,7 @@ async function withHistory(profile) {
   return {
     ...profile,
     syncedAt: Date.now(),
+    followerContext: await followerContext(),
     historyUserId: owned ? meta.userId : verified ? meta.verifiedUserId : "",
     // Keep legacy handle-keyed history available to older clients without
     // asserting ownership. ID-aware clients still require historyUserId.

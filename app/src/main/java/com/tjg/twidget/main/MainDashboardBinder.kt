@@ -823,7 +823,13 @@ internal class MainDashboardBinder(
             val history = fullHistory.filter { it.followersKnown }
             val stats = renderSnapshot?.stats ?: TwidgetStore.currentStats(activity, account)
             findViewById<TextView>(R.id.metric_label).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
-            findViewById<TextView>(R.id.dashboard_graph_heading).typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
+            findViewById<TextView>(R.id.dashboard_graph_heading).apply {
+                typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 600)
+                if (stats.followerContext?.overlapsDecline(stats, history) == true) {
+                    text = activity.getString(R.string.follower_event_chart_heading)
+                    contentDescription = "$text. ${activity.getString(R.string.follower_event_caveat)}"
+                }
+            }
             findViewById<TextView>(R.id.followers_value).apply {
                 text = if (stats.followersKnown) fullCount(stats.followersCount) else "--"
                 typeface = com.tjg.twidget.ui.TwidgetFonts.forApp(activity, 700)
@@ -1323,11 +1329,12 @@ internal class MainDashboardBinder(
                 )
             }
             DashboardCardType.MOMENTUM -> {
-                val momentum = momentum(history)
+                val sharedDecline = stats.followerContext?.overlapsDecline(stats, history) == true
+                val momentum = if (sharedDecline) activity.getString(R.string.follower_event_context_needed) to activity.getColor(R.color.oneui_text_secondary) else momentum(history)
                 InsightSpec(
                     label = activity.getString(R.string.momentum),
                     value = momentum.first,
-                    detail = activity.getString(R.string.per_range, TwidgetStore.signedNumber(followersDelta)),
+                    detail = if (sharedDecline) activity.getString(R.string.follower_event_caveat) else activity.getString(R.string.per_range, TwidgetStore.signedNumber(followersDelta)),
                     accent = momentum.second,
                 )
             }

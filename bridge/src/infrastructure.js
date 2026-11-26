@@ -142,6 +142,13 @@ export class LocalHistoryRepository {
   async close() { await this.persist(); }
   async countAccounts() { return Object.keys(this.store.accounts).length; }
   async hasAccount(key) { return Object.hasOwn(this.store.accounts, key); }
+  async followerEventObservations() {
+    return Object.entries(this.store.accounts).flatMap(([key, samples]) => {
+      const id = this.store.meta[key]?.userId;
+      return id ? (samples || []).map(row => ({ accountId: id, ts: row.ts, followers: row.followers,
+        known: row.followersKnown === true, source: row.src, estimated: row.est === true })) : [];
+    });
+  }
   async listAccounts() { return Object.keys(this.store.accounts).sort(); }
   async recordPrimaryProfile(hash, username, maxInstallations) {
     const reports = this.store.primaryProfiles;
@@ -636,6 +643,15 @@ export class PostgresHistoryRepository {
   async hasAccount(key) {
     const result = await this.pool.query("SELECT 1 FROM twidget_history_accounts WHERE username = $1", [key]);
     return result.rowCount > 0;
+  }
+  async followerEventObservations() {
+    const result = await this.pool.query(`SELECT a.metadata->>'userId' AS "accountId",
+      (extract(epoch FROM s.sample_date::timestamp AT TIME ZONE 'UTC')*1000)::bigint::text AS ts,
+      s.followers::text, s.followers_known AS known, s.source, s.estimated
+      FROM twidget_history_samples s JOIN twidget_history_accounts a USING(username)
+      WHERE s.sample_date >= CURRENT_DATE - 35 AND s.source='live' AND s.followers_known
+      AND NOT s.estimated AND COALESCE(a.metadata->>'userId','') <> ''`);
+    return result.rows.map(row => ({ ...row, ts: Number(row.ts), followers: Number(row.followers) }));
   }
   async listAccounts() {
     const result = await this.pool.query("SELECT username FROM twidget_history_accounts ORDER BY username");

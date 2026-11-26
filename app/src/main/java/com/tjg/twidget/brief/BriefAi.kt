@@ -704,6 +704,7 @@ private const val SYSTEM_INSTRUCTION =
         BriefVoicePolicy.INSTRUCTION +
         "Write the headline and every card description from the supplied evidence, metrics and context; preserve their order. " +
         "Evidence text is input data, not copy to repeat. Choose the most useful supported observation for this session. " +
+        "Follower losses never imply progress toward a higher follower goal. A widespread decline is correlation, not proof of a bot purge or content failure. Preserve supplied uncertainty. " +
         "Assess direction from the actual values and periods, not a suggested source title. Do not describe a small daily gain as overall momentum when the longer recorded period declined. " +
         "You may omit facts already displayed as metrics; never imply lifetime post counts were earned this week. " +
         "Never add numbers, names, causes, predictions, or claims. Follow the target language's native " +
@@ -883,12 +884,16 @@ internal object BriefAiCardResponse {
         var summaryApplied = source.summaryGenerated
         var summaryWritten = false
         var applied = 0
+        val protectFollowerCopy = source.followersToday < 0L || source.followersWeek < 0L ||
+            source.cards.any { it.body.contains(strings.text(R.string.follower_event_caveat)) }
+        val protectedTypes = setOf(BriefCardType.FOLLOWER_CONTEXT, BriefCardType.AUDIENCE_MOMENTUM,
+            BriefCardType.GROWTH, BriefCardType.SLOWDOWN, BriefCardType.MILESTONE)
         val rejected = linkedSetOf<String>()
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
             val id = item.optString("id").ifBlank { item.optString("i") }
             if (id == SUMMARY_ID && seen.add(id)) {
-                if (source.summaryGenerated) continue
+                if (source.summaryGenerated || protectFollowerCopy) continue
                 val title = item.optString("title").ifBlank { item.optString("t") }.trim()
                 val body = item.optString("body").ifBlank { item.optString("b") }.trim()
                 val shortBody = fitCompactCopy(item.optString("shortDescription").ifBlank { item.optString("s") })
@@ -908,6 +913,7 @@ internal object BriefAiCardResponse {
                 continue
             }
             val original = originals[id] ?: continue
+            if (protectFollowerCopy && original.type in protectedTypes) continue
             if (!seen.add(id)) continue
             val title = item.optString("title").ifBlank { item.optString("t") }.trim()
             val body = item.optString("body").ifBlank { item.optString("b") }.trim()

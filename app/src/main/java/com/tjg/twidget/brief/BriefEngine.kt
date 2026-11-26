@@ -34,7 +34,7 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 26
+    private const val ENGINE_VERSION = 27
 
     fun rebuild(context: Context, username: String, force: Boolean = false, reuseNarrative: Boolean = true): BriefSnapshot {
         val clean = username.trim().trimStart('@')
@@ -96,7 +96,8 @@ object BriefEngine {
             BriefOpenAi.method(context), BriefOpenAi.selectedModel(context, false),
             BriefModelPolicy.geminiModel(context, false)).joinToString("|")
         val rebuilt = BriefIncrementalPolicy.prepare(measured, strings, scope)
-        val snapshot = if (reuseNarrative) BriefStore.cachedRun(context, rebuilt)
+        val snapshot = if (reuseNarrative && evaluation.report.followersToday >= 0L && evaluation.report.followersWeek >= 0L &&
+            stats.followerContext?.overlapsDecline(stats, stats.history) != true) BriefStore.cachedRun(context, rebuilt)
             ?: BriefAiCachePolicy.retain(previous, rebuilt, strings) else rebuilt
         BriefStore.write(context, snapshot)
         BriefDebugLog.record(context, if (force) "forced rebuild" else "rebuild", evaluation.report)

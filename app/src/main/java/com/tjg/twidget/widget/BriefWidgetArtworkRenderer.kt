@@ -130,7 +130,8 @@ internal object BriefWidgetArtworkRenderer {
         val summary = presentation?.summary()
         val displayCard = card.copy(
             title = summary?.title ?: card.title,
-            body = summary?.shortDescription ?: card.body,
+            body = if (summary != null) com.tjg.twidget.brief.BriefHomeCardCopy.description(context, card.type,
+                com.tjg.twidget.data.DailyStreakStore.snapshot(context, account)) else card.body,
         )
         val widgetLayout = layout(width / density, height / density)
         val colors = WidgetColors.resolve(context, style, dark)

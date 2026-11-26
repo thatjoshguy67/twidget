@@ -3,4 +3,9 @@
     <string name="widget_brief_dynamic_summary">Combina los colores que elijas detrás de tu resumen.</string>
     <string name="widget_brief_primary_colour">Primer color</string>
     <string name="widget_brief_secondary_colour">Segundo color</string>
+    <string name="widget_brief_background">Fondo</string>
+    <string name="widget_brief_background_type">Tipo de fondo</string>
+    <string name="widget_brief_basic">Básico</string>
+    <string name="widget_brief_dynamic_colour">Color dinámico</string>
+    <string name="widget_brief_automatic_colours">Cambia automáticamente a lo largo del día.</string>
 </resources>

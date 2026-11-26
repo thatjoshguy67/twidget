@@ -3,4 +3,9 @@
     <string name="widget_brief_dynamic_summary">Combina els colors que triïs darrere del teu resum.</string>
     <string name="widget_brief_primary_colour">Primer color</string>
     <string name="widget_brief_secondary_colour">Segon color</string>
+    <string name="widget_brief_background">Fons</string>
+    <string name="widget_brief_background_type">Tipus de fons</string>
+    <string name="widget_brief_basic">Bàsic</string>
+    <string name="widget_brief_dynamic_colour">Color dinàmic</string>
+    <string name="widget_brief_automatic_colours">Canvia automàticament al llarg del dia.</string>
 </resources>

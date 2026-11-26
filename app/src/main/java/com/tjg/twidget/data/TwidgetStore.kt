@@ -118,6 +118,7 @@ data class TwidgetWidgetSettings(
     val briefDynamic: Boolean = false,
     val briefPrimaryColor: Int = 0xFF1881FF.toInt(),
     val briefSecondaryColor: Int = 0xFF64CFFF.toInt(),
+    val briefBackgroundEnabled: Boolean = true,
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -477,6 +478,7 @@ object TwidgetStore {
             briefDynamic = boolean("widget_brief_dynamic", false),
             briefPrimaryColor = integer("widget_brief_primary", 0xFF1881FF.toInt()) or 0xFF000000.toInt(),
             briefSecondaryColor = integer("widget_brief_secondary", 0xFF64CFFF.toInt()) or 0xFF000000.toInt(),
+            briefBackgroundEnabled = boolean("widget_brief_background", true),
         )
     }
 
@@ -508,6 +510,7 @@ object TwidgetStore {
             .putBoolean("widget_brief_dynamic$suffix", settings.briefDynamic)
             .putInt("widget_brief_primary$suffix", settings.briefPrimaryColor)
             .putInt("widget_brief_secondary$suffix", settings.briefSecondaryColor)
+            .putBoolean("widget_brief_background$suffix", settings.briefBackgroundEnabled)
             .apply()
     }
 

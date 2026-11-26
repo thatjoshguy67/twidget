@@ -1,0 +1,12 @@
+<resources>
+    <string name="brief_home_description_restart">Retoma tu ritmo de publicación y comienza una nueva racha.</string>
+    <string name="brief_home_description_streak_active">Tu ritmo de publicación crece. Mantén el impulso.</string>
+    <string name="brief_home_description_streak_due">Una nueva publicación hoy mantendrá tu racha.</string>
+    <string name="brief_home_description_goal">Tu próximo objetivo está a la vista. Revisa tu progreso y planifica el siguiente paso.</string>
+    <string name="brief_home_description_followers">Descubre las cuentas destacadas de tu audiencia.</string>
+    <string name="brief_home_description_audience">Observa cómo cambia tu audiencia y encuentra tu próximo paso.</string>
+    <string name="brief_home_description_post">Revisa una publicación reciente y qué puedes probar después.</string>
+    <string name="brief_home_description_timing">Encuentra un buen momento para publicar según tu actividad reciente.</string>
+    <string name="brief_home_description_patterns">Explora los temas y formatos que conectan con tu audiencia.</string>
+    <string name="brief_home_description_overview">Ponte al día con tu actividad reciente y decide en qué centrarte.</string>
+</resources>

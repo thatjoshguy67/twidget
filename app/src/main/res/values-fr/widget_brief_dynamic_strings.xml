@@ -3,4 +3,9 @@
     <string name="widget_brief_dynamic_summary">Mélange les couleurs choisies derrière ton briefing.</string>
     <string name="widget_brief_primary_colour">Première couleur</string>
     <string name="widget_brief_secondary_colour">Deuxième couleur</string>
+    <string name="widget_brief_background">Arrière-plan</string>
+    <string name="widget_brief_background_type">Type d’arrière-plan</string>
+    <string name="widget_brief_basic">Basique</string>
+    <string name="widget_brief_dynamic_colour">Couleur dynamique</string>
+    <string name="widget_brief_automatic_colours">Change automatiquement au fil de la journée.</string>
 </resources>

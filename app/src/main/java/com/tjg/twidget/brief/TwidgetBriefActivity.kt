@@ -142,6 +142,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_twidget_brief)
+        findViewById<View>(R.id.brief_root).addOnLayoutChangeListener { view, left, _, right, _, oldLeft, _, oldRight, _ ->
+            if (right - left != oldRight - oldLeft) view.post { reflowForViewport() }
+        }
         backgroundUnlockProgress = savedInstanceState?.getFloat("brief_background_unlock")
             ?: if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) 0f else .45f
         backgroundUnlockStarted = savedInstanceState?.getBoolean("brief_background_unlock_started") ?: false
@@ -158,7 +161,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             )
         }
         apiKeyPromptShown = intent.getBooleanExtra(EXTRA_API_KEY_PROMPT_SHOWN, false)
-        BriefSettingsStore.setEnabled(this, true)
+        if (debugScenario == BriefDebugScenario.REAL) BriefSettingsStore.setEnabled(this, true)
 
         bindChrome()
         applyContextBackground()
@@ -191,6 +194,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun loadInitialBrief() {
+        if (debugScenario == BriefDebugScenario.COMPONENTS) {
+            render(BriefSnapshot(username, System.currentTimeMillis(), 0, 0, 0, 130, 20, 6, 0, 0,
+                emptyList(), topFollowerRanks = emptyMap()))
+            setLoading(false)
+            return
+        }
         if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false) ||
             intent.getBooleanExtra(EXTRA_WAIT_FOR_LAUNCH_GENERATION, false)
         ) {
@@ -708,7 +717,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
-    private fun followerChartCard(): View = LinearLayout(this).apply {
+    private fun followerChartCard(previewHistory: List<com.tjg.twidget.data.HistorySample>? = null): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.brief_card_background)
         com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(this, dp(28).toFloat())
@@ -724,17 +733,18 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 setImageDrawable(AppCompatResources.getDrawable(this@TwidgetBriefActivity, OneUiIconR.drawable.ic_oui_community))
                 imageTintList = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
             }, LinearLayout.LayoutParams(dp(24), dp(24)))
-            addView(primaryText(format(stats.followersCount), 22f, true).apply {
+            addView(primaryText(format(previewHistory?.lastOrNull()?.followers ?: stats.followersCount), 22f, true).apply {
                 setPadding(dp(20), 0, 0, 0)
             })
-            val delta = TwidgetStore.followersDelta(this@TwidgetBriefActivity, username)
+            val delta = previewHistory?.let { (it.lastOrNull()?.followers ?: 0) - (it.firstOrNull()?.followers ?: 0) }
+                ?: TwidgetStore.followersDelta(this@TwidgetBriefActivity, username)
             if (delta != 0L) addView(primaryText(TwidgetStore.signedNumber(delta), 18f).apply {
                 setPadding(dp(6), 0, 0, 0)
                 setTextColor(getColor(if (delta < 0) R.color.metric_red else R.color.metric_green))
             })
         })
-        val full = TwidgetStore.fullHistory(this@TwidgetBriefActivity, username).filter { it.followersKnown }
-        val visible = TwidgetStore.chartHistory(this@TwidgetBriefActivity, username, HistoryRange.WEEK)
+        val full = (previewHistory ?: TwidgetStore.fullHistory(this@TwidgetBriefActivity, username)).filter { it.followersKnown }
+        val visible = (previewHistory ?: TwidgetStore.chartHistory(this@TwidgetBriefActivity, username, HistoryRange.WEEK))
             .filter { it.followersKnown }
         addView(MetricChartView(this@TwidgetBriefActivity).apply {
             setData(visible, { it.followers })
@@ -771,7 +781,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
     }
 
-    private fun topFollowersCard(card: BriefCard): View = LinearLayout(this).apply {
+    private fun topFollowersCard(card: BriefCard, previewFollowers: List<com.tjg.twidget.followers.TopFollower>? = null): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.brief_card_background)
         com.tjg.twidget.ui.SeslSurfaceHighlight.markBrief(this, dp(28).toFloat())
@@ -786,7 +796,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             )
         }
         setPadding(0, dp(12), 0, dp(6))
-        val followers = TopFollowersStore.read(this@TwidgetBriefActivity, username).top.take(3)
+        val followers = (previewFollowers ?: TopFollowersStore.read(this@TwidgetBriefActivity, username).top).take(3)
         if (followers.isEmpty()) {
             addView(supportingText(getString(R.string.brief_top_followers_empty), 14f).apply {
                 setPadding(dp(20), dp(12), dp(20), dp(18))
@@ -857,12 +867,15 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         renderedTimingHour = java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)
         applyContextBackground()
         visiblePresentation = BriefStore.presentation(this, username, snapshot)
-        val summary = visiblePresentation?.summary() ?: BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
+        val summary = if (debugScenario == BriefDebugScenario.COMPONENTS)
+            BriefEditorialSummary(getString(R.string.brief_preview_cards), getString(R.string.brief_preview_cards_summary))
+        else visiblePresentation?.summary() ?: BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
             .showStaticText(summary.title)
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(summary.body)
         val columns = configureResponsiveLayout()
         val container = findViewById<LinearLayout>(R.id.brief_cards)
+        findViewById<View>(R.id.brief_footer).visibility = if (debugScenario == BriefDebugScenario.COMPONENTS) View.GONE else View.VISIBLE
         container.removeAllViews()
         rankedTweetDescriptions.clear()
         // Keep every review preview independent so masonry can balance unequal tweet heights.
@@ -872,6 +885,15 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         } else null
         refreshReviewPreviews = { reviews?.refreshDescriptions?.invoke(); refreshTweetRankDescriptions() }
         val sections = buildList {
+            if (debugScenario == BriefDebugScenario.COMPONENTS) {
+                addAll(BriefCardPreviewGallery.sections(this@TwidgetBriefActivity, snapshot,
+                    card = { card -> cardSection(card, null) },
+                    goal = { settings, metric -> milestoneCard(BriefCard("preview-goal", BriefCardType.MILESTONE, "", "", 0), settings to metric) },
+                    followers = { topFollowersCard(BriefCard("preview-followers", BriefCardType.TOP_FOLLOWER, "", "", 0), it) },
+                    history = ::followerChartCard,
+                ).map { it to 20 })
+                return@buildList
+            }
             if (debugScenario == BriefDebugScenario.CHATGPT_LINK) {
                 add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity, preview = true) {} to 20)
             }
@@ -915,7 +937,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             val columnHeights = IntArray(columns)
             val content = findViewById<LinearLayout>(R.id.brief_content)
             val configuredWidth = content.layoutParams.width.takeIf { it > 0 }
-                ?: resources.displayMetrics.widthPixels
+                ?: viewportWidth()
             val availableWidth = configuredWidth - content.paddingLeft - content.paddingRight
             val columnWidth = (
                 availableWidth - dp(MASONRY_COLUMN_GAP_DP) * (columns - 1)
@@ -932,15 +954,49 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
+    override fun allowsPopOverPresentation(): Boolean = false
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        findViewById<View>(R.id.brief_root).post { reflowForViewport(force = true) }
+    }
+
+    private var renderedViewportWidth = 0
+
+    private fun viewportWidth(): Int {
+        val root = findViewById<View>(R.id.brief_root)
+        val scroll = findViewById<View>(R.id.brief_scroll)
+        return (scroll.width.takeIf { it > 0 } ?: (root.width - root.paddingLeft - root.paddingRight)
+            .takeIf { it > 0 } ?: resources.displayMetrics.widthPixels) - scroll.paddingLeft - scroll.paddingRight
+    }
+
+    private fun reflowForViewport(force: Boolean = false) {
+        val snapshot = renderedSnapshot ?: return
+        if (!force && viewportWidth() == renderedViewportWidth) return
+        // Old column translations and delayed entrance callbacks must not restore the previous width.
+        entranceGeneration++
+        entranceInProgress = false
+        entranceStarted = false
+        cardEntranceAnimations.forEach { it.cancel() }
+        cardEntranceAnimations.clear()
+        findViewById<View>(R.id.brief_footer).apply { animate().cancel(); alpha = 1f; translationY = 0f }
+        val pending = pendingEntranceRender
+        pendingEntranceRender = null
+        render(pending?.first ?: snapshot, pending?.second ?: AnalyticsClient.cached(this, username))
+        findViewById<androidx.core.widget.NestedScrollView>(R.id.brief_scroll).apply { scrollTo(0, scrollY) }
+    }
+
     private fun configureResponsiveLayout(): Int {
-        val columns = BriefLayoutPolicy.columnCount(resources.configuration.screenWidthDp)
+        val availableWidth = viewportWidth().coerceAtLeast(1)
+        renderedViewportWidth = availableWidth
+        val columns = BriefLayoutPolicy.columnCount((availableWidth / resources.displayMetrics.density).toInt())
         findViewById<LinearLayout>(R.id.brief_content).layoutParams =
             (findViewById<LinearLayout>(R.id.brief_content).layoutParams as FrameLayout.LayoutParams).apply {
                 width = if (columns == 1) {
                     FrameLayout.LayoutParams.MATCH_PARENT
                 } else {
                     minOf(
-                        resources.displayMetrics.widthPixels - dp(20),
+                        availableWidth,
                         dp(BriefLayoutPolicy.MAX_CONTENT_WIDTH_DP),
                     )
                 }
@@ -1069,23 +1125,15 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun compactGuideAction(card: BriefCard): View = LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL
         orientation = LinearLayout.HORIZONTAL
-
-        val openPrimary = View.OnClickListener { performCardAction(card) }
-        addView(LinearLayout(context).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dp(52)
-            setPadding(dp(20), dp(12), dp(20), dp(12))
-            setBackgroundResource(R.drawable.brief_guide_action_surface)
-            clipToOutline = true
-            applyBriefCardRipple()
-            isClickable = card.action != BriefCardAction.NONE
-            isFocusable = isClickable
-            if (isClickable) setOnClickListener(openPrimary)
-            addView(primaryText(actionLabel(card) ?: card.title, 18f, bold = true))
-        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-            marginEnd = dp(10)
-        })
-
+        minimumHeight = dp(52)
+        setPadding(dp(20), dp(12), dp(20), dp(12))
+        setBackgroundResource(R.drawable.brief_guide_action_surface)
+        clipToOutline = true
+        applyBriefCardRipple()
+        isClickable = card.action != BriefCardAction.NONE
+        isFocusable = isClickable
+        if (isClickable) setOnClickListener { performCardAction(card) }
+        addView(primaryText(actionLabel(card) ?: card.title, 18f, bold = true))
     }
 
     private fun actionLabel(card: BriefCard): String? = when (card.action) {
@@ -1110,11 +1158,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         foreground = AppCompatResources.getDrawable(context, R.drawable.brief_card_ripple)
     }
 
-    private fun milestoneCard(card: BriefCard): View {
+    private fun milestoneCard(card: BriefCard, preview: Pair<com.tjg.twidget.main.AccountGoalSettings?, com.tjg.twidget.main.MilestoneMetricSnapshot?>? = null): View {
         val root = LayoutInflater.from(this).inflate(R.layout.milestone_card, null, false)
-        val isSetup = card.actionData == BRIEF_MILESTONE_SETUP_ACTION
-        val settings = if (isSetup) null else milestoneSettings(card)
-        val metric = settings?.let {
+        val isSetup = if (preview != null) preview.first == null else card.actionData == BRIEF_MILESTONE_SETUP_ACTION
+        val settings = if (preview != null) preview.first else if (isSetup) null else milestoneSettings(card)
+        val metric = if (preview != null) preview.second else settings?.let {
             MilestoneMetricResolver.resolve(
                 context = this,
                 account = username,
@@ -1165,6 +1213,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         root.findViewById<ImageButton>(R.id.milestone_edit).apply {
             visibility = if (isSetup) View.GONE else View.VISIBLE
             setOnClickListener(openEditor)
+        }
+        if (preview != null) {
+            root.setOnClickListener(null)
+            root.findViewById<ImageButton>(R.id.milestone_edit).visibility = View.GONE
         }
         return root
     }
@@ -1280,16 +1332,16 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private var renderedTimingHour: java.time.ZonedDateTime? = null
-    private var appliedBlueTheme: Pair<BriefBlueTheme, Boolean>? = null
+    private var appliedBlueTheme: Triple<BriefBlueTheme, Boolean, Float>? = null
 
     private fun applyContextBackground() {
         val preview = if (TwidgetStore.debugMenuUnlocked(this)) intent.getStringExtra("brief_blue_theme") else null
         val theme = BriefBlueTheme.entries.firstOrNull { it.name == preview } ?: BriefBlueTheme.current()
-        val key = theme to isNight()
+        val key = Triple(theme, isNight(), resources.displayMetrics.density)
         if (appliedBlueTheme != key) {
             appliedBlueTheme = key
             backgroundMotionProgress = BriefBlueBackground.motionPhase()
-            blueBackground = BriefBlueBackground(theme, key.second).also {
+            blueBackground = BriefBlueBackground(theme, key.second, density = resources.displayMetrics.density).also {
                 it.setMotionProgress(backgroundMotionProgress)
                 it.setUnlockProgress(backgroundUnlockProgress)
             }

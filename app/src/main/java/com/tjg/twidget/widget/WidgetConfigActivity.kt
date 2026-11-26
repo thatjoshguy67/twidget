@@ -45,6 +45,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var fontFamily = TwidgetStore.FONT_ONE_UI_SANS
     private var showDelta = true
     private var briefDynamic = false
+    private var briefBackgroundEnabled = true
     private var briefPrimaryColor = 0xFF1881FF.toInt()
     private var briefSecondaryColor = 0xFF64CFFF.toInt()
     private var containedFooter = false
@@ -57,6 +58,14 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private var editingDefaults = false
     private val previewPages = mutableListOf<FrameLayout>()
     private val accountRadios = mutableListOf<Pair<String, RadioButton>>()
+    private val previewClock = android.os.Handler(android.os.Looper.getMainLooper())
+    private var previewTheme: com.tjg.twidget.brief.BriefBlueTheme? = null
+    private val previewClockTick = object : Runnable {
+        override fun run() {
+            if (isBriefWidget && previewTheme != com.tjg.twidget.brief.BriefBlueTheme.current()) render()
+            previewClock.postDelayed(this, 60_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,6 +152,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         showDelta = settings.showDelta
         containedFooter = savedInstanceState?.getBoolean("contained_footer", settings.containedFooter) ?: settings.containedFooter
         briefDynamic = savedInstanceState?.getBoolean("brief_dynamic", settings.briefDynamic) ?: settings.briefDynamic
+        briefBackgroundEnabled = savedInstanceState?.getBoolean("brief_background", settings.briefBackgroundEnabled) ?: settings.briefBackgroundEnabled
         briefPrimaryColor = savedInstanceState?.getInt("brief_primary", settings.briefPrimaryColor) ?: settings.briefPrimaryColor
         briefSecondaryColor = savedInstanceState?.getInt("brief_secondary", settings.briefSecondaryColor) ?: settings.briefSecondaryColor
         language = settings.language
@@ -168,6 +178,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean("brief_dynamic", briefDynamic)
+        outState.putBoolean("brief_background", briefBackgroundEnabled)
         outState.putInt("brief_primary", briefPrimaryColor)
         outState.putInt("brief_secondary", briefSecondaryColor)
         outState.putBoolean("contained_footer", containedFooter)
@@ -221,7 +232,16 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(background.data))
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (isBriefWidget) {
+            render()
+            previewClock.postDelayed(previewClockTick, 60_000L)
+        }
+    }
+
     override fun onPause() {
+        previewClock.removeCallbacks(previewClockTick)
         if (!exitRequested) {
             findViewById<WallpaperPreviewLayout>(R.id.preview_container)?.fadeOutWallpaper {
                 if (!hasWindowFocus()) hideWallpaperPreview()
@@ -283,14 +303,21 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     }
 
     private fun bindControls() {
-        findViewById<SwitchItemView>(R.id.brief_dynamic_row).apply {
-            isChecked = briefDynamic
+        findViewById<SwitchItemView>(R.id.brief_background_row).apply {
+            isChecked = briefBackgroundEnabled
             onCheckedChangedListener = { _, checked ->
-                if (briefDynamic != checked) { briefDynamic = checked; render() }
+                if (briefBackgroundEnabled != checked) { briefBackgroundEnabled = checked; render() }
             }
         }
-        findViewById<CardItemView>(R.id.brief_primary_color_row).setOnClickListener { pickBriefColour(true) }
-        findViewById<CardItemView>(R.id.brief_secondary_color_row).setOnClickListener { pickBriefColour(false) }
+        findViewById<RadioItemViewGroup>(R.id.brief_background_type_group).apply {
+            check(if (briefDynamic) R.id.brief_background_dynamic else R.id.brief_background_basic)
+            setOnCheckedChangeListener(object : RadioItemViewGroup.OnCheckedChangeListener {
+                override fun onCheckedChanged(group: RadioItemViewGroup?, checkedId: Int) {
+                    val dynamic = checkedId == R.id.brief_background_dynamic
+                    if (briefDynamic != dynamic) { briefDynamic = dynamic; render() }
+                }
+            })
+        }
         WidgetOpacityControl.bind(findViewById(R.id.opacity_block), tintAlpha) { alpha ->
             tintAlpha = alpha
             currentLevel = closestOpacityLevel(alpha)
@@ -440,17 +467,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     )
 
     private fun render() {
-        val dynamicControls = isBriefWidget && widgetStyle == WidgetStyle.ONE_UI
-        findViewById<View>(R.id.brief_dynamic_row).visibility = if (dynamicControls) View.VISIBLE else View.GONE
-        listOf(R.id.brief_primary_color_row to briefPrimaryColor, R.id.brief_secondary_color_row to briefSecondaryColor).forEach { (id, colour) ->
-            findViewById<CardItemView>(id).apply {
-                visibility = if (dynamicControls && briefDynamic) View.VISIBLE else View.GONE
-                summary = String.format(java.util.Locale.ROOT, "#%06X", colour and 0xFFFFFF)
-                getEndImageView().setImageDrawable(GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL; setColor(colour)
-                    setSize(dp(24), dp(24)); setStroke(dp(1), getColor(R.color.oneui_divider))
-                })
-            }
+        previewTheme = com.tjg.twidget.brief.BriefBlueTheme.current()
+        findViewById<View>(R.id.brief_background_controls).visibility = if (isBriefWidget) View.VISIBLE else View.GONE
+        listOf(R.id.brief_background_type_title, R.id.brief_background_type_card).forEach {
+            findViewById<View>(it).visibility = if (isBriefWidget && briefBackgroundEnabled) View.VISIBLE else View.GONE
         }
         val previewMode = if (!isLockWidget && !isBriefWidget) homePreviewSpec().mode else -1
         findViewById<View>(R.id.contained_footer_row).visibility = if (
@@ -460,11 +480,17 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         findViewById<View>(R.id.contained_footer_summary).visibility = findViewById<View>(R.id.contained_footer_row).visibility
         findViewById<SwitchItemView>(R.id.contained_footer_row).isChecked = containedFooter
         findViewById<View>(R.id.opacity_block).visibility =
-            if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
+            if (isBriefWidget) { if (briefBackgroundEnabled) View.VISIBLE else View.GONE }
+            else if (isLockWidget || widgetStyle == WidgetStyle.MATERIAL) View.GONE else View.VISIBLE
         findViewById<CardItemView>(R.id.font_row).showTopDivider = findViewById<View>(R.id.opacity_block).visibility == View.VISIBLE
         findViewById<CardItemView>(R.id.language_row).showTopDivider = !isLockWidget
         findViewById<CardItemView>(R.id.logo_row).showTopDivider = true
-        findViewById<CardItemView>(R.id.tint_row).summary = colorModeLabel(colorMode)
+        findViewById<CardItemView>(R.id.tint_row).apply {
+            val automatic = isBriefWidget && briefBackgroundEnabled && briefDynamic
+            isEnabled = !automatic
+            alpha = if (automatic) .4f else 1f
+            summary = colorModeLabel(if (automatic) TwidgetStore.COLOR_MODE_SYSTEM else colorMode)
+        }
         findViewById<CardItemView>(R.id.font_row).summary = fontLabel(fontFamily)
         findViewById<CardItemView>(R.id.language_row)?.summary = languageLabel(language)
         findViewById<CardItemView>(R.id.logo_row).apply {
@@ -498,7 +524,10 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
         preview.setPadding(0, 0, 0, 0)
 
         val selectedAccount = accountUsername.ifBlank { TwidgetStore.settings(this).username }
-        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount, colorMode, if (fontFamily == widgetStyle.defaultFont) style.defaultFont else fontFamily, showDelta, language, style, containedFooter, briefDynamic, briefPrimaryColor, briefSecondaryColor)
+        val previewSettings = TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, selectedAccount,
+            if (isBriefWidget && briefDynamic && briefBackgroundEnabled) TwidgetStore.COLOR_MODE_SYSTEM else colorMode,
+            if (fontFamily == widgetStyle.defaultFont) style.defaultFont else fontFamily, showDelta, language, style,
+            containedFooter, briefDynamic, briefPrimaryColor, briefSecondaryColor, briefBackgroundEnabled)
 
         if (isLockWidget) {
             preview.background = null
@@ -518,10 +547,13 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             val spec = homePreviewSpec(style)
             val widthDp = spec.widthDp
             val heightDp = spec.heightDp
-            val darkPreview = isDarkPreview()
+            val darkPreview = widgetUsesDarkTheme(previewSettings.colorMode)
             preview.background = GradientDrawable().apply {
-                cornerRadius = resources.displayMetrics.density * spec.cornerRadiusDp * previewScale(widthDp)
-                setColor(WidgetColors.resolve(this@WidgetConfigActivity, previewSettings, darkPreview).background)
+                val radius = if (android.os.Build.VERSION.SDK_INT >= 31)
+                    resources.getDimension(android.R.dimen.system_app_widget_background_radius)
+                    else resources.displayMetrics.density * spec.cornerRadiusDp
+                cornerRadius = radius * previewScale(widthDp)
+                setColor(BriefWidgetDynamicBackground.surfaceColor(this@WidgetConfigActivity, previewSettings, darkPreview))
             }
             preview.layoutParams = preview.layoutParams.apply {
                 width = (dp(widthDp) * previewScale(widthDp)).toInt()
@@ -579,18 +611,6 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                 )
             )
         }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-    }
-
-    private fun pickBriefColour(primary: Boolean) {
-        androidx.picker3.app.SeslColorPickerDialog(this, { colour ->
-            if (primary) briefPrimaryColor = colour or 0xFF000000.toInt()
-            else briefSecondaryColor = colour or 0xFF000000.toInt()
-            render()
-        }, if (primary) briefPrimaryColor else briefSecondaryColor).apply {
-            setTitle(if (primary) R.string.widget_brief_primary_colour else R.string.widget_brief_secondary_colour)
-            setTransparencyControlEnabled(false)
-            show()
-        }
     }
 
     private fun pickColorMode(anchor: View) {
@@ -666,7 +686,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
     private fun saveAndFinish() {
         tintAlpha = OPACITY_PRESETS[currentLevel]
         TwidgetStore.saveWidgetSettings(this, if (editingDefaults) 0 else appWidgetId,
-            TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, widgetStyle, containedFooter, briefDynamic, briefPrimaryColor, briefSecondaryColor), widgetKind)
+            TwidgetWidgetSettings(tintAlpha, tintColor, logo, tapAction, accountUsername, colorMode, fontFamily, showDelta, language, widgetStyle, containedFooter, briefDynamic, briefPrimaryColor, briefSecondaryColor, briefBackgroundEnabled), widgetKind)
         if (editingDefaults) {
             WidgetPreviews.publish(this)
             when (widgetKind) {

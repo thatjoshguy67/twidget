@@ -1,0 +1,12 @@
+<resources>
+    <string name="brief_home_description_restart">Finde deinen Veröffentlichungsrhythmus wieder und starte eine neue Serie.</string>
+    <string name="brief_home_description_streak_active">Dein Veröffentlichungsrhythmus wächst. Bleib dran.</string>
+    <string name="brief_home_description_streak_due">Ein neuer Beitrag heute hält deine Serie am Laufen.</string>
+    <string name="brief_home_description_goal">Dein nächstes Ziel ist in Sicht. Sieh dir deinen Fortschritt und die nächsten Schritte an.</string>
+    <string name="brief_home_description_followers">Entdecke bemerkenswerte Konten in deinem Publikum.</string>
+    <string name="brief_home_description_audience">Sieh, wie sich dein Publikum verändert, und finde deinen nächsten Schritt.</string>
+    <string name="brief_home_description_post">Sieh dir einen aktuellen Beitrag und neue Ideen genauer an.</string>
+    <string name="brief_home_description_timing">Finde anhand deiner letzten Aktivitäten ein gutes Zeitfenster für deinen nächsten Beitrag.</string>
+    <string name="brief_home_description_patterns">Entdecke Themen und Formate, die dein Publikum ansprechen.</string>
+    <string name="brief_home_description_overview">Verschaffe dir einen Überblick über deine letzten Aktivitäten und nächsten Schritte.</string>
+</resources>

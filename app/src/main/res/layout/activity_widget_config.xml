@@ -76,6 +76,42 @@
                 android:text="@string/widget_appearance_section" />
 
             <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/brief_background_controls"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:visibility="gone" android:background="?android:colorBackground"
+                android:orientation="vertical">
+                <dev.oneuiproject.oneui.widget.SwitchItemView
+                    android:id="@+id/brief_background_row"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    app:separateSwitch="false" app:showTopDivider="false" app:title="@string/widget_brief_background" />
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.Separator
+                android:id="@+id/brief_background_type_title"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:visibility="gone" android:text="@string/widget_brief_background_type" />
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
+                android:id="@+id/brief_background_type_card"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:visibility="gone" android:background="?android:colorBackground"
+                android:orientation="vertical" android:layout_marginBottom="20dp">
+                <dev.oneuiproject.oneui.widget.RadioItemViewGroup
+                    android:id="@+id/brief_background_type_group"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical">
+                    <dev.oneuiproject.oneui.widget.RadioItemView
+                        android:id="@+id/brief_background_basic"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        app:showTopDivider="false" app:title="@string/widget_brief_basic" />
+                    <dev.oneuiproject.oneui.widget.RadioItemView
+                        android:id="@+id/brief_background_dynamic"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        app:showTopDivider="true" app:title="@string/widget_brief_dynamic_colour"
+                        app:summary="@string/widget_brief_automatic_colours" />
+                </dev.oneuiproject.oneui.widget.RadioItemViewGroup>
+            </dev.oneuiproject.oneui.widget.RoundedLinearLayout>
+
+            <dev.oneuiproject.oneui.widget.RoundedLinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="?android:colorBackground"
@@ -107,21 +143,6 @@
                     app:summary="@string/widget_tint_system"
                     app:title="@string/widget_tint" />
 
-
-                <dev.oneuiproject.oneui.widget.SwitchItemView
-                    android:id="@+id/brief_dynamic_row"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:visibility="gone" app:separateSwitch="false" app:showTopDivider="true"
-                    app:title="@string/widget_brief_dynamic"
-                    app:summaryOn="@string/widget_brief_dynamic_summary" app:summaryOff="@string/widget_brief_dynamic_summary" />
-                <dev.oneuiproject.oneui.widget.CardItemView
-                    android:id="@+id/brief_primary_color_row"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:visibility="gone" app:showTopDivider="true" app:title="@string/widget_brief_primary_colour" />
-                <dev.oneuiproject.oneui.widget.CardItemView
-                    android:id="@+id/brief_secondary_color_row"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:visibility="gone" app:showTopDivider="true" app:title="@string/widget_brief_secondary_colour" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/logo_row"

@@ -39,8 +39,9 @@ internal fun RemoteViews.setWidgetArtwork(
 }
 
 @RequiresApi(31)
-internal fun RemoteViews.setWidgetBackgroundTint(context: Context, settings: TwidgetWidgetSettings) {
-    fun tint(dark: Boolean) = ColorStateList.valueOf(WidgetColors.resolve(context, settings, dark).background)
+internal fun RemoteViews.setWidgetBackgroundTint(context: Context, settings: TwidgetWidgetSettings,
+    color: (Boolean) -> Int = { dark -> WidgetColors.resolve(context, settings, dark).background }) {
+    fun tint(dark: Boolean) = ColorStateList.valueOf(color(dark))
     if (widgetArtworkVariants(settings) == 2) {
         setColorStateList(android.R.id.background, "setBackgroundTintList", tint(false), tint(true))
     } else {

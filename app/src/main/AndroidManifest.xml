@@ -327,6 +327,17 @@
         </receiver>
 
         <receiver
+            android:name=".widget.BriefWidgetAppearanceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".widget.WidgetRefreshReceiver"
             android:exported="false" />
 

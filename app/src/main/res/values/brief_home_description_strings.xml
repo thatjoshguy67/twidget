@@ -1,0 +1,12 @@
+<resources>
+    <string name="brief_home_description_restart">Pick up your posting rhythm and start a fresh streak.</string>
+    <string name="brief_home_description_streak_active">Your posting rhythm is building. Keep the momentum going.</string>
+    <string name="brief_home_description_streak_due">A new post today will keep your posting streak going.</string>
+    <string name="brief_home_description_goal">Your next goal is in view. See your progress and plan what comes next.</string>
+    <string name="brief_home_description_followers">Discover the notable accounts in your audience.</string>
+    <string name="brief_home_description_audience">See how your audience is changing and find your next step.</string>
+    <string name="brief_home_description_post">Take a closer look at a recent post and what to try next.</string>
+    <string name="brief_home_description_timing">Find a useful window for your next post, based on your recent activity.</string>
+    <string name="brief_home_description_patterns">Explore the topics and formats connecting with your audience.</string>
+    <string name="brief_home_description_overview">Catch up on your recent activity and what to focus on next.</string>
+</resources>

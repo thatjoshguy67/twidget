@@ -35,7 +35,7 @@ import org.json.JSONObject
 
 internal enum class BriefDebugPage(val title: Int) {
     MAIN(R.string.debug_brief_home), AI(R.string.debug_brief_ai), RANKING(R.string.debug_brief_ranking),
-    REVIEW_UI(R.string.debug_review_ui), REVIEW_ENGINE(R.string.debug_review_engine), REVIEW_AI(R.string.debug_review_ai), REVIEW_LOG(R.string.debug_review_log);
+    PREVIEW_PARAMETERS(R.string.brief_preview_parameters), REVIEW_UI(R.string.debug_review_ui), REVIEW_ENGINE(R.string.debug_review_engine), REVIEW_AI(R.string.debug_review_ai), REVIEW_LOG(R.string.debug_review_log);
     companion object {
         const val EXTRA = "brief_debug_page"
         fun from(value: String?) = entries.firstOrNull { it.name == value } ?: MAIN
@@ -75,7 +75,8 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
             BriefDebugPage.MAIN -> main(screen)
             BriefDebugPage.AI -> ai(screen)
             BriefDebugPage.RANKING -> ranking(screen)
-            BriefDebugPage.REVIEW_UI -> reviewUi(screen)
+            BriefDebugPage.PREVIEW_PARAMETERS -> previewParameters(screen)
+            BriefDebugPage.REVIEW_UI -> previewParameters(screen)
             BriefDebugPage.REVIEW_ENGINE -> reviewEngine(screen)
             BriefDebugPage.REVIEW_AI -> reviewAi(screen)
             BriefDebugPage.REVIEW_LOG -> reviewLog(screen)
@@ -86,51 +87,17 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
     private fun main(screen: PreferenceScreen) {
         val context = requireContext()
         group(screen, R.string.debug_ui_state)
-        row(screen, "components", R.string.debug_component_library, enabled = username.isNotBlank()) {
-            startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.COMPONENTS))
+        row(screen, "preview_cards", R.string.brief_preview_cards, arrow = true, enabled = username.isNotBlank()) {
+            val intent = TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.COMPONENTS)
+            BriefCardPreviewParameters.background(context)?.let { intent.putExtra("brief_blue_theme", it.name) }
+            startActivity(intent)
         }
-        row(screen, "insights_preview", R.string.debug_insights_preview, arrow = true, enabled = username.isNotBlank()) {
-            startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS))
-        }
-        row(screen, "chatgpt_card_preview", R.string.debug_chatgpt_card_preview, arrow = true, enabled = username.isNotBlank()) {
-            startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.CHATGPT_LINK))
-        }
+        row(screen, "preview_parameters", R.string.brief_preview_parameters, arrow = true) { open(BriefDebugPage.PREVIEW_PARAMETERS) }
         row(screen, "onboarding", R.string.debug_show_onboarding, enabled = username.isNotBlank()) { startActivity(BriefOnboardingActivity.intent(context, username)) }
         row(screen, "home_generation", R.string.debug_home_generation, getString(R.string.debug_home_generation_summary)) {
             BriefHomeRefresh.preview()
             startActivity(Intent(context, com.tjg.twidget.main.MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
-        }
-        row(screen, "review_preview", R.string.debug_show_review_preview) { preview() }
-        gap(screen)
-        screen.addPreference(ListPreference(context).apply {
-            key = KEY_SCENARIO; title = getString(R.string.debug_preview_state)
-            entries = BriefDebugScenario.entries.filterNot { it == BriefDebugScenario.COMPONENTS }.map { it.label(context) }.toTypedArray()
-            entryValues = BriefDebugScenario.entries.filterNot { it == BriefDebugScenario.COMPONENTS }.map { it.storageId }.toTypedArray()
-            value = scenario().storageId; summary = scenario().label(context)
-            setOnPreferenceChangeListener { _, value ->
-                summary = BriefDebugScenario.fromStorageId(value as String).label(context); true
-            }
-        })
-        row(screen, "launch", R.string.debug_launch_preview, arrow = true, enabled = username.isNotBlank()) {
-            startActivity(TwidgetBriefActivity.debugIntent(context, username, scenario()))
-        }
-        row(screen, "blue_background", R.string.brief_debug_background, getString(R.string.brief_debug_background_summary), enabled = username.isNotBlank()) {
-            val labels = listOf(R.string.brief_theme_morning, R.string.brief_theme_afternoon,
-                R.string.brief_theme_evening, R.string.brief_theme_night, R.string.brief_theme_weekend)
-            AlertDialog.Builder(context).setTitle(R.string.brief_debug_background)
-                .setItems(labels.map { getString(it) }.toTypedArray()) { _, index ->
-                    startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS)
-                        .putExtra("brief_blue_theme", BriefBlueTheme.entries[index].name))
-                }.show()
-        }
-        row(screen, "posting_timing", R.string.brief_debug_timing, getString(R.string.brief_debug_timing_summary), enabled = username.isNotBlank()) {
-            val labels = listOf(R.string.brief_timing_phase_upcoming, R.string.brief_timing_phase_now, R.string.brief_timing_phase_next)
-            AlertDialog.Builder(context).setTitle(R.string.brief_debug_timing)
-                .setItems(labels.map { getString(it) }.toTypedArray()) { _, index ->
-                    startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS)
-                        .putExtra("brief_posting_phase", BriefPostingPhase.entries[index].name))
-                }.show()
         }
         row(screen, "posting_timing_evidence", R.string.brief_debug_timing_evidence) {
             val signal = BriefPostingTiming.signal(com.tjg.twidget.analytics.AnalyticsClient.cached(context, username))
@@ -141,7 +108,6 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         group(screen, R.string.debug_ai_diagnostics)
         row(screen, "ai", R.string.debug_view_ai) { open(BriefDebugPage.AI) }
         group(screen, R.string.debug_tweet_reviews)
-        row(screen, "review_ui", R.string.debug_review_ui) { open(BriefDebugPage.REVIEW_UI) }
         row(screen, "review_engine", R.string.debug_review_engine) { open(BriefDebugPage.REVIEW_ENGINE) }
         row(screen, "review_ai", R.string.debug_review_ai) { open(BriefDebugPage.REVIEW_AI) }
         row(screen, "review_log", R.string.debug_review_log) { open(BriefDebugPage.REVIEW_LOG) }
@@ -160,6 +126,44 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
             work { withContext(Dispatchers.IO) { BriefEngine.rebuild(context, username, force = true) }; Toast.makeText(context, R.string.brief_debug_rebuilt, Toast.LENGTH_SHORT).show() }
         }
         row(screen, "regenerate", R.string.debug_regenerate_brief, enabled = username.isNotBlank()) { startActivity(TwidgetBriefActivity.refreshIntent(context, username)) }
+    }
+
+    private fun previewParameters(screen: PreferenceScreen) {
+        val context = requireContext()
+        val parameters = BriefCardPreviewParameters.read(context)
+        screen.addPreference(androidx.preference.SwitchPreferenceCompat(context).apply {
+            key = BriefCardPreviewParameters.PREFIX + "all"
+            title = getString(R.string.brief_preview_all_variants)
+            setDefaultValue(true)
+            isChecked = parameters.allVariants
+            setOnPreferenceChangeListener { _, value ->
+                screen.findPreference<Preference>("preview_variant_controls")?.isEnabled = !(value as Boolean)
+                true
+            }
+        })
+        screen.addPreference(ListPreference(context).apply {
+            key = BriefCardPreviewParameters.PREFIX + "background"
+            title = getString(R.string.brief_debug_background)
+            entries = (listOf(getString(R.string.widget_tint_system)) + listOf(R.string.brief_theme_morning,
+                R.string.brief_theme_afternoon, R.string.brief_theme_evening, R.string.brief_theme_night,
+                R.string.brief_theme_weekend).map { getString(it) }).toTypedArray()
+            entryValues = (listOf("auto") + BriefBlueTheme.entries.map { it.name }).toTypedArray()
+            setDefaultValue("auto")
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        })
+        val variants = PreferenceCategory(context).apply { key = "preview_variant_controls" }
+        screen.addPreference(variants)
+        BriefCardPreviewParameters.choices.forEach { (id, choice) ->
+            variants.addPreference(ListPreference(context).apply {
+                key = BriefCardPreviewParameters.PREFIX + id
+                title = choice.first
+                entries = choice.second.toTypedArray()
+                entryValues = choice.second.indices.map { it.toString() }.toTypedArray()
+                setDefaultValue("0")
+                summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            })
+        }
+        variants.isEnabled = !parameters.allVariants
     }
 
     private fun ai(screen: PreferenceScreen) {

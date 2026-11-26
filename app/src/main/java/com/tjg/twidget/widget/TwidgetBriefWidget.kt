@@ -35,6 +35,9 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         updateWidget(context, manager, id)
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) { BriefWidgetAppearanceSchedule.schedule(context) }
+    override fun onDisabled(context: Context) { BriefWidgetAppearanceSchedule.cancel(context) }
+
     companion object {
         private const val BITMAP_BUDGET = 8_000_000L
 
@@ -66,6 +69,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             }
             if (!widgetSizeOptionsMatch(options, manager.getAppWidgetOptions(id))) return
             manager.updateAppWidget(id, views)
+            BriefWidgetAppearanceSchedule.schedule(context)
             warmAvatars(context, manager, id, account)
         }
 
@@ -81,7 +85,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
         ): RemoteViews {
             val views = linkedMapOf<SizeF, RemoteViews>()
             var bytes = 0L
-            val variants = widgetArtworkVariants(TwidgetStore.widgetSettings(context, id))
+            val variants = widgetArtworkVariants(BriefWidgetDynamicBackground.effectiveSettings(TwidgetStore.widgetSettings(context, id)))
             val budget = remoteViewsBitmapBudget(context, BITMAP_BUDGET)
             fun add(key: SizeF, width: Int, height: Int) {
                 val settings = TwidgetStore.widgetSettings(context, id)
@@ -117,25 +121,29 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             snapshot: com.tjg.twidget.brief.BriefSnapshot?,
         ): RemoteViews {
             val oneRow = height <= 110
-            val settings = TwidgetStore.widgetSettings(context, id)
+            val settings = BriefWidgetDynamicBackground.effectiveSettings(TwidgetStore.widgetSettings(context, id))
             val localizedContext = com.tjg.twidget.core.AppLocales.wrap(context, settings.language)
             val strings = BriefStrings.from(context, settings.language)
-            val summary = BriefStore.presentation(context, account, snapshot, strings)?.summary()
+            val presentation = BriefStore.presentation(context, account, snapshot, strings)
+            val summary = presentation?.summary()
             val dark = isDark(context, settings.colorMode)
-            val backgroundColor = WidgetColors.resolve(context, settings, dark).background
+            val backgroundColor = BriefWidgetDynamicBackground.surfaceColor(context, settings, dark)
             val dynamic = BriefWidgetDynamicBackground.enabled(settings)
             val frames = BriefWidgetDynamicBackground.frameCount()
-            val layout = if (dynamic) {
-                if (frames == 1) R.layout.widget_brief_dynamic_static else R.layout.widget_brief_dynamic
-            } else if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card
+            val now = java.time.ZonedDateTime.now()
+            val layout = if (dynamic) R.layout.widget_brief_dynamic_static
+                else if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card
             return RemoteViews(context.packageName, layout).apply {
                 setInt(android.R.id.background, "setBackgroundResource",
-                    if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
+                    if (Build.VERSION.SDK_INT >= 31) R.drawable.widget_brief_host_surface
+                    else if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
                     else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
                 // Keep this identical to Followers: tint the existing rounded
                 // drawable because One UI owns the blur behind that surface.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    setWidgetBackgroundTint(context, settings)
+                    setWidgetBackgroundTint(context, settings) { backgroundDark ->
+                        BriefWidgetDynamicBackground.surfaceColor(context, settings, backgroundDark)
+                    }
                 } else {
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
@@ -147,7 +155,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                     setWidgetArtwork(BriefWidgetDynamicBackground.frameIds[frame], settings) { backgroundDark ->
                         BriefWidgetDynamicBackground.render(context, settings, dp(context, width), dp(context, height),
                             backgroundDark, frame / 4f, textureBudget / frames,
-                            background = if (Build.VERSION.SDK_INT < 31) backgroundColor else null)
+                            background = if (Build.VERSION.SDK_INT < 31) backgroundColor else null, now = now,
+                            clipToSurface = Build.VERSION.SDK_INT < 31)
                     }
                 }
                 val artworkBudget = (totalBudget / variants - textureBytes).coerceAtLeast(4L)
@@ -168,7 +177,9 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 }
                 setContentDescription(
                     android.R.id.background,
-                    listOfNotNull(summary?.title, summary?.body).joinToString(". ")
+                    listOfNotNull(summary?.title, summary?.let { com.tjg.twidget.brief.BriefHomeCardCopy.description(localizedContext,
+                        presentation?.heroType ?: com.tjg.twidget.brief.BriefCardType.SUMMARY,
+                        com.tjg.twidget.data.DailyStreakStore.snapshot(context, account)) }).joinToString(". ")
                         .ifBlank { localizedContext.getString(R.string.brief_widget_empty_title) },
                 )
                 if (account.isNotBlank()) {

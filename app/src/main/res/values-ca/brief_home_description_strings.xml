@@ -1,0 +1,12 @@
+<resources>
+    <string name="brief_home_description_restart">Reprèn el ritme de publicació i comença una nova ratxa.</string>
+    <string name="brief_home_description_streak_active">El teu ritme de publicació creix. Mantén l’impuls.</string>
+    <string name="brief_home_description_streak_due">Una nova publicació avui mantindrà la teva ratxa.</string>
+    <string name="brief_home_description_goal">El proper objectiu és a la vista. Revisa el progrés i planifica el següent pas.</string>
+    <string name="brief_home_description_followers">Descobreix els comptes destacats de la teva audiència.</string>
+    <string name="brief_home_description_audience">Mira com canvia la teva audiència i troba el següent pas.</string>
+    <string name="brief_home_description_post">Revisa una publicació recent i què pots provar després.</string>
+    <string name="brief_home_description_timing">Troba un bon moment per publicar segons la teva activitat recent.</string>
+    <string name="brief_home_description_patterns">Explora els temes i formats que connecten amb la teva audiència.</string>
+    <string name="brief_home_description_overview">Posa’t al dia amb la teva activitat recent i decideix en què centrar-te.</string>
+</resources>

@@ -49,7 +49,8 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_brief_onboarding)
         blueBackground = BriefBlueBackground(BriefBlueTheme.current(),
-            resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES).apply {
+            resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES,
+            density = resources.displayMetrics.density).apply {
             setUnlockProgress(0f)
             setMotionProgress(BriefBlueBackground.motionPhase())
         }

@@ -28,6 +28,8 @@ class TwidgetApplication : Application(), Configuration.Provider {
         com.tjg.twidget.brief.BriefForegroundPreparation.install(this)
         AppPaletteManager.reconcile(this)
         AppExecutors.execute {
+            // Reconcile cached widget colours before moving the next alarm forward on a cold start.
+            TwidgetBriefWidget.updateAll(this)
             runCatching { com.tjg.twidget.schedule.RetiredComposerCleanup.run(this) }
             com.tjg.twidget.bridge.PrimaryProfileReporter.enqueue(this)
             runCatching { com.tjg.twidget.followers.TopFollowersLocalScanCleanup.run(this) }

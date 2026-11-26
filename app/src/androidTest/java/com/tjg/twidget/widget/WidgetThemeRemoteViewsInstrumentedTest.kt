@@ -70,7 +70,7 @@ class WidgetThemeRemoteViewsInstrumentedTest {
         try {
             for (style in WidgetStyle.entries) {
                 for (mode in listOf(TwidgetStore.COLOR_MODE_SYSTEM, TwidgetStore.COLOR_MODE_LIGHT, TwidgetStore.COLOR_MODE_DARK)) {
-                    val settings = original.copy(style = style, colorMode = mode, fontFamily = style.defaultFont)
+                    val settings = original.copy(style = style, colorMode = mode, fontFamily = style.defaultFont, briefDynamic = false)
                     TwidgetStore.saveWidgetSettings(context, id, settings)
                     for (brief in listOf(false, true)) {
                         // Build and parcel exactly once, as when sent to a launcher.
@@ -94,7 +94,8 @@ class WidgetThemeRemoteViewsInstrumentedTest {
                                 val root = cached.apply(hostContext, FrameLayout(hostContext))
                                 val expected = WidgetColors.resolve(context, settings, expectedDark)
                                 assertEquals("$style/$mode background must match launcher theme $hostDark",
-                                    expected.background, root.findViewById<View>(android.R.id.background).backgroundTintList!!.defaultColor)
+                                    if (brief) BriefWidgetDynamicBackground.surfaceColor(context, settings, expectedDark) else expected.background,
+                                    root.findViewById<View>(android.R.id.background).backgroundTintList!!.defaultColor)
                                 val artwork = root.findViewById<ImageView>(if (brief) R.id.brief_widget_artwork else R.id.widget_artwork)
                                 val bitmap = (artwork.drawable as BitmapDrawable).bitmap
                                 val pixels = IntArray(bitmap.width * bitmap.height)

@@ -36,6 +36,7 @@ class BriefTweetReviewActivity : FoldablePopOverActivity() {
         if (target.username.isBlank() || target.postUrl == null || target.draftId != null) { finish(); return }
         forceFirstOpen = savedInstanceState == null && intent.getBooleanExtra(EXTRA_DEBUG_FORCE, false) && TwidgetStore.debugMenuUnlocked(this)
         setContentView(R.layout.activity_brief_tweet_review)
+        BriefReviewPageBackground.install(this, findViewById(R.id.review_root))
         applyEdgeToEdgeInsets(findViewById(R.id.review_root)) { bottom ->
             BriefPageChrome.navigationInset(findViewById(R.id.review_scroll), bottom)
         }

@@ -1,0 +1,6 @@
+<resources>
+    <string name="brief_preview_cards">Previsualitza les targetes del resum</string>
+    <string name="brief_preview_parameters">Ajusta els paràmetres de previsualització</string>
+    <string name="brief_preview_cards_summary">Tots els dissenys amb dades de mostra. Canvia els estats als ajustos de depuració.</string>
+    <string name="brief_preview_all_variants">Mostra totes les variants</string>
+</resources>

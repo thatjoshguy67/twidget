@@ -13,6 +13,28 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class BriefBackgroundMaterialInstrumentedTest {
+    @Test fun reviewMaterialIsDimmerInDarkModeAndQuieterInLightMode() {
+        for (dark in listOf(false, true)) for (theme in BriefBlueTheme.entries) {
+            fun render(quiet: Boolean) = Bitmap.createBitmap(100, 200, Bitmap.Config.ARGB_8888).also { bitmap ->
+                BriefBlueBackground(theme, dark, subdued = quiet).apply {
+                    setBounds(0, 0, 100, 200); setMotionProgress(.25f); draw(Canvas(bitmap))
+                }
+            }
+            val main = render(false)
+            val review = render(true)
+            fun average(bitmap: Bitmap): Double {
+                val pixels = IntArray(20_000)
+                bitmap.getPixels(pixels, 0, 100, 0, 0, 100, 200)
+                return pixels.map { if (dark) ColorUtils.calculateLuminance(it) else {
+                    val channels = listOf(Color.red(it), Color.green(it), Color.blue(it))
+                    (channels.max() - channels.min()).toDouble()
+                } }.average()
+            }
+            assertTrue("Review backdrop stays subordinate: $theme/$dark", average(review) < average(main))
+            main.recycle(); review.recycle()
+        }
+    }
+
     @Test fun dayPartsHaveDistinctPalettesAndTheSameMaterialBrightensContinuously() {
         val grid = Bitmap.createBitmap(1_000, 800, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(grid)

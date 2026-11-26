@@ -486,13 +486,15 @@ internal class MainDashboardBinder(
             )
         }
         val heroType = presentation?.heroType ?: snapshot.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY
-        (root as? com.tjg.twidget.ui.BriefDashboardCardLayout)?.setGlowType(heroType)
+        val streak = com.tjg.twidget.data.DailyStreakStore.snapshot(activity, account)
+        (root as? com.tjg.twidget.ui.BriefDashboardCardLayout)?.setGlowType(heroType,
+            snapshot.followersToday, snapshot.followersWeek, streak.streak)
         root.findViewById<ImageView>(R.id.brief_dashboard_icon)?.apply {
             setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
                 activity, heroType, account, activity.dp(60), activity.getColor(R.color.brief_explore_title)))
         }
         val headline = summary.title
-        val description = summary.shortDescription
+        val description = com.tjg.twidget.brief.BriefHomeCardCopy.description(activity, heroType, streak)
         root.findViewById<TextView>(R.id.brief_dashboard_title)?.text = headline
         root.findViewById<TextView>(R.id.brief_dashboard_message)?.text = description
         root.contentDescription =

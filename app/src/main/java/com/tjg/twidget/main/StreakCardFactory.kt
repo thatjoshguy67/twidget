@@ -35,8 +35,8 @@ internal object StreakCardPolicy {
 
 internal object StreakCardFactory {
     /** The Brief has a wide treatment; the dashboard keeps its compact counter. */
-    fun createBrief(context: Context, snapshot: StreakSnapshot): LinearLayout {
-        val state = StreakCardPolicy.state(snapshot)
+    fun createBrief(context: Context, snapshot: StreakSnapshot, stateOverride: StreakCardState? = null): LinearLayout {
+        val state = stateOverride ?: StreakCardPolicy.state(snapshot)
         val days = snapshot.streak.coerceAtLeast(0)
         val title = context.resources.getQuantityString(R.plurals.streak_days, days, days)
         return (android.view.LayoutInflater.from(context).inflate(R.layout.brief_card_streak, null, false) as LinearLayout).apply {

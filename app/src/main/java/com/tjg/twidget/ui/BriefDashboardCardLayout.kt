@@ -51,31 +51,59 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     private var titleShimmerAnimator: ValueAnimator? = null
     private var titleShimmerProgress = -1f
 
-    /** Colour the existing glow artwork without changing its alpha, shape or blur. */
-    fun setGlowType(type: com.tjg.twidget.brief.BriefCardType) {
-        val color = when (type) {
-            com.tjg.twidget.brief.BriefCardType.GROWTH,
-            com.tjg.twidget.brief.BriefCardType.MILESTONE,
-            com.tjg.twidget.brief.BriefCardType.TOP_FOLLOWER,
-            com.tjg.twidget.brief.BriefCardType.POST,
-            com.tjg.twidget.brief.BriefCardType.STREAK -> 0xFF4CCB88.toInt()
-            com.tjg.twidget.brief.BriefCardType.SLOWDOWN,
-            com.tjg.twidget.brief.BriefCardType.INACTIVITY,
-            com.tjg.twidget.brief.BriefCardType.WORST_POST -> 0xFFFFA052.toInt()
-            else -> null
+    private var glowMood = com.tjg.twidget.brief.BriefHomeGlowMood.NEUTRAL
+    private var glowTarget: com.tjg.twidget.brief.BriefHomeGlowSpec? = null
+    private var glowCurrent: com.tjg.twidget.brief.BriefHomeGlowSpec? = null
+    private var glowAnimator: ValueAnimator? = null
+    private val glowClockUpdate = object : Runnable {
+        override fun run() {
+            updateGlow(isShown && windowVisibility == View.VISIBLE)
+            postDelayed(this, 60_000L)
         }
-        glowBitmapPaint.colorFilter = color?.let {
-            // Preserve the source luminance and transparency; only its hue changes.
-            val r = Color.red(it).toFloat()
-            val g = Color.green(it).toFloat()
-            val b = Color.blue(it).toFloat()
-            val luminance = .2126f * r + .7152f * g + .0722f * b
-            fun row(channel: Float) = floatArrayOf(
-                .2126f * channel / luminance, .7152f * channel / luminance,
-                .0722f * channel / luminance, 0f, 0f,
-            )
-            ColorMatrixColorFilter(ColorMatrix(row(r) + row(g) + row(b) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
+    }
+
+    /** The grey surface stays fixed; only the existing glow responds to content and local time. */
+    fun setGlowType(type: com.tjg.twidget.brief.BriefCardType, today: Long = 0, week: Long = 0, streak: Int = 1) {
+        glowMood = com.tjg.twidget.brief.BriefHomeGlowPolicy.mood(type, today, week, streak)
+        updateGlow(isAttachedToWindow && isShown && windowVisibility == View.VISIBLE)
+    }
+
+    private fun updateGlow(animated: Boolean) {
+        val dark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        val target = com.tjg.twidget.brief.BriefHomeGlowPolicy.spec(glowMood, dark)
+        if (target == glowTarget) return
+        glowTarget = target
+        glowAnimator?.cancel()
+        val from = glowCurrent
+        if (!animated || from == null || !ValueAnimator.areAnimatorsEnabled()) {
+            applyGlow(target)
+            return
         }
+        glowAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 900L
+            interpolator = PathInterpolator(.2f, 0f, 0f, 1f)
+            addUpdateListener {
+                val progress = it.animatedValue as Float
+                applyGlow(com.tjg.twidget.brief.BriefHomeGlowSpec(
+                    com.tjg.twidget.brief.BriefHomeGlowPolicy.blend(from.color, target.color, progress),
+                    from.offset + (target.offset - from.offset) * progress))
+            }
+            start()
+        }
+    }
+
+    private fun applyGlow(spec: com.tjg.twidget.brief.BriefHomeGlowSpec) {
+        glowCurrent = spec
+        val r = Color.red(spec.color).toFloat()
+        val g = Color.green(spec.color).toFloat()
+        val b = Color.blue(spec.color).toFloat()
+        val luminance = .2126f * r + .7152f * g + .0722f * b
+        fun row(channel: Float) = floatArrayOf(
+            .2126f * channel / luminance, .7152f * channel / luminance,
+            .0722f * channel / luminance, 0f, 0f,
+        )
+        glowBitmapPaint.colorFilter = ColorMatrixColorFilter(ColorMatrix(
+            row(r) + row(g) + row(b) + floatArrayOf(0f, 0f, 0f, 1f, 0f)))
         invalidate()
     }
 
@@ -123,7 +151,8 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val glowPair = getDitheredGlowBitmaps(context, isLandscape)
 
-            glowDstRect.set(-hInset.toFloat(), -vInset.toFloat(), w + hInset, h + vInset)
+            val glowShift = w * (glowCurrent?.offset ?: 0f)
+            glowDstRect.set(-hInset + glowShift, -vInset.toFloat(), w + hInset + glowShift, h + vInset)
 
             if (glowPair != null) {
                 val outerSave = canvas.save()
@@ -217,12 +246,15 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         updateShadows()
-
+        updateGlow(animated = false)
+        removeCallbacks(glowClockUpdate)
+        postDelayed(glowClockUpdate, 60_000L)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
         updateShadows()
+        updateGlow(animated = false)
         invalidate()
     }
 
@@ -329,6 +361,10 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     }
 
     override fun onDetachedFromWindow() {
+        removeCallbacks(glowClockUpdate)
+        glowAnimator?.cancel()
+        glowAnimator = null
+        glowTarget?.let(::applyGlow)
         titleShimmerAnimator?.cancel()
         titleShimmerAnimator = null
         titleShimmerProgress = -1f

@@ -105,7 +105,8 @@ class WidgetStylesInstrumentedTest {
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) as WidgetConfigActivity
                 instrumentation.waitForIdleSync()
                 instrumentation.runOnMainSync {
-                    assertEquals(android.view.View.GONE, activity.findViewById<android.view.View>(com.tjg.twidget.R.id.opacity_block).visibility)
+                    assertEquals(if (brief) android.view.View.VISIBLE else android.view.View.GONE,
+                        activity.findViewById<android.view.View>(com.tjg.twidget.R.id.opacity_block).visibility)
                     val preview = activity.findViewById<android.widget.FrameLayout>(com.tjg.twidget.R.id.preview_widget)
                     assertEquals(2f, preview.layoutParams.width.toFloat() / preview.layoutParams.height, .02f)
                 }

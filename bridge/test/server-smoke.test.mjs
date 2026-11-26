@@ -609,7 +609,8 @@ test("daily scans scale with +200 growth and use actual page yields, preserving 
         TWITTERAPIS_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/followers`,
       }, { store, onStorePath: value => { checkpointPath = value; } });
       assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
-      await waitFor(async () => (await (await fetch(`${base}/history/example/top-followers/scan`)).json()).status === "complete");
+      // Allow eight provider pages plus durable writes on a shared CI runner.
+      await waitFor(async () => (await (await fetch(`${base}/history/example/top-followers/scan`)).json()).status === "complete", 20_000);
       const archive = await (await fetch(`${base}/history/example/top-followers/all?limit=2000`)).json();
       assert.equal(archive.total, 700);
       assert.equal(archive.followers[0].username, "new199", "notable follower beyond the first 100 must be found");

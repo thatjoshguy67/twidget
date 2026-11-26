@@ -13,7 +13,6 @@ import android.view.Menu
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.view.WindowCallbackWrapper
 import com.tjg.twidget.R
 
 /** Screen-scoped shortcuts leave text editing and normal platform focus traversal intact. */
@@ -22,14 +21,17 @@ internal class KeyboardNavigation private constructor(private val activity: Acti
     private val actions = linkedMapOf<String, Action>()
     private val input = activity.getSystemService(InputManager::class.java)
     private var help: AlertDialog? = null
-    private fun wrap(callback: android.view.Window.Callback) = object : WindowCallbackWrapper(callback) {
+    // Delegate untouched callbacks to the current AppCompat/toolbar callback using
+    // the public platform contract rather than SESL's library-internal wrapper.
+    private fun wrap(callback: android.view.Window.Callback) = object : android.view.Window.Callback by callback {
+        val wrapped = callback
         override fun dispatchKeyEvent(event: KeyEvent): Boolean {
             if (handle(event)) return true
-            return super.dispatchKeyEvent(event)
+            return wrapped.dispatchKeyEvent(event)
         }
-        override fun dispatchKeyShortcutEvent(event: KeyEvent): Boolean = handle(event) || super.dispatchKeyShortcutEvent(event)
+        override fun dispatchKeyShortcutEvent(event: KeyEvent): Boolean = handle(event) || wrapped.dispatchKeyShortcutEvent(event)
         override fun onPreparePanel(featureId: Int, view: View?, menu: Menu): Boolean {
-            val prepared = super.onPreparePanel(featureId, view, menu)
+            val prepared = wrapped.onPreparePanel(featureId, view, menu)
             if (featureId == 0) {
                 val item = menu.findItem(R.id.floating_shortcuts_action) ?: menu.add(Menu.NONE,
                     R.id.floating_shortcuts_action, Menu.CATEGORY_SECONDARY, R.string.floating_shortcut_hint).apply {
@@ -41,7 +43,7 @@ internal class KeyboardNavigation private constructor(private val activity: Acti
             return prepared
         }
         override fun onProvideKeyboardShortcuts(data: MutableList<KeyboardShortcutGroup>, menu: Menu?, deviceId: Int) {
-            super.onProvideKeyboardShortcuts(data, menu, deviceId)
+            wrapped.onProvideKeyboardShortcuts(data, menu, deviceId)
             data.add(KeyboardShortcutGroup(activity.getString(R.string.app_name), actions.values.filter { it.enabled() }.map {
                 KeyboardShortcutInfo(activity.getString(it.label), it.key, it.modifiers)
             } + KeyboardShortcutInfo(activity.getString(R.string.floating_shortcuts), KeyEvent.KEYCODE_SLASH, KeyEvent.META_CTRL_ON)))

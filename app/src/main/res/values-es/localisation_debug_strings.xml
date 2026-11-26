@@ -44,7 +44,7 @@
     <string name="l10n_debug_pass">CORRECTO</string>
     <string name="l10n_debug_fail">ERROR</string>
     <string name="l10n_debug_checks_note">Sin llamadas al modelo ni cambios en los ajustes o análisis guardados.</string>
-    <string name="l10n_nano_auto">Auto · Stable / Preview / Default</string>
+    <string name="l10n_nano_auto">Auto · Estable / Vista previa / Predeterminado</string>
     <string name="l10n_nano_full">Estable · Completo</string>
     <string name="l10n_nano_fast">Estable · Rápido</string>
     <string name="l10n_nano_preview_full">Vista previa · Completo</string>

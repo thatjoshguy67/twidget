@@ -8,6 +8,24 @@ import org.w3c.dom.Element
 
 class LocalisationResourcesTest {
     private val res = listOf(File("src/main/res"), File("app/src/main/res")).first { it.isDirectory }
+    @Test fun packagedTranslationLanguagesAreRegistered() {
+        val locales = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+            .parse(File(res, "xml/locales_config.xml")).getElementsByTagName("locale")
+        val registered = (0 until locales.length).map {
+            (locales.item(it) as Element).getAttribute("android:name").substringBefore('-')
+        }.toSet()
+        // A single accidental locale entry makes lint require the whole app in
+        // that language, even when it is absent from the language pickers.
+        res.listFiles { file -> file.isDirectory && file.name.matches(Regex("values-[a-z]{2,3}(?:-r[A-Z]{2})?")) }
+            .orEmpty().forEach { folder ->
+                val language = folder.name.removePrefix("values-").substringBefore('-')
+                val hasTranslations = folder.listFiles { file -> file.extension == "xml" }.orEmpty().any { file ->
+                    val root = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).documentElement
+                    root.getElementsByTagName("string").length > 0 || root.getElementsByTagName("plurals").length > 0
+                }
+                if (hasTranslations) assertTrue("Register $language before packaging translations", language in registered)
+            }
+    }
     private fun entries(language: String): Map<String, Element> = buildMap {
         val folder = File(res, if (language.isEmpty()) "values" else "values-$language")
         folder.listFiles { f -> f.extension == "xml" }.orEmpty().forEach { file ->

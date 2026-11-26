@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="widget_support_cell_sizes">
+    <string-array name="widget_support_cell_sizes" translatable="false">
         <item>2x1</item>
         <item>2x2</item>
         <item>2x3</item>

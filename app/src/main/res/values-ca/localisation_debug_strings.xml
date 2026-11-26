@@ -44,7 +44,7 @@
     <string name="l10n_debug_pass">CORRECTE</string>
     <string name="l10n_debug_fail">ERROR</string>
     <string name="l10n_debug_checks_note">Sense crides a models ni canvis a la configuració o a les anàlisis desades.</string>
-    <string name="l10n_nano_auto">Auto · Stable / Preview / Default</string>
+    <string name="l10n_nano_auto">Auto · Estable / Previsualització / Predeterminat</string>
     <string name="l10n_nano_full">Estable · Complet</string>
     <string name="l10n_nano_fast">Estable · Ràpid</string>
     <string name="l10n_nano_preview_full">Versió preliminar · Complet</string>

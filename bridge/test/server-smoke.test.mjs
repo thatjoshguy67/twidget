@@ -939,7 +939,16 @@ test("Fx follower scans need no key, use immutable IDs, and publish interval los
 
 test("Fx failure after migration retains the paid snapshot and never reports its followers as lost", async t => {
   const requests = [];
-  const provider = http.createServer((req, res) => { requests.push(req.url); res.writeHead(404).end('{}'); });
+  // Keep admission separate from provider failure. Otherwise the failing job
+  // can finish before POST responds and legitimately return the cached snapshot.
+  let failProvider;
+  const admitted = new Promise(resolve => { failProvider = resolve; });
+  t.after(() => failProvider());
+  const provider = http.createServer(async (req, res) => {
+    requests.push(req.url);
+    await admitted;
+    res.writeHead(404).end('{}');
+  });
   await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
   t.after(() => { provider.closeAllConnections(); provider.close(); });
   const now = Date.now();

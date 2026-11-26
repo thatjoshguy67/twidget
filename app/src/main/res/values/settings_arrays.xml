@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="settings_theme_labels">
+    <string-array name="settings_theme_labels" translatable="false">
         <item>@string/widget_tint_light</item>
         <item>@string/widget_tint_dark</item>
     </string-array>

@@ -34,8 +34,10 @@ class AccountHandleMigrationInstrumentedTest {
             val past = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, -10) }.timeInMillis
             TwidgetStore.saveStats(context, profile(old, time = now - 1000).copy(
                 history = listOf(HistorySample("Past", 123, 0, 0, 0, timestamp = past, imported = true))))
-            val before = TwidgetStore.fullHistory(context, old)
             TwidgetStore.saveSettings(context, original.copy(username = old))
+            // Measure the real account after setup. Before selecting an account,
+            // fullHistory also contains unpersisted onboarding demo samples.
+            val before = TwidgetStore.fullHistory(context, old)
             prefs.edit().putString("widget_account_987654", old).putString("chart_range_${old}_followers", "ALL_TIME")
                 .putLong("milestone_target_$old", 1000L).commit()
             companions.forEach { name ->

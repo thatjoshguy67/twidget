@@ -234,14 +234,13 @@ adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
 ```
 
 The two packages have independent data and widgets. The debug app's APK updater
-is disabled; update it through ADB or Android Studio. Buffer OAuth uses the same
-`twidget://oauth/buffer` callback scheme, so Android may ask which installed app
-should handle the callback; select the app that started the login.
+is disabled; update it through ADB or Android Studio. Buffer OAuth, scheduling
+and Cloudinary uploads are retired in 1.4; existing local draft archives remain.
 
 ```bash
 ./gradlew testGithubDebugUnitTest assembleGithubDebug lintGithubDebug \
   bundleGithubDebug testGithubReleaseUnitTest assembleGithubRelease bundleGithubRelease lintVitalGithubRelease \
-  testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintVitalGithubBeta \
+  testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintGithubBeta \
   testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta
 
 cd bridge

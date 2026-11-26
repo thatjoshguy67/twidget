@@ -44,7 +44,7 @@
     <string name="l10n_debug_pass">RÉUSSI</string>
     <string name="l10n_debug_fail">ÉCHEC</string>
     <string name="l10n_debug_checks_note">Aucun appel au modèle ni changement des paramètres ou analyses enregistrées.</string>
-    <string name="l10n_nano_auto">Auto · Stable / Preview / Default</string>
+    <string name="l10n_nano_auto">Auto · Stable / Aperçu / Par défaut</string>
     <string name="l10n_nano_full">Stable · Complet</string>
     <string name="l10n_nano_fast">Stable · Rapide</string>
     <string name="l10n_nano_preview_full">Aperçu · Complet</string>

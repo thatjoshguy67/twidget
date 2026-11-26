@@ -1142,7 +1142,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             glowColor = if (isNight()) darken(glow) else glow,
             surfaceColor = getColor(R.color.oneui_card_bg),
             radiusPx = dp(28).toFloat(),
-        )
+        ).apply { alpha = Color.alpha(getColor(R.color.brief_card_surface)) }
         root.findViewById<MilestoneArcView>(R.id.milestone_arc).apply {
             this.progress = progress
             progressColor = accent
@@ -1180,7 +1180,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         gradientRadius = dp(320).toFloat()
         setGradientCenter(0f, .5f)
         cornerRadius = dp(28).toFloat()
-        colors = intArrayOf(start, end)
+        // Match the plain and tweet cards: tint the material without blocking the moving page background.
+        colors = intArrayOf(start, end).map {
+            androidx.core.graphics.ColorUtils.setAlphaComponent(it, Color.alpha(getColor(R.color.brief_card_surface)))
+        }.toIntArray()
     }
 
     private fun isNight(): Boolean = resources.configuration.uiMode and

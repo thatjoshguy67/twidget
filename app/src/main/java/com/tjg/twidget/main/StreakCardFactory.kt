@@ -40,7 +40,9 @@ internal object StreakCardFactory {
         val days = snapshot.streak.coerceAtLeast(0)
         val title = context.resources.getQuantityString(R.plurals.streak_days, days, days)
         return (android.view.LayoutInflater.from(context).inflate(R.layout.brief_card_streak, null, false) as LinearLayout).apply {
-            background = background(context, state)
+            background = background(context, state).apply {
+                alpha = Color.alpha(context.getColor(R.color.brief_card_surface))
+            }
             findViewById<com.tjg.twidget.ui.CardValueTextView>(R.id.brief_streak_value).apply {
                 text = title
                 configure(80f, 109)

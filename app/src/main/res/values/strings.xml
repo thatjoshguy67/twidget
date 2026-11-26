@@ -1146,4 +1146,6 @@
     <string name="about_evowizz_title" translatable="false">Dy (evowizz)</string>
     <string name="about_evowizz_summary">Knows his shit; localised to French</string>
     <string name="link_evowizz" translatable="false">https://evowizz.dev/</string>
+    <string name="about_damanmikey_title" translatable="false">DaManMikey</string>
+    <string name="about_damanmikey_summary">Localised to Dutch and made local AI work on more devices via AICore</string>
 </resources>

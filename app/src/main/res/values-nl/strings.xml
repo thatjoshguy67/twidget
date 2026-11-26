@@ -1107,4 +1107,5 @@
     <string name="debug_haptics_force_waveforms">Golfvormen forceren</string>
     <string name="debug_haptics_force_waveforms_summary">Gebruik golfvormbenaderingen voor primitieve effecten in de hele app. Platformactiefeedback blijft ongewijzigd.</string>
     <string name="about_evowizz_summary">Weet waar hij het over heeft; vertaald naar het Frans</string>
+    <string name="about_damanmikey_summary">Vertaald naar het Nederlands en lokale AI werkend gemaakt op meer apparaten via AICore</string>
 </resources>

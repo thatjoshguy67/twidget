@@ -164,11 +164,16 @@ class WidgetDefaultsInstrumentedTest {
                             SystemClock.sleep(20)
                         }
                     }
-                    instrumentation.waitForIdleSync()
-                    SystemClock.sleep(400)
-                    scenario.onActivity { activity ->
-                        assertTrue(activity.findViewById<View>(R.id.preference_fragment_container).isShown)
+                    val returnDeadline = SystemClock.uptimeMillis() + 5000
+                    var cardsVisible = false
+                    while (!cardsVisible && SystemClock.uptimeMillis() < returnDeadline) {
+                        instrumentation.waitForIdleSync()
+                        scenario.onActivity { activity ->
+                            cardsVisible = activity.findViewById<View>(R.id.preference_fragment_container).isShown
+                        }
+                        if (!cardsVisible) SystemClock.sleep(50)
                     }
+                    assertTrue("Widget settings must return after cancelling the editor", cardsVisible)
                 } finally {
                     instrumentation.removeMonitor(monitor)
                 }

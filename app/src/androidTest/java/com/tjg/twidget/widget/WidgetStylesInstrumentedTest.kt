@@ -140,7 +140,15 @@ class WidgetStylesInstrumentedTest {
                     screenshot.recycle()
                 }
                 instrumentation.runOnMainSync { activity.findViewById<android.view.View>(com.tjg.twidget.R.id.btn_save).performClick() }
-                instrumentation.waitForIdleSync()
+                // Saving finishes after the wallpaper fade. A new-task launch
+                // before teardown can reuse that activity instead of creating
+                // the next widget editor, which startActivitySync cannot observe.
+                val finishDeadline = android.os.SystemClock.uptimeMillis() + 5000
+                while (!activity.isDestroyed && android.os.SystemClock.uptimeMillis() < finishDeadline) {
+                    instrumentation.waitForIdleSync()
+                    android.os.SystemClock.sleep(50)
+                }
+                assertTrue("Saved widget editor must finish before the next launch", activity.isDestroyed)
                 assertEquals(WidgetStyle.ONE_UI, TwidgetStore.widgetSettings(context, id).style)
                 assertEquals(TwidgetStore.FONT_ONE_UI_SANS, TwidgetStore.widgetSettings(context, id).fontFamily)
                 host.deleteAppWidgetId(id)

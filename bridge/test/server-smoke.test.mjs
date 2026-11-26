@@ -959,6 +959,7 @@ test("Fx failure after migration retains the paid snapshot and never reports its
     FXTWITTER_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/profile` },
     { store: followerStore({ example: { userId: "123" } }, { example: running }) });
   assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  failProvider();
   await waitFor(async () => (await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).status === "failed");
   assert.equal(requests.length, 1);
   assert.ok(!requests[0].includes("paid-cursor"));

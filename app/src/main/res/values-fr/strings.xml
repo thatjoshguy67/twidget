@@ -7,6 +7,7 @@
     <string name="widget_language_de">Allemand (Deutsch)</string>
     <string name="widget_language_en">Anglais (English)</string>
     <string name="widget_language_fr">Français</string>
+    <string name="widget_language_nl">Néerlandais (Nederlands)</string>
     <string name="lockscreen_follower_1x1_label">Abonnés 1x1</string>
     <string name="lockscreen_follower_2x1_label">Abonnés 2x1</string>
     <string name="last_synced">Dernière synchronisation : %1$s</string>
@@ -115,6 +116,7 @@
     <string name="language_german">Allemand (Deutsch)</string>
     <string name="language_english">Anglais (English)</string>
     <string name="language_french">Français</string>
+    <string name="language_dutch">Néerlandais (Nederlands)</string>
     <string name="milestone_use_auto">Utiliser le palier automatique</string>
     <string name="milestone_edit_button">Modifier</string>
     <string name="milestone_show_percent">Afficher le pourcentage de progression</string>
@@ -1122,4 +1124,5 @@
     <string name="debug_haptics_force_waveforms">Forcer les formes d\'onde</string>
     <string name="debug_haptics_force_waveforms_summary">Utiliser des approximations par forme d\'onde pour les effets primitifs dans toute l\'application. Les retours des actions de la plateforme restent inchangés.</string>
     <string name="about_evowizz_summary">Il s’y connaît, putain ; localisé en français</string>
+    <string name="about_damanmikey_summary">Traduit en néerlandais et rendu l’IA locale fonctionnelle sur davantage d’appareils via AICore</string>
 </resources>

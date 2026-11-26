@@ -10,6 +10,10 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -53,7 +57,7 @@ class MetricChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
         this@apply.alpha = 105
     }
-    private val tooltipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val tooltipTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_card_bg)
         textSize = 12f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.forApp(context, 700)
@@ -567,24 +571,36 @@ class MetricChartView @JvmOverloads constructor(
         chartTop: Float,
         density: Float,
     ) {
-        val horizontalPadding = 9f * density
+        val availableWidth = (chartRight - chartLeft).toInt()
+        if (availableWidth <= 0) return
+        val horizontalPadding = minOf(9f * density, availableWidth / 4f)
         val verticalPadding = 6f * density
-        val textWidth = tooltipTextPaint.measureText(label)
-        val textHeight = tooltipTextPaint.fontMetrics.run { descent - ascent }
-        val rectWidth = textWidth + horizontalPadding * 2f
-        val rectHeight = textHeight + verticalPadding * 2f
-        val rectLeft = (anchorX - rectWidth / 2f).coerceIn(chartLeft, chartRight - rectWidth)
-        val rectTop = (anchorY - rectHeight - 8f * density).coerceAtLeast(chartTop)
+        val textWidth = minOf(kotlin.math.ceil(tooltipTextPaint.measureText(label)).toInt(),
+            (availableWidth - horizontalPadding * 2f).toInt()).coerceAtLeast(1)
+        val availableHeight = height - paddingBottom - chartTop - verticalPadding * 2f
+        val lineHeight = tooltipTextPaint.fontSpacing
+        if (availableHeight < lineHeight) return
+        val layout = StaticLayout.Builder.obtain(label, 0, label.length, tooltipTextPaint, textWidth)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setIncludePad(false)
+            .setMaxLines(minOf(3, (availableHeight / lineHeight).toInt()).coerceAtLeast(1))
+            .setEllipsize(TextUtils.TruncateAt.END)
+            .build()
+        val rectWidth = (textWidth + horizontalPadding * 2f).coerceAtMost(availableWidth.toFloat())
+        val rectHeight = layout.height + verticalPadding * 2f
+        // Long loss intervals and translated dates can be wider than the plot.
+        // Wrap first so the positioning range always has a valid upper bound.
+        val rectLeft = (anchorX - rectWidth / 2f).coerceIn(chartLeft, (chartRight - rectWidth).coerceAtLeast(chartLeft))
+        val rectTop = (anchorY - rectHeight - 8f * density).coerceIn(chartTop,
+            (height - paddingBottom - rectHeight).coerceAtLeast(chartTop))
 
         tooltipRect.set(rectLeft, rectTop, rectLeft + rectWidth, rectTop + rectHeight)
         canvas.drawRoundRect(tooltipRect, 14f * density, 14f * density, tooltipPaint)
         canvas.drawRoundRect(tooltipRect, 14f * density, 14f * density, tooltipStrokePaint)
-        canvas.drawText(
-            label,
-            rectLeft + horizontalPadding,
-            rectTop + verticalPadding - tooltipTextPaint.fontMetrics.ascent,
-            tooltipTextPaint,
-        )
+        val save = canvas.save()
+        canvas.translate(rectLeft + horizontalPadding, rectTop + verticalPadding)
+        layout.draw(canvas)
+        canvas.restoreToCount(save)
     }
 
     private companion object {

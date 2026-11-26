@@ -120,7 +120,7 @@ internal class MainPostAnalyticsBinder(
                     gravity = Gravity.CENTER_VERTICAL or if (post == null) Gravity.CENTER_HORIZONTAL else Gravity.START
                     setTextColor(activity.getColor(R.color.oneui_text_secondary))
                 }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f))
-                if (post != null) {
+                if (post != null && canReview(account)) {
                     val button = LayoutInflater.from(activity).inflate(R.layout.view_dashboard_report_button, this, false)
                     button.setTag(R.id.dashboard_design_line_height, 16f)
                     (button as? TextView)?.apply {
@@ -131,8 +131,7 @@ internal class MainPostAnalyticsBinder(
                         setCompoundDrawablesRelative(icon,null,null,null)
                     }
                     button.setOnClickListener {
-                        activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity,
-                            BriefReviewTarget(account, postUrl = post.url, fromDashboard = true)))
+                        openReview(post, account)
                     }
                     addView(button)
                 }
@@ -219,25 +218,35 @@ internal class MainPostAnalyticsBinder(
         return surface
     }
 
+    private fun canReview(account: String): Boolean = account.isNotBlank() &&
+        account.equals(TwidgetStore.settings(activity).username, ignoreCase = true)
+
+    private fun openReview(post: PostSummary, account: String) {
+        // Recheck at click time in case the default profile changed after this card was bound.
+        if (!canReview(account)) return
+        activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity,
+            BriefReviewTarget(account, postUrl = post.url, fromDashboard = true)))
+    }
+
     private fun tweetFooter(post: PostSummary, account: String): View {
         val footer = PostFooter(activity).apply {
             gravity = Gravity.CENTER_VERTICAL
             isBaselineAligned = false
         }
         val metrics = tweetMetricsRow(post)
+        footer.addView(metrics, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        if (!canReview(account)) return footer
         val button = LayoutInflater.from(activity).inflate(R.layout.view_dashboard_report_button, footer, false)
             as androidx.appcompat.widget.AppCompatButton
         button.typeface = TwidgetFonts.forApp(activity, 700)
         button.setOnClickListener {
-            activity.startRightSidePopOverActivity(BriefTweetReviewActivity.intent(activity,
-                BriefReviewTarget(account, postUrl = post.url, fromDashboard = true)))
+            openReview(post, account)
         }
         // The card delegates a larger touch area; this wrapper only lays out the compact pill.
         val action = android.widget.FrameLayout(activity).apply {
             addView(button, android.widget.FrameLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
         }
-        footer.addView(metrics, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         footer.addView(action, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             marginStart = activity.dp(8)
         })

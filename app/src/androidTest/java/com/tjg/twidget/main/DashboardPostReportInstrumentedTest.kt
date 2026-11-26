@@ -168,6 +168,47 @@ class DashboardPostReportInstrumentedTest {
         }
     }
 
+    @Test fun secondaryProfilesHideReviewsAndDefaultChangesDisableStaleButtons() = withFixture { account, _ ->
+        val other = "other_profile"
+        val post = PostSummary("https://x.com/$account/status/104", "A dashboard review fixture.",
+            100, 12, 4, 2, 0, 18, System.currentTimeMillis(), "", "Fixture", account, "")
+        val snapshot = AnalyticsClient.analyticsFromPosts(account, 100, 2, false, listOf(post), cachedAt = System.currentTimeMillis()).copy(
+            best = post, worst = post, banger = post, bangerComplete = true)
+        val opened = mutableListOf<Intent>()
+        val monitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.component?.className == BriefTweetReviewActivity::class.java.name) {
+                    opened += Intent(intent)
+                    return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+                }
+                return null
+            }
+        }
+        val prefs = context.getSharedPreferences(TwidgetStore.PREFS, Context.MODE_PRIVATE)
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                instrumentation.addMonitor(monitor)
+                scenario.onActivity { activity ->
+                    activity.analytics = snapshot
+                    for (type in listOf(DashboardCardType.ALL_TIME_POST, DashboardCardType.BEST_POST, DashboardCardType.WORST_POST)) {
+                        val secondary = activity.postAnalyticsBinder.createGridCard(type, other)
+                        assertNull("Added profiles must not expose tweet reviews", secondary.findViewById<View>(R.id.dashboard_view_report))
+                        val primary = activity.postAnalyticsBinder.createGridCard(type, account.uppercase())
+                        val button = requireNotNull(primary.findViewById<View>(R.id.dashboard_view_report))
+                        val before = opened.size
+                        button.performClick()
+                        assertEquals("Default profile retains its review action", before + 1, opened.size)
+                        prefs.edit().putString("username", other).commit()
+                        try {
+                            button.performClick()
+                            assertEquals("A stale action cannot review the old default profile", before + 1, opened.size)
+                        } finally { prefs.edit().putString("username", account).commit() }
+                    }
+                }
+            }
+        } finally { instrumentation.removeMonitor(monitor) }
+    }
+
     /** Explicit opt-in: read-only diagnosis of the installed account; never invokes a model. */
     @Test fun currentDashboardBangerResolvesWithoutGenerating() {
         org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("checkLiveDashboardReport") == "true")

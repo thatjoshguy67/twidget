@@ -115,6 +115,29 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
         row(screen, "launch", R.string.debug_launch_preview, arrow = true, enabled = username.isNotBlank()) {
             startActivity(TwidgetBriefActivity.debugIntent(context, username, scenario()))
         }
+        row(screen, "blue_background", R.string.brief_debug_background, getString(R.string.brief_debug_background_summary), enabled = username.isNotBlank()) {
+            val labels = listOf(R.string.brief_theme_morning, R.string.brief_theme_afternoon,
+                R.string.brief_theme_evening, R.string.brief_theme_night, R.string.brief_theme_weekend)
+            AlertDialog.Builder(context).setTitle(R.string.brief_debug_background)
+                .setItems(labels.map { getString(it) }.toTypedArray()) { _, index ->
+                    startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS)
+                        .putExtra("brief_blue_theme", BriefBlueTheme.entries[index].name))
+                }.show()
+        }
+        row(screen, "posting_timing", R.string.brief_debug_timing, getString(R.string.brief_debug_timing_summary), enabled = username.isNotBlank()) {
+            val labels = listOf(R.string.brief_timing_phase_upcoming, R.string.brief_timing_phase_now, R.string.brief_timing_phase_next)
+            AlertDialog.Builder(context).setTitle(R.string.brief_debug_timing)
+                .setItems(labels.map { getString(it) }.toTypedArray()) { _, index ->
+                    startActivity(TwidgetBriefActivity.debugIntent(context, username, BriefDebugScenario.INSIGHTS)
+                        .putExtra("brief_posting_phase", BriefPostingPhase.entries[index].name))
+                }.show()
+        }
+        row(screen, "posting_timing_evidence", R.string.brief_debug_timing_evidence) {
+            val signal = BriefPostingTiming.signal(com.tjg.twidget.analytics.AnalyticsClient.cached(context, username))
+            show(getString(R.string.brief_debug_timing_evidence), signal?.let {
+                "${getString(it.window.labelRes)} · ${it.sampleSize} comparable tweets · ${String.format(java.util.Locale.ROOT, "%.2f", it.ratio)}× runner-up median views"
+            } ?: getString(R.string.brief_debug_timing_none))
+        }
         group(screen, R.string.debug_ai_diagnostics)
         row(screen, "ai", R.string.debug_view_ai) { open(BriefDebugPage.AI) }
         group(screen, R.string.debug_tweet_reviews)

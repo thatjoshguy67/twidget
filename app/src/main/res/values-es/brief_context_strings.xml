@@ -1,0 +1,7 @@
+<resources>
+    <string name="brief_timing_upcoming">Prepárate para %1$s</string>
+    <string name="brief_timing_now">Tu franja de %1$s ya ha empezado</string>
+    <string name="brief_timing_next">Prueba %1$s mañana</string>
+    <string name="brief_timing_evidence">Entre tus tuits recientes de una edad similar, los de %1$s tuvieron una mediana de visualizaciones más alta. Vuelve a probar esa franja como un experimento, sin garantías.</string>
+    <string name="milestone_celebration_message">Objetivo alcanzado. ¡Bien hecho!</string>
+</resources>

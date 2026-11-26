@@ -1,7 +1,6 @@
 package com.tjg.twidget.brief
 
 import android.view.ViewGroup
-import android.animation.ArgbEvaluator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
@@ -121,7 +120,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var entranceStarted = false
     private var entranceGeneration = 0
     private var pendingEntranceRender: Pair<BriefSnapshot, PostAnalytics?>? = null
-    private var backgroundAnimator: ValueAnimator? = null
     private var loadingStatusIndex = 0
     private var loadingStatusRunnable: Runnable? = null
     private val loadingStatusAppearInterpolator = PathInterpolator(0.22f, 0f, 0.18f, 1f)
@@ -149,9 +147,24 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         BriefSettingsStore.setEnabled(this, true)
 
         bindChrome()
+        applyContextBackground()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 BriefPublishedReviewStore.updates.collect { refreshReviewPreviews?.invoke() }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                var hour = java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)
+                while (true) {
+                    kotlinx.coroutines.delay(60_000)
+                    val next = java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)
+                    if (next != hour) {
+                        hour = next
+                        applyContextBackground()
+                        renderedSnapshot?.let { render(it) }
+                    }
+                }
             }
         }
         showLaunchShell()
@@ -270,6 +283,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onResume() {
         super.onResume()
+        applyContextBackground()
+        if (renderedTimingHour != java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)) {
+            renderedSnapshot?.let { render(it) }
+        }
         findViewById<LinearLayout>(R.id.brief_cards)?.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.let {
             if (debugScenario == BriefDebugScenario.REAL && !BriefChatGptLinkCard.canRemainVisible(this)) it.visibility = View.GONE
         }
@@ -391,8 +408,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         cardEntranceAnimations.clear()
         apiKeyDialog?.dismiss()
         apiKeyDialog = null
-        backgroundAnimator?.cancel()
-        backgroundAnimator = null
         stopLoadingStatusRotation()
         super.onDestroy()
     }
@@ -790,6 +805,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             return
         }
         renderedSnapshot = snapshot
+        renderedTimingHour = java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)
+        applyContextBackground()
         visiblePresentation = BriefStore.presentation(this, username, snapshot)
         val summary = visiblePresentation?.summary() ?: BriefEditorialSummary.from(snapshot, BriefStrings.from(this))
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
@@ -815,7 +832,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             if (debugScenario == BriefDebugScenario.REAL && (keepLinkCard || BriefChatGptLinkCard.shouldShow(this@TwidgetBriefActivity))) {
                 add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity) { checkContentOnResume = true } to 20)
             }
-            snapshot.cards.forEach { card -> add(cardSection(card, analytics) to 20) }
+            val timingEnabled = BriefSettingsStore.contentEnabled(this@TwidgetBriefActivity, BriefContentCategory.POSTING_GUIDANCE)
+            val timing = if (timingEnabled || intent.hasExtra("brief_posting_phase") && TwidgetStore.debugMenuUnlocked(this@TwidgetBriefActivity)) postingTimingCard(analytics) else null
+            // Re-evaluate timing on display, rather than keeping yesterday's time-sensitive copy.
+            val cards = snapshot.cards.filterNot { it.id.startsWith("posting-window-") }
+            if (timing != null) add(cardSection(timing, analytics) to 20)
+            cards.forEach { card -> add(cardSection(card, analytics) to 20) }
             reviews?.let { items ->
                 items.previews.forEach { add(it to 20) }
                 add(items.libraryCard to 20)
@@ -1080,6 +1102,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             progressColor = accent
         }
         BriefGoalCardCopy.bind(this, root, username, settings, metric)
+        if (debugScenario == BriefDebugScenario.REAL && settings != null) {
+            com.tjg.twidget.main.MilestoneCelebration.attach(root, username, settings, metric?.value)
+        }
         val openEditor = View.OnClickListener {
             if (isSetup) {
                 reloadOnResume = true
@@ -1184,33 +1209,45 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         prepareEntranceView(findViewById(R.id.brief_footer), COPY_LIFT_DP)
     }
 
+    private var renderedTimingHour: java.time.ZonedDateTime? = null
+    private var appliedBlueTheme: Pair<BriefBlueTheme, Boolean>? = null
+
+    private fun applyContextBackground() {
+        val preview = if (TwidgetStore.debugMenuUnlocked(this)) intent.getStringExtra("brief_blue_theme") else null
+        val theme = BriefBlueTheme.entries.firstOrNull { it.name == preview } ?: BriefBlueTheme.current()
+        val key = theme to isNight()
+        if (appliedBlueTheme != key) {
+            appliedBlueTheme = key
+            findViewById<View>(R.id.brief_root).background = BriefBlueBackground(theme, key.second)
+        }
+    }
+
+    private fun postingTimingCard(analytics: PostAnalytics?): BriefCard? {
+        val preview = if (TwidgetStore.debugMenuUnlocked(this)) intent.getStringExtra("brief_posting_phase") else null
+        val phase = BriefPostingPhase.entries.firstOrNull { it.name == preview }
+        if (phase == null && debugScenario != BriefDebugScenario.REAL) return null
+        val signal = if (phase != null) BriefPostingSignal(BriefPostingWindow.EVENING, 12, 1.7)
+            else BriefPostingTiming.signal(analytics)
+        signal ?: return null
+        val hour = when (phase) {
+            BriefPostingPhase.UPCOMING -> 9
+            BriefPostingPhase.NOW -> 19
+            BriefPostingPhase.NEXT_DAY -> 23
+            null -> java.time.ZonedDateTime.now().hour
+        }
+        return BriefPostingTiming.card(signal, BriefStrings.from(this), hour)
+    }
+
     private fun prepareOnboardingBackgroundTransition() {
         val root = findViewById<View>(R.id.brief_root)
-        val startTop = getColor(R.color.brief_onboarding_top)
-        val startBottom = getColor(R.color.brief_onboarding_bottom)
-        val endTop = getColor(R.color.brief_screen_top)
-        val endBottom = getColor(R.color.brief_screen_bottom)
-        val background = GradientDrawable(
-            GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(startTop, startBottom),
-        )
-        root.background = background
-        root.postOnAnimation {
-            if (isFinishing || isDestroyed) return@postOnAnimation
-            val evaluator = ArgbEvaluator()
-            backgroundAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = BACKGROUND_TRANSITION_DURATION_MS
-                interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
-                addUpdateListener { animator ->
-                    val fraction = animator.animatedFraction
-                    background.colors = intArrayOf(
-                        evaluator.evaluate(fraction, startTop, endTop) as Int,
-                        evaluator.evaluate(fraction, startBottom, endBottom) as Int,
-                    )
-                }
-                start()
-            }
-        }
+        val target = root.background
+        val transition = android.graphics.drawable.TransitionDrawable(arrayOf(
+            GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
+                getColor(R.color.brief_onboarding_top), getColor(R.color.brief_onboarding_bottom))), target,
+        ))
+        root.background = transition
+        if (ValueAnimator.areAnimatorsEnabled()) transition.startTransition(BACKGROUND_TRANSITION_DURATION_MS.toInt())
+        else root.background = target
     }
 
     private fun startPreparedBriefEntrance() {

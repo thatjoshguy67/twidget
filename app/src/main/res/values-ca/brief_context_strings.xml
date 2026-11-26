@@ -1,0 +1,7 @@
+<resources>
+    <string name="brief_timing_upcoming">Prepara’t per a %1$s</string>
+    <string name="brief_timing_now">La teva franja de %1$s ja ha començat</string>
+    <string name="brief_timing_next">Prova %1$s demà</string>
+    <string name="brief_timing_evidence">Entre els teus tuits recents d’una edat similar, els de %1$s tenien una mediana de visualitzacions més alta. Torna a provar aquesta franja com un experiment, sense garanties.</string>
+    <string name="milestone_celebration_message">Objectiu assolit. Ben fet!</string>
+</resources>

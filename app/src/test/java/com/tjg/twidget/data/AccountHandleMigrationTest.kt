@@ -10,6 +10,7 @@ class AccountHandleMigrationTest {
         assertEquals("today_open_new", AccountHandleMigration.mainKey("today_open_Old", "Old", "new"))
         assertNull(AccountHandleMigration.mainKey("profile_older", "old", "new"))
         assertNull(AccountHandleMigration.mainKey("chart_range_old_extra_followers", "old", "new"))
+        assertEquals("new", AccountHandleMigration.companionKey("twidget_milestone_celebrations", "old", "old", "new"))
         assertEquals("new_goals", AccountHandleMigration.companionKey("twidget_account_goals", "old_goals", "old", "new"))
         assertNull(AccountHandleMigration.companionKey("twidget_account_goals", "old_extra_goals", "old", "new"))
         assertNull(AccountHandleMigration.companionKey("twidget_daily_streak", "old_extra_version", "old", "new"))

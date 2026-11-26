@@ -30,7 +30,10 @@ internal object BriefGuidePolicy {
         // Group advice needs age overlap too: an older media cohort must not
         // win just because its counts have had longer to accumulate.
         val comparable = PostAgeComparison.cohort(posts, analytics)
-        postingWindowCard(comparable, strings)?.let { return it }
+        BriefPostingTiming.signal(analytics, now)?.let { signal ->
+            val hour = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).hour
+            return BriefPostingTiming.card(signal, strings, hour)
+        }
         return formatExperimentCard(comparable, strings)
     }
 
@@ -65,40 +68,6 @@ internal object BriefGuidePolicy {
                 freshForMillis = FOLLOW_UP_WINDOW_MS,
                 validUntil = post.timestamp + FOLLOW_UP_WINDOW_MS,
             ),
-        )
-    }
-
-    private enum class PostingWindow(val id: String, val labelRes: Int) {
-        MORNING("morning", R.string.brief_window_morning),
-        AFTERNOON("afternoon", R.string.brief_window_afternoon),
-        EVENING("evening", R.string.brief_window_evening),
-        LATE_NIGHT("late-night", R.string.brief_window_late_night),
-    }
-
-    private fun postingWindowCard(posts: List<PostSummary>, strings: BriefStrings): BriefCard? {
-        val groups = posts.groupBy { post ->
-            val hour = Instant.ofEpochMilli(post.timestamp).atZone(ZoneId.systemDefault()).hour
-            when (hour) {
-                in 5..11 -> PostingWindow.MORNING
-                in 12..16 -> PostingWindow.AFTERNOON
-                in 17..22 -> PostingWindow.EVENING
-                else -> PostingWindow.LATE_NIGHT
-            }
-        }.filterValues { it.size >= 2 }
-        if (groups.size < 2) return null
-        val medians = groups.mapValues { (_, values) -> medianPerformance(values) }
-        val winner = medians.maxByOrNull(Map.Entry<PostingWindow, Double>::value) ?: return null
-        val others = medians.filterKeys { it != winner.key }.values.average()
-        if (others <= 0.0 || winner.value / others < 1.35) return null
-        val label = strings.text(winner.key.labelRes)
-        return BriefCard(
-            id = "posting-window-${winner.key.id}",
-            type = BriefCardType.POSTING_GUIDE,
-            title = strings.text(R.string.brief_guide_window_title, label),
-            body = strings.text(R.string.brief_guide_window_body, label),
-            score = 86,
-            action = BriefCardAction.NONE,
-            rankSignals = BriefRankSignals(contextRelevance = 0.82, timeRelevance = 0.7),
         )
     }
 

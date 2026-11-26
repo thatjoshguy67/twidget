@@ -4,6 +4,14 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Give Your Brief layered blue backgrounds that adapt to the time of day,
+  weekends and light/dark appearance.
+- Adapt posting-window guidance to whether the account’s stronger window is
+  upcoming, open or past, using known view counts from comparable-age tweets.
+- Celebrate reached account goals once per target with a short blue/silver effect
+  that respects reduced motion. Add background and timing previews to Brief debug
+  tools, and a celebration preview on Account goals when debugging is unlocked.
+
 ## [1.4.0-beta.1]
 
 A bigger dashboard, a more useful Your Brief, and more ways to understand your

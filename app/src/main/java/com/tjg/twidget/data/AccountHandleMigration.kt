@@ -92,7 +92,7 @@ internal object AccountHandleMigration {
         return null
     }
 
-    private val direct = listOf("twidget_imported_analytics", "twidget_interactions", "twidget_top_followers", "twidget_briefs")
+    private val direct = listOf("twidget_milestone_celebrations", "twidget_imported_analytics", "twidget_interactions", "twidget_top_followers", "twidget_briefs")
     private val goalSuffixes = listOf("goals", "configured", "metric", "target", "auto", "auto_all")
     private val streakSuffixes = listOf("version", "latest_original_post", "window_start", "checked_at", "complete")
     private val stores = direct + listOf("twidget_account_goals", "twidget_daily_streak", "twidget_bangers", "twidget_analytics", "twidget_interaction_ui")

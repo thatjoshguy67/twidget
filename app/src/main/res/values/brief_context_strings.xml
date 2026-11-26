@@ -1,0 +1,23 @@
+<resources>
+    <string name="brief_timing_upcoming">Plan for the %1$s</string>
+    <string name="brief_timing_now">Your %1$s window is open</string>
+    <string name="brief_timing_next">Try the %1$s tomorrow</string>
+    <string name="brief_timing_evidence">Among your recent tweets of similar age, %1$s tweets had a higher median view count. Try that window again as an experiment, rather than a guarantee.</string>
+    <string name="brief_debug_background" translatable="false">Blue background preview</string>
+    <string name="brief_debug_background_summary" translatable="false">Preview each time-of-day design without changing the clock.</string>
+    <string name="brief_debug_timing" translatable="false">Posting-time preview</string>
+    <string name="brief_debug_timing_summary" translatable="false">Compare upcoming, open and passed posting windows using sample evidence.</string>
+    <string name="brief_debug_timing_evidence" translatable="false">Posting-time evidence</string>
+    <string name="brief_debug_timing_none" translatable="false">No clear window: requires fresh analytics, known views, comparable observation ages and at least three tweets in each of two windows.</string>
+    <string name="brief_theme_morning" translatable="false">Morning</string>
+    <string name="brief_theme_afternoon" translatable="false">Afternoon</string>
+    <string name="brief_theme_evening" translatable="false">Evening</string>
+    <string name="brief_theme_night" translatable="false">Late night</string>
+    <string name="brief_theme_weekend" translatable="false">Weekend morning</string>
+    <string name="brief_timing_phase_upcoming" translatable="false">Before the best window</string>
+    <string name="brief_timing_phase_now" translatable="false">During the best window</string>
+    <string name="brief_timing_phase_next" translatable="false">After the best window</string>
+    <string name="milestone_preview_celebration" translatable="false">Preview milestone celebration</string>
+    <string name="milestone_preview_celebration_summary" translatable="false">Play the celebration without changing goals or marking a real milestone as celebrated.</string>
+    <string name="milestone_celebration_message">Goal reached. Well done!</string>
+</resources>

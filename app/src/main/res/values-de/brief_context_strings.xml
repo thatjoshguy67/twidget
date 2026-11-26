@@ -1,0 +1,7 @@
+<resources>
+    <string name="brief_timing_upcoming">Plane für %1$s</string>
+    <string name="brief_timing_now">Dein Zeitfenster für %1$s ist offen</string>
+    <string name="brief_timing_next">Probiere es morgen: %1$s</string>
+    <string name="brief_timing_evidence">Unter deinen letzten Tweets mit ähnlichem Alter hatten Tweets im Zeitfenster %1$s einen höheren Median der Aufrufe. Probiere dieses Zeitfenster erneut als Experiment, ohne Erfolgsgarantie.</string>
+    <string name="milestone_celebration_message">Ziel erreicht. Gut gemacht!</string>
+</resources>

@@ -6,6 +6,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MilestonePolicyTest {
+    @org.junit.Test fun celebrationNeedsAKnownReachedGoalAndIsNotReplayed() {
+        val goal = AccountGoalSettings(true, MilestoneMetric.FOLLOWERS, 1000.0)
+        org.junit.Assert.assertTrue(MilestoneCelebration.eligible(1000.0, goal, false))
+        org.junit.Assert.assertTrue(MilestoneCelebration.eligible(1010.0, goal, false))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(999.0, goal, false))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(null, goal, false))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(Double.NaN, goal, false))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(1000.0, goal, true))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(1000.0, goal.copy(configured = false), false))
+        org.junit.Assert.assertFalse(MilestoneCelebration.eligible(1000.0, goal.copy(target = Double.NaN), false))
+    }
     @Test
     fun parsesNumericInput() {
         val parsed = MilestonePolicy.parseInput("100")

@@ -46,6 +46,14 @@ class MilestoneGoalActivity : EdgeToEdgeActivity() {
                 setResult(RESULT_OK)
             }
         }
+        if (com.tjg.twidget.data.TwidgetStore.debugMenuUnlocked(this)) {
+            val parent = autoSwitch.parent.parent as LinearLayout
+            parent.addView(CardItemView(this).apply {
+                title = getString(R.string.milestone_preview_celebration)
+                summary = getString(R.string.milestone_preview_celebration_summary)
+                setOnClickListener { MilestoneCelebration.preview(this@MilestoneGoalActivity) }
+            })
+        }
         refresh()
     }
 
@@ -57,7 +65,16 @@ class MilestoneGoalActivity : EdgeToEdgeActivity() {
 
         rows.removeAllViews()
         MilestoneMetric.entries.forEachIndexed { index, metric ->
-            rows.addView(goalRow(metric, goals[metric], index > 0))
+            val row = goalRow(metric, goals[metric], index > 0)
+            goals[metric]?.let { goal ->
+                val value = MilestoneMetricResolver.resolve(this, account, metric,
+                    com.tjg.twidget.data.TwidgetStore.currentStats(this, account),
+                    com.tjg.twidget.data.TwidgetStore.fullHistory(this, account),
+                    com.tjg.twidget.analytics.AnalyticsClient.cached(this, account),
+                    com.tjg.twidget.analytics.ImportedAnalyticsStore.all(this, account)).value
+                MilestoneCelebration.attach(row, account, goal, value)
+            }
+            rows.addView(row)
         }
     }
 

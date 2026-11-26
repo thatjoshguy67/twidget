@@ -76,6 +76,35 @@ class BriefGuidePolicyTest {
     }
 
 
+    @Test fun postingWindowUsesEvidenceAndChangesCopyWithTheClock() {
+        val zone = java.time.ZoneId.of("UTC")
+        val base = java.time.Instant.ofEpochMilli(now).atZone(zone).minusDays(4).withMinute(0).withSecond(0).withNano(0)
+        val posts = (0..2).flatMap { index -> listOf(
+            post("Morning $index", base.withHour(8).plusMinutes(index.toLong()).toInstant().toEpochMilli(), 400),
+            post("Evening $index", base.withHour(19).plusMinutes(index.toLong()).toInstant().toEpochMilli(), 900),
+        ) }
+        val evidence = analytics(posts)
+        val signal = BriefPostingTiming.signal(evidence, now, zone)!!
+        assertEquals(BriefPostingWindow.EVENING, signal.window)
+        assertEquals(6, signal.sampleSize)
+        assertTrue(BriefPostingTiming.card(signal, strings, 9).title.contains("Plan"))
+        assertTrue(BriefPostingTiming.card(signal, strings, 19).title.contains("open"))
+        assertTrue(BriefPostingTiming.card(signal, strings, 23).title.contains("tomorrow"))
+        assertNull(BriefPostingTiming.signal(evidence.copy(recentPosts = posts.map { it.copy(viewsKnown = false) }), now, zone))
+        assertNull(BriefPostingTiming.signal(evidence.copy(recentPosts = posts.map { it.copy(isReply = true) }), now, zone))
+        assertNull(BriefPostingTiming.signal(evidence.copy(recentPosts = posts.drop(2)), now, zone))
+        assertNull(BriefPostingTiming.signal(evidence, now + 8 * day, zone))
+        assertNull(BriefPostingTiming.signal(evidence.copy(recentPosts = posts.map { it.copy(authorUserName = "other") }), now, zone))
+    }
+
+    @Test fun lateNightWindowWrapsMidnight() {
+        assertEquals(BriefPostingPhase.NOW, BriefPostingTiming.phase(BriefPostingWindow.LATE_NIGHT, 0))
+        assertEquals(BriefPostingPhase.NOW, BriefPostingTiming.phase(BriefPostingWindow.LATE_NIGHT, 23))
+        assertEquals(BriefPostingPhase.UPCOMING, BriefPostingTiming.phase(BriefPostingWindow.LATE_NIGHT, 12))
+        assertEquals(BriefPostingPhase.UPCOMING, BriefPostingTiming.phase(BriefPostingWindow.MORNING, 4))
+        assertEquals(BriefPostingPhase.NEXT_DAY, BriefPostingTiming.phase(BriefPostingWindow.MORNING, 12))
+    }
+
     private fun analytics(posts: List<PostSummary>) = PostAnalytics(
         userName = "person",
         followers = 1_000,

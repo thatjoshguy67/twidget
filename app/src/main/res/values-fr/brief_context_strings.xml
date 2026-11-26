@@ -1,0 +1,7 @@
+<resources>
+    <string name="brief_timing_upcoming">Préparez-vous pour %1$s</string>
+    <string name="brief_timing_now">Votre créneau de %1$s a commencé</string>
+    <string name="brief_timing_next">Essayez %1$s demain</string>
+    <string name="brief_timing_evidence">Parmi vos tweets récents d’un âge similaire, ceux de %1$s avaient une médiane de vues plus élevée. Réessayez ce créneau à titre expérimental, sans garantie de résultat.</string>
+    <string name="milestone_celebration_message">Objectif atteint. Bravo !</string>
+</resources>

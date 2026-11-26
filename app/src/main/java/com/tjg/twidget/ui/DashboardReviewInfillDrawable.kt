@@ -15,19 +15,19 @@ import android.util.Log
 import com.tjg.twidget.R
 import org.xmlpull.v1.XmlPullParser
 
-/** Drawable adapter for Samsung's Guiding Light renderer, shared by both button sizes. */
+/** Drawable adapter for Samsung's filled Now Nudge effect, shared by both button sizes. */
 @androidx.annotation.Keep
 class DashboardReviewInfillDrawable : Drawable() {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-    private var renderer: SamsungGuidingLightRenderer? = null
+    private var renderer: SamsungNowNudgeRenderer? = null
 
     override fun inflate(resources: Resources, parser: XmlPullParser, attrs: AttributeSet, theme: Resources.Theme?) {
         super.inflate(resources, parser, attrs, theme)
         paint.color = resources.getColor(R.color.oneui_card_bg, theme)
         if (Build.VERSION.SDK_INT >= 33) {
             val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-            renderer = runCatching { SamsungGuidingLightRenderer(resources, theme, night) }
-                .onFailure { Log.e("SamsungGuidingLight", "Could not initialise Samsung's button renderer", it) }.getOrNull()
+            renderer = runCatching { SamsungNowNudgeRenderer(resources, night) }
+                .onFailure { Log.e("SamsungNowNudge", "Could not initialise Samsung's button renderer", it) }.getOrNull()
         }
     }
 

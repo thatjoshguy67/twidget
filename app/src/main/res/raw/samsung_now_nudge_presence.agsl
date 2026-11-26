@@ -1,0 +1,222 @@
+const int MAX_BRUSHES = 20;
+
+uniform float2  uResolution;
+uniform float2  uClipCenter;
+uniform float2  uClipHalfSize;
+uniform float   uCornerRadius;
+uniform float   uInnerMargin;
+
+uniform float2  uCenterMarginRatio;
+uniform float   uCenterMarginStrength;
+uniform float   uCenterMarginRange;
+
+uniform float2  uOriginalResolution;
+
+uniform int     uBrushCount;
+uniform float4  uBrushPosRad[20];
+uniform float4  uBrushColor[20];
+uniform float   uBrushSoftness[20];
+uniform float2  uBrushAngleCosSin[20];   
+
+uniform float2  uVisHeadPos;   
+uniform float2  uVisTailPos;   
+uniform float   uVisRadius;    
+uniform float   uVisSoftMinCoef; 
+uniform float   uVisOuterBandWidth; 
+uniform float   uVisInnerBandWidth; 
+uniform float2  uVisSnakePos[11];
+uniform float   uVisSnakeRadiusRatio[11];
+uniform int     uVisSnakeNum;
+
+uniform float2  uMVCpts[9];
+uniform float2  uMVCpts_anim[9];
+
+uniform int  animMode;
+
+float smin(float a, float b, float k ) {
+    float h = clamp(0.5 + 0.5 * (b-a) / k, 0.0, 1.0);
+    return mix(b, a,h) - k*h*(1.0-h);
+}
+
+float roundedRectSDF(float2 pos, float2 center, float2 halfSize, float r) {
+    float2 q = abs(pos - center) - (halfSize - float2(r, r));
+    return length(max(q, float2(0.0, 0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
+float ellipseWeight(float2 pos, float2 center, float2 radius, float softness, float2 angle) {
+    float2 d    = pos - center;
+    float2 rot  = float2(d.x * angle.x - d.y * angle.y, d.x * angle.y + d.y * angle.x);
+    float2 scaled = rot / max(radius, float2(0.001, 0.001));
+    float  dist = length(scaled);
+    return 1.0 - smoothstep(softness, 1.0, dist);
+}
+
+float sdEllipse(float2 p, float2 ab) {
+    return (length(p / ab) - 1.0) * min(ab.x, ab.y);
+}
+
+float clipAlpha(float2 actualPos, float2 designPos) {
+    float actualRatio = uOriginalResolution.x / max(uOriginalResolution.y, 0.001);
+    float2 outerPos = actualPos * actualRatio;
+    float2 outerCenter = uOriginalResolution / 2.0 * actualRatio;
+    float2 outerHalfSize = uOriginalResolution / 2.0 * actualRatio;
+
+    float maxR = min(outerHalfSize.x, outerHalfSize.y);
+    float cornerRadius = min(uCornerRadius * actualRatio, maxR);
+
+    float outline = roundedRectSDF(outerPos, outerCenter, outerHalfSize, 0.0);
+    float outerFade = smoothstep(0.0, uInnerMargin, -outline) * step(outline, 0.0);
+    if (uCenterMarginRatio.x <= 0.0 || uCenterMarginRatio.y <= 0.0) {
+        return outerFade;
+    }
+
+    float fade = 1.0;
+    float innerOutside = 0.0;
+
+    float2 centerMarginPos = designPos;
+    float2 centerMarginCenter = uClipCenter;
+    float2 centerMarginHalfSize = uClipHalfSize;
+
+    float diagonal = length(centerMarginHalfSize);
+    float range = diagonal * uCenterMarginRange;
+
+    float2 innerHalfSize = uCenterMarginRatio * centerMarginHalfSize;
+    float distanceFromBoundary = roundedRectSDF(
+            centerMarginPos,
+            centerMarginCenter,
+            innerHalfSize,
+            0.0);
+    float distFromInner = 1.0 - smoothstep(0.0, range, distanceFromBoundary);
+    innerOutside = distFromInner;
+
+    float outerInside = smoothstep(0.0, uInnerMargin, -outline);
+    fade = (1.0 - innerOutside * uCenterMarginStrength) * outerInside * outerFade;
+    return fade;
+}
+
+float4 blendBrushes(float2 coord) {
+    float3 accColor = float3(0.0);
+    float  accAlpha = 0.0;
+    for (int i = 0; i < MAX_BRUSHES; i++) {
+        if (i >= uBrushCount) break;
+        float2 bc  = uBrushPosRad[i].xy;
+        float2 br  = uBrushPosRad[i].zw;
+        float4 col = uBrushColor[i];
+        float  sft = uBrushSoftness[i];
+        float  w   = ellipseWeight(coord, bc, br, sft, uBrushAngleCosSin[i]);
+        float  ba  = col.a * w;
+        accColor  += col.rgb * ba * (1.0 - accAlpha);
+        accAlpha  += ba * (1.0 - accAlpha);
+    }
+    return float4(accColor, clamp( accAlpha,0.0, 1.0));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+float smoothleanerstep(float edge0, float edge1 , float x, float blend) {
+    float t = clamp((x-edge0)/(edge1-edge0),0.0,1.0);
+    float s = t*t*(3.0-2.0*t);
+    return mix(t,s,blend);
+}
+
+half4 debugSnakePath(float2 fragCoord, float alpha){
+    float4 c = blendBrushes(fragCoord);
+    float R = 20.0;
+    float dist = length(fragCoord - uVisSnakePos[0]);
+    float sweep = step(dist, R);
+    return half4(half3(c.rgb * alpha) + half3(sweep, sweep, sweep), 1.0);
+}
+
+half4 debugControlPoints(float2 fragCoord) {       
+    float3 debugColor = float3(0.0);
+    for (int i = 0; i < 8; i++) {
+        float2 diff = fragCoord - uMVCpts[i];
+        float d = length(diff);
+        float dotSize = 1.0 - step(15.0, d);
+        debugColor += float3(0.0, 0.0, 1.0) * dotSize; // blue = original
+
+        float2 diffA = fragCoord - uMVCpts_anim[i];
+        float dA = length(diffA);
+        float dotASize = 1.0 - step(15.0, dA);
+        debugColor += float3(1.0, 0.0, 0.0) * dotASize; // red = animated
+    }
+    return half4(debugColor, 1.0);
+}
+
+half4 main(float2 originFragCoord) {
+    float2 fragCoord = originFragCoord * uResolution;
+    float ca = clipAlpha(originFragCoord, fragCoord);
+    //return half4(ca, ca, ca, 1.0);
+    //return debugSnakePath(fragCoord, ca);
+
+    if(animMode == 0 ) {
+        float4 c = blendBrushes(fragCoord);                
+        return half4(half3(c.rgb* ca), half(c.a * ca));
+    }
+    else if(animMode == 1) {
+        float4 c = blendBrushes(fragCoord);
+
+        float R         = max(uVisRadius, 0.001);
+        float sweep = 0.0;
+        float minDist = 1e9;
+        
+        for (int i = 0 ; i < 11; i++){
+            if (i >= uVisSnakeNum) break;
+            minDist = smin(minDist, length(fragCoord - uVisSnakePos[i]) - R*uVisSnakeRadiusRatio[i] , uVisSoftMinCoef);
+        }
+        //minDist = max(minDist, - R * 0.2);
+        //sweep= clamp(1.0 - smoothstep(-uVisInnerBandWidth, uVisOuterBandWidth ,minDist), 0.0, 1.0);
+        sweep = clamp(1.0 - smoothleanerstep(-uVisInnerBandWidth, uVisOuterBandWidth ,minDist, 0.5), 0.0, 1.0);
+        if (sweep <= 0.0) return half4(0.0);    
+
+        return half4(half3(c.rgb * sweep * ca), half(c.a * sweep * ca));
+    }
+    else {
+        float2 sumPos = float2(0.0, 0.0);
+        float  sumW   = 0.0;
+
+        float2 bPrev = uMVCpts[7];
+        float2 bCurr = uMVCpts[0];
+
+        for (int i = 0; i < 8; i++) {
+            float2 bNext = uMVCpts[i+1];
+
+            float2 rp = bPrev - fragCoord;
+            float2 rc = bCurr - fragCoord;
+            float2 rn = bNext - fragCoord;
+
+            float  lc = length(rc);
+            float2 dc = rc / max(lc, 0.0001);
+            float2 dp = rp / max(length(rp), 0.001);
+            float2 dn = rn / max(length(rn), 0.001);
+
+            //  b_prev, b_curr angle
+            float cosA = clamp(dot(dp, dc), -1.0, 1.0);
+            float sinA = dp.x * dc.y - dp.y * dc.x;
+            float tanA = sinA / max(1.0 + cosA, 0.001);
+
+            // b_curr, b_next angle
+            float cosB = clamp(dot(dc, dn), -1.0, 1.0);
+            float sinB = dc.x * dn.y - dc.y * dn.x;
+            float tanB = sinB / max(1.0 + cosB, 0.001);
+
+            float w = (tanA + tanB) / max(lc, 0.001);
+
+            float2 bAnim = uMVCpts_anim[i];
+
+            sumPos += w * bAnim;
+            sumW   += w;
+
+            bPrev = bCurr;
+            bCurr = bNext;
+        }                                
+        float2 sample = sumW > 0.001 ? sumPos / sumW : fragCoord;
+        float4 c = blendBrushes(sample);
+        half4 result = half4(half3(c.rgb * ca), half(c.a * ca));          
+
+        //result += debugControlPoints(fragCoord);
+        return result;
+    }
+}

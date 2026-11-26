@@ -57,13 +57,16 @@ the earlier 1.3.1 beta changes. The stable version will be 1.4.0.
 
 ### Followers and account history
 
-- Use public FxTwitter scans to track observed follower losses between completed
-  scans. These are interval observations, not a complete record of every unfollow.
+- Reconcile public FxTwitter follower lists once per UTC day, keeping the last
+  completed list available while a due scan runs. Show observed follower losses
+  between completed scans in the dashboard and history. These are interval
+  observations, not a complete record of every unfollow.
 - Use permanent account IDs for profile and timeline lookups where available.
   Resume cached rankings with persistent cursors and handle terminal pages safely.
-- Keep Top Followers scans activity-based, with immediate cached results and weekly
-  full scans by default. Results can be incomplete or update less often; please
-  report stale or missing rankings through GitHub Issues.
+- Keep Top Followers scans activity-based with immediate cached results. Public
+  FxTwitter lists reconcile daily; the paid provider keeps weekly full scans by
+  default. Results can be incomplete or update less often; please report stale or
+  missing rankings through GitHub Issues.
 - Carry history, widgets, goals, streaks, imports and cached rankings across verified
   handle changes. Block conflicting local moves and keep legacy shared records
   separate until their account identity can be verified.

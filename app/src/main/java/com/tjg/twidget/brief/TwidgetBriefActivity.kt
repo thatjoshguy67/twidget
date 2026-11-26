@@ -128,6 +128,17 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var apiKeyPromptShown = false
     private var apiKeyDialog: AlertDialog? = null
 
+    private val providerSignIn = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK && BriefSettingsStore.cloudApiKey(this).isNotBlank()) providerConfigured()
+    }
+
+    private fun providerConfigured() {
+        BriefSettingsStore.setProvider(this, BriefProviderMode.AUTO)
+        BriefStore.resetAi(this, username)
+        providerSetupRequired = false
+        loadBrief(forceEngine = true, forceAi = true, showSpinner = true, animateOnComplete = true)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_twidget_brief)
@@ -196,8 +207,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     AnalyticsClient.cached(this@TwidgetBriefActivity, username))
             }
             val cached = if (!forceRefresh && debugScenario == BriefDebugScenario.REAL &&
-                (initial.first.hasGeneratedNarrative || canUpdateIncrementally(initial.first)) &&
-                BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), initial.first.providerUsed))
+                ((initial.first.hasGeneratedNarrative || canUpdateIncrementally(initial.first)) &&
+                BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), initial.first.providerUsed) ||
+                    BriefGenerationCadence.isCovered(this@TwidgetBriefActivity, initial.first)))
                 initial.first to initial.third else null
             if (cached != null) {
                 if (contentChanged) BriefSettingsStore.clearContentRegenerationPending(this@TwidgetBriefActivity)
@@ -284,12 +296,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     override fun onResume() {
         super.onResume()
         applyContextBackground()
+        startBackgroundMotion()
         if (renderedTimingHour != java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)) {
             renderedSnapshot?.let { render(it) }
         }
-        findViewById<LinearLayout>(R.id.brief_cards)?.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.let {
-            if (debugScenario == BriefDebugScenario.REAL && !BriefChatGptLinkCard.canRemainVisible(this)) it.visibility = View.GONE
-        }
+        syncChatGptLoginCards()
         if (reloadOnResume) {
             reloadOnResume = false
             val contentChanged = debugScenario == BriefDebugScenario.REAL &&
@@ -351,8 +362,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                         ),
                     )
                 }
-                val ready = !forceAi && source.hasGeneratedNarrative && BriefAiCachePolicy.isFresh(source) &&
-                    BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), source.providerUsed)
+                val ready = !forceAi && (BriefGenerationCadence.isCovered(this@TwidgetBriefActivity, source) ||
+                    source.hasGeneratedNarrative && BriefAiCachePolicy.isFresh(source) &&
+                    BriefRunCache.providerMatches(BriefSettingsStore.provider(this@TwidgetBriefActivity), source.providerUsed))
                 val incremental = !forceAi && debugScenario == BriefDebugScenario.REAL && canUpdateIncrementally(source)
                 if (incremental) {
                     // A cached opening has already prepared its reveal. Rebinding
@@ -380,7 +392,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
                 localStatus = result.localStatus
                 if (canUpdateIncrementally(result.snapshot) && result.snapshot != renderedSnapshot) render(result.snapshot)
-                if (showProviderSetupIfRequired(result)) return@launch
+                if (showProviderSetupIfRequired(result, allowCovered = !forceAi)) return@launch
                 if (result.snapshot != renderedSnapshot) render(result.snapshot)
                 if (clearContentPendingOnSuccess) {
                     BriefSettingsStore.clearContentRegenerationPending(this@TwidgetBriefActivity)
@@ -399,6 +411,12 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun canUpdateIncrementally(source: BriefSnapshot): Boolean =
         source.summaryEvidenceKey.isNotBlank() && source.providerUsed != BriefProviderUsed.TEMPLATE &&
             BriefRunCache.providerMatches(BriefSettingsStore.provider(this), source.providerUsed)
+
+    override fun onPause() {
+        backgroundMotion?.cancel()
+        backgroundMotion = null
+        super.onPause()
+    }
 
     override fun onDestroy() {
         entranceGeneration++
@@ -419,9 +437,33 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(presentation.body)
         findViewById<LinearLayout>(R.id.brief_cards).removeAllViews()
         entranceSections = emptyList()
+        syncChatGptLoginCards()
+    }
+
+    private fun chatGptLoginCard(): View = BriefChatGptLinkCard.create(this) {
+        providerSignIn.launch(BriefChatGptActivity.forSetup(this))
+    }
+
+    /** Keep login available even before a first Brief exists, and refresh it after account settings return. */
+    private fun syncChatGptLoginCards() {
+        if (debugScenario != BriefDebugScenario.REAL) return
+        val show = BriefChatGptLinkCard.shouldShow(this)
+        val cards = findViewById<LinearLayout>(R.id.brief_cards)
+        val current = cards.findViewWithTag<View>(BriefChatGptLinkCard.TAG)
+        if (!show && current != null) (current.parent as? android.view.ViewGroup)?.removeView(current)
+        else if (show && current == null && visiblePresentation != null) {
+            if (cards.orientation == LinearLayout.VERTICAL) cards.addView(chatGptLoginCard(), 0, matchWrap(top = 32))
+            else renderedSnapshot?.let { render(it) }
+        }
+        findViewById<LinearLayout>(R.id.brief_provider_login).apply {
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (show && childCount == 0) addView(chatGptLoginCard())
+            if (!show) removeAllViews()
+        }
     }
 
     private fun setLoading(loading: Boolean) {
+        syncChatGptLoginCards()
         val remembered = visiblePresentation != null
         val showBrief = !loading && (remembered || !providerSetupRequired)
         val scroll = findViewById<View>(R.id.brief_scroll)
@@ -605,7 +647,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
-    private fun showProviderSetupIfRequired(result: BriefAiResult): Boolean {
+    private fun showProviderSetupIfRequired(result: BriefAiResult, allowCovered: Boolean = false): Boolean {
+        if (allowCovered && BriefGenerationCadence.isCovered(this, result.snapshot)) {
+            providerSetupRequired = false
+            return false
+        }
         val required = debugScenario == BriefDebugScenario.REAL && !result.snapshot.hasGeneratedNarrative && briefRequiresApiKey(
             result.localStatus,
             BriefSettingsStore.cloudApiKey(this),
@@ -644,17 +690,10 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     private fun showRequiredApiKeyDialog() {
         if (apiKeyDialog?.isShowing == true) return
-        apiKeyDialog = BriefApiKeyDialog.show(this, required = true) {
-            BriefSettingsStore.setProvider(this, BriefProviderMode.AUTO)
-            BriefStore.resetAi(this, username)
-            providerSetupRequired = false
-            loadBrief(
-                forceEngine = true,
-                forceAi = true,
-                showSpinner = true,
-                animateOnComplete = true,
-            )
-        }.also { dialog ->
+        apiKeyDialog = BriefProviderSetupDialog.show(this,
+            onChatGptSignIn = { providerSignIn.launch(BriefChatGptActivity.forSetup(this)) },
+            onConfigured = ::providerConfigured,
+        ).also { dialog ->
             dialog.setOnDismissListener { apiKeyDialog = null }
         }
     }
@@ -814,8 +853,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(summary.body)
         val columns = configureResponsiveLayout()
         val container = findViewById<LinearLayout>(R.id.brief_cards)
-        val keepLinkCard = container.findViewWithTag<View>(BriefChatGptLinkCard.TAG)?.visibility == View.VISIBLE &&
-            BriefChatGptLinkCard.canRemainVisible(this)
         container.removeAllViews()
         rankedTweetDescriptions.clear()
         // Keep every review preview independent so masonry can balance unequal tweet heights.
@@ -829,8 +866,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             if (debugScenario == BriefDebugScenario.CHATGPT_LINK) {
                 add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity, preview = true) {} to 20)
             }
-            if (debugScenario == BriefDebugScenario.REAL && (keepLinkCard || BriefChatGptLinkCard.shouldShow(this@TwidgetBriefActivity))) {
-                add(BriefChatGptLinkCard.create(this@TwidgetBriefActivity) { checkContentOnResume = true } to 20)
+            if (debugScenario == BriefDebugScenario.REAL && BriefChatGptLinkCard.shouldShow(this@TwidgetBriefActivity)) {
+                add(chatGptLoginCard() to 20)
             }
             val timingEnabled = BriefSettingsStore.contentEnabled(this@TwidgetBriefActivity, BriefContentCategory.POSTING_GUIDANCE)
             val timing = if (timingEnabled || intent.hasExtra("brief_posting_phase") && TwidgetStore.debugMenuUnlocked(this@TwidgetBriefActivity)) postingTimingCard(analytics) else null
@@ -1209,6 +1246,24 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         prepareEntranceView(findViewById(R.id.brief_footer), COPY_LIFT_DP)
     }
 
+    private var backgroundMotion: ValueAnimator? = null
+    private var backgroundMotionProgress = 0f
+    private var blueBackground: BriefBlueBackground? = null
+
+    private fun startBackgroundMotion() {
+        if (backgroundMotion != null || !ValueAnimator.areAnimatorsEnabled()) return
+        backgroundMotion = ValueAnimator.ofFloat(backgroundMotionProgress, backgroundMotionProgress + 1f).apply {
+            duration = 18_000L
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener {
+                backgroundMotionProgress = (it.animatedValue as Float) % 1f
+                blueBackground?.setMotionProgress(backgroundMotionProgress)
+            }
+            start()
+        }
+    }
+
     private var renderedTimingHour: java.time.ZonedDateTime? = null
     private var appliedBlueTheme: Pair<BriefBlueTheme, Boolean>? = null
 
@@ -1218,7 +1273,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val key = theme to isNight()
         if (appliedBlueTheme != key) {
             appliedBlueTheme = key
-            findViewById<View>(R.id.brief_root).background = BriefBlueBackground(theme, key.second)
+            blueBackground = BriefBlueBackground(theme, key.second).also { it.setMotionProgress(backgroundMotionProgress) }
+            findViewById<View>(R.id.brief_root).background = blueBackground
         }
     }
 

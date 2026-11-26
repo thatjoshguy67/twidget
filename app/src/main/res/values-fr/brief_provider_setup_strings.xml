@@ -1,0 +1,11 @@
+<resources>
+    <string name="brief_setup_provider_title">Choisissez votre fournisseur d’IA</string>
+    <string name="brief_setup_chatgpt">Abonnement ChatGPT</string>
+    <string name="brief_setup_chatgpt_summary">Recommandé. Utilisez votre forfait ChatGPT pour les briefings et les rapports de tweets. Les limites d’utilisation de votre forfait s’appliquent.</string>
+    <string name="brief_setup_openai">Clé API OpenAI</string>
+    <string name="brief_setup_openai_summary">Utilisez une clé API OpenAI. L’utilisation de l’API est facturée séparément de ChatGPT.</string>
+    <string name="brief_setup_gemini">Clé API Gemini</string>
+    <string name="brief_setup_gemini_summary">Utilisez une clé API Google AI Studio pour Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Continuer avec ChatGPT</string>
+    <string name="brief_setup_enter_key">Saisir une clé API</string>
+</resources>

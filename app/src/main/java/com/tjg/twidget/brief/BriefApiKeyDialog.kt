@@ -28,10 +28,11 @@ object BriefApiKeyDialog {
     fun show(
         activity: FragmentActivity,
         required: Boolean,
+        method: String = BriefOpenAi.method(activity),
         onSaved: (String) -> Unit,
     ): AlertDialog {
-        if (BriefOpenAi.method(activity) != "gemini") {
-            if (BriefOpenAi.method(activity) == "chatgpt") {
+        if (method != "gemini") {
+            if (method == "chatgpt") {
                 return AlertDialog.Builder(activity).setTitle("Connect ChatGPT")
                     .setMessage("Sign in to ChatGPT to use your plan for Briefs and tweet reviews.")
                     .setPositiveButton("Continue with ChatGPT") { _, _ -> activity.startActivity(Intent(activity, BriefChatGptActivity::class.java)) }
@@ -41,8 +42,8 @@ object BriefApiKeyDialog {
                 inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
                 setText(com.tjg.twidget.data.SecureCredentialStore.read(activity, BriefOpenAi.KEY))
             }
-            val dialog = AlertDialog.Builder(activity).setTitle("OpenAI API key")
-                .setMessage("API usage is billed separately from ChatGPT subscriptions.")
+            val dialog = AlertDialog.Builder(activity).setTitle(R.string.brief_setup_openai)
+                .setMessage(R.string.brief_setup_openai_summary)
                 .setView(input).setNegativeButton(android.R.string.cancel, null).setPositiveButton(R.string.save, null).create()
             dialog.setOnShowListener {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -50,6 +51,7 @@ object BriefApiKeyDialog {
                     if (required && key.isBlank()) input.error = activity.getString(R.string.brief_api_key_required_error)
                     else {
                         com.tjg.twidget.data.SecureCredentialStore.write(activity, mapOf(BriefOpenAi.KEY to key))
+                        BriefOpenAi.prefs(activity).edit().putString("method", "key").apply()
                         onSaved(key); dialog.dismiss()
                     }
                 }
@@ -96,6 +98,7 @@ object BriefApiKeyDialog {
                     return@setOnClickListener
                 }
                 BriefSettingsStore.setCloudApiKey(activity, key)
+                BriefOpenAi.prefs(activity).edit().putString("method", "gemini").apply()
                 onSaved(key)
                 dialog.dismiss()
             }
@@ -111,7 +114,7 @@ object BriefApiKeyDialog {
         return dialog
     }
 
-    private fun styleWindow(activity: FragmentActivity, dialog: AlertDialog) {
+    internal fun styleWindow(activity: FragmentActivity, dialog: AlertDialog) {
         val window = dialog.window ?: return
         val density = activity.resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()

@@ -1,0 +1,11 @@
+<resources>
+    <string name="brief_setup_provider_title">Tria el teu proveïdor d’IA</string>
+    <string name="brief_setup_chatgpt">Subscripció a ChatGPT</string>
+    <string name="brief_setup_chatgpt_summary">Recomanat. Fes servir el teu pla de ChatGPT per als resums i els informes de tuits. S’apliquen els límits d’ús del teu pla.</string>
+    <string name="brief_setup_openai">Clau API d’OpenAI</string>
+    <string name="brief_setup_openai_summary">Fes servir una clau API d’OpenAI. L’ús de l’API es factura per separat de ChatGPT.</string>
+    <string name="brief_setup_gemini">Clau API de Gemini</string>
+    <string name="brief_setup_gemini_summary">Fes servir una clau API de Google AI Studio per a Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Continua amb ChatGPT</string>
+    <string name="brief_setup_enter_key">Introdueix una clau API</string>
+</resources>

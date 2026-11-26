@@ -43,7 +43,7 @@ class BriefPresentationInstrumentedTest {
             strings = strings, useProfileImages = false)
         repeat(6) { index ->
             source = source.copy(sourceSyncedAt = 100L + index, analyticsCachedAt = 200L + index,
-                contextFingerprint = "new evidence $index", followers = 200L + index)
+                contextFingerprint = "new evidence $index")
             BriefStore.write(context, source)
         }
         BriefStore.resetAi(context, account)
@@ -68,6 +68,66 @@ class BriefPresentationInstrumentedTest {
         BriefStore.write(context, next)
         assertEquals(next.headline, BriefStore.presentation(context, account)!!.title)
         assertTrue(BriefStore.read(context, account)!!.hasGeneratedNarrative)
+    }
+
+    @Test fun changedFollowerFactsReplaceOldNumbersWithoutCallingAnyModel() = withAccount { account ->
+        val old = snapshot(account).copy(followers = 8094, followersToday = -20, followersWeek = -20,
+            headline = "Your follower change is -20.", subheading = "Your follower change was -20, moving you closer to your goal.",
+            shortDescription = "Your follower change was -20, moving you closer to your goal.")
+        BriefStore.write(context, old)
+        val current = old.copy(followers = 8074, followersToday = 4, followersWeek = -25,
+            generatedAt = System.currentTimeMillis(), sourceSyncedAt = System.currentTimeMillis(),
+            providerUsed = BriefProviderUsed.TEMPLATE, summaryGenerated = false, headline = "", subheading = "", shortDescription = "",
+            cards = emptyList())
+        BriefStore.write(context, current)
+        for (legacy in listOf(false, true)) {
+            if (legacy) {
+                val prefs = context.getSharedPreferences("twidget_briefs", Context.MODE_PRIVATE)
+                val root = JSONObject(prefs.getString(account, null)!!)
+                root.getJSONObject("lastPresentation").remove("followerFactsKey")
+                prefs.edit().putString(account, root.toString()).commit()
+            }
+            val display = requireNotNull(BriefStore.presentation(context, account, current))
+            assertEquals(strings.text(R.string.followers_net_today_week, "+4", "-25"), display.shortDescription)
+            assertTrue(display.matchesFollowerFacts(current))
+            assertFalse(display.summary().toString().contains("-20"))
+            assertFalse(display.summary().toString().contains("moving you closer"))
+            assertEquals(display, BriefStore.presentation(context, account))
+        }
+    }
+
+    @Test fun liveFollowerUpdatesKeepTheOverviewCadenceWithoutMarkingNewFactsAsGenerated() = withAccount { account ->
+        val now = System.currentTimeMillis()
+        val completed = snapshot(account, now - 60_000).copy(
+            contextFingerprint = "goal|0|false|2026-11-25|100|2026-11-26:morning|content|auto:gemini:model|stable|${strings.languageTag}",
+            followers = 8074, followersToday = 4, followersWeek = -21)
+        BriefStore.write(context, completed)
+        val generatedAt = BriefStore.overviewGeneratedAt(context, completed)
+        assertEquals(completed.aiGeneratedAt, generatedAt)
+        val refreshed = completed.copy(followers = 8073, followersToday = 3, followersWeek = -22,
+            sourceSyncedAt = now, analyticsCachedAt = now, generatedAt = now,
+            headline = "", subheading = "", shortDescription = "", summaryGenerated = false,
+            summaryGeneratedAt = 0, aiGeneratedAt = 0, providerUsed = BriefProviderUsed.TEMPLATE,
+            summaryEvidenceKey = "fresh measured facts", cards = emptyList())
+        repeat(4) {
+            BriefStore.write(context, refreshed.copy(sourceSyncedAt = now + it))
+            assertEquals("Reading live facts does not extend the generation clock", generatedAt,
+                BriefStore.overviewGeneratedAt(context, refreshed))
+            assertTrue(BriefGenerationCadence.isCovered(context, refreshed, now))
+            assertFalse(BriefStore.read(context, account)!!.hasGeneratedNarrative)
+            assertEquals(strings.text(R.string.followers_net_today_week, "+3", "-22"),
+                BriefStore.presentation(context, account, refreshed)!!.shortDescription)
+        }
+        assertFalse(BriefGenerationCadence.isCovered(context, refreshed.copy(posts = refreshed.posts + 1), now))
+        assertFalse(BriefGenerationCadence.isCovered(context, refreshed, generatedAt + BriefGenerationCadence.REUSE_MS))
+        // A count may change while the model is writing. Count that completed
+        // overview without persisting its obsolete measurements or prose.
+        context.getSharedPreferences("twidget_briefs", Context.MODE_PRIVATE).edit().remove(account).commit()
+        BriefStore.write(context, refreshed, overview = completed)
+        assertTrue(BriefGenerationCadence.isCovered(context, refreshed, now))
+        assertEquals(refreshed, BriefStore.read(context, account))
+        assertEquals(strings.text(R.string.followers_net_today_week, "+3", "-22"),
+            BriefStore.presentation(context, account, refreshed)!!.shortDescription)
     }
 
     @Test fun generationIsFullScreenAndRememberedHeaderReturnsAfterFailureWithoutCallingAnyModel() = withAccount { account -> runBlocking {

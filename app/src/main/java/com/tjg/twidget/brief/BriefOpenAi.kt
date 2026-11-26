@@ -18,6 +18,8 @@ internal object BriefOpenAi {
         "chatgpt" -> active(context)?.optString("refresh_token").orEmpty()
         else -> ""
     }
+    internal fun hasSession(account: JSONObject?): Boolean = !account?.optString("refresh_token").isNullOrBlank()
+    fun signedIn(context: Context): Boolean = hasSession(active(context))
     fun accounts(context: Context): JSONArray = SecureCredentialStore.read(context, ACCOUNTS).let {
         if (it.isBlank()) JSONArray() else JSONArray(it)
     }

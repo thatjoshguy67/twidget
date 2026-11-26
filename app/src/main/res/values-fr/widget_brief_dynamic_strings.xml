@@ -1,0 +1,6 @@
+<resources>
+    <string name="widget_brief_dynamic">Arrière-plan dynamique</string>
+    <string name="widget_brief_dynamic_summary">Mélange les couleurs choisies derrière ton briefing.</string>
+    <string name="widget_brief_primary_colour">Première couleur</string>
+    <string name="widget_brief_secondary_colour">Deuxième couleur</string>
+</resources>

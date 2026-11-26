@@ -104,6 +104,7 @@ internal object BriefWidgetArtworkRenderer {
         background: Int? = null,
         useProfileImages: Boolean = true,
         bitmapBudgetBytes: Long = Long.MAX_VALUE,
+        dynamicSettings: com.tjg.twidget.data.TwidgetWidgetSettings? = null,
     ): Bitmap {
         val width = widthPx.coerceAtLeast(dp(context, 100))
         val height = heightPx.coerceAtLeast(dp(context, 56))
@@ -113,6 +114,10 @@ internal object BriefWidgetArtworkRenderer {
             val radius = dp(context, if (style == WidgetStyle.MATERIAL || height / density > 110f) 26f else height / density / 2f)
             canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius,
                 Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+        }
+        dynamicSettings?.takeIf(BriefWidgetDynamicBackground::enabled)?.let { dynamic ->
+            BriefWidgetDynamicBackground.draw(canvas, dynamic, width.toFloat(), height.toFloat(), dark, 0f,
+                if (height / density <= 110) height / 2f else dp(context, 26f))
         }
         val presentation = BriefStore.presentation(context, account, snapshot, strings)
         val card = BriefCard(

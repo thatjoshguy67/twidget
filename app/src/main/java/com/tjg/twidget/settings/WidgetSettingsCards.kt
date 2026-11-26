@@ -102,7 +102,7 @@ internal class WidgetSettingsCard(
                 context = com.tjg.twidget.core.AppLocales.wrap(context, settings.language),
                 widthPx = dp(352), heightPx = dp(176), account = account,
                 snapshot = com.tjg.twidget.brief.BriefStore.read(context, account), dark = dark,
-                fontFamily = settings.fontFamily, style = settings.style))
+                fontFamily = settings.fontFamily, style = settings.style, dynamicSettings = settings))
             WidgetKind.LOCK_SCREEN -> {
                 artwork.scaleType = ImageView.ScaleType.FIT_CENTER
                 clock.format12Hour = "h:mm"

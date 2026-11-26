@@ -1,0 +1,11 @@
+<resources>
+    <string name="brief_setup_provider_title">Choose your AI provider</string>
+    <string name="brief_setup_chatgpt">ChatGPT subscription</string>
+    <string name="brief_setup_chatgpt_summary">Recommended. Use your ChatGPT plan for Briefs and Tweet Reports. Your plan’s usage limits apply.</string>
+    <string name="brief_setup_openai">OpenAI API key</string>
+    <string name="brief_setup_openai_summary">Use an OpenAI API key. API usage is billed separately from ChatGPT.</string>
+    <string name="brief_setup_gemini">Gemini API key</string>
+    <string name="brief_setup_gemini_summary">Use a Google AI Studio API key for Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Continue with ChatGPT</string>
+    <string name="brief_setup_enter_key">Enter API key</string>
+</resources>

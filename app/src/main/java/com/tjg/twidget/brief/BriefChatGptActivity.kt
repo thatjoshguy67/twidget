@@ -24,7 +24,20 @@ import java.security.spec.RSAPublicKeySpec
 
 /** Public-client OAuth uses the system browser, PKCE, state, nonce and a loopback-only listener. */
 class BriefChatGptActivity : FragmentActivity() {
-    companion object { @Volatile var awaitingReturn = false; private set }
+    companion object {
+        @Volatile var awaitingReturn = false; private set
+        private const val EXTRA_RETURN_RESULT = "brief_sign_in_return_result"
+        fun forSetup(context: android.content.Context) = Intent(context, BriefChatGptActivity::class.java)
+            .putExtra(EXTRA_RETURN_RESULT, true)
+    }
+    private fun returnToCaller(success: Boolean) {
+        if (intent.getBooleanExtra(EXTRA_RETURN_RESULT, false)) {
+            setResult(if (success) RESULT_OK else RESULT_CANCELED)
+        } else {
+            startActivity(com.tjg.twidget.settings.SettingsCategoryActivity.intent(this, com.tjg.twidget.settings.SettingsPage.DATA)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        }
+    }
     private var foregroundReady: kotlinx.coroutines.CompletableDeferred<Unit>? = null
     override fun onResume() {
         super.onResume()
@@ -115,8 +128,7 @@ class BriefChatGptActivity : FragmentActivity() {
             BriefOpenAi.prefs(this@BriefChatGptActivity).edit().putString("account", account.getString("client_id")).putString("method", "chatgpt").remove("last_sign_in_error").apply()
             BriefStore.resetAi(this@BriefChatGptActivity, com.tjg.twidget.data.TwidgetStore.settings(this@BriefChatGptActivity).username)
             respondToBrowser(true)
-            startActivity(com.tjg.twidget.settings.SettingsCategoryActivity.intent(this@BriefChatGptActivity, com.tjg.twidget.settings.SettingsPage.DATA)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            returnToCaller(true)
         } catch (error: Exception) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             respondToBrowser(false)
@@ -128,8 +140,7 @@ class BriefChatGptActivity : FragmentActivity() {
                 "Could not reach OpenAI. Check your connection and try signing in again."
             else "ChatGPT sign-in failed at $stage. Please try again."
             Toast.makeText(this@BriefChatGptActivity, message, Toast.LENGTH_LONG).show()
-            startActivity(com.tjg.twidget.settings.SettingsCategoryActivity.intent(this@BriefChatGptActivity, com.tjg.twidget.settings.SettingsPage.DATA)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+            returnToCaller(false)
         } finally { listener?.close(); listener = null; returnSocket?.close(); returnSocket = null; awaitingReturn = false; finish() }
     }
     private suspend fun respondToBrowser(success: Boolean, pending: Boolean = false) = withContext(Dispatchers.IO) {

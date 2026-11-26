@@ -191,6 +191,13 @@
             android:text="@string/brief_provider_required_action"
             android:textAllCaps="false"
             android:theme="@style/OneUI.ContainedPrimaryColorButtonTheme" />
+        <LinearLayout
+            android:id="@+id/brief_provider_login"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout

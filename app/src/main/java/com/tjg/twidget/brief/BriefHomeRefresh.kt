@@ -72,7 +72,7 @@ object BriefHomeRefresh {
                 val ready = source.hasGeneratedNarrative &&
                     BriefAiCachePolicy.isFresh(source) &&
                     BriefRunCache.providerMatches(BriefSettingsStore.provider(app), source.providerUsed)
-                if (ready && !contentChanged) return@launch
+                if ((ready || BriefGenerationCadence.isCovered(app, source)) && !contentChanged) return@launch
                 generatingState.value = true
                 val input = if (contentChanged) BriefEngine.rebuild(app, account, force = true) else source
                 val result = BriefAiCoordinator.enrich(app, input, force = false)

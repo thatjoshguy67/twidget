@@ -65,14 +65,14 @@ internal object CloudAiSettings {
                 }
             })
         } else if (cloudService == "chatgpt") {
-            if (BriefOpenAi.active(context) == null) screen.addPreference(Preference(context).apply {
+            if (!BriefOpenAi.signedIn(context)) screen.addPreference(Preference(context).apply {
                 key = "brief_chatgpt_sign_in"
                 title = "Continue with ChatGPT"
                 summary = BriefOpenAi.prefs(context).getString("last_sign_in_error", null)?.let { "Last sign-in failed: $it" }
                     ?: BriefOpenAi.active(context)?.optString("email") ?: "Use your ChatGPT plan; account limits apply"
                 setOnPreferenceClickListener { startActivity(Intent(context, BriefChatGptActivity::class.java)); true }
             })
-            if (BriefOpenAi.active(context)?.optString("refresh_token")?.isNotBlank() == true) screen.addPreference(Preference(context).apply {
+            if (BriefOpenAi.signedIn(context)) screen.addPreference(Preference(context).apply {
                 key = "brief_chatgpt_sign_out"
                 title = "Sign out of ChatGPT"
                 setOnPreferenceClickListener {

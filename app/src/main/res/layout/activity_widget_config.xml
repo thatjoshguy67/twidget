@@ -108,6 +108,21 @@
                     app:title="@string/widget_tint" />
 
 
+                <dev.oneuiproject.oneui.widget.SwitchItemView
+                    android:id="@+id/brief_dynamic_row"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:visibility="gone" app:separateSwitch="false" app:showTopDivider="true"
+                    app:title="@string/widget_brief_dynamic"
+                    app:summaryOn="@string/widget_brief_dynamic_summary" app:summaryOff="@string/widget_brief_dynamic_summary" />
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/brief_primary_color_row"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:visibility="gone" app:showTopDivider="true" app:title="@string/widget_brief_primary_colour" />
+                <dev.oneuiproject.oneui.widget.CardItemView
+                    android:id="@+id/brief_secondary_color_row"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:visibility="gone" app:showTopDivider="true" app:title="@string/widget_brief_secondary_colour" />
+
                 <dev.oneuiproject.oneui.widget.CardItemView
                     android:id="@+id/logo_row"
                     android:layout_width="match_parent"

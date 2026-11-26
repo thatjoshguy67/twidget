@@ -1,0 +1,19 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_brief_card_surface">
+    <ViewFlipper android:id="@+id/brief_widget_background_flipper" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:autoStart="true" android:flipInterval="4000"
+        android:inAnimation="@anim/widget_brief_dynamic_in" android:outAnimation="@anim/widget_brief_dynamic_out"
+        android:animateFirstView="false" android:importantForAccessibility="noHideDescendants">
+        <ImageView android:id="@+id/brief_widget_background_0" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" />
+        <ImageView android:id="@+id/brief_widget_background_1" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" />
+        <ImageView android:id="@+id/brief_widget_background_2" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" />
+        <ImageView android:id="@+id/brief_widget_background_3" android:layout_width="match_parent"
+            android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    </ViewFlipper>
+    <ImageView android:id="@+id/brief_widget_artwork" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:contentDescription="@null" android:scaleType="fitCenter" />
+</FrameLayout>

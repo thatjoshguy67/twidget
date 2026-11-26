@@ -18,6 +18,7 @@ keystore.properties
 build/
 node_modules/
 bridge/data/
+.monitoring/
 
 # IDE
 *.iml

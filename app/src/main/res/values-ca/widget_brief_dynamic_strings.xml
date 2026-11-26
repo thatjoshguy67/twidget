@@ -1,0 +1,6 @@
+<resources>
+    <string name="widget_brief_dynamic">Fons dinàmic</string>
+    <string name="widget_brief_dynamic_summary">Combina els colors que triïs darrere del teu resum.</string>
+    <string name="widget_brief_primary_colour">Primer color</string>
+    <string name="widget_brief_secondary_colour">Segon color</string>
+</resources>

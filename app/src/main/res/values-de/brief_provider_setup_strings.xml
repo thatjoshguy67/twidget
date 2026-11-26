@@ -1,0 +1,11 @@
+<resources>
+    <string name="brief_setup_provider_title">KI-Anbieter auswählen</string>
+    <string name="brief_setup_chatgpt">ChatGPT-Abonnement</string>
+    <string name="brief_setup_chatgpt_summary">Empfohlen. Nutze deinen ChatGPT-Tarif für Briefings und Tweet-Berichte. Es gelten die Nutzungslimits deines Tarifs.</string>
+    <string name="brief_setup_openai">OpenAI-API-Schlüssel</string>
+    <string name="brief_setup_openai_summary">Nutze einen OpenAI-API-Schlüssel. Die API-Nutzung wird getrennt von ChatGPT abgerechnet.</string>
+    <string name="brief_setup_gemini">Gemini-API-Schlüssel</string>
+    <string name="brief_setup_gemini_summary">Nutze einen Google-AI-Studio-API-Schlüssel für Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Mit ChatGPT fortfahren</string>
+    <string name="brief_setup_enter_key">API-Schlüssel eingeben</string>
+</resources>

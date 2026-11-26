@@ -27,7 +27,8 @@ internal class FollowerCountCardView(context: Context) : View(context) {
         hero = WidgetArtworkRenderer.followerHero(context, settings, words, countWordCount,
             context.getColor(R.color.oneui_text_primary), context.getColor(R.color.oneui_text_secondary),
             context.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_editorial_delta))
-        contentDescription = words.joinToString(" ")
+        contentDescription = words.joinToString(" ") + if (stats.followersKnown && delta != 0L)
+            ". " + context.getString(R.string.followers_net_today, TwidgetStore.signedNumber(delta)) else ""
         fitted = null
         invalidate()
     }

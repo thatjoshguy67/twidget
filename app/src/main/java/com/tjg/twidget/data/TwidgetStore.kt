@@ -115,6 +115,9 @@ data class TwidgetWidgetSettings(
     val language: String = "DEFAULT",
     val style: com.tjg.twidget.widget.WidgetStyle = com.tjg.twidget.widget.WidgetStyle.ONE_UI,
     val containedFooter: Boolean = false,
+    val briefDynamic: Boolean = false,
+    val briefPrimaryColor: Int = 0xFF1881FF.toInt(),
+    val briefSecondaryColor: Int = 0xFF64CFFF.toInt(),
 )
 
 enum class HistoryRange(val labelRes: Int, val requiredDays: Int) {
@@ -471,6 +474,9 @@ object TwidgetStore {
             language = string("widget_language", "DEFAULT"),
             style = style,
             containedFooter = boolean("widget_contained_footer", false),
+            briefDynamic = boolean("widget_brief_dynamic", false),
+            briefPrimaryColor = integer("widget_brief_primary", 0xFF1881FF.toInt()) or 0xFF000000.toInt(),
+            briefSecondaryColor = integer("widget_brief_secondary", 0xFF64CFFF.toInt()) or 0xFF000000.toInt(),
         )
     }
 
@@ -499,6 +505,9 @@ object TwidgetStore {
             .putString("widget_language$suffix", settings.language)
             .putString("widget_style$suffix", settings.style.storedValue)
             .putBoolean("widget_contained_footer$suffix", settings.containedFooter)
+            .putBoolean("widget_brief_dynamic$suffix", settings.briefDynamic)
+            .putInt("widget_brief_primary$suffix", settings.briefPrimaryColor)
+            .putInt("widget_brief_secondary$suffix", settings.briefSecondaryColor)
             .apply()
     }
 

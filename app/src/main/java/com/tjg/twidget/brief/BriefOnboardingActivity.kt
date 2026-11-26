@@ -22,10 +22,31 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
     private lateinit var username: String
     private lateinit var generation: Deferred<BriefAiResult>
     private var apiKeyPromptShown = false
+    private var providerDialog: androidx.appcompat.app.AlertDialog? = null
+    private val providerSignIn = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK && BriefSettingsStore.cloudApiKey(this).isNotBlank()) providerConfigured()
+    }
+
+    private fun providerConfigured() {
+        BriefSettingsStore.setProvider(this, BriefProviderMode.AUTO)
+        BriefStore.resetAi(this, username)
+        generation = BriefLaunchGeneration.start(this, username, restartIfComplete = true)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("provider_prompt_shown", apiKeyPromptShown)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onDestroy() {
+        providerDialog?.dismiss()
+        super.onDestroy()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_brief_onboarding)
+        apiKeyPromptShown = savedInstanceState?.getBoolean("provider_prompt_shown") ?: false
         username = intent.getStringExtra(TwidgetBriefActivity.EXTRA_USERNAME).orEmpty()
             .trim().trimStart('@')
             .ifBlank { TwidgetStore.settings(this).username.trim().trimStart('@') }
@@ -158,15 +179,10 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
                 return@launch
             }
             apiKeyPromptShown = true
-            BriefApiKeyDialog.show(this@BriefOnboardingActivity, required = true) {
-                BriefSettingsStore.setProvider(this@BriefOnboardingActivity, BriefProviderMode.AUTO)
-                BriefStore.resetAi(this@BriefOnboardingActivity, username)
-                generation = BriefLaunchGeneration.start(
-                    this@BriefOnboardingActivity,
-                    username,
-                    restartIfComplete = true,
-                )
-            }
+            providerDialog = BriefProviderSetupDialog.show(this@BriefOnboardingActivity,
+                onChatGptSignIn = { providerSignIn.launch(BriefChatGptActivity.forSetup(this@BriefOnboardingActivity)) },
+                onConfigured = ::providerConfigured,
+            ).also { dialog -> dialog.setOnDismissListener { providerDialog = null } }
         }
     }
 

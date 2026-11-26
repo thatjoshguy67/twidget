@@ -1,0 +1,6 @@
+<resources>
+    <string name="widget_brief_dynamic">Fondo dinámico</string>
+    <string name="widget_brief_dynamic_summary">Combina los colores que elijas detrás de tu resumen.</string>
+    <string name="widget_brief_primary_colour">Primer color</string>
+    <string name="widget_brief_secondary_colour">Segundo color</string>
+</resources>

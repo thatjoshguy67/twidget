@@ -1,0 +1,6 @@
+<resources>
+    <string name="widget_brief_dynamic">Dynamischer Hintergrund</string>
+    <string name="widget_brief_dynamic_summary">Mische deine gewählten Farben hinter deinem Briefing.</string>
+    <string name="widget_brief_primary_colour">Erste Farbe</string>
+    <string name="widget_brief_secondary_colour">Zweite Farbe</string>
+</resources>

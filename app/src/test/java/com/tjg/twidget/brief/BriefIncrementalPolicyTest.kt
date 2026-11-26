@@ -105,7 +105,7 @@ class BriefIncrementalPolicyTest {
             stages += stage
             if (stage.endsWith("title")) "Your conversation update" else "Your tweets received 11 replies."
         }!!
-        assertEquals(listOf("card-0-title", "card-0-description"), stages)
+        assertEquals(listOf("card-0-description"), stages)
         val merged = BriefIncrementalPolicy.merge(kept, result)
         assertTrue(merged.hasGeneratedNarrative)
         assertEquals(kept.headline, merged.headline)
@@ -138,13 +138,13 @@ class BriefIncrementalPolicyTest {
         val stages = mutableListOf<String>()
         val partial = BriefNanoTextNarrative.generate(measured(), strings) { stage, _ ->
             stages += stage
-            if (stage == "card-1-title") throw IllegalStateException("Provider quota reached")
+            if (stage == "card-1-description") throw IllegalStateException("Provider quota reached")
             if (stage.endsWith("title") || stage == "headline") "Your recorded activity"
             else "Your recorded activity is in focus."
         }!!
         assertTrue(partial.summaryGenerated)
         assertTrue(partial.cards.first().narrativeGenerated)
-        assertEquals("card-1-title", stages.last())
+        assertEquals("card-1-description", stages.last())
         assertEquals(listOf("pattern", "recap", "pulse"), BriefIncrementalPolicy.pending(partial).cards.map { it.id })
     }
 

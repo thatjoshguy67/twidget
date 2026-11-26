@@ -1,0 +1,11 @@
+<resources>
+    <string name="brief_setup_provider_title">Elige tu proveedor de IA</string>
+    <string name="brief_setup_chatgpt">Suscripción a ChatGPT</string>
+    <string name="brief_setup_chatgpt_summary">Recomendado. Usa tu plan de ChatGPT para los resúmenes y los informes de tuits. Se aplican los límites de uso de tu plan.</string>
+    <string name="brief_setup_openai">Clave API de OpenAI</string>
+    <string name="brief_setup_openai_summary">Usa una clave API de OpenAI. El uso de la API se factura por separado de ChatGPT.</string>
+    <string name="brief_setup_gemini">Clave API de Gemini</string>
+    <string name="brief_setup_gemini_summary">Usa una clave API de Google AI Studio para Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Continuar con ChatGPT</string>
+    <string name="brief_setup_enter_key">Introducir clave API</string>
+</resources>

@@ -43,7 +43,8 @@ class BriefNanoPolicyTest {
             response(stage)
         }
         assertTrue(result!!.hasGeneratedNarrative)
-        assertEquals(5, stages.size)
+        assertEquals(4, stages.size)
+        assertEquals(source.cards.single().title, result.cards.single().title)
         assertEquals("A small follower dip over the recorded period.", result.cards.single().body)
         assertEquals(source.cards.single().metrics, result.cards.single().metrics)
     }
@@ -118,6 +119,25 @@ class BriefNanoPolicyTest {
         assertEquals(1, stages.count { it == "headline" })
         assertTrue(stages.contains("card-0-description-compact"))
         assertEquals("Your posts received 1600 views.", result.cards.single().body)
+    }
+
+    @Test fun aStalledFieldKeepsCompletedLocalWorkAndStopsSendingRequests() = runBlocking {
+        val stages = mutableListOf<String>()
+        val partials = mutableListOf<BriefSnapshot>()
+        val failures = mutableListOf<String>()
+        val scoped = source.copy(summaryEvidenceKey = "measured-evidence")
+        val result = BriefNanoTextNarrative.generate(scoped, strings,
+            onInvalid = { failures += it }, onPartial = { partials += it }, fieldTimeoutMs = 100) { stage, _ ->
+            stages += stage
+            if (stage == "card-0-description") kotlinx.coroutines.delay(1_000)
+            response(stage)
+        }!!
+        assertTrue(result.summaryGenerated)
+        assertFalse(result.cards.single().narrativeGenerated)
+        assertTrue(partials.isNotEmpty())
+        assertEquals(1, stages.count { it == "card-0-description" })
+        assertTrue(failures.any { it.contains("timeout") })
+        assertEquals(listOf("context"), BriefIncrementalPolicy.pending(result).cards.map { it.id })
     }
 
     private fun response(stage: String): String = when (stage) {

@@ -837,16 +837,17 @@ internal class MainDashboardBinder(
             val delta = renderSnapshot?.todayDelta({ it.followersKnown }) { it.followers } ?: 0
             findViewById<com.tjg.twidget.ui.CardValueTextView>(R.id.followers_delta).apply {
                 text = if (stats.followersKnown) TwidgetStore.signedNumber(delta) else "--"
+                contentDescription = if (stats.followersKnown) activity.getString(R.string.followers_net_today, text) else "--"
                 configure(24f, 60)
                 setTextColor(activity.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_delta))
             }
             contentDescription = listOf(activity.getString(R.string.followers),
-                findViewById<TextView>(R.id.followers_value).text, findViewById<TextView>(R.id.followers_delta).text).joinToString(". ")
+                findViewById<TextView>(R.id.followers_value).text, findViewById<TextView>(R.id.followers_delta).contentDescription).joinToString(". ")
             if (TwidgetStore.settings(activity).shareHistory && stats.isPrivate != true) {
                 com.tjg.twidget.bridge.FollowerLossStore.latest(activity, stats.userId)?.takeIf { it.lost > 0 }?.let { loss ->
                     val range = android.text.format.DateUtils.formatDateRange(activity, loss.from, loss.to,
                         android.text.format.DateUtils.FORMAT_SHOW_DATE or android.text.format.DateUtils.FORMAT_ABBREV_MONTH)
-                    val detail = activity.getString(R.string.followers_observed_losses, fullCount(loss.lost), range)
+                    val detail = activity.getString(R.string.followers_observed_losses, "~${fullCount(loss.lost)}", range)
                     setTag(R.id.dashboard_stat_detail_expanded, "${findViewById<TextView>(R.id.followers_delta).text}\n$detail")
                     contentDescription = "$contentDescription. $detail"
                 }

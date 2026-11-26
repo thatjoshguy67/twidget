@@ -17,10 +17,13 @@ internal enum class BriefBlueTheme { MORNING, AFTERNOON, EVENING, NIGHT, WEEKEND
     }
 }
 
-/** Fixed, softly blended layers, rebuilt only for bounds/theme changes. No perpetual draw loop. */
+/** Distinct blue light pools. Cached shaders move without allocating new gradients each frame. */
 internal class BriefBlueBackground(private val theme: BriefBlueTheme, private val night: Boolean) : Drawable() {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val layers = mutableListOf<Pair<Shader, Int>>()
+    private val motionMatrix = Matrix()
+    private var motion = 0f
+    fun setMotionProgress(value: Float) { motion = value; invalidateSelf() }
     private var opacity = 255
     private var filter: ColorFilter? = null
 
@@ -28,12 +31,12 @@ internal class BriefBlueBackground(private val theme: BriefBlueTheme, private va
         layers.clear()
         val w = bounds.width().toFloat().coerceAtLeast(1f)
         val h = bounds.height().toFloat().coerceAtLeast(1f)
-        val top = if (night) 0xFF003B66.toInt() else 0xFFA1D5FF.toInt()
-        val bottom = if (night) 0xFF202C3E.toInt() else 0xFFF1F1F3.toInt()
+        val top = if (night) 0xFF002340.toInt() else 0xFFBDDFFF.toInt()
+        val bottom = if (night) 0xFF152A45.toInt() else 0xFFEEF5FF.toInt()
         layers += LinearGradient(0f, 0f, 0f, h, top, bottom, Shader.TileMode.CLAMP) to 255
         val phase = theme.ordinal
-        val colors = if (night) intArrayOf(0xFF126CC0.toInt(), 0xFF2664AA.toInt(), 0xFF1D4078.toInt())
-            else intArrayOf(0xFF5BAEFF.toInt(), 0xFF9BCBFF.toInt(), 0xFFB2DFFC.toInt())
+        val colors = if (night) intArrayOf(0xFF007CDD.toInt(), 0xFF1762CE.toInt(), 0xFF149BC5.toInt())
+            else intArrayOf(0xFF3B9EFF.toInt(), 0xFF73CFFF.toInt(), 0xFF7CA9FF.toInt())
         val positions = when (theme) {
             BriefBlueTheme.MORNING -> listOf(.05f to .05f, 1f to .27f, .25f to .64f)
             BriefBlueTheme.AFTERNOON -> listOf(.9f to .1f, .05f to .38f, .9f to .65f)
@@ -43,15 +46,23 @@ internal class BriefBlueBackground(private val theme: BriefBlueTheme, private va
         }
         positions.forEachIndexed { index, (x, y) ->
             val color = colors[(index + phase) % colors.size]
-            layers += RadialGradient(x * w, y * h, maxOf(w * .85f, h * .4f),
-                intArrayOf(color, color and 0x00FFFFFF), null, Shader.TileMode.CLAMP) to if (night) 90 else 130
+            layers += RadialGradient(x * w, y * h, maxOf(w * .65f, h * .28f),
+                intArrayOf(color, color, color and 0x00FFFFFF), floatArrayOf(0f, .18f, 1f), Shader.TileMode.CLAMP) to if (night) 160 else 190
         }
     }
 
     override fun draw(canvas: Canvas) {
         val save = canvas.save()
         canvas.translate(bounds.left.toFloat(), bounds.top.toFloat())
-        layers.forEach { (shader, strength) ->
+        layers.forEachIndexed { index, (shader, strength) ->
+            if (index > 0) {
+                val angle = motion * Math.PI * 2 + index * 2.1
+                motionMatrix.setTranslate(
+                    (kotlin.math.sin(angle) * bounds.width() * .20).toFloat(),
+                    (kotlin.math.cos(angle) * bounds.height() * .10).toFloat(),
+                )
+                shader.setLocalMatrix(motionMatrix)
+            }
             paint.shader = shader; paint.alpha = opacity * strength / 255; paint.colorFilter = filter
             canvas.drawRect(0f, 0f, bounds.width().toFloat(), bounds.height().toFloat(), paint)
         }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="followers_net_today">%1$s nets aujourd’hui</string>
+    <string name="followers_net_today_week">Aujourd’hui : %1$s · Sur 7 jours : %2$s.</string>
+    <string name="followers_lost_axis">%1$s perdus</string>
+</resources>

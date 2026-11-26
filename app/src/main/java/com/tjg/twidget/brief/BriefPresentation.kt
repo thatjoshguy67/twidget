@@ -10,8 +10,12 @@ data class BriefPresentation(
     val contentFingerprint: String,
     val generatedAt: Long,
     val evidenceKey: String = "",
+    val followerFactsKey: String = "",
 ) {
     fun summary() = BriefEditorialSummary(title, body, shortDescription)
+
+    internal fun matchesFollowerFacts(source: BriefSnapshot): Boolean =
+        followerFactsKey.isNotBlank() && followerFactsKey == followerFactsKey(source)
 
     internal fun matches(strings: BriefStrings, content: String): Boolean =
         title.isNotBlank() && body.isNotBlank() && shortDescription.isNotBlank() && generatedAt > 0 &&
@@ -31,7 +35,10 @@ data class BriefPresentation(
                 snapshot.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY,
                 strings.languageTag, snapshot.contentSettingsFingerprint.ifBlank { legacyContent ?: content },
                 snapshot.summaryGeneratedAt.takeIf { it > 0 } ?: snapshot.aiGeneratedAt.takeIf { it > 0 } ?: snapshot.generatedAt,
-                snapshot.summaryEvidenceKey)
+                snapshot.summaryEvidenceKey, followerFactsKey(snapshot))
         }
+
+        internal fun followerFactsKey(source: BriefSnapshot): String =
+            "${source.followers}|${source.followersToday}|${source.followersWeek}"
     }
 }

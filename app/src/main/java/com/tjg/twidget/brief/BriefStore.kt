@@ -16,7 +16,7 @@ object BriefStore {
         return runCatching { decode(JSONObject(raw)) }.getOrNull()
     }
 
-    fun write(context: Context, snapshot: BriefSnapshot) {
+    fun write(context: Context, snapshot: BriefSnapshot, overview: BriefSnapshot? = null) {
         synchronized(com.tjg.twidget.data.TwidgetStore) {
             val account = com.tjg.twidget.data.TwidgetStore.canonicalAccount(context, snapshot.username)
             val previous = prefs(context).getString(key(snapshot.username), null)
@@ -24,6 +24,15 @@ object BriefStore {
                 ?.takeIf { it.optString("username").trim().trimStart('@').equals(account, true) }
             val runs = BriefRunCache.recent(listOf(snapshot) + recentRuns(previous))
             val encoded = encode(snapshot).put("recentRuns", JSONArray(runs.map(::encode)))
+            val generationScope = BriefGenerationCadence.scope(snapshot)
+            val previousGeneration = if (previous?.optString("overviewGenerationScope") == generationScope)
+                previous.optLong("overviewGeneratedAt") else 0L
+            val completedOverview = (listOf(snapshot) + listOfNotNull(overview) + recentRuns(previous))
+                .filter { BriefGenerationCadence.completedOverview(it) && BriefGenerationCadence.scope(it) == generationScope }
+                .maxOfOrNull(BriefGenerationCadence::completedAt) ?: 0L
+            maxOf(previousGeneration, completedOverview).takeIf { it > 0L }?.let {
+                encoded.put("overviewGenerationScope", generationScope).put("overviewGeneratedAt", it)
+            }
             val strings = BriefStrings.from(context)
             val content = BriefSettingsStore.contentFingerprint(context)
             val remembered = readPresentation(previous) ?: recentRuns(previous)
@@ -43,41 +52,67 @@ object BriefStore {
         }
     }
 
+    internal fun overviewGeneratedAt(context: Context, source: BriefSnapshot): Long {
+        val root = prefs(context).getString(key(source.username), null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+            ?: return 0L
+        return if (root.optString("overviewGenerationScope") == BriefGenerationCadence.scope(source))
+            root.optLong("overviewGeneratedAt") else 0L
+    }
+
     /** Legacy display memory survives failures; scoped summaries must still match current evidence. */
     fun presentation(context: Context, username: String, source: BriefSnapshot? = null,
         strings: BriefStrings = BriefStrings.from(context)): BriefPresentation? {
         val account = com.tjg.twidget.data.TwidgetStore.canonicalAccount(context, username)
         val content = BriefSettingsStore.contentFingerprint(context)
+        val root = prefs(context).getString(key(account), null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+            ?.takeIf { it.optString("username").trim().trimStart('@').equals(account, true) }
+        val current = source?.takeIf { it.username.trim().trimStart('@').equals(account, true) }
+            ?: root?.let { runCatching { decode(it) }.getOrNull() }
+        val remembered = readPresentation(root)
+        fun usable(value: BriefPresentation): Boolean = value.matches(strings, content) &&
+            (current == null || value.matchesFollowerFacts(current))
         if (source != null && source.username.trim().trimStart('@').equals(account, true)) {
             BriefPresentation.from(source, strings, content)?.takeIf { it.matches(strings, content) }?.let { return it }
-            if (source.summaryEvidenceKey.isNotBlank()) return measuredPresentation(source, strings, content)
+            // Keep successful prose through provider failures only while its measured
+            // follower facts still match. Legacy prose has no proof of those facts.
+            if (remembered != null && !remembered.matchesFollowerFacts(source)) {
+                return measuredPresentation(source, strings, content, allowTemplate = true)?.takeIf { it.matches(strings, content) }
+            }
+            if (source.summaryEvidenceKey.isNotBlank()) return measuredPresentation(source, strings, content,
+                allowTemplate = BriefGenerationCadence.isCovered(context, source))
                 ?.takeIf { it.matches(strings, content) }
         }
-        val root = prefs(context).getString(key(account), null)?.let { runCatching { JSONObject(it) }.getOrNull() }
-            ?: return null
-        if (!root.optString("username").trim().trimStart('@').equals(account, true)) return null
+        if (root == null) return null
+        if (current != null && remembered != null && !remembered.matchesFollowerFacts(current)) {
+            return measuredPresentation(current, strings, content, allowTemplate = true)?.takeIf { it.matches(strings, content) }
+        }
         if (root.optString("summaryEvidenceKey").isNotBlank()) {
             return runCatching { decode(root) }.getOrNull()?.let {
-                BriefPresentation.from(it, strings, content) ?: measuredPresentation(it, strings, content)
+                BriefPresentation.from(it, strings, content) ?: measuredPresentation(it, strings, content,
+                    allowTemplate = BriefGenerationCadence.isCovered(context, it))
             }
                 ?.takeIf { it.matches(strings, content) }
         }
-        readPresentation(root)?.takeIf { it.matches(strings, content) }?.let { return it }
+        remembered?.takeIf(::usable)?.let { return it }
         return recentRuns(root).filter { it.language.equals(strings.languageTag, true) &&
             com.tjg.twidget.data.TwidgetStore.canonicalAccount(context, it.username).equals(account, true) }
             .sortedByDescending { it.aiGeneratedAt }
-            .firstNotNullOfOrNull { BriefPresentation.from(it, strings, content)?.takeIf { memory -> memory.matches(strings, content) } }
+            .firstNotNullOfOrNull { BriefPresentation.from(it, strings, content)?.takeIf(::usable) }
     }
 
     // While a changed summary is rewritten, show its current measured overview.
     // This is display-only: it never marks a template as a successful AI result.
-    private fun measuredPresentation(source: BriefSnapshot, strings: BriefStrings, content: String): BriefPresentation? {
-        if (source.providerUsed == BriefProviderUsed.TEMPLATE || !source.language.equals(strings.languageTag, true)) return null
-        val summary = BriefEditorialSummary.from(source, strings)
-        return BriefPresentation(summary.title, summary.body, summary.shortDescription,
+    private fun measuredPresentation(source: BriefSnapshot, strings: BriefStrings, content: String, allowTemplate: Boolean = false): BriefPresentation? {
+        if ((!allowTemplate && source.providerUsed == BriefProviderUsed.TEMPLATE) || !source.language.equals(strings.languageTag, true)) return null
+        val summary = BriefEditorialSummary.from(source.cards, strings, source.followersToday, source.followersWeek)
+        val mixedDirections = source.followersToday > 0 && source.followersWeek < 0 || source.followersToday < 0 && source.followersWeek > 0
+        val short = if (mixedDirections) strings.text(R.string.followers_net_today_week,
+            com.tjg.twidget.data.TwidgetStore.signedNumber(source.followersToday, strings.locale),
+            com.tjg.twidget.data.TwidgetStore.signedNumber(source.followersWeek, strings.locale)) else summary.shortDescription
+        return BriefPresentation(summary.title, summary.body, short,
             source.cards.firstOrNull()?.type ?: BriefCardType.SUMMARY, source.language,
             source.contentSettingsFingerprint.ifBlank { content },
-            source.generatedAt, source.summaryEvidenceKey)
+            source.generatedAt, source.summaryEvidenceKey, BriefPresentation.followerFactsKey(source))
     }
 
     private fun readPoints(array: JSONArray?): List<BriefChartPoint> = buildList {
@@ -92,6 +127,7 @@ object BriefStore {
         .put("body", value.body).put("shortDescription", value.shortDescription).put("heroType", value.heroType.name)
         .put("language", value.language).put("contentFingerprint", value.contentFingerprint).put("generatedAt", value.generatedAt)
         .put("evidenceKey", value.evidenceKey)
+        .put("followerFactsKey", value.followerFactsKey)
 
     private fun readPresentation(root: JSONObject?): BriefPresentation? = runCatching {
         val value = root?.optJSONObject("lastPresentation") ?: return null
@@ -99,7 +135,7 @@ object BriefStore {
             BriefVoicePolicy.withoutEmDashes(value.getString("body")),
             BriefVoicePolicy.withoutEmDashes(value.getString("shortDescription")),
             BriefCardType.valueOf(value.getString("heroType")), value.getString("language"),
-            value.getString("contentFingerprint"), value.getLong("generatedAt"), value.optString("evidenceKey"))
+            value.getString("contentFingerprint"), value.getLong("generatedAt"), value.optString("evidenceKey"), value.optString("followerFactsKey"))
     }.getOrNull()
 
     internal fun cachedRun(context: Context, source: BriefSnapshot): BriefSnapshot? {

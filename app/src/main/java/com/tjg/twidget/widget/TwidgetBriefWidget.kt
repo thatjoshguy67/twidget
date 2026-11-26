@@ -84,7 +84,10 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             val variants = widgetArtworkVariants(TwidgetStore.widgetSettings(context, id))
             val budget = remoteViewsBitmapBudget(context, BITMAP_BUDGET)
             fun add(key: SizeF, width: Int, height: Int) {
-                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants
+                val settings = TwidgetStore.widgetSettings(context, id)
+                val textureCost = if (BriefWidgetDynamicBackground.enabled(settings)) BriefWidgetDynamicBackground.bytes(
+                    dp(context, width), dp(context, height), BriefWidgetDynamicBackground.budget(budget, variants)) * variants else 0L
+                val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants + textureCost
                 if (bytes + cost > budget || views.containsKey(key)) return
                 views[key] = createViews(context, id, width, height, account, snapshot)
                 bytes += cost
@@ -100,6 +103,8 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 add(SizeF(110f, 111f), 162, 176)
                 add(SizeF(231f, 111f), 352, 175)
             }
+            if (views.isEmpty()) views[SizeF(currentWidth.toFloat(), currentHeight.toFloat())] =
+                createViews(context, id, currentWidth, currentHeight, account, snapshot)
             return RemoteViews(views)
         }
 
@@ -118,10 +123,12 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             val summary = BriefStore.presentation(context, account, snapshot, strings)?.summary()
             val dark = isDark(context, settings.colorMode)
             val backgroundColor = WidgetColors.resolve(context, settings, dark).background
-            return RemoteViews(
-                context.packageName,
-                if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card,
-            ).apply {
+            val dynamic = BriefWidgetDynamicBackground.enabled(settings)
+            val frames = BriefWidgetDynamicBackground.frameCount()
+            val layout = if (dynamic) {
+                if (frames == 1) R.layout.widget_brief_dynamic_static else R.layout.widget_brief_dynamic
+            } else if (oneRow) R.layout.widget_brief_pill else R.layout.widget_brief_card
+            return RemoteViews(context.packageName, layout).apply {
                 setInt(android.R.id.background, "setBackgroundResource",
                     if (settings.style == WidgetStyle.MATERIAL) R.drawable.widget_material_surface
                     else if (oneRow) R.drawable.widget_brief_pill_surface else R.drawable.widget_brief_card_surface)
@@ -132,7 +139,18 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 } else {
                     setInt(android.R.id.background, "setBackgroundColor", Color.TRANSPARENT)
                 }
-                val artworkBudget = remoteViewsBitmapBudget(context, BITMAP_BUDGET) / widgetArtworkVariants(settings)
+                val totalBudget = remoteViewsBitmapBudget(context, BITMAP_BUDGET)
+                val variants = widgetArtworkVariants(settings)
+                val textureBudget = if (dynamic) BriefWidgetDynamicBackground.budget(totalBudget, variants) else 0L
+                val textureBytes = if (dynamic) BriefWidgetDynamicBackground.bytes(dp(context, width), dp(context, height), textureBudget, frames) else 0L
+                if (dynamic) repeat(frames) { frame ->
+                    setWidgetArtwork(BriefWidgetDynamicBackground.frameIds[frame], settings) { backgroundDark ->
+                        BriefWidgetDynamicBackground.render(context, settings, dp(context, width), dp(context, height),
+                            backgroundDark, frame / 4f, textureBudget / frames,
+                            background = if (Build.VERSION.SDK_INT < 31) backgroundColor else null)
+                    }
+                }
+                val artworkBudget = (totalBudget / variants - textureBytes).coerceAtLeast(4L)
                 setWidgetArtwork(R.id.brief_widget_artwork, settings) { artworkDark ->
                     BriefWidgetArtworkRenderer.render(
                         context = localizedContext,
@@ -144,7 +162,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         dark = artworkDark,
                         fontFamily = settings.fontFamily,
                         style = settings.style,
-                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) backgroundColor else null,
+                        background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && !dynamic) backgroundColor else null,
                         bitmapBudgetBytes = artworkBudget,
                     )
                 }

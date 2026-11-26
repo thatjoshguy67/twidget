@@ -153,6 +153,10 @@ object BriefAiCoordinator {
                 BriefStore.cachedRun(context, currentSource)
                     ?: BriefAiCachePolicy.retain(BriefStore.read(context, source.username), currentSource, strings)
             }
+            if (!force && BriefGenerationCadence.isCovered(context, currentSource)) {
+                return@withLock BriefAiResult(cached,
+                    if (cached.providerUsed == BriefProviderUsed.LOCAL) BriefLocalStatus.AVAILABLE else BriefLocalStatus.UNAVAILABLE)
+            }
             if (!force && cached.hasGeneratedNarrative && cachedProviderMatches(mode, cached.providerUsed)) {
                 if (cached !== source) BriefStore.write(context, cached)
                 return@withLock BriefAiResult(
@@ -164,40 +168,43 @@ object BriefAiCoordinator {
                     },
                 )
             }
-            val localProbe = GeminiNanoBriefProvider.probe(context)
+            val localProbe = if (mode == BriefProviderMode.CLOUD) NanoProbe(BriefLocalStatus.UNAVAILABLE, null)
+                else GeminiNanoBriefProvider.probe(context)
             val localStatus = localProbe.status
             val reusable = if (force || !cachedProviderMatches(mode, cached.providerUsed)) currentSource else cached
             val requestSource = if (force) currentSource else BriefIncrementalPolicy.pending(reusable)
             val response = when (mode) {
                 BriefProviderMode.LOCAL -> {
                     BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    val local = GeminiNanoBriefProvider.generate(context, requestSource, strings, onFieldAttempt = trace?.let { it::localAttempt })
+                    val local = GeminiNanoBriefProvider.generate(context, requestSource, strings, onFieldAttempt = trace?.let { it::localAttempt }, preflight = localProbe)
                     if (local == null) trace?.event("NANO · ${BriefAiDiagnosticsStore.lastLocalFailure(context) ?: "no validated response"}")
                     local?.copy(
                         providerMessage = strings.text(R.string.brief_provider_note_nano),
                     )
                 }
                 BriefProviderMode.CLOUD -> {
-                    BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
+                    BriefAiDiagnosticsStore.attempt(context, if (BriefOpenAi.method(context) == "gemini") "Gemini Cloud" else "OpenAI")
                     GeminiCloudBriefProvider.generate(context, requestSource, strings, trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
                         providerMessage = if (BriefOpenAi.method(context) == "gemini") strings.text(R.string.brief_provider_note_cloud) else "Generated with OpenAI",
                     )
                 }
-                BriefProviderMode.AUTO -> {
-                    BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
-                    val local = GeminiNanoBriefProvider.generate(context, requestSource, strings, onFieldAttempt = trace?.let { it::localAttempt })?.copy(
-                        providerMessage = strings.text(R.string.brief_provider_note_nano),
-                    )
-                    if (local?.hasGeneratedNarrative == true) local else run {
-                        BriefAiDiagnosticsStore.attempt(context, "Gemini Cloud")
-                        val cloud = GeminiCloudBriefProvider.generate(context,
+                BriefProviderMode.AUTO -> BriefProviderRouting.auto(
+                    local = {
+                        BriefAiDiagnosticsStore.attempt(context, "Gemini Nano")
+                        GeminiNanoBriefProvider.generate(context, requestSource, strings,
+                            onFieldAttempt = trace?.let { it::localAttempt }, preflight = localProbe)?.copy(
+                            providerMessage = strings.text(R.string.brief_provider_note_nano),
+                        )
+                    },
+                    cloud = { local ->
+                        BriefAiDiagnosticsStore.attempt(context, if (BriefOpenAi.method(context) == "gemini") "Gemini Cloud" else "OpenAI")
+                        GeminiCloudBriefProvider.generate(context,
                             local?.let(BriefIncrementalPolicy::pending) ?: requestSource, strings,
                             trace?.let { it::event }, trace?.let { it::cloudResponse })?.copy(
                             providerMessage = if (BriefOpenAi.method(context) == "gemini") strings.text(R.string.brief_provider_note_nano_then_cloud) else "Generated with OpenAI after Gemini Nano was unavailable",
                         )
-                        if (cloud != null && local != null) BriefIncrementalPolicy.merge(local, cloud) else cloud ?: local
-                    }
-                }
+                    },
+                )
             }
             val candidate = response?.let { BriefIncrementalPolicy.merge(reusable, it) } ?: reusable
             // A sync may finish while a provider is writing. Never attach older
@@ -208,7 +215,7 @@ object BriefAiCoordinator {
             }
             BriefAiDiagnosticsStore.outcome(context, generated.providerUsed, generated.providerMessage)
             trace?.event("OUTCOME · ${generated.providerUsed} · ${generated.providerMessage}")
-            BriefStore.write(context, generated)
+            BriefStore.write(context, generated, overview = candidate)
             TwidgetBriefWidget.updateAll(context)
             BriefAiResult(generated, localStatus)
         }
@@ -341,9 +348,10 @@ internal object GeminiNanoBriefProvider {
         source: BriefSnapshot,
         strings: BriefStrings,
         onResponse: (String, String) -> Unit = { _, _ -> },
+        preflight: NanoProbe? = null,
         onFieldAttempt: ((BriefNanoTextNarrative.FieldAttempt) -> Unit)? = null,
     ): BriefSnapshot? {
-        val probe = probe(context)
+        val probe = preflight ?: probe(context)
         if (probe.status != BriefLocalStatus.AVAILABLE) {
             BriefAiDiagnosticsStore.localFailure(context, "Feature status: ${probe.status}")
             return null
@@ -428,7 +436,8 @@ internal object GeminiNanoBriefProvider {
                     }
                 }
                 var validationFailure: String? = null
-                kotlinx.coroutines.withTimeoutOrNull(120_000L) {
+                var latestPartial: BriefSnapshot? = null
+                (kotlinx.coroutines.withTimeoutOrNull(120_000L) {
                     // Nano writes short fields; the app supplies structure and validates each field
                     // before moving on. Cloud's larger JSON contract is unreliable on small models.
                     BriefNanoTextNarrative.generate(
@@ -436,11 +445,12 @@ internal object GeminiNanoBriefProvider {
                         strings,
                         onInvalid = { validationFailure = it },
                         onFieldAttempt = onFieldAttempt,
+                        onPartial = { latestPartial = it },
                     ) { stage, prompt ->
                         request(stage, prompt, 256)
                     }?.also { remember() }
-                }.also { result ->
-                    if (result == null) BriefAiDiagnosticsStore.localFailure(context,
+                } ?: latestPartial).also { result ->
+                    if (result?.hasGeneratedNarrative != true) BriefAiDiagnosticsStore.localFailure(context,
                         "Local generation incomplete: ${validationFailure ?: "see stage diagnostics"}")
                 }
             } finally {
@@ -871,6 +881,7 @@ internal object BriefAiCardResponse {
         raw: String,
         provider: BriefProviderUsed,
         strings: BriefStrings,
+        preserveTitles: Boolean = false,
     ): Result {
         val start = raw.indexOf('[')
         val end = raw.lastIndexOf(']')
@@ -925,12 +936,13 @@ internal object BriefAiCardResponse {
             if (!seen.add(id)) continue
             val title = item.optString("title").ifBlank { item.optString("t") }.trim()
             val body = item.optString("body").ifBlank { item.optString("b") }.trim()
-            if (title.length !in 1..60 || body.length !in 1..180) {
+            val appOwnedTitle = preserveTitles || original.type == BriefCardType.MILESTONE
+            if ((!appOwnedTitle && title.length !in 1..60) || body.length !in 1..180) {
                 rejected += "card_length:${original.type}"
                 continue
             }
             val allowedFacts = "${original.title} ${original.body} ${original.metrics.joinToString { it.label + " " + it.value }}"
-            val visibleCopy = if (original.type == BriefCardType.MILESTONE) body else "$title $body"
+            val visibleCopy = if (appOwnedTitle) body else "$title $body"
             val directionSafe = followerDirectionAccepts(visibleCopy, protectFollowerCopy, strings)
             val factual = directionSafe && BriefNumericEvidence.accepts(visibleCopy, allowedFacts, strings) && BriefVoicePolicy.accepts(visibleCopy, strings)
             if (!directionSafe) rejected += "card_direction:${original.type}"
@@ -938,7 +950,7 @@ internal object BriefAiCardResponse {
             if (!BriefVoicePolicy.accepts(visibleCopy, strings)) rejected += "card_style:${original.type}"
             replacements[id] = if (factual) {
                 original.copy(
-                    title = if (original.type == BriefCardType.MILESTONE) original.title
+                    title = if (appOwnedTitle) original.title
                         else copy.title(title, "${original.title} ${original.body}"),
                     body = copy.body(body) + if (followerCaveat.isNotBlank() && original.body.contains(followerCaveat) && !body.contains(followerCaveat)) " " + followerCaveat else "",
                     narrativeGenerated = true,

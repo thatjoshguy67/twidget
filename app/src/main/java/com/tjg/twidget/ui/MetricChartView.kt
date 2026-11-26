@@ -47,7 +47,7 @@ class MetricChartView @JvmOverloads constructor(
         textSize = 14f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.forApp(context, 400)
     }
-    private val dateLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val dateLabelPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.oneui_text_primary)
         textSize = 10f * resources.displayMetrics.scaledDensity
         typeface = TwidgetFonts.forApp(context, 700)
@@ -259,9 +259,13 @@ class MetricChartView @JvmOverloads constructor(
         val fullAxisLabels = MetricChartScale.axisLabels(scaleMin, scaleMax)
         val axisLabels = if (compactCardInsets && fullAxisLabels.distinct().size < fullAxisLabels.size)
             MetricChartScale.axisLabels(scaleMin, scaleMax, 3).distinct() else fullAxisLabels
+        val lossAxisLabel = if (hasUnfollows) unfollowValues.filterNotNull().maxOrNull()?.let {
+            context.getString(R.string.followers_lost_axis, numberFormat.format(it))
+        } else null
         // Reserve a real gutter after the widest formatted Y label. A fixed
         // plot origin collapses this gap as soon as values gain commas/digits.
-        val left = labelInset + axisLabels.maxOf(axisLabelPaint::measureText) + (if (narrow) 6f else if (compactCardInsets) 10f else 8f) * density
+        val axisWidth = maxOf(axisLabels.maxOf(axisLabelPaint::measureText), lossAxisLabel?.let(axisLabelPaint::measureText) ?: 0f)
+        val left = labelInset + axisWidth + (if (narrow) 6f else if (compactCardInsets) 10f else 8f) * density
         val widthAvailable = width - left - right
         if (widthAvailable <= 0f) return
         val barSlot = widthAvailable / labels.size
@@ -409,8 +413,7 @@ class MetricChartView @JvmOverloads constructor(
         canvas.restoreToCount(plotCheckpoint)
 
         if (hasUnfollows) {
-            val maximum = unfollowValues.filterNotNull().maxOrNull()
-            val label = maximum?.let { "−${numberFormat.format(it)}" } ?: "–"
+            val label = lossAxisLabel ?: "–"
             canvas.drawText(label, left - axisLabelPaint.measureText(label) - 6f * density,
                 chartBottom - 4f * density, axisLabelPaint)
         }
@@ -430,13 +433,15 @@ class MetricChartView @JvmOverloads constructor(
         // Place newest-first and check the final clamped bounds. Even when the
         // nominal step fits, right-edge clamping can push the last date into its neighbour.
         labels.indices.reversed().forEach { index ->
-            val label = labels[index]
+            val label = TextUtils.ellipsize(labels[index], dateLabelPaint,
+                minOf(width - right, widthAvailable * 2f).coerceAtLeast(1f), TextUtils.TruncateAt.END).toString()
             if (index in dateIndices) {
                 val x = left + index * stride + (barSlot - barWidth) / 2f
                 val labelWidth = dateLabelPaint.measureText(label)
                 val dateTextBounds = android.graphics.Rect().also { dateLabelPaint.getTextBounds(label, 0, label.length, it) }
+                val minimumLeft = left - labelWidth / 2f
                 val labelX = (x + barWidth / 2f - labelWidth / 2f)
-                    .coerceIn(left - labelWidth / 2f, width - right - labelWidth)
+                    .coerceIn(minimumLeft, (width - right - labelWidth).coerceAtLeast(minimumLeft))
                 if (labelX + labelWidth + 4f * resources.displayMetrics.density <= nextLabelLeft) {
                     canvas.drawText(label, labelX, if (compactCardInsets) height - dateTextBounds.bottom.toFloat() else height - 8f * density, dateLabelPaint)
                     nextLabelLeft = labelX

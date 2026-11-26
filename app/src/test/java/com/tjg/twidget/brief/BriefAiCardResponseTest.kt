@@ -37,8 +37,8 @@ class BriefAiCardResponseTest {
         val result = BriefAiCardResponse.apply(negative,
             """[{"i":"follower-loss","t":"Follower change","b":"Your follower change was -20, moving you closer to your goal."}]""",
             BriefProviderUsed.CLOUD, strings)
-        assertEquals(null, result.snapshot)
-        assertEquals(0, result.appliedCards)
+        assertEquals(card.body, result.snapshot?.cards?.single()?.body)
+        assertEquals(false, result.snapshot?.cards?.single()?.narrativeGenerated)
     }
 
     @Test

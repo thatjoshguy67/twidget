@@ -8,6 +8,15 @@ class BriefEditorialSummaryTest {
     private val strings = TestBriefStrings()
 
     @Test
+    fun losingFollowersTodayDoesNotClaimProgressEvenWithPositiveWeek() {
+        val result = BriefEditorialSummary.from(strings = strings,
+            cards = listOf(BriefCard("goal", BriefCardType.MILESTONE, "Goal", "Target", 70)),
+            followersToday = -20, followersWeek = 10)
+        assertEquals(strings.text(com.tjg.twidget.R.string.brief_summary_title_reset), result.title)
+        assertFalse(result.body.contains(strings.text(com.tjg.twidget.R.string.brief_summary_goal_closer)))
+    }
+
+    @Test
     fun personalGuideShapesTheOverviewWithoutDuplicatingItsCardCopy() {
         val guide = BriefCard(
             "schedule-gap",

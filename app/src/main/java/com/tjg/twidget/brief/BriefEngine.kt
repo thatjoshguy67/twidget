@@ -34,7 +34,7 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 27
+    private const val ENGINE_VERSION = 28
 
     fun rebuild(context: Context, username: String, force: Boolean = false, reuseNarrative: Boolean = true): BriefSnapshot {
         val clean = username.trim().trimStart('@')
@@ -68,7 +68,14 @@ object BriefEngine {
             followersToday = evaluation.report.followersToday,
             followersWeek = evaluation.report.followersWeek,
             upcomingTweets = 0,
-        )
+        ).let { summary ->
+            if (stats.followerContext?.overlapsDecline(stats, stats.history) == true) {
+                val caveat = strings.text(R.string.follower_event_caveat)
+                summary.copy(title = strings.text(R.string.follower_event_context_needed),
+                    body = summary.body + if (summary.body.contains(caveat)) "" else " " + caveat,
+                    shortDescription = strings.text(R.string.follower_event_context_needed))
+            } else summary
+        }
         val measured = BriefSnapshot(
             username = clean,
             generatedAt = System.currentTimeMillis(),

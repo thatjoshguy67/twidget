@@ -699,6 +699,15 @@ internal object GeminiCloudBriefProvider {
     }
 }
 
+internal fun followerDirectionAccepts(text: String, decliningOrUncertain: Boolean, strings: BriefStrings): Boolean {
+    if (!decliningOrUncertain) return true
+    val lower = text.lowercase(strings.locale)
+    val closerPhrases = listOf(strings.text(R.string.brief_summary_goal_closer), strings.text(R.string.brief_summary_title_moving_closer))
+    if (closerPhrases.any { it.isNotBlank() && lower.contains(it.lowercase(strings.locale)) }) return false
+    // Catch paraphrases of goal progress, including the reported generated copy.
+    return !Regex("closer|nearer|progress.{0,40}goal|toward.{0,40}goal|näher|plus près|rapproch|avvicin|mais perto|més a prop|acerc|más cerca|更近|接近", RegexOption.IGNORE_CASE).containsMatchIn(text)
+}
+
 private const val SYSTEM_INSTRUCTION =
     "You write a concise, personal social guide focused on the user's next useful move. " +
         BriefVoicePolicy.INSTRUCTION +
@@ -884,16 +893,15 @@ internal object BriefAiCardResponse {
         var summaryApplied = source.summaryGenerated
         var summaryWritten = false
         var applied = 0
+        val followerCaveat = strings.text(R.string.follower_event_caveat)
         val protectFollowerCopy = source.followersToday < 0L || source.followersWeek < 0L ||
-            source.cards.any { it.body.contains(strings.text(R.string.follower_event_caveat)) }
-        val protectedTypes = setOf(BriefCardType.FOLLOWER_CONTEXT, BriefCardType.AUDIENCE_MOMENTUM,
-            BriefCardType.GROWTH, BriefCardType.SLOWDOWN, BriefCardType.MILESTONE)
+            (followerCaveat.isNotBlank() && source.cards.any { it.body.contains(followerCaveat) })
         val rejected = linkedSetOf<String>()
         for (index in 0 until array.length()) {
             val item = array.optJSONObject(index) ?: continue
             val id = item.optString("id").ifBlank { item.optString("i") }
             if (id == SUMMARY_ID && seen.add(id)) {
-                if (source.summaryGenerated || protectFollowerCopy) continue
+                if (source.summaryGenerated) continue
                 val title = item.optString("title").ifBlank { item.optString("t") }.trim()
                 val body = item.optString("body").ifBlank { item.optString("b") }.trim()
                 val shortBody = fitCompactCopy(item.optString("shortDescription").ifBlank { item.optString("s") })
@@ -901,6 +909,7 @@ internal object BriefAiCardResponse {
                     rejected += "summary_length"
                     continue
                 }
+                if (!followerDirectionAccepts("$title $body $shortBody", protectFollowerCopy, strings)) { rejected += "summary_direction"; continue }
                 if (!BriefVoicePolicy.accepts("$title $body $shortBody", strings)) { rejected += "summary_style"; continue }
                 if (!BriefNumericEvidence.accepts(shortBody, summaryFacts, strings)) { rejected += "summary_numeric"; continue }
                 if (BriefNumericEvidence.accepts("$title $body", summaryFacts, strings)) {
@@ -913,7 +922,6 @@ internal object BriefAiCardResponse {
                 continue
             }
             val original = originals[id] ?: continue
-            if (protectFollowerCopy && original.type in protectedTypes) continue
             if (!seen.add(id)) continue
             val title = item.optString("title").ifBlank { item.optString("t") }.trim()
             val body = item.optString("body").ifBlank { item.optString("b") }.trim()
@@ -923,14 +931,16 @@ internal object BriefAiCardResponse {
             }
             val allowedFacts = "${original.title} ${original.body} ${original.metrics.joinToString { it.label + " " + it.value }}"
             val visibleCopy = if (original.type == BriefCardType.MILESTONE) body else "$title $body"
-            val factual = BriefNumericEvidence.accepts(visibleCopy, allowedFacts, strings) && BriefVoicePolicy.accepts(visibleCopy, strings)
+            val directionSafe = followerDirectionAccepts(visibleCopy, protectFollowerCopy, strings)
+            val factual = directionSafe && BriefNumericEvidence.accepts(visibleCopy, allowedFacts, strings) && BriefVoicePolicy.accepts(visibleCopy, strings)
+            if (!directionSafe) rejected += "card_direction:${original.type}"
             if (!BriefNumericEvidence.accepts(visibleCopy, allowedFacts, strings)) rejected += "card_numeric:${original.type}"
             if (!BriefVoicePolicy.accepts(visibleCopy, strings)) rejected += "card_style:${original.type}"
             replacements[id] = if (factual) {
                 original.copy(
                     title = if (original.type == BriefCardType.MILESTONE) original.title
                         else copy.title(title, "${original.title} ${original.body}"),
-                    body = copy.body(body),
+                    body = copy.body(body) + if (followerCaveat.isNotBlank() && original.body.contains(followerCaveat) && !body.contains(followerCaveat)) " " + followerCaveat else "",
                     narrativeGenerated = true,
                     narrativeGeneratedAt = System.currentTimeMillis(),
                 )

@@ -49,8 +49,9 @@ follower/momentum descriptions retain the numbers with an uncertainty caveat.
 Raw counts, history, post performance and goals are never adjusted.
 Direct-only clients without pooled-history sync do not acquire bridge context.
 
-Generated follower/goal copy falls back to deterministic measured copy when the
+Generated follower/goal claims of moving closer to a goal are rejected when the
 current day or week is negative, or the source includes the shared-event caveat.
-Summary direction favours the recorded weekly trend over a conflicting positive
-single day. Existing generated narratives are invalidated with an engine-version
+Safe generated loss descriptions remain available; rejected copy keeps the
+deterministic measured description. The shared-event caveat survives rewrites.
+Summary goal-progress claims require neither the day nor week to be negative. Existing generated narratives are invalidated with an engine-version
 bump. A negative change must not become progress toward a higher follower target.

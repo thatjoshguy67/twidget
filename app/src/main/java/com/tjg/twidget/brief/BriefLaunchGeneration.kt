@@ -23,6 +23,7 @@ object BriefLaunchGeneration {
         context: Context,
         username: String,
         restartIfComplete: Boolean,
+        force: Boolean = true,
     ): Deferred<BriefAiResult> {
         val account = username.trim().trimStart('@')
         if (account.isBlank()) {
@@ -36,11 +37,14 @@ object BriefLaunchGeneration {
 
         val appContext = context.applicationContext
         return scope.async {
-
-            BriefStore.resetAi(appContext, account)
-            val source = BriefEngine.rebuild(appContext, account, force = true)
+            if (force) BriefStore.resetAi(appContext, account)
+            val source = BriefEngine.rebuild(appContext, account, force = force)
+            if (!force && BriefGenerationCadence.isCovered(appContext, source)) {
+                return@async BriefAiResult(source,
+                    if (source.providerUsed == BriefProviderUsed.LOCAL) BriefLocalStatus.AVAILABLE else BriefLocalStatus.UNAVAILABLE)
+            }
             runCatching {
-                BriefAiCoordinator.enrich(appContext, source, force = true)
+                BriefAiCoordinator.enrich(appContext, source, force = force)
             }.getOrElse {
                 BriefAiResult(source, BriefLocalStatus.UNAVAILABLE)
             }

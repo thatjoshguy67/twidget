@@ -23,6 +23,8 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
     private lateinit var generation: Deferred<BriefAiResult>
     private var apiKeyPromptShown = false
     private var providerDialog: androidx.appcompat.app.AlertDialog? = null
+    private var blueBackground: BriefBlueBackground? = null
+    private var backgroundMotion: ValueAnimator? = null
     private val providerSignIn = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && BriefSettingsStore.cloudApiKey(this).isNotBlank()) providerConfigured()
     }
@@ -46,6 +48,12 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_brief_onboarding)
+        blueBackground = BriefBlueBackground(BriefBlueTheme.current(),
+            resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES).apply {
+            setUnlockProgress(0f)
+            setMotionProgress(BriefBlueBackground.motionPhase())
+        }
+        findViewById<android.view.View>(R.id.brief_onboarding_root).background = blueBackground
         apiKeyPromptShown = savedInstanceState?.getBoolean("provider_prompt_shown") ?: false
         username = intent.getStringExtra(TwidgetBriefActivity.EXTRA_USERNAME).orEmpty()
             .trim().trimStart('@')
@@ -68,11 +76,31 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
                 }
             }
         }
-        generation = BriefLaunchGeneration.start(this, username, restartIfComplete = true)
+        generation = BriefLaunchGeneration.start(this, username, restartIfComplete = true, force = false)
         watchGenerationForApiKeyRequirement()
     }
 
     override fun allowsPopOverPresentation(): Boolean = false
+
+    override fun onResume() {
+        super.onResume()
+        blueBackground?.setMotionProgress(BriefBlueBackground.motionPhase())
+        if (backgroundMotion == null && ValueAnimator.areAnimatorsEnabled()) {
+            backgroundMotion = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = BriefBlueBackground.MOTION_PERIOD_MS
+                repeatCount = ValueAnimator.INFINITE
+                interpolator = android.view.animation.LinearInterpolator()
+                addUpdateListener { blueBackground?.setMotionProgress(BriefBlueBackground.motionPhase()) }
+                start()
+            }
+        }
+    }
+
+    override fun onPause() {
+        backgroundMotion?.cancel()
+        backgroundMotion = null
+        super.onPause()
+    }
 
     private fun bindChrome() {
         val tint = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
@@ -126,7 +154,7 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
                     waitForLaunchGeneration = waitForGeneration,
                     fromOnboarding = true,
                     apiKeyPromptAlreadyShown = apiKeyPromptShown,
-                ),
+                ), android.app.ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle(),
             )
             finish()
         }
@@ -171,6 +199,7 @@ class BriefOnboardingActivity : FoldablePopOverActivity() {
     private fun watchGenerationForApiKeyRequirement() {
         lifecycleScope.launch {
             val result = runCatching { generation.await() }.getOrNull() ?: return@launch
+            if (BriefGenerationCadence.isCovered(this@BriefOnboardingActivity, result.snapshot)) return@launch
             if (isFinishing || isDestroyed || apiKeyPromptShown || !briefRequiresApiKey(
                     result.localStatus,
                     BriefSettingsStore.cloudApiKey(this@BriefOnboardingActivity),

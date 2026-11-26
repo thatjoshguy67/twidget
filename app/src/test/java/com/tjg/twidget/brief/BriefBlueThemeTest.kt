@@ -5,6 +5,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BriefBlueThemeTest {
+    @Test fun bothScreensShareOneContinuousMotionClock() {
+        assertEquals(.5f, BriefBlueBackground.motionPhase(9_000), .0001f)
+        assertEquals(0f, BriefBlueBackground.motionPhase(18_000), .0001f)
+        assertEquals(.5f, BriefBlueBackground.motionPhase(27_000), .0001f)
+    }
     @Test fun localTimeAndWeekendsChooseTheBlueDesign() {
         fun theme(time: String) = BriefBlueTheme.current(ZonedDateTime.parse(time))
         assertEquals(BriefBlueTheme.MORNING, theme("2026-11-26T09:00:00Z"))

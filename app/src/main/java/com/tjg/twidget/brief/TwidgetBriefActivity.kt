@@ -142,6 +142,9 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_twidget_brief)
+        backgroundUnlockProgress = savedInstanceState?.getFloat("brief_background_unlock")
+            ?: if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) 0f else .45f
+        backgroundUnlockStarted = savedInstanceState?.getBoolean("brief_background_unlock_started") ?: false
         username = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
             .ifBlank { TwidgetStore.settings(this).username }
         val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')
@@ -179,9 +182,6 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             }
         }
         showLaunchShell()
-        if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) {
-            prepareOnboardingBackgroundTransition()
-        }
         afterFirstFrame {
             if (savedInstanceState == null) {
                 com.tjg.twidget.ui.TwidgetHaptics.quickRise(findViewById(R.id.brief_root))
@@ -273,6 +273,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                         this@TwidgetBriefActivity,
                         username,
                         restartIfComplete = false,
+                        force = false,
                     )
                 val result = runCatching { generation.await() }.getOrElse {
                     val source = withContext(Dispatchers.IO) {
@@ -282,7 +283,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
                 localStatus = result.localStatus
                 if (canUpdateIncrementally(result.snapshot) && result.snapshot != renderedSnapshot) render(result.snapshot)
-                if (showProviderSetupIfRequired(result)) return@launch
+                if (showProviderSetupIfRequired(result, allowCovered = true)) return@launch
                 render(result.snapshot)
                 prepareBriefEntrance()
                 entrancePrepared = true
@@ -297,6 +298,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         super.onResume()
         applyContextBackground()
         startBackgroundMotion()
+        if (backgroundUnlockStarted || !intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) startBackgroundUnlock()
         if (renderedTimingHour != java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)) {
             renderedSnapshot?.let { render(it) }
         }
@@ -415,7 +417,15 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     override fun onPause() {
         backgroundMotion?.cancel()
         backgroundMotion = null
+        backgroundUnlockAnimator?.cancel()
+        backgroundUnlockAnimator = null
         super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putFloat("brief_background_unlock", backgroundUnlockProgress)
+        outState.putBoolean("brief_background_unlock_started", backgroundUnlockStarted)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
@@ -856,8 +866,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         container.removeAllViews()
         rankedTweetDescriptions.clear()
         // Keep every review preview independent so masonry can balance unequal tweet heights.
-        val reviews = if (debugScenario == BriefDebugScenario.REAL &&
-            (snapshot.hasGeneratedNarrative || canUpdateIncrementally(snapshot))) {
+        val reviews = if (debugScenario == BriefDebugScenario.REAL) {
             BriefPostCoachSection.create(this, username, analytics,
                 excludedPostUrls = snapshot.cards.mapNotNull { resolveBriefPost(it, analytics)?.url }.toSet())
         } else null
@@ -1247,17 +1256,20 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private var backgroundMotion: ValueAnimator? = null
-    private var backgroundMotionProgress = 0f
+    private var backgroundMotionProgress = BriefBlueBackground.motionPhase()
     private var blueBackground: BriefBlueBackground? = null
+    private var backgroundUnlockProgress = 1f
+    private var backgroundUnlockStarted = false
+    private var backgroundUnlockAnimator: ValueAnimator? = null
 
     private fun startBackgroundMotion() {
         if (backgroundMotion != null || !ValueAnimator.areAnimatorsEnabled()) return
-        backgroundMotion = ValueAnimator.ofFloat(backgroundMotionProgress, backgroundMotionProgress + 1f).apply {
-            duration = 18_000L
+        backgroundMotion = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = BriefBlueBackground.MOTION_PERIOD_MS
             repeatCount = ValueAnimator.INFINITE
             interpolator = android.view.animation.LinearInterpolator()
             addUpdateListener {
-                backgroundMotionProgress = (it.animatedValue as Float) % 1f
+                backgroundMotionProgress = BriefBlueBackground.motionPhase()
                 blueBackground?.setMotionProgress(backgroundMotionProgress)
             }
             start()
@@ -1273,7 +1285,11 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         val key = theme to isNight()
         if (appliedBlueTheme != key) {
             appliedBlueTheme = key
-            blueBackground = BriefBlueBackground(theme, key.second).also { it.setMotionProgress(backgroundMotionProgress) }
+            backgroundMotionProgress = BriefBlueBackground.motionPhase()
+            blueBackground = BriefBlueBackground(theme, key.second).also {
+                it.setMotionProgress(backgroundMotionProgress)
+                it.setUnlockProgress(backgroundUnlockProgress)
+            }
             findViewById<View>(R.id.brief_root).background = blueBackground
         }
     }
@@ -1294,19 +1310,30 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         return BriefPostingTiming.card(signal, BriefStrings.from(this), hour)
     }
 
-    private fun prepareOnboardingBackgroundTransition() {
-        val root = findViewById<View>(R.id.brief_root)
-        val target = root.background
-        val transition = android.graphics.drawable.TransitionDrawable(arrayOf(
-            GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(
-                getColor(R.color.brief_onboarding_top), getColor(R.color.brief_onboarding_bottom))), target,
-        ))
-        root.background = transition
-        if (ValueAnimator.areAnimatorsEnabled()) transition.startTransition(BACKGROUND_TRANSITION_DURATION_MS.toInt())
-        else root.background = target
+    private fun startBackgroundUnlock() {
+        if (backgroundUnlockProgress >= 1f || backgroundUnlockAnimator != null) return
+        backgroundUnlockStarted = true
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            backgroundUnlockProgress = 1f
+            blueBackground?.setUnlockProgress(1f)
+            return
+        }
+        backgroundUnlockAnimator = ValueAnimator.ofFloat(backgroundUnlockProgress, 1f).apply {
+            duration = (BACKGROUND_TRANSITION_DURATION_MS * (1f - backgroundUnlockProgress)).toLong().coerceAtLeast(1L)
+            interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+            addUpdateListener {
+                backgroundUnlockProgress = it.animatedValue as Float
+                blueBackground?.setUnlockProgress(backgroundUnlockProgress)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) { backgroundUnlockAnimator = null }
+            })
+            start()
+        }
     }
 
     private fun startPreparedBriefEntrance() {
+        startBackgroundUnlock()
         if (!entranceInProgress || entranceStarted) return
         entranceStarted = true
         val generation = entranceGeneration
@@ -1431,7 +1458,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         private const val COPY_DURATION_MS = 400L
         private const val NOW_BRIEF_CARD_ALPHA_DURATION_MS = 950L
         private const val NOW_BRIEF_CARD_TRANSLATE_DURATION_MS = 500L
-        private const val BACKGROUND_TRANSITION_DURATION_MS = 560L
+        private const val BACKGROUND_TRANSITION_DURATION_MS = 1_800L
         const val EXTRA_USERNAME = "username"
         private const val EXTRA_DEBUG_SCENARIO = "brief_debug_scenario"
         private const val EXTRA_FORCE_REFRESH = "brief_force_refresh"

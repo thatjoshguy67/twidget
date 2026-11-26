@@ -166,3 +166,13 @@ test("running scans suppress starts and failed attempts keep their retry cooldow
     assert.equal(topFollowersRefreshKind({ scan: { status: "failed", startedAt: now - 1000 }, now, headCheck }), null);
   }
 });
+
+test('daily reconciliation starts on the next UTC date, not after a rolling 24 hours', async () => {
+  const { dailyFollowerReconciliationDue } = await import('../src/top-followers.js');
+  const completed = Date.UTC(2026, 10, 25, 20);
+  const now = Date.UTC(2026, 10, 26, 11);
+  assert.equal(dailyFollowerReconciliationDue({ fullCompletedAt: completed }, null, now), true);
+  assert.equal(dailyFollowerReconciliationDue({ fullCompletedAt: now }, null, now + 3600000), false);
+  assert.equal(dailyFollowerReconciliationDue({ fullCompletedAt: completed }, { status: 'running' }, now), false);
+  assert.equal(dailyFollowerReconciliationDue({ fullCompletedAt: completed }, { status: 'failed', retryAt: now + 1000 }, now), false);
+});

@@ -16,4 +16,15 @@ class FollowerLossStoreTest {
         }
         assertTrue(FollowerLossStore.decode("""{"userId":"123"}""", "123")!!.isEmpty())
     }
+    @Test fun dailyChartUsesOnlyShortConsecutiveDayIntervals() {
+        val zone = java.time.ZoneOffset.UTC
+        val from = java.time.Instant.parse("2026-11-25T20:00:00Z").toEpochMilli()
+        val to = java.time.Instant.parse("2026-11-26T11:00:00Z").toEpochMilli()
+        val valid = FollowerLossObservation(from, to, 4)
+        val result = FollowerLossStore.dailyObservations(listOf(valid,
+            FollowerLossObservation(from - 7 * 86_400_000L, to, 100),
+            FollowerLossObservation(from, from + 1000, 2),
+            FollowerLossObservation(to, to + 86_400_000L, 3)), zone, to)
+        assertEquals(mapOf(java.time.LocalDate.of(2026, 11, 26) to valid), result)
+    }
 }

@@ -107,9 +107,14 @@ class MetricChartView @JvmOverloads constructor(
     internal var zeroBasedScale: Boolean = false
     private var averageValues: List<Long> = emptyList()
     private var unfollowValues: List<Long?> = emptyList()
+    private var unfollowDescriptions: List<String?> = emptyList()
 
-    fun setUnfollowSeries(values: List<Long?>) {
+    fun setUnfollowSeries(values: List<Long?>, descriptions: List<String?> = emptyList()) {
         unfollowValues = values.takeIf { it.size == this.values.size } ?: emptyList()
+        unfollowDescriptions = descriptions.takeIf { it.size == this.values.size } ?: emptyList()
+        contentDescription = labels.indices.joinToString(". ") { index ->
+            "${labels[index]}: ${numberFormat.format(this.values[index])}" + unfollowDescriptions.getOrNull(index)?.let { ". $it" }.orEmpty()
+        }
         invalidate()
     }
     private var barGradient: LinearGradient? = null
@@ -150,6 +155,7 @@ class MetricChartView @JvmOverloads constructor(
         values = samples.map(selector)
         averageValues = emptyList()
         unfollowValues = emptyList()
+        unfollowDescriptions = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -174,6 +180,7 @@ class MetricChartView @JvmOverloads constructor(
         values = points.map(ImportedChartPoint::value)
         averageValues = emptyList()
         unfollowValues = emptyList()
+        unfollowDescriptions = emptyList()
         barHitBounds.clear()
         repeat(labels.size) { barHitBounds += RectF() }
         removeCallbacks(hideTooltipRunnable)
@@ -442,8 +449,8 @@ class MetricChartView @JvmOverloads constructor(
             drawTooltip(
                 canvas = canvas,
                 label = "$label  ${if (estimated[activeIndex]) "~" else ""}${if (known.getOrElse(activeIndex) { true }) numberFormat.format(value) else "--"}" +
-                    if (hasUnfollows) " · " + context.getString(com.tjg.twidget.R.string.chart_unfollows,
-                        unfollowValues.getOrNull(activeIndex)?.let(numberFormat::format) ?: "–") else "",
+                    if (hasUnfollows) " · " + (unfollowDescriptions.getOrNull(activeIndex) ?: context.getString(com.tjg.twidget.R.string.chart_unfollows,
+                        unfollowValues.getOrNull(activeIndex)?.let(numberFormat::format) ?: "–")) else "",
                 anchorX = x + barWidth / 2f,
                 anchorY = yFor(value),
                 chartLeft = left,

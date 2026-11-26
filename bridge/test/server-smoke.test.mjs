@@ -1037,3 +1037,27 @@ test("profile refresh, weekly analytics, archive backfill and Banger all prefer 
   assert.ok(!paths.includes("/example"));
   assert.equal((await fetch(`${base}/user/example?userId=invalid`)).status, 400);
 });
+
+test("Fx reconciliation replaces yesterday's still-fresh cache and runs only once today", async t => {
+  let calls = 0;
+  const provider = http.createServer((_req, res) => {
+    calls++;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ code: 200, results: ["1", "3"].map(id => ({ id, screen_name: `fan${id}`, name: "Fan", followers: 10 })), cursor: { bottom: null } }));
+  });
+  await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
+  t.after(() => { provider.closeAllConnections(); provider.close(); });
+  const before = Math.floor(Date.now() / DAY) * DAY - 3600000;
+  const old = { ...completedFollowerScan(before), userId: "123", provider: "fxtwitter", kind: "full", scanned: 2,
+    followers: ["1", "2"].map(id => ({ id, username: `fan${id}`, name: "Fan", followers: 10, verified: false, avatar: "" })) };
+  const base = await startBridge(t, { TOP_FOLLOWERS_PROVIDER: "fxtwitter", TEST_MOCK_UPSTREAM: "0",
+    FXTWITTER_FOLLOWERS_ENDPOINT: `http://127.0.0.1:${provider.address().port}/profile` },
+    { store: followerStore({ example: { userId: "123" } }, { example: old }) });
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 202);
+  await waitFor(async () => (await fetch(`${base}/history/example/top-followers/scan`).then(r => r.json())).status === "complete");
+  const result = await fetch(`${base}/history/example`).then(r => r.json());
+  assert.equal(result.followerChanges[0].lostFollowers, 1);
+  assert.equal(result.followerChanges[0].newFollowers, 1);
+  assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 200);
+  assert.equal(calls, 1);
+});

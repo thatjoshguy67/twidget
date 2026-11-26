@@ -849,9 +849,17 @@ internal class MainDashboardBinder(
                 compactCardInsets = true
                 setData(week) { it.followers }
                 val movements = activity.importedAnalytics.associateBy { it.date }
-                setUnfollowSeries(week.map { sample ->
-                    val date = java.time.Instant.ofEpochMilli(sample.timestamp).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                    movements[date]?.unfollows
+                val observed = if (TwidgetStore.settings(activity).shareHistory && stats.isPrivate != true)
+                    com.tjg.twidget.bridge.FollowerLossStore.dailyObservations(
+                        com.tjg.twidget.bridge.FollowerLossStore.all(activity, stats.userId), java.time.ZoneId.systemDefault(), System.currentTimeMillis())
+                    else emptyMap()
+                val dates = week.map { java.time.Instant.ofEpochMilli(it.timestamp).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }
+                setUnfollowSeries(dates.map { date -> movements[date]?.unfollows ?: observed[date]?.lost }, dates.map { date ->
+                    observed[date]?.takeIf { movements[date] == null }?.let { loss ->
+                        val range = android.text.format.DateUtils.formatDateRange(activity, loss.from, loss.to,
+                            android.text.format.DateUtils.FORMAT_SHOW_DATE or android.text.format.DateUtils.FORMAT_ABBREV_MONTH)
+                        activity.getString(R.string.followers_observed_losses, "~${fullCount(loss.lost)}", range)
+                    }
                 })
                 setAverageSeries(AccountAverageSeries.values(history, week, { it.followers },
                     allowSparseHistory = history.any { it.imported }))

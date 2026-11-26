@@ -15,7 +15,6 @@ import com.tjg.twidget.data.TwidgetSettings
 import com.tjg.twidget.core.json
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.util.Calendar
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -29,14 +28,15 @@ import org.json.JSONObject
  */
 object HistoryPool {
     private const val POOL_PREFS = "twidget_pool"
-    private const val RETRY_DELAY_MS = 60 * 60 * 1000L
+    private const val RETRY_DELAY_MS = 15 * 60 * 1000L
+    private const val SYNC_INTERVAL_MS = 60 * 60 * 1000L
 
     fun enrich(context: Context, stats: ProfileStats, settings: TwidgetSettings, endpoint: BridgeEndpoint, force: Boolean = false): ProfileStats {
         if (!settings.shareHistory) return stats
         if (stats.isPrivate == true) return stats
         val username = stats.userName.trim().trimStart('@')
         if (username.isBlank()) return stats
-        // Pool state is per-day server-side; one exchange per account per day.
+        // A follower reconciliation can finish after today's first profile sync.
         if (!force && !needsSync(context, username)) return stats
         markAttempted(context, username)
         val pooled = runCatching { fetchPooledHistory(context, username, stats.userId, endpoint) }.getOrNull() ?: return stats
@@ -138,7 +138,7 @@ object HistoryPool {
         NetworkResponseParsers.parseBridgeHistoryArray(array)
 
     private fun needsSync(context: Context, username: String): Boolean =
-        poolPrefs(context).getLong("synced_${username.lowercase()}", 0L) < startOfToday() &&
+        poolPrefs(context).getLong("synced_${username.lowercase()}", 0L) < System.currentTimeMillis() - SYNC_INTERVAL_MS &&
             poolPrefs(context).getLong("attempted_${username.lowercase()}", 0L) <
                 System.currentTimeMillis() - RETRY_DELAY_MS
 
@@ -153,13 +153,6 @@ object HistoryPool {
             .putLong("synced_${username.lowercase()}", System.currentTimeMillis())
             .apply()
     }
-
-    private fun startOfToday(): Long = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
 
     private fun poolPrefs(context: Context) =
         context.getSharedPreferences(POOL_PREFS, Context.MODE_PRIVATE)

@@ -32,14 +32,24 @@ object FollowerLossStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(userId, array.toString()).apply()
     }
 
-    fun latest(context: Context, userId: String, now: Long = System.currentTimeMillis()): FollowerLossObservation? {
-        if (userId.isBlank()) return null
+    fun all(context: Context, userId: String): List<FollowerLossObservation> {
+        if (userId.isBlank()) return emptyList()
         return runCatching {
             val array = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(userId, "[]"))
             (0 until array.length()).map { array.getJSONObject(it) }
                 .map { FollowerLossObservation(it.getLong("from"), it.getLong("to"), it.getLong("lost")) }
-                .filter { it.to <= now && it.to >= now - 7 * 86_400_000L && it.from > 0 && it.to > it.from }
-                .maxByOrNull { it.to }
-        }.getOrNull()
+        }.getOrDefault(emptyList())
     }
+
+    fun latest(context: Context, userId: String, now: Long = System.currentTimeMillis()): FollowerLossObservation? =
+        all(context, userId).filter { it.to <= now && it.to >= now - 7 * 86_400_000L && it.from > 0 && it.to > it.from }.maxByOrNull { it.to }
+
+    /** Only short, consecutive-day scan intervals belong in daily chart slots. */
+    internal fun dailyObservations(rows: List<FollowerLossObservation>, zone: java.time.ZoneId, now: Long): Map<java.time.LocalDate, FollowerLossObservation> =
+        rows.filter { row ->
+            val from = java.time.Instant.ofEpochMilli(row.from).atZone(zone).toLocalDate()
+            val to = java.time.Instant.ofEpochMilli(row.to).atZone(zone).toLocalDate()
+            row.lost >= 0 && row.from > 0 && row.to > row.from && row.to <= now && row.to - row.from <= 36 * 3_600_000L && to == from.plusDays(1)
+        }.groupBy { java.time.Instant.ofEpochMilli(it.to).atZone(zone).toLocalDate() }
+            .mapValues { (_, rows) -> rows.maxBy { it.to } }
 }

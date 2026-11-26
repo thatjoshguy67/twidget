@@ -16,7 +16,7 @@ import { ownFxPostEligible, weeklyWinners } from "./post-ranking.js";
 import { coachingFields, coachingReplies } from "./post-coaching.js";
 import { bangerScore, compareBangers } from "./banger-score.js";
 import { prepareAnalyticsImport } from "./analytics-import.js";
-import { followerChangesFor, createTopFollowersActivityRecorder, prepareTopFollowersCache, topFollowersScanPlan, topFollowersHeadComplete } from "./top-followers.js";
+import { dailyFollowerReconciliationDue, followerChangesFor, createTopFollowersActivityRecorder, prepareTopFollowersCache, topFollowersScanPlan, topFollowersHeadComplete } from "./top-followers.js";
 import { excludedTopFollowersUsernames, assertTopFollowersAllowed } from "./top-followers-policy.js";
 import { TopFollowersBudget, TopFollowersBudgetPause } from "./top-followers-budget.js";
 import { benchmarkTopFollowersPageSize } from "./top-followers-benchmark.js";
@@ -99,6 +99,7 @@ const redisUrl = String(process.env.REDIS_URL || "").trim();
 const twitterApisApiKey = String(process.env.TWITTERAPIS_API_KEY || "").trim();
 const topFollowersProvider = String(process.env.TOP_FOLLOWERS_PROVIDER || "fxtwitter").trim().toLowerCase();
 if (!["fxtwitter", "twitterapis"].includes(topFollowersProvider)) throw new Error("invalid_top_followers_provider");
+const dailyFxReconciliation = topFollowersProvider === "fxtwitter" && process.env.FX_FOLLOWERS_DAILY_RECONCILIATION !== "0";
 const topFollowersConfigured = topFollowersProvider === "fxtwitter" || Boolean(twitterApisApiKey);
 const fxApiBaseUrl = String(process.env.FXTWITTER_BASE_URL || "https://api.fxtwitter.com").trim();
 const fxFollowersEndpoint = String(process.env.FXTWITTER_FOLLOWERS_ENDPOINT || "https://api.fxtwitter.com/2/profile").trim();
@@ -312,13 +313,14 @@ app.get("/health", async (_req, res) => {
       topFollowers: {
         serverScans: topFollowersConfigured,
         provider: topFollowersProvider,
+        dailyReconciliation: dailyFxReconciliation,
         freshnessHours: topFollowersFreshMs / (60 * 60 * 1000),
         refreshHours: topFollowersRefreshMs / (60 * 60 * 1000),
         trackedRefreshHours: topFollowersTrackedRefreshMs / 3600000,
-        trackedFullScanDays: topFollowersTrackedFullScanMs / 86400000,
+        trackedFullScanDays: dailyFxReconciliation ? 1 : topFollowersTrackedFullScanMs / 86400000,
         trackedDailyRequestLimit: topFollowersTrackedDailyRequests,
         priority: "reported_primary_active_30d",
-        fullScanDays: topFollowersFullScanDays,
+        fullScanDays: dailyFxReconciliation ? 1 : topFollowersFullScanDays,
         headCheck: topFollowersHeadCheck,
         headRows: topFollowersHeadRows,
         overlapRows: topFollowersOverlapRows,
@@ -637,7 +639,8 @@ app.post("/history/:username/top-followers/scan", trackTopFollowersActivity, asy
     await historyRepository.patchMeta(key, { topFollowersEnrolledAt: Date.now() });
   }
   const snapshot = await historyRepository.getTopFollowersSnapshot(key, { offset: 0, limit: 5 });
-  if (snapshot && (snapshot.provider || "twitterapis") === topFollowersProvider && Date.now() - snapshot.completedAt < topFollowersFreshMs) {
+  if (snapshot && (snapshot.provider || "twitterapis") === topFollowersProvider && Date.now() - snapshot.completedAt < topFollowersFreshMs &&
+      !(dailyFxReconciliation && dailyFollowerReconciliationDue(snapshot))) {
     res.json(topFollowersSnapshotResponse(username, snapshot, true));
     return;
   }
@@ -663,6 +666,7 @@ async function refreshTopFollowersOnReturn(key, username, snapshot, meta, req) {
 async function topFollowersRefreshDecision(key, snapshot, scan, now = Date.now()) {
   await topFollowersPriority.refresh();
   if ((scan || snapshot) && (scan?.provider || snapshot?.provider || "twitterapis") !== topFollowersProvider) return "full";
+  if (dailyFxReconciliation) return dailyFollowerReconciliationDue(snapshot, scan, now) ? "full" : null;
   return topFollowersPriority.refreshKind(key, snapshot, scan, now, topFollowersHeadCheck);
 }
 

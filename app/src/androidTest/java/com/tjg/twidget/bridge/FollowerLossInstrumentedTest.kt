@@ -14,6 +14,19 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class FollowerLossInstrumentedTest {
+    @Test fun syncLiveDailyObservationWhenRequested() {
+        org.junit.Assume.assumeTrue(InstrumentationRegistry.getArguments().getString("verifyDailyFollowerLosses") == "true")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val stats = com.tjg.twidget.data.TwidgetStore.currentStats(context)
+        val settings = com.tjg.twidget.data.TwidgetStore.settings(context)
+        assertTrue(settings.shareHistory)
+        HistoryPool.enrich(context, stats, settings, com.tjg.twidget.data.TwidgetStore.bridgeEndpoint(settings), force = true)
+        val days = FollowerLossStore.dailyObservations(FollowerLossStore.all(context, stats.userId), java.time.ZoneId.systemDefault(), System.currentTimeMillis())
+        val today = java.time.LocalDate.now()
+        val row = requireNotNull(days[today]) { "Today's completed scan did not reach the daily chart data" }
+        assertTrue(row.lost >= 0)
+        println("Daily follower observation: $today, losses=${row.lost}")
+    }
     @Test fun observedLossesPersistByIdAndFitExpandedCardsInBothThemes() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

@@ -78,6 +78,15 @@ free scans. Existing concurrency, daily/monthly request ceilings and activity
 limits still bound public-source traffic. The page-size benchmark applies only
 to the paid provider.
 
+Active enrolled FxTwitter accounts now attempt a full reconciliation once per
+UTC calendar day, using the same priority queue, concurrency limits and shared
+request ceilings. This detects losses as well as gains; a newest-follower head
+check cannot detect departures. Set `FX_FOLLOWERS_DAILY_RECONCILIATION=0` to use
+the older head-check/weekly cadence. Android plots only short consecutive-day
+observations, marks them with `~` and an interval in the tooltip, and keeps
+CSV day counts authoritative when both are available. Longer intervals remain
+summary observations rather than invented daily bars.
+
 Only complete, ID-bound scans from the same provider produce observed losses.
 Switching providers starts a new full baseline and discards old in-progress
 cursors, preserving the last completed ranking if a request fails. Snapshot

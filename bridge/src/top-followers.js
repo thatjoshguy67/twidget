@@ -3,6 +3,12 @@ const MAX_SCANNED = 10_000_000;
 const MAX_PAGES = 6_250;
 const DAY = 24 * 60 * 60 * 1000;
 
+export function dailyFollowerReconciliationDue(snapshot, scan, now = Date.now()) {
+  if (scan?.status === "running" || (scan?.status === "failed" && Number(scan.retryAt || 0) > now)) return false;
+  const completed = Number(snapshot?.fullCompletedAt || snapshot?.lastFullCompletedAt || snapshot?.completedAt || 0);
+  return !completed || Math.floor(completed / DAY) < Math.floor(now / DAY);
+}
+
 // Membership differences are observations across an interval, not timestamped
 // unfollow events: suspensions/deletions can also remove a follower. Never
 // derive these gross counts by subtracting the two public follower totals.

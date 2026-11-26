@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_event_context_needed">Wachstum unklar</string>
+    <string name="follower_event_caveat">Dieser Verlust fällt mit ungewöhnlichen Rückgängen bei den beobachteten Konten zusammen. Die Ursache ist nicht bestätigt; Follower-Veränderungen allein belegen keine schlechtere Leistung deiner Inhalte.</string>
+    <string name="follower_event_chart_heading">Follower · verbreiteter Rückgang</string>
+</resources>

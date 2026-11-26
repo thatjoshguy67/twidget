@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_event_context_needed">Croissance incertaine</string>
+    <string name="follower_event_caveat">Cette perte coïncide avec des baisses inhabituelles parmi les comptes suivis. La cause n’est pas confirmée ; les variations du nombre d’abonnés ne suffisent pas à établir que le contenu est moins performant.</string>
+    <string name="follower_event_chart_heading">Abonnés · baisse généralisée</string>
+</resources>

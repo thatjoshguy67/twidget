@@ -4,6 +4,11 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
+- Explain follower losses that overlap widespread declines without claiming a
+  confirmed cause or treating losses as progress towards a growth goal. Include
+  these explanations in every supported language.
+- Keep graph tooltips within narrow chart bounds.
+
 - Give Your Brief layered blue backgrounds that adapt to the time of day,
   weekends and light/dark appearance.
 - Adapt posting-window guidance to whether the account’s stronger window is

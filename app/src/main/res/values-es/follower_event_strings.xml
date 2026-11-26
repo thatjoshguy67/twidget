@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_event_context_needed">Crecimiento incierto</string>
+    <string name="follower_event_caveat">Esta pérdida coincide con descensos inusuales entre las cuentas seguidas. La causa no está confirmada; los cambios de seguidores por sí solos no demuestran un peor rendimiento del contenido.</string>
+    <string name="follower_event_chart_heading">Seguidores · descenso generalizado</string>
+</resources>

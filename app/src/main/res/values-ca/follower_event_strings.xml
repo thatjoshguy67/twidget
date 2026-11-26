@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_event_context_needed">Creixement incert</string>
+    <string name="follower_event_caveat">Aquesta pèrdua coincideix amb descensos inusuals entre els comptes seguits. La causa no està confirmada; els canvis de seguidors per si sols no demostren un rendiment pitjor del contingut.</string>
+    <string name="follower_event_chart_heading">Seguidors · descens generalitzat</string>
+</resources>

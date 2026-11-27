@@ -57,7 +57,7 @@ Twidget gets a One UI 9.5 refresh.
 
 ### Languages, widgets and other stuff
 
-- Added Spanish, Catalan and Dutch alongside English, German and French. Complete resource coverage for the supported languages, including diagnostics and failure messages. Thanks to Wigetta for Spanish and Catalan, and DaManMikey for Dutch!
+- Added Spanish, Catalan and Dutch alongside English, German and French. Complete resource coverage for the supported languages, including diagnostics and failure messages. Thanks to @wigettagaming for Spanish and Catalan, and @DaManMikeyschool for Dutch!
   Preserve regional number/date conventions and let translated buttons wrap.
 - Add Settings → Widgets with previews and separate defaults for Followers, Your Brief and Samsung lock-screen widgets.
 - Celebrate reached account goals once per target with a short blue/silver effect that respects reduced motion.
@@ -67,7 +67,7 @@ Twidget gets a One UI 9.5 refresh.
 
 ### Contributors
 
-- Thanks to Aaron the Techie for German translations and onboarding/animation work, Wigetta for Spanish and Catalan, and DaManMikey for Dutch localisation and Gemini Nano fixes.
+- Thanks to @aaronthetechie1 for German translations and onboarding/animation work, @wigettagaming for Spanish and Catalan, and @DaManMikeyschool for Dutch localisation and Gemini Nano fixes.
 
 ## [1.3.1-beta.1] - 2026-10-15
 

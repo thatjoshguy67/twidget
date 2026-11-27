@@ -35,11 +35,10 @@ internal object CompareLogic {
     }
     fun weeklyDelta(current: Long?, history: List<CompareHistoryPoint>, now: Long): Long? {
         if (current == null) return null
-        val day = 24L * 60 * 60 * 1000
-        val target = now - 7 * day
-        val baseline = history.filter { it.timestamp <= now - 6 * day && kotlin.math.abs(it.timestamp - target) <= day }
-            .minByOrNull { kotlin.math.abs(it.timestamp - target) } ?: return null
-        return current - baseline.followers
+        return com.tjg.twidget.data.FollowerMetrics.weeklyDelta(
+            com.tjg.twidget.data.ProfileStats("", "", current, 0, 0, 0, syncedAt = now),
+            history.map { com.tjg.twidget.data.HistorySample("", it.followers, 0, 0, 0, it.timestamp) },
+        )
     }
     fun tone(delta: Long): DeltaTone = when { delta > 0 -> DeltaTone.POSITIVE; delta < 0 -> DeltaTone.NEGATIVE; else -> DeltaTone.NEUTRAL }
     fun signed(delta: Long, locale: Locale): String = (if (delta > 0) "+" else "") + NumberFormat.getIntegerInstance(locale).format(delta)

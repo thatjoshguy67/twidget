@@ -126,9 +126,11 @@ class MetricChartActivity : FoldablePopOverActivity() {
 
     private fun renderChart() {
         val binding = metricBinding(metricId)
-        val stats = TwidgetStore.currentStats(this, username)
-        val chartHistory = TwidgetStore.chartHistory(this, username, selectedRange)
-        val rangedHistory = TwidgetStore.rangedHistory(this, username, selectedRange)
+        val snapshot = TwidgetStore.accountSnapshot(this, username)
+        val stats = snapshot.stats
+        fullHistory = snapshot.history
+        val chartHistory = TwidgetStore.chartHistory(fullHistory, selectedRange)
+        val rangedHistory = TwidgetStore.rangedHistory(fullHistory, selectedRange)
         val visible = chartHistory.filter(binding.known)
         val knownFull = fullHistory.filter(binding.known)
 

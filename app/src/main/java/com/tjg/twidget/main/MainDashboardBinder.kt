@@ -1346,14 +1346,15 @@ internal class MainDashboardBinder(
             }
             DashboardCardType.AUDIENCE_BALANCE -> {
                 val ratio = stats.followersCount.toDouble() / stats.followingsCount.coerceAtLeast(1)
+                val known = stats.followersKnown && stats.followingKnown
                 InsightSpec(
                     label = activity.getString(R.string.insight_balance),
-                    value = if (ratio >= 1.0) {
+                    value = if (!known) "--" else if (ratio >= 1.0) {
                         String.format(AppLocales.applicationLocale(), "%.1f:1", ratio)
                     } else {
                         String.format(AppLocales.applicationLocale(), "1:%.1f", 1.0 / ratio.coerceAtLeast(0.01))
                     },
-                    detail = "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}",
+                    detail = if (known) "${TwidgetStore.compactNumber(stats.followersCount)} / ${TwidgetStore.compactNumber(stats.followingsCount)}" else "--",
                     accent = activity.getColor(R.color.oneui_accent),
                 )
             }

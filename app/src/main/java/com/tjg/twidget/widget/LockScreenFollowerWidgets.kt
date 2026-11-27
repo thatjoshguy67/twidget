@@ -169,14 +169,15 @@ object LockScreenFollowerViews {
         val canvas = Canvas(bitmap)
 
         val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
-        val stats = TwidgetStore.currentStats(context, account)
-        val delta = TwidgetStore.followersDelta(context, account)
+        val snapshot = TwidgetStore.accountSnapshot(context, account)
+        val stats = snapshot.stats
+        val delta = snapshot.todayDelta({ it.followersKnown }) { it.followers }
         val locale = AppLocales.resolve(widgetSettings.language)
-        val count = AppLocales.integer(stats.followersCount, locale)
+        val count = if (stats.followersKnown) AppLocales.integer(stats.followersCount, locale) else "--"
         val strings = AppLocales.wrap(context, widgetSettings.language)
         val rawFollowers = strings.getString(R.string.followers)
         val deltaText = when {
-            !widgetSettings.showDelta -> ""
+            !stats.followersKnown || !widgetSettings.showDelta -> ""
             delta == 0L -> {
                 if (locale.language == "de") rawFollowers else rawFollowers.lowercase()
             }

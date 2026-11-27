@@ -582,7 +582,8 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
             return
         }
 
-        val stats = TwidgetStore.currentStats(this, selectedAccount)
+        val snapshot = TwidgetStore.accountSnapshot(this, selectedAccount)
+        val stats = snapshot.stats
         val previewSpec = homePreviewSpec(style)
         // Match the live widget's resolved color mode. The old tint-color
         // shortcut treated System/Dark as a light card whenever the stored
@@ -607,7 +608,7 @@ class WidgetConfigActivity : EdgeToEdgeActivity() {
                     settings = previewSettings,
                     mode = previewSpec.mode,
                     dark = darkPreview,
-                    delta = TwidgetStore.followersDelta(this@WidgetConfigActivity, selectedAccount),
+                    delta = snapshot.todayDelta({ it.followersKnown }) { it.followers },
                 )
             )
         }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))

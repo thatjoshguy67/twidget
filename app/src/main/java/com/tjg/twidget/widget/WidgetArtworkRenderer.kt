@@ -164,9 +164,9 @@ object WidgetArtworkRenderer {
         if (drawBackground) drawWidgetBackground(context, canvas, width, height, settings, dark)
         val colors = WidgetColors.resolve(context, settings, dark)
         val locale = AppLocales.resolve(settings.language)
-        val value = AppLocales.integer(stats.followersCount, locale)
+        val value = if (stats.followersKnown) AppLocales.integer(stats.followersCount, locale) else "--"
         val label = AppLocales.wrap(context, settings.language).getString(R.string.followers)
-        val deltaText = if (!settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, locale)
+        val deltaText = if (!stats.followersKnown || !settings.showDelta || delta == 0L) "" else TwidgetStore.signedNumber(delta, locale)
         fun paint(weight: Int, color: Int, size: Float, axisWidth: Int, roundness: Int) =
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
                 this.color = color

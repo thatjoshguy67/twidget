@@ -34,11 +34,12 @@ import kotlin.math.roundToInt
 
 object BriefEngine {
     private const val DAY_MS = 24 * 60 * 60 * 1000L
-    private const val ENGINE_VERSION = 28
+    private const val ENGINE_VERSION = 29
 
     fun rebuild(context: Context, username: String, force: Boolean = false, reuseNarrative: Boolean = true): BriefSnapshot {
         val clean = username.trim().trimStart('@')
-        val stats = TwidgetStore.currentStats(context, clean)
+        val account = TwidgetStore.accountSnapshot(context, clean)
+        val stats = account.stats
         val analytics = AnalyticsClient.cached(context, clean)
         val followerState = TopFollowersStore.read(context, clean)
         val content = BriefSettingsStore.enabledContent(context)
@@ -60,7 +61,7 @@ object BriefEngine {
             return previous
         }
 
-        val evaluation = evaluate(context, clean, stats, analytics, followerState, previous, emptyList(), strings)
+        val evaluation = evaluate(context, clean, account, analytics, followerState, previous, emptyList(), strings)
 
         val editorial = BriefEditorialSummary.from(
             cards = evaluation.selected,
@@ -118,7 +119,7 @@ object BriefEngine {
             strings = BriefStrings.from(context),
             context = context,
             username = clean,
-            stats = TwidgetStore.currentStats(context, clean),
+            account = TwidgetStore.accountSnapshot(context, clean),
             analytics = AnalyticsClient.cached(context, clean),
             followerState = TopFollowersStore.read(context, clean),
             previous = BriefStore.read(context, clean),
@@ -141,17 +142,18 @@ object BriefEngine {
     private fun evaluate(
         context: Context,
         username: String,
-        stats: ProfileStats,
+        account: TwidgetStore.AccountSnapshot,
         analytics: PostAnalytics?,
         followerState: TopFollowersState,
         previous: BriefSnapshot?,
         upcomingTweets: List<BriefUpcomingTweet>,
         strings: BriefStrings,
     ): Evaluation {
-        val history = TwidgetStore.fullHistory(context, username)
+        val stats = account.stats
+        val history = account.history
             .filterNot { it.estimated }
             .sortedBy { it.timestamp }
-        val todayDelta = TwidgetStore.followersDelta(context, username)
+        val todayDelta = account.todayDelta({ it.followersKnown }) { it.followers }
         val weekDelta = BriefContextPolicy.weeklyFollowerDelta(stats, history) ?: 0L
         val currentRanks = followerState.top.take(100).mapIndexed { index, follower ->
             followerKey(follower) to index + 1
@@ -161,7 +163,7 @@ object BriefEngine {
         val now = System.currentTimeMillis()
         val candidates = mutableListOf<BriefCard>()
 
-        if (BriefContentCategory.FOLLOWERS in content) {
+        if (BriefContentCategory.FOLLOWERS in content && stats.followersKnown) {
             val changes = listOfNotNull(
                 growthCard(stats.followersCount, todayDelta, weekDelta, strings),
                 slowdownCard(history, stats.followersCount, todayDelta, strings),
@@ -200,7 +202,7 @@ object BriefEngine {
         if (BriefContentCategory.TOPICS in content) BriefInsightPolicy.topic(analytics, strings, now)?.let(candidates::add)
         if (BriefContentCategory.EXPERIMENTS in content) BriefInsightPolicy.experiment(analytics, strings, now)?.let(candidates::add)
 
-        if (candidates.isEmpty() && BriefContentCategory.FOLLOWERS in content) {
+        if (candidates.isEmpty() && BriefContentCategory.FOLLOWERS in content && stats.followersKnown) {
             candidates += BriefCard(
                 id = "summary-steady",
                 type = BriefCardType.SUMMARY,

@@ -43,6 +43,25 @@ class HistoryRangePolicyTest {
         assertEquals(HistoryRange.ALL_TIME, HistoryRangePolicy.resolveSavedRange(HistoryRange.MONTH, samples))
     }
 
+    @Test
+    fun calendarCoverageDoesNotLoseADayAcrossSpringClockChange() {
+        val oldZone = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Europe/London"))
+            val zone = java.time.ZoneId.systemDefault()
+            val first = java.time.LocalDate.of(2026, 3, 25)
+            val last = first.plusDays(6)
+            val history = listOf(
+                sample(0).copy(timestamp = first.atStartOfDay(zone).toInstant().toEpochMilli()),
+                sample(0).copy(timestamp = last.atStartOfDay(zone).toInstant().toEpochMilli()),
+            )
+            assertEquals(7, HistoryRangePolicy.historySpanDays(history))
+            assertTrue(HistoryRangePolicy.isAvailable(HistoryRange.WEEK, history))
+        } finally {
+            java.util.TimeZone.setDefault(oldZone)
+        }
+    }
+
     private fun sample(dayOffset: Int): HistorySample {
         val dayMillis = 24 * 60 * 60 * 1000L
         return HistorySample(

@@ -145,6 +145,10 @@ internal class MainSyncController(
                     DashboardDataSource.TOP_FOLLOWERS -> if (!TwidgetStore.settings(context).shareHistory) false else
                         com.tjg.twidget.followers.TopFollowersBridgeSync.refresh(context, account,
                             notifyChanges = false, forceArchiveRefresh = force)?.complete == true
+                }.also {
+                    if (com.tjg.twidget.brief.BriefSettingsStore.enabled(context)) {
+                        com.tjg.twidget.widget.TwidgetBriefWidget.updateAll(context)
+                    }
                 }
             }
         }

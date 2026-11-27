@@ -49,8 +49,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
 
         fun updateWidget(context: Context, manager: AppWidgetManager, id: Int) {
             val account = TwidgetStore.settings(context).username
-            val snapshot = BriefStore.read(context, account)
-                ?: if (account.isNotBlank()) BriefEngine.rebuild(context, account) else null
+            val snapshot = if (account.isNotBlank()) BriefEngine.rebuild(context, account) else null
             val options = manager.getAppWidgetOptions(id)
             val minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 352)
             val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 175)

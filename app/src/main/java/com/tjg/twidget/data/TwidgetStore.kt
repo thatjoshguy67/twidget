@@ -70,8 +70,8 @@ data class HistorySample(
     val posts: Long,
     val likes: Long,
     val timestamp: Long,
-    // Interpolated chart filler between real samples. Render-only: estimated
-    // samples are never persisted and never feed deltas or insight numbers.
+    // Chart context, including stored legacy/archive estimates and render-time
+    // interpolation. Estimates never feed deltas or insight numbers.
     val estimated: Boolean = false,
     val followersKnown: Boolean = true,
     val followingKnown: Boolean = true,
@@ -815,7 +815,7 @@ object TwidgetStore {
         val samples = if (isOnboarded(context)) saved else mergeByDay(demoHistory() + saved)
         val history = if (samples.isEmpty() && stats.syncedAt <= 0L) emptyList()
             else flatBackfillProfileMetrics(samples, stats).ifEmpty { listOf(sampleFor(stats)) }
-        val yesterday = startOfDay(System.currentTimeMillis()) - DAY_MILLIS
+        val yesterday = java.time.LocalDate.now().minusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val baseline = history.lastOrNull { it.timestamp == yesterday && !it.estimated } ?: todayOpen(context, clean)
         return AccountSnapshot(stats, history, baseline)
     }
@@ -1040,22 +1040,12 @@ object TwidgetStore {
         known: (HistorySample) -> Boolean,
         selector: (HistorySample) -> Long,
     ): Long {
-        val cleanUsername = normalizeUsername(username).ifBlank { settings(context).username }
-        val baseline = deltaBaseline(context, cleanUsername) ?: return 0
-        val current = sampleFor(currentStats(context, cleanUsername))
-        if (!known(current) || !known(baseline)) return 0
-        return selector(current) - selector(baseline)
-    }
-
-    private fun deltaBaseline(context: Context, username: String): HistorySample? {
-        val today = startOfDay(System.currentTimeMillis())
-        return fullHistory(context, username)
-            .lastOrNull { it.timestamp == today - DAY_MILLIS && !it.estimated }
-            ?: todayOpen(context, username)
+        return accountSnapshot(context, username).todayDelta(known, selector)
     }
 
     private fun todayOpen(context: Context, username: String): HistorySample? =
-        prefs(context).getString(todayOpenKey(username), null)
+        (prefs(context).getString(todayOpenKey(username), null)
+            ?: prefs(context).all.entries.firstOrNull { it.key.equals(todayOpenKey(username), ignoreCase = true) }?.value as? String)
             ?.let { encoded -> runCatching { historyFromJson(JSONObject(encoded)) }.getOrNull() }
             ?.takeIf { it.timestamp == startOfDay(System.currentTimeMillis()) }
 
@@ -1066,7 +1056,7 @@ object TwidgetStore {
             .apply()
     }
 
-    private fun todayOpenKey(username: String) = "today_open_${normalizeUsername(username)}"
+    private fun todayOpenKey(username: String) = "today_open_${normalizeUsername(username).lowercase(Locale.US)}"
 
     @Synchronized
     fun migrateStoredHistories(context: Context) {
@@ -1106,7 +1096,7 @@ object TwidgetStore {
     }
 
     fun followersDelta(context: Context, username: String = settings(context).username): Long =
-        todayDelta(context, username) { it.followers }
+        accountSnapshot(context, username).todayDelta({ it.followersKnown }) { it.followers }
 
     fun compactNumber(value: Long, locale: Locale = AppLocales.applicationLocale()): String =
         AppLocales.compact(value, locale)

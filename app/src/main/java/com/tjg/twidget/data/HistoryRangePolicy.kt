@@ -1,15 +1,14 @@
 package com.tjg.twidget.data
 
-import java.util.Calendar
-
 object HistoryRangePolicy {
     fun historySpanDays(samples: List<HistorySample>): Int {
         val real = samples.filterNot { it.estimated }
         if (real.isEmpty()) return 0
         if (real.size == 1) return 1
-        val first = startOfDay(real.minOf { it.timestamp })
-        val last = startOfDay(real.maxOf { it.timestamp })
-        return ((last - first) / DAY_MILLIS).toInt() + 1
+        val zone = java.time.ZoneId.systemDefault()
+        val first = java.time.Instant.ofEpochMilli(real.minOf { it.timestamp }).atZone(zone).toLocalDate()
+        val last = java.time.Instant.ofEpochMilli(real.maxOf { it.timestamp }).atZone(zone).toLocalDate()
+        return java.time.temporal.ChronoUnit.DAYS.between(first, last).toInt() + 1
     }
 
     fun isAvailable(range: HistoryRange, samples: List<HistorySample>): Boolean {
@@ -24,14 +23,4 @@ object HistoryRangePolicy {
             .maxByOrNull { it.requiredDays }
             ?: HistoryRange.ALL_TIME
     }
-
-    private fun startOfDay(timestamp: Long): Long = Calendar.getInstance().apply {
-        timeInMillis = timestamp
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
-
-    private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 }

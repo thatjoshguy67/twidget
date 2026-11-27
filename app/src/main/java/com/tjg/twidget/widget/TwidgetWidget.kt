@@ -85,8 +85,9 @@ open class TwidgetWidget : AppWidgetProvider() {
             }
             val widgetSettings = TwidgetStore.widgetSettings(context, appWidgetId)
             val account = widgetSettings.accountUsername.ifBlank { TwidgetStore.settings(context).username }
-            val stats = TwidgetStore.currentStats(context, account)
-            val delta = TwidgetStore.followersDelta(context, account)
+            val snapshot = TwidgetStore.accountSnapshot(context, account)
+            val stats = snapshot.stats
+            val delta = snapshot.todayDelta({ it.followersKnown }) { it.followers }
 
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
                 val responsiveViews = linkedMapOf<SizeF, RemoteViews>()

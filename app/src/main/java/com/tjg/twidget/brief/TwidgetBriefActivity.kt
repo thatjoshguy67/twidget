@@ -724,7 +724,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         com.tjg.twidget.ui.SeslSurfaceHighlight.applyTo(this)
         setPadding(0, dp(16), 0, 0)
 
-        val stats = TwidgetStore.currentStats(this@TwidgetBriefActivity, username)
+        val account = TwidgetStore.accountSnapshot(this@TwidgetBriefActivity, username)
+        val stats = account.stats
         addView(LinearLayout(this@TwidgetBriefActivity).apply {
             gravity = Gravity.CENTER_VERTICAL
             orientation = LinearLayout.HORIZONTAL
@@ -733,18 +734,18 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 setImageDrawable(AppCompatResources.getDrawable(this@TwidgetBriefActivity, OneUiIconR.drawable.ic_oui_community))
                 imageTintList = ColorStateList.valueOf(getColor(R.color.oneui_text_primary))
             }, LinearLayout.LayoutParams(dp(24), dp(24)))
-            addView(primaryText(format(previewHistory?.lastOrNull()?.followers ?: stats.followersCount), 22f, true).apply {
+            addView(primaryText(if (previewHistory != null || stats.followersKnown) format(previewHistory?.lastOrNull()?.followers ?: stats.followersCount) else "--", 22f, true).apply {
                 setPadding(dp(20), 0, 0, 0)
             })
             val delta = previewHistory?.let { (it.lastOrNull()?.followers ?: 0) - (it.firstOrNull()?.followers ?: 0) }
-                ?: TwidgetStore.followersDelta(this@TwidgetBriefActivity, username)
+                ?: account.todayDelta({ it.followersKnown }) { it.followers }
             if (delta != 0L) addView(primaryText(TwidgetStore.signedNumber(delta), 18f).apply {
                 setPadding(dp(6), 0, 0, 0)
                 setTextColor(getColor(if (delta < 0) R.color.metric_red else R.color.metric_green))
             })
         })
-        val full = (previewHistory ?: TwidgetStore.fullHistory(this@TwidgetBriefActivity, username)).filter { it.followersKnown }
-        val visible = (previewHistory ?: TwidgetStore.chartHistory(this@TwidgetBriefActivity, username, HistoryRange.WEEK))
+        val full = (previewHistory ?: account.history).filter { it.followersKnown }
+        val visible = (previewHistory ?: TwidgetStore.chartHistory(account.history, HistoryRange.WEEK))
             .filter { it.followersKnown }
         addView(MetricChartView(this@TwidgetBriefActivity).apply {
             setData(visible, { it.followers })

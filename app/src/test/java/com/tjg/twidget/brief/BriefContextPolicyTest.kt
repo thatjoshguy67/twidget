@@ -92,6 +92,14 @@ class BriefContextPolicyTest {
         assertFalse(card.body.contains("1,000,000"))
     }
 
+    @Test fun missingPostCountersCannotBecomePartialTotalsInTheBrief() {
+        val a = post("a", 100, 5)
+        val b = post("b", 200, 10)
+        assertNull(BriefContextPolicy.postCard(analytics(listOf(a, b.copy(viewsKnown = false))), strings, now))
+        assertNull(BriefContextPolicy.postCard(analytics(listOf(a, b.copy(likesKnown = false))), strings, now))
+        assertNotNull(BriefContextPolicy.postCard(analytics(listOf(a, b)), strings, now))
+    }
+
     @Test fun emptyUnknownAndStalePostSnapshotsDoNotProduceContext() {
         val data = analytics(listOf(post("a"), post("b")))
         assertNull(BriefContextPolicy.postCard(data.copy(recentPosts = emptyList()), strings, now))

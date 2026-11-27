@@ -19,14 +19,7 @@ internal object BriefContextPolicy {
 
     /** A partial history must not be presented elsewhere as seven days of growth. */
     fun weeklyFollowerDelta(stats: ProfileStats, history: List<HistorySample>): Long? {
-        if (!stats.followersKnown || stats.followersCount < 0L || stats.syncedAt <= 0L) return null
-        val zone = ZoneId.systemDefault()
-        val target = Instant.ofEpochMilli(stats.syncedAt).atZone(zone).toLocalDate().minusDays(7)
-        val anchor = history.filter {
-            !it.estimated && it.followersKnown && it.followers >= 0L && it.timestamp in 1..stats.syncedAt &&
-                Instant.ofEpochMilli(it.timestamp).atZone(zone).toLocalDate() == target
-        }.maxByOrNull { it.timestamp } ?: return null
-        return stats.followersCount - anchor.followers
+        return com.tjg.twidget.data.FollowerMetrics.weeklyDelta(stats, history)
     }
 
     fun relativeStandout(analytics: PostAnalytics): PostSummary? = analytics.recentPosts
@@ -106,6 +99,7 @@ internal object BriefContextPolicy {
                 analytics.cachedAt - post.timestamp <= analytics.windowDays * DAY_MS
         }.distinctBy(PostSummary::url)
         if (posts.size < 2 || posts.none { it.views > 0L || it.engagements > 0L }) return null
+        if (posts.any { !it.viewsKnown || !it.likesKnown || !it.repostsKnown || !it.repliesKnown || !it.quotesKnown }) return null
         return BriefCard(
             id = "post-context",
             type = BriefCardType.POST_CONTEXT,

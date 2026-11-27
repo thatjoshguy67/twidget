@@ -17,7 +17,7 @@
     <string name="brief_timing_phase_upcoming" translatable="false">Before the best window</string>
     <string name="brief_timing_phase_now" translatable="false">During the best window</string>
     <string name="brief_timing_phase_next" translatable="false">After the best window</string>
-    <string name="milestone_preview_celebration" translatable="false">Preview milestone celebration</string>
-    <string name="milestone_preview_celebration_summary" translatable="false">Play the celebration without changing goals or marking a real milestone as celebrated.</string>
     <string name="milestone_celebration_message">Goal reached. Well done!</string>
+    <string name="brief_force_celebrations" translatable="false">Force celebrations</string>
+    <string name="brief_force_celebrations_summary" translatable="false">Play once in each widget when enabled and once when Brief opens. Switch off and on to replay. Real goals and celebration history stay unchanged. Goal completion celebrates automatically.</string>
 </resources>

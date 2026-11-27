@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Plain gradient-backed container (no ToolbarLayout) so the onboarding
-    backdrop is edge-to-edge at any screen size. A settle overlay sits above the
-    gradient (below the content) to drain the blue on the final step. Scroll
-    fills the middle, footer pins to the bottom.
+    The activity installs one continuous Brief material behind every stage.
+    Scroll fills the middle; the footer pins to the bottom.
 -->
 <dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13,17 +11,6 @@
     android:layout_height="match_parent"
     android:background="@drawable/onboarding_gradient_bg">
 
-    <!-- Background layers fill full-bleed (under the status bar); only the
-         content below insets itself, so the settle overlay covers the status
-         bar area too and leaves no seam. -->
-    <View
-        android:id="@+id/done_fade_overlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:background="@drawable/onboarding_settle_overlay"
-        android:visibility="gone" />
-
     <LinearLayout
         android:id="@+id/onboarding_content"
         android:layout_width="match_parent"
@@ -32,6 +19,9 @@
 
         <ScrollView
             android:id="@+id/onboarding_scroll"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="28dp"
+            android:clipToPadding="false"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
@@ -200,6 +190,7 @@
                     android:visibility="gone">
 
                     <TextView
+                        android:id="@+id/profile_title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sec"
@@ -211,6 +202,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/profile_subtitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -220,23 +212,40 @@
                         android:textColor="?android:textColorSecondary"
                         android:textSize="14sp" />
 
+                    <FrameLayout android:id="@+id/profile_identity_host" android:padding="0dp" android:layout_width="match_parent" android:layout_height="60dp" android:layout_marginTop="40dp" android:background="@drawable/onboarding_identity_card" android:clipToOutline="true">
                     <EditText
                         android:id="@+id/username_input"
                         android:layout_width="match_parent"
                         android:layout_height="60dp"
-                        android:layout_marginTop="40dp"
-                        android:background="@drawable/onboarding_input_bg"
+                        android:background="@android:color/transparent"
+                        android:paddingStart="22dp"
+                        android:paddingEnd="22dp"
                         android:fontFamily="sec"
                         android:hint="@string/onboarding_handle_hint"
                         android:importantForAutofill="no"
                         android:imeOptions="actionDone"
                         android:includeFontPadding="false"
-                        android:inputType="text"
+                        android:inputType="text|textNoSuggestions"
                         android:maxLines="1"
                         android:singleLine="true"
                         android:textColor="?android:textColorPrimary"
                         android:textColorHint="?android:textColorSecondary"
                         android:textSize="19sp" />
+
+                        <LinearLayout android:id="@+id/detected_profile" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp" android:visibility="gone">
+                            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+                                <ImageView android:id="@+id/detected_avatar" android:layout_width="46dp" android:layout_height="46dp" android:background="@drawable/avatar_twidget" android:contentDescription="@null" />
+                                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="16dp" android:orientation="vertical">
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+                                        <TextView android:id="@+id/detected_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_weight="1" android:textColor="?android:textColorPrimary" android:textSize="18sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" />
+                                        <ImageView android:id="@+id/detected_verified" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_verified_badge" android:contentDescription="@null" />
+                                    </LinearLayout>
+                                    <TextView android:id="@+id/detected_handle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textColor="?android:textColorPrimary" android:textSize="14sp" />
+                                </LinearLayout>
+                            </LinearLayout>
+                            <TextView android:id="@+id/detected_bio" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:textColor="?android:textColorSecondary" android:textSize="14sp" android:maxLines="6" android:ellipsize="end" />
+                        </LinearLayout>
+                    </FrameLayout>
 
                     <TextView
                         android:id="@+id/username_error"
@@ -278,10 +287,48 @@
                             android:textColor="?android:textColorSecondary"
                             android:textSize="13sp" />
                     </LinearLayout>
+                    <LinearLayout android:id="@+id/confirm_import_group" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:orientation="vertical" android:visibility="gone">
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingStart="20dp" android:text="@string/onboarding_optional_import" android:textColor="?android:textColorSecondary" android:textSize="14sp" />
+                        <LinearLayout android:id="@+id/confirm_import" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:padding="20dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/onboarding_identity_card" android:clipToOutline="true" android:clickable="true" android:focusable="true" android:foreground="?android:attr/selectableItemBackground">
+                            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_settings_download" android:contentDescription="@null" />
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="20dp" android:orientation="vertical">
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_import_title" android:textColor="?android:textColorPrimary" android:textSize="18sp" />
+                                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/onboarding_import_summary" android:textColor="?android:textColorSecondary" android:textSize="14sp" />
+                            </LinearLayout>
+                        <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_marginStart="16dp" android:src="@drawable/ic_onboarding_row_next" android:contentDescription="@null" />
+                        </LinearLayout>
+                    </LinearLayout>
+
                 </LinearLayout>
 
 
 
+<LinearLayout android:id="@+id/step_ai" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal" android:visibility="gone">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="200dp" android:layout_marginBottom="24dp" android:gravity="center" android:orientation="vertical">
+     <ImageView android:layout_width="40dp" android:layout_height="40dp" android:layout_marginBottom="16dp" android:src="@drawable/onboarding_ai_mark" android:contentDescription="@null" />
+     <TextView android:id="@id/collapsing_appbar_extended_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:text="@string/onboarding_ai_title" android:textAppearance="@style/TextAppearance.Design.CollapsingToolbar.Expanded" android:textColor="?android:textColorPrimary" />
+ </LinearLayout>
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/onboarding_ai_card" android:clipToOutline="true"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="20dp" android:orientation="horizontal" android:gravity="center_vertical">
+ <ImageView android:id="@+id/ai_brief_icon" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_settings_brief" android:contentDescription="@null" />
+ <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="16dp" android:orientation="vertical">
+ <TextView android:id="@+id/ai_brief_name" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_ai_brief" android:textSize="18sp" android:textColor="?android:textColorPrimary" />
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/onboarding_ai_brief_summary" android:textSize="14sp" android:textColor="?android:textColorSecondary" />
+ </LinearLayout></LinearLayout><View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="20dp" android:background="@color/onboarding_glass_stroke" /><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="20dp" android:orientation="horizontal" android:gravity="center_vertical">
+ <ImageView android:id="@+id/ai_review_icon" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_settings_send" android:contentDescription="@null" />
+ <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="16dp" android:orientation="vertical">
+ <TextView android:id="@+id/ai_review_name" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_ai_review" android:textSize="18sp" android:textColor="?android:textColorPrimary" />
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:text="@string/onboarding_ai_review_summary" android:textSize="14sp" android:textColor="?android:textColorSecondary" />
+ </LinearLayout></LinearLayout></LinearLayout>
+ <LinearLayout android:id="@+id/ai_readiness_card" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:padding="20dp" android:orientation="vertical" android:background="@drawable/onboarding_ai_card" android:clipToOutline="true" android:clickable="true" android:focusable="true" android:foreground="?android:attr/selectableItemBackground">
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+     <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+         <TextView android:id="@+id/ai_readiness_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/onboarding_ai_checking" android:textSize="18sp" android:textColor="?android:textColorPrimary" />
+         <TextView android:id="@+id/ai_readiness_summary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/onboarding_ai_checking_summary" android:textSize="14sp" android:textColor="?android:textColorSecondary" />
+     </LinearLayout>
+     <ImageView android:id="@+id/ai_readiness_indicator" android:layout_width="24dp" android:layout_height="24dp" android:layout_marginStart="16dp" android:contentDescription="@null" android:visibility="gone" />
+ </LinearLayout>
+ <androidx.appcompat.widget.AppCompatButton android:id="@+id/ai_setup_provider" android:background="@drawable/dashboard_report_chip" android:backgroundTint="@null" app:backgroundTint="@null" style="@style/Twidget.WrappingButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/onboarding_ai_setup_cloud" android:textAllCaps="false" android:visibility="gone" />
+ </LinearLayout></LinearLayout>
                 <!-- Step 5 · Add widget -->
                 <LinearLayout
                     android:id="@+id/step_widgets"
@@ -396,6 +443,9 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/primary_button"
+                android:background="@drawable/dashboard_report_chip"
+                android:backgroundTint="@null"
+                app:backgroundTint="@null"
                 style="@style/Twidget.WrappingButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"

@@ -1,0 +1,28 @@
+<resources>
+    <string name="onboarding_confirm_title">Est-ce bien vous ?</string>
+    <string name="onboarding_confirm_yes">Oui</string>
+    <string name="onboarding_confirm_no">Non, modifier</string>
+    <string name="onboarding_optional_import">Facultatif</string>
+    <string name="onboarding_import_title">Importer les statistiques Twitter/X</string>
+    <string name="onboarding_import_summary">Obtenez un aperçu plus complet de vos anciennes données Twitter/X grâce à une importation unique.</string>
+    <string name="onboarding_ai_title">Fonctions IA</string>
+    <string name="onboarding_ai_brief">Votre briefing</string>
+    <string name="onboarding_ai_brief_summary">Un briefing personnalisé basé sur les statistiques de votre profil, qui évolue au fil de la journée.</string>
+    <string name="onboarding_ai_review">Analyse de tweets</string>
+    <string name="onboarding_ai_review_summary">Obtenez des informations sur vos publications, les réactions du public, ce qui fonctionne et les points à améliorer.</string>
+    <string name="onboarding_ai_checking">Vérification de la compatibilité avec l’IA locale…</string>
+    <string name="onboarding_ai_checking_summary">Vérification de la disponibilité de Gemini Nano sur cet appareil. Vous pouvez continuer en attendant.</string>
+    <string name="onboarding_ai_ready">Votre appareil prend en charge l’IA locale</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano est prêt. Le mode automatique essaie d’abord l’IA locale, puis utilise votre fournisseur cloud connecté si nécessaire.</string>
+    <string name="onboarding_ai_download">Gemini Nano doit être téléchargé</string>
+    <string name="onboarding_ai_download_summary">Cet appareil prend en charge Gemini Nano. Téléchargez le modèle dans les paramètres de Votre briefing pour utiliser l’IA locale ou connectez un fournisseur cloud.</string>
+    <string name="onboarding_ai_downloading">Téléchargement de Gemini Nano</string>
+    <string name="onboarding_ai_downloading_summary">L’IA locale sera prête une fois le modèle téléchargé. Vous pouvez aussi connecter un fournisseur cloud.</string>
+    <string name="onboarding_ai_cloud">Connecter un fournisseur cloud</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano n’est actuellement pas disponible sur cet appareil. Connectez-vous avec ChatGPT ou ajoutez une clé API pour utiliser les fonctions IA.</string>
+    <string name="onboarding_ai_unknown">La vérification de l’IA locale n’a pas abouti</string>
+    <string name="onboarding_ai_unknown_summary">Appuyez pour réessayer. Vous pouvez continuer et configurer l’IA plus tard dans les paramètres de Votre briefing.</string>
+    <string name="onboarding_ai_setup_cloud">Configurer un fournisseur cloud</string>
+    <string name="onboarding_ai_cloud_connected">Fournisseur cloud connecté</string>
+    <string name="onboarding_ai_confirm_import">Utiliser ce compte et importer ses statistiques ?</string>
+</resources>

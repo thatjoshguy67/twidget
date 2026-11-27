@@ -6,4 +6,6 @@
             android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" />
     <ImageView android:id="@+id/brief_widget_artwork" android:layout_width="match_parent"
         android:layout_height="match_parent" android:contentDescription="@null" android:scaleType="fitCenter" />
+    <FrameLayout android:id="@+id/widget_celebration_host" android:layout_width="match_parent"
+        android:layout_height="match_parent" android:importantForAccessibility="noHideDescendants" />
 </FrameLayout>

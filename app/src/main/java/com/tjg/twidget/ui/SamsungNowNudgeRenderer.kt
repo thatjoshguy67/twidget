@@ -22,7 +22,7 @@ import kotlin.math.sin
  * Buttons retain the original resting frame of BORDER_TRAVEL (progress = 0).
  */
 @RequiresApi(33)
-internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean) {
+internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean, private val palette: IntArray? = null, private val cornerRadius: Float? = null, bottomWeighted: Boolean = false, private val raisedSplash: Boolean = false) {
     private val shader = RuntimeShader(resources.openRawResource(R.raw.samsung_now_nudge_presence)
         .bufferedReader().use { it.readText() })
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.shader = this@SamsungNowNudgeRenderer.shader }
@@ -35,17 +35,36 @@ internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean) {
     private val density = resources.displayMetrics.density
 
     init {
+        shader.setFloatUniform("uCornerSplash", 0f)
+        shader.setFloatUniform("uSplashHeight", if (raisedSplash) .64f else .78f)
+        shader.setFloatUniform("uBottomWeight", if (bottomWeighted) 1f else 0f)
         val posRad = FloatArray(80)
         val colours = FloatArray(80)
         val softness = FloatArray(20)
         val angles = FloatArray(40)
         NUDGE_BRUSHES.forEachIndexed { index, brush ->
-            val colour = resources.getColor(brush.colour, null)
+            val colour = palette?.get(when (brush.colour) {
+                R.color.brief_insight_normal_start -> 0
+                R.color.brief_insight_normal_end -> 2
+                else -> 1
+            }) ?: resources.getColor(brush.colour, null)
             val offset = index * 4
             posRad[offset] = (brush.x + DESIGN_WIDTH / 2f) * density
             posRad[offset + 1] = (brush.y + DESIGN_HEIGHT / 2f) * density
             posRad[offset + 2] = brush.radiusX * density
             posRad[offset + 3] = brush.radiusY * density
+            if (raisedSplash) {
+                // Broad, staggered pools overlap across the card rather than forming three columns.
+                val pools = arrayOf(
+                    floatArrayOf(-12f, 21f, 105f, 66f),
+                    floatArrayOf(45f, 47f, 105f, 57f),
+                    floatArrayOf(141f, 29f, 112f, 74f),
+                    floatArrayOf(90f, 43f, 105f, 62f),
+                    floatArrayOf(63f, 39f, 98f, 57f),
+                    floatArrayOf(25f, -32f, 110f, 64f),
+                )
+                pools[index].forEachIndexed { component, value -> posRad[offset + component] = value * density }
+            }
             colours[offset] = Color.red(colour) / 255f
             colours[offset + 1] = Color.green(colour) / 255f
             colours[offset + 2] = Color.blue(colour) / 255f
@@ -65,7 +84,7 @@ internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean) {
         shader.setFloatUniform("uCornerRadius", 26f * density)
         shader.setFloatUniform("uInnerMargin", 0f)
         shader.setFloatUniform("uCenterMarginRatio", .698f, .1f)
-        shader.setFloatUniform("uCenterMarginStrength", .845f)
+        shader.setFloatUniform("uCenterMarginStrength", if (raisedSplash) .72f else .845f)
         shader.setFloatUniform("uCenterMarginRange", .546f)
         shader.setIntUniform("animMode", 2) // AIPresenceView.AnimationMode.BORDER_TRAVEL
 
@@ -83,6 +102,32 @@ internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean) {
         shader.setFloatUniform("uMVCpts_anim", points)
     }
 
+    fun setPalette(palette: IntArray) {
+        val colours = FloatArray(80)
+        NUDGE_BRUSHES.forEachIndexed { index, brush ->
+            val baseColour = palette[when (brush.colour) {
+                R.color.brief_insight_normal_start -> 0
+                R.color.brief_insight_normal_end -> 2
+                else -> 1
+            }]
+            val colour = if (raisedSplash) {
+                // Keep each pool chromatic; mixing warm and cool RGB values made the overlap grey.
+                val hsv = FloatArray(3)
+                Color.colorToHSV(baseColour, hsv)
+                hsv[1] = (hsv[1] * 1.25f).coerceIn(.48f, .85f)
+                hsv[2] = (hsv[2] * 1.08f).coerceAtMost(1f)
+                hsv[0] = (hsv[0] + if (index % 2 == 0) 5f else 355f) % 360f
+                Color.HSVToColor(hsv)
+            } else baseColour
+            val offset = index * 4
+            colours[offset] = Color.red(colour) / 255f
+            colours[offset + 1] = Color.green(colour) / 255f
+            colours[offset + 2] = Color.blue(colour) / 255f
+            colours[offset + 3] = Color.alpha(colour) / 255f * brush.opacity
+        }
+        shader.setFloatUniform("uBrushColor", colours)
+    }
+
     fun draw(canvas: Canvas, width: Int, height: Int, alpha: Int, filter: ColorFilter?) {
         if (width != this.width || height != this.height) {
             this.width = width
@@ -91,7 +136,7 @@ internal class SamsungNowNudgeRenderer(resources: Resources, night: Boolean) {
             shader.setFloatUniform("uResolution", DESIGN_WIDTH * density / width, DESIGN_HEIGHT * density / height)
             shader.setFloatUniform("uOriginalResolution", width.toFloat(), height.toFloat())
         }
-        val radius = minOf(width, height) / 2f
+        val radius = (cornerRadius ?: (minOf(width, height) / 2f)).coerceAtMost(minOf(width, height) / 2f)
         val layer = canvas.saveLayerAlpha(bounds, alpha)
         background.colorFilter = filter
         // Keyboard's two sibling views both carry suggested_replies_button_bg.

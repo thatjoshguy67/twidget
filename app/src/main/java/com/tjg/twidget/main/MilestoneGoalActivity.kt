@@ -46,14 +46,6 @@ class MilestoneGoalActivity : EdgeToEdgeActivity() {
                 setResult(RESULT_OK)
             }
         }
-        if (com.tjg.twidget.data.TwidgetStore.debugMenuUnlocked(this)) {
-            val parent = autoSwitch.parent.parent as LinearLayout
-            parent.addView(CardItemView(this).apply {
-                title = getString(R.string.milestone_preview_celebration)
-                summary = getString(R.string.milestone_preview_celebration_summary)
-                setOnClickListener { MilestoneCelebration.preview(this@MilestoneGoalActivity) }
-            })
-        }
         refresh()
     }
 

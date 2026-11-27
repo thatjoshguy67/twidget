@@ -51,6 +51,14 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     private var titleShimmerAnimator: ValueAnimator? = null
     private var titleShimmerProgress = -1f
 
+    private val materialRenderer by lazy {
+        if (android.os.Build.VERSION.SDK_INT >= 33) runCatching {
+            SamsungNowNudgeRenderer(resources,
+                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
+                cornerRadius = 28f * resources.displayMetrics.density, bottomWeighted = true, raisedSplash = true)
+        }.getOrNull() else null
+    }
+
     private var glowMood = com.tjg.twidget.brief.BriefHomeGlowMood.NEUTRAL
     private var glowTarget: com.tjg.twidget.brief.BriefHomeGlowSpec? = null
     private var glowCurrent: com.tjg.twidget.brief.BriefHomeGlowSpec? = null
@@ -70,7 +78,8 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
 
     private fun updateGlow(animated: Boolean) {
         val dark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-        val target = com.tjg.twidget.brief.BriefHomeGlowPolicy.spec(glowMood, dark)
+        val target = com.tjg.twidget.brief.BriefHomeGlowSpec(
+            com.tjg.twidget.brief.briefBackgroundPalette(com.tjg.twidget.brief.BriefBlueTheme.current(), dark)[2], 0f)
         if (target == glowTarget) return
         glowTarget = target
         glowAnimator?.cancel()
@@ -94,6 +103,12 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
 
     private fun applyGlow(spec: com.tjg.twidget.brief.BriefHomeGlowSpec) {
         glowCurrent = spec
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val dark = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+            val colours = com.tjg.twidget.brief.briefBackgroundPalette(com.tjg.twidget.brief.BriefBlueTheme.current(), dark)
+            val palette = colours.drop(2).toIntArray()
+            materialRenderer?.setPalette(palette)
+        }
         val r = Color.red(spec.color).toFloat()
         val g = Color.green(spec.color).toFloat()
         val b = Color.blue(spec.color).toFloat()
@@ -145,22 +160,6 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
             val w = width.toFloat()
             val h = height.toFloat()
             val cardRadius = 28f * resources.displayMetrics.density
-            val hInset = dp(12)
-            val vInset = dp(24)
-            val bottomGlow = dp(12).toFloat()
-            val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val glowPair = getDitheredGlowBitmaps(context, isLandscape)
-
-            val glowShift = w * (glowCurrent?.offset ?: 0f)
-            glowDstRect.set(-hInset + glowShift, -vInset.toFloat(), w + hInset + glowShift, h + vInset)
-
-            if (glowPair != null) {
-                val outerSave = canvas.save()
-                canvas.clipRect(-w, 0f, w * 2f, h + bottomGlow)
-                canvas.drawBitmap(glowPair.first, null, glowDstRect, glowBitmapPaint)
-                canvas.restoreToCount(outerSave)
-            }
-
             cardRect.set(0f, 0f, w, h)
             cardPath.rewind()
             cardPath.addRoundRect(cardRect, cardRadius, cardRadius, Path.Direction.CW)
@@ -181,17 +180,22 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
             basePaint.alpha = if (isNight) 205 else 215
             canvas.drawPath(cardPath, basePaint)
 
-            if (glowPair != null) {
-                val save = canvas.save()
-                canvas.clipPath(cardPath)
-                canvas.drawBitmap(glowPair.second, null, glowDstRect, glowBitmapPaint)
-                canvas.restoreToCount(save)
+            val effect = materialRenderer
+            if (android.os.Build.VERSION.SDK_INT >= 33 && effect != null && canvas.isHardwareAccelerated) {
+                effect.draw(canvas, width, height, 255, null)
+            } else {
+                val pair = getDitheredGlowBitmaps(context,
+                    resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+                if (pair != null) {
+                    val save = canvas.save()
+                    canvas.clipPath(cardPath)
+                    val shift = w * (glowCurrent?.offset ?: 0f)
+                    glowDstRect.set(shift, 0f, w + shift, h)
+                    canvas.drawBitmap(pair.second, null, glowDstRect, glowBitmapPaint)
+                    canvas.restoreToCount(save)
+                }
             }
 
-            val overlayAlpha = if (isNight) 18 else 65
-            overlayPaint.color = surfaceColor
-            overlayPaint.alpha = overlayAlpha
-            canvas.drawPath(cardPath, overlayPaint)
         }
         super.draw(canvas)
     }

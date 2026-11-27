@@ -134,9 +134,9 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     }
 
     /** Pinned footers extend their surface beneath navigation while protecting buttons. */
-    protected fun applyFooterScreenInsets(root: View, footer: View) {
+    protected fun applyFooterScreenInsets(root: View, footer: View, padRootForIme: Boolean = true) {
         val bottom = footer.paddingBottom
-        applyEdgeToEdgeInsets(root) { inset ->
+        applyEdgeToEdgeInsets(root, padRootForIme = padRootForIme) { inset ->
             footer.setPadding(footer.paddingLeft, footer.paddingTop, footer.paddingRight, bottom + inset)
         }
     }

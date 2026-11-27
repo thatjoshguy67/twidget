@@ -112,6 +112,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
     private var localStatus = BriefLocalStatus.UNAVAILABLE
     private var debugScenario: BriefDebugScenario = BriefDebugScenario.REAL
+    private var entryCelebrationPlayed = false
     private var reloadOnResume = false
     private var checkContentOnResume = false
     private var entranceSections: List<View> = emptyList()
@@ -148,6 +149,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         backgroundUnlockProgress = savedInstanceState?.getFloat("brief_background_unlock")
             ?: if (intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) 0f else .45f
         backgroundUnlockStarted = savedInstanceState?.getBoolean("brief_background_unlock_started") ?: false
+        backgroundEntryProgress = savedInstanceState?.getFloat("brief_background_entry") ?: 0f
         username = intent.getStringExtra(EXTRA_USERNAME).orEmpty().trim().trimStart('@')
             .ifBlank { TwidgetStore.settings(this).username }
         val defaultAccount = TwidgetStore.settings(this).username.trim().trimStart('@')
@@ -160,6 +162,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 intent.getStringExtra(EXTRA_DEBUG_SCENARIO),
             )
         }
+        entryCelebrationPlayed = savedInstanceState?.getBoolean("brief_entry_celebration_played") ?: false
         apiKeyPromptShown = intent.getBooleanExtra(EXTRA_API_KEY_PROMPT_SHOWN, false)
         if (debugScenario == BriefDebugScenario.REAL) BriefSettingsStore.setEnabled(this, true)
 
@@ -307,6 +310,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         super.onResume()
         applyContextBackground()
         startBackgroundMotion()
+        startBackgroundEntry()
+        findViewById<View>(R.id.brief_root).post { forceCelebrationOnEntry() }
         if (backgroundUnlockStarted || !intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) startBackgroundUnlock()
         if (renderedTimingHour != java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)) {
             renderedSnapshot?.let { render(it) }
@@ -424,16 +429,21 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefRunCache.providerMatches(BriefSettingsStore.provider(this), source.providerUsed)
 
     override fun onPause() {
+        entryCelebrationPlayed = false
         backgroundMotion?.cancel()
         backgroundMotion = null
+        backgroundEntryAnimator?.cancel()
+        backgroundEntryAnimator = null
         backgroundUnlockAnimator?.cancel()
         backgroundUnlockAnimator = null
         super.onPause()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("brief_entry_celebration_played", entryCelebrationPlayed)
         outState.putFloat("brief_background_unlock", backgroundUnlockProgress)
         outState.putBoolean("brief_background_unlock_started", backgroundUnlockStarted)
+        outState.putFloat("brief_background_entry", backgroundEntryProgress)
         super.onSaveInstanceState(outState)
     }
 
@@ -1317,6 +1327,30 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var backgroundUnlockProgress = 1f
     private var backgroundUnlockStarted = false
     private var backgroundUnlockAnimator: ValueAnimator? = null
+    private var backgroundEntryProgress = 1f
+    private var backgroundEntryAnimator: ValueAnimator? = null
+
+    /** Fresh Brief entries unfold the material immediately, independently of data generation. */
+    private fun startBackgroundEntry() {
+        if (backgroundEntryProgress >= 1f || backgroundEntryAnimator != null) return
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            backgroundEntryProgress = 1f
+            blueBackground?.setEntranceProgress(1f)
+            return
+        }
+        backgroundEntryAnimator = ValueAnimator.ofFloat(backgroundEntryProgress, 1f).apply {
+            duration = (1600L * (1f - backgroundEntryProgress)).toLong().coerceAtLeast(1L)
+            interpolator = PathInterpolator(.22f, 0f, .12f, 1f)
+            addUpdateListener {
+                backgroundEntryProgress = it.animatedValue as Float
+                blueBackground?.setEntranceProgress(backgroundEntryProgress)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) { backgroundEntryAnimator = null }
+            })
+            start()
+        }
+    }
 
     private fun startBackgroundMotion() {
         if (backgroundMotion != null || !ValueAnimator.areAnimatorsEnabled()) return
@@ -1345,6 +1379,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             blueBackground = BriefBlueBackground(theme, key.second, density = resources.displayMetrics.density).also {
                 it.setMotionProgress(backgroundMotionProgress)
                 it.setUnlockProgress(backgroundUnlockProgress)
+                it.setEntranceProgress(backgroundEntryProgress)
             }
             findViewById<View>(R.id.brief_root).background = blueBackground
         }
@@ -1388,6 +1423,18 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
+    private fun forceCelebrationOnEntry() {
+        if (entryCelebrationPlayed || !com.tjg.twidget.main.MilestoneCelebration.forceEnabled(this) ||
+            entranceInProgress || isFinishing || isDestroyed || !hasWindowFocus()) return
+        entryCelebrationPlayed = true
+        com.tjg.twidget.main.MilestoneCelebration.preview(this)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) forceCelebrationOnEntry()
+    }
+
     private fun startPreparedBriefEntrance() {
         startBackgroundUnlock()
         if (!entranceInProgress || entranceStarted) return
@@ -1404,6 +1451,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                     val pending = pendingEntranceRender
                     pendingEntranceRender = null
                     pending?.let { (snapshot, analytics) -> render(snapshot, analytics) }
+                    forceCelebrationOnEntry()
                 }
             }
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)

@@ -1,0 +1,28 @@
+<resources>
+    <string name="onboarding_confirm_title">Bist du das?</string>
+    <string name="onboarding_confirm_yes">Ja</string>
+    <string name="onboarding_confirm_no">Nein, ändern</string>
+    <string name="onboarding_optional_import">Optional</string>
+    <string name="onboarding_import_title">Twitter/X-Analysen importieren</string>
+    <string name="onboarding_import_summary">Erhalte durch einen einmaligen Import einen umfassenderen Überblick über deine bisherigen Twitter/X-Daten.</string>
+    <string name="onboarding_ai_title">KI-Funktionen</string>
+    <string name="onboarding_ai_brief">Dein Briefing</string>
+    <string name="onboarding_ai_brief_summary">Ein personalisiertes Briefing auf Basis deiner Profilanalysen, das sich im Tagesverlauf verändert.</string>
+    <string name="onboarding_ai_review">Tweet-Analyse</string>
+    <string name="onboarding_ai_review_summary">Erhalte Einblicke in deine Beiträge, die Reaktionen des Publikums, was funktioniert und wo du dich verbessern kannst.</string>
+    <string name="onboarding_ai_checking">Lokale KI-Unterstützung wird geprüft…</string>
+    <string name="onboarding_ai_checking_summary">Die Verfügbarkeit von Gemini Nano auf diesem Gerät wird geprüft. Du kannst währenddessen fortfahren.</string>
+    <string name="onboarding_ai_ready">Dein Gerät unterstützt lokale KI</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano ist bereit. Der automatische Modus versucht zuerst lokale KI und greift bei Bedarf auf deinen verbundenen Cloud-Anbieter zurück.</string>
+    <string name="onboarding_ai_download">Gemini Nano muss heruntergeladen werden</string>
+    <string name="onboarding_ai_download_summary">Dieses Gerät unterstützt Gemini Nano. Lade das Modell in den Briefing-Einstellungen herunter oder verbinde einen Cloud-Anbieter.</string>
+    <string name="onboarding_ai_downloading">Gemini Nano wird heruntergeladen</string>
+    <string name="onboarding_ai_downloading_summary">Lokale KI ist bereit, sobald das Modell heruntergeladen wurde. Du kannst auch einen Cloud-Anbieter verbinden.</string>
+    <string name="onboarding_ai_cloud">Cloud-Anbieter verbinden</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano ist auf diesem Gerät derzeit nicht verfügbar. Melde dich mit ChatGPT an oder füge einen API-Schlüssel hinzu, um KI-Funktionen zu nutzen.</string>
+    <string name="onboarding_ai_unknown">Die lokale KI-Prüfung wurde nicht abgeschlossen</string>
+    <string name="onboarding_ai_unknown_summary">Tippe, um erneut zu prüfen. Du kannst fortfahren und KI später in den Briefing-Einstellungen einrichten.</string>
+    <string name="onboarding_ai_setup_cloud">Cloud-Anbieter einrichten</string>
+    <string name="onboarding_ai_cloud_connected">Cloud-Anbieter verbunden</string>
+    <string name="onboarding_ai_confirm_import">Dieses Konto verwenden und Analysen importieren?</string>
+</resources>

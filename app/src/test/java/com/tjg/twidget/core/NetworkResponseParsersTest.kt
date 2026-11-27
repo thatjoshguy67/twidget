@@ -12,6 +12,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetworkResponseParsersTest {
+    @Test fun fxProfileRetainsTheBioForAccountConfirmation() {
+        val profile = NetworkResponseParsers.parseFxTwitterUser(JSONObject("""{"user":{"screen_name":"example","description":"A profile bio"}}"""), "example")
+        assertEquals("A profile bio", profile.profileDetails.bio)
+        val missing = NetworkResponseParsers.parseFxTwitterUser(JSONObject("""{"user":{"screen_name":"example","description":null}}"""), "example")
+        assertNull(missing.profileDetails.bio)
+    }
+
     @Test fun sharedFieldsKeepUnknownCountersUnknownAndRetainAvailableProfileDetails() {
         val profile = NetworkResponseParsers.parseBridgeProfile("""{"userId":"123","userName":"example",
           "followersCount":0,"statusesCount":12,"likeCount":0,"bio":"About me","website":"https://example.com",

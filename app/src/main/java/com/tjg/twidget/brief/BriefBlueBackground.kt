@@ -17,30 +17,9 @@ internal enum class BriefBlueTheme { MORNING, AFTERNOON, EVENING, NIGHT, WEEKEND
     }
 }
 
-/** Distinct blue light pools. Cached shaders move without allocating new gradients each frame. */
-internal class BriefBlueBackground(private val theme: BriefBlueTheme, private val night: Boolean,
-    private val subdued: Boolean = false, private val density: Float = 1f) : Drawable() {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val layers = mutableListOf<Pair<Shader, Int>>()
-    private val motionMatrix = Matrix()
-    private var motion = 0f
-    private var motionSpan = 1f
-    fun setMotionProgress(value: Float) { motion = value; invalidateSelf() }
-    var revealProgress: Float = 1f
-        private set
-    fun setUnlockProgress(value: Float) { revealProgress = value.coerceIn(0f, 1f); invalidateSelf() }
-    private var opacity = 255
-    private var filter: ColorFilter? = null
-
-    override fun onBoundsChange(bounds: Rect) {
-        layers.clear()
-        val w = bounds.width().toFloat().coerceAtLeast(1f)
-        val h = bounds.height().toFloat().coerceAtLeast(1f)
-        val scale = density.coerceAtLeast(.1f)
-        val spread = ((w / scale - 400f) / 600f).coerceIn(0f, 1f)
-        motionSpan = minOf(w, 480f * scale)
-        // Day parts change the material's palette, not merely the position of identical blue glows.
-        val palette = (if (night) when (theme) {
+/** Shared by the Brief page and its dashboard material. */
+internal fun briefBackgroundPalette(theme: BriefBlueTheme, night: Boolean, subdued: Boolean = false): List<Int> {
+        return (if (night) when (theme) {
             BriefBlueTheme.MORNING -> longArrayOf(0xFF123650, 0xFF142B3D, 0xFF4AA1F4, 0xFFE3A974, 0xFF63BACA)
             BriefBlueTheme.AFTERNOON -> longArrayOf(0xFF003B63, 0xFF112F4A, 0xFF008FE5, 0xFF15B6D5, 0xFF2978E6)
             BriefBlueTheme.EVENING -> longArrayOf(0xFF2B1645, 0xFF171A36, 0xFF9B58D0, 0xFFCD7D9B, 0xFF4660C9)
@@ -58,6 +37,36 @@ internal class BriefBlueBackground(private val theme: BriefBlueTheme, private va
             if (subdued) androidx.core.graphics.ColorUtils.blendARGB(softened,
                 if (night) 0xFF0C1119.toInt() else 0xFFECEFF6.toInt(), .55f) else softened
         }
+}
+
+/** Distinct blue light pools. Cached shaders move without allocating new gradients each frame. */
+internal class BriefBlueBackground(private val theme: BriefBlueTheme, private val night: Boolean,
+    private val subdued: Boolean = false, private val density: Float = 1f,
+    private val paletteOverride: List<Int>? = null,
+    private val lightPoolRadiusScale: Float = 1f) : Drawable() {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val layers = mutableListOf<Pair<Shader, Int>>()
+    private val motionMatrix = Matrix()
+    private var motion = 0f
+    private var motionSpan = 1f
+    private var entranceProgress = 1f
+    fun setEntranceProgress(value: Float) { entranceProgress = value.coerceIn(0f, 1f); invalidateSelf() }
+    fun setMotionProgress(value: Float) { motion = value; invalidateSelf() }
+    var revealProgress: Float = 1f
+        private set
+    fun setUnlockProgress(value: Float) { revealProgress = value.coerceIn(0f, 1f); invalidateSelf() }
+    private var opacity = 255
+    private var filter: ColorFilter? = null
+
+    override fun onBoundsChange(bounds: Rect) {
+        layers.clear()
+        val w = bounds.width().toFloat().coerceAtLeast(1f)
+        val h = bounds.height().toFloat().coerceAtLeast(1f)
+        val scale = density.coerceAtLeast(.1f)
+        val spread = ((w / scale - 400f) / 600f).coerceIn(0f, 1f)
+        motionSpan = minOf(w, 480f * scale)
+        // Day parts change the material's palette, not merely the position of identical blue glows.
+        val palette = paletteOverride ?: briefBackgroundPalette(theme, night, subdued)
         layers += LinearGradient(0f, 0f, 0f, h, palette[0], palette[1], Shader.TileMode.CLAMP) to 255
         val positions = when (theme) {
             BriefBlueTheme.MORNING -> listOf(.05f to .05f, 1f to .27f, .25f to .64f)
@@ -78,7 +87,7 @@ internal class BriefBlueBackground(private val theme: BriefBlueTheme, private va
             val centerX = (x + (wideX - x) * spread) * w
             val centerY = (y + (wideY - y) * spread) * h
             val color = palette[index + 2]
-            val radius = maxOf(motionSpan * .65f, h * .28f) * floatArrayOf(1f, .83f, 1.15f)[index]
+            val radius = maxOf(motionSpan * .65f, h * .28f) * floatArrayOf(1f, .83f, 1.15f)[index] * lightPoolRadiusScale
             layers += RadialGradient(centerX, centerY, radius,
                 intArrayOf(color, color, color and 0x00FFFFFF), floatArrayOf(0f, .18f, 1f), Shader.TileMode.CLAMP) to
                 if (night && theme == BriefBlueTheme.NIGHT) 110 else if (night) 160 else 170
@@ -88,16 +97,21 @@ internal class BriefBlueBackground(private val theme: BriefBlueTheme, private va
     override fun draw(canvas: Canvas) {
         val save = canvas.save()
         canvas.translate(bounds.left.toFloat(), bounds.top.toFloat())
+        val entrance = entranceProgress * entranceProgress * (3f - 2f * entranceProgress)
         layers.forEachIndexed { index, (shader, strength) ->
             if (index > 0) {
                 val angle = motion * Math.PI * 2 + index * 2.1
-                motionMatrix.setTranslate(
-                    (kotlin.math.sin(angle) * motionSpan * .20).toFloat(),
-                    (kotlin.math.cos(angle) * bounds.height() * .10).toFloat(),
+                val scale = .55f + .45f * entrance
+                motionMatrix.setScale(scale, scale, bounds.width() * .5f, bounds.height() * .65f)
+                motionMatrix.postTranslate(
+                    (kotlin.math.sin(angle) * motionSpan * .20).toFloat() +
+                        (if (index % 2 == 0) 1f else -1f) * motionSpan * .18f * (1f - entrance),
+                    (kotlin.math.cos(angle) * bounds.height() * .10).toFloat() + bounds.height() * .24f * (1f - entrance),
                 )
                 shader.setLocalMatrix(motionMatrix)
             }
             paint.shader = shader; paint.alpha = opacity * strength / 255; paint.colorFilter = filter
+            if (index > 0) paint.alpha = (paint.alpha * (.05f + .95f * entrance)).toInt()
             canvas.drawRect(0f, 0f, bounds.width().toFloat(), bounds.height().toFloat(), paint)
         }
         if (revealProgress < 1f) {

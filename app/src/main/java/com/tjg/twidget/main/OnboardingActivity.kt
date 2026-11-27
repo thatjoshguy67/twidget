@@ -3,6 +3,8 @@ package com.tjg.twidget.main
 import com.tjg.twidget.core.UiMessages
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.Manifest
 import android.app.AlarmManager
 import android.appwidget.AppWidgetManager
@@ -58,10 +60,19 @@ import com.tjg.twidget.ui.AnimatedTitleView
 import dev.oneuiproject.oneui.widget.AdaptiveCoordinatorLayout
 
 class OnboardingActivity : EdgeToEdgeActivity() {
+    private val accountSession by lazy { androidx.lifecycle.ViewModelProvider(this)[OnboardingAccountSession::class.java] }
+    private var identityAnimator: ValueAnimator? = null
+    private var identityPreDraw: android.view.ViewTreeObserver.OnPreDrawListener? = null
+    private var identityRevision = 0L
+    private var nanoCheck: kotlinx.coroutines.Job? = null
+    private var nanoStatus: com.tjg.twidget.brief.BriefLocalStatus? = null
+    private var nanoCheckFinished = false
+    private val providerSignIn = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { renderAiReadiness() }
     private var step = STEP_OVERVIEW
     private var isStarting = false
     private var addAccountMode = false
     private var startedOnWidgetStep = false
+    private lateinit var onboardingMaterial: OnboardingMaterialDrawable
     private var previewFloatAnimator: ObjectAnimator? = null
     private val previewHandler = Handler(Looper.getMainLooper())
     private val welcomeButtonHandler = Handler(Looper.getMainLooper())
@@ -84,7 +95,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             when (step) {
                 STEP_PERMISSIONS -> goToStep(STEP_OVERVIEW)
                 STEP_PROFILE -> goToStep(STEP_PERMISSIONS)
-                STEP_WIDGETS -> goToStep(STEP_PROFILE)
+                STEP_CONFIRM -> goToStep(STEP_PROFILE)
+                STEP_AI -> goToStep(STEP_CONFIRM)
+                STEP_WIDGETS -> goToStep(if (startedOnWidgetStep) STEP_PROFILE else STEP_AI)
                 STEP_DONE -> goToStep(STEP_WIDGETS)
             }
         }
@@ -96,8 +109,13 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         startedOnWidgetStep = intent.getBooleanExtra(EXTRA_SHOW_WIDGET_STEP, false)
         if (addAccountMode) step = STEP_PROFILE
         if (startedOnWidgetStep) step = STEP_WIDGETS
+        step = savedInstanceState?.getInt("onboarding_step", step) ?: step
+        if (step == STEP_CONFIRM && accountSession.candidate == null) step = STEP_PROFILE
         setContentView(R.layout.activity_onboarding)
-        applyFooterScreenInsets(findViewById(R.id.onboarding_content), findViewById(R.id.onboarding_footer))
+        onboardingMaterial = OnboardingMaterialDrawable(resources,
+            resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES)
+        findViewById<View>(R.id.onboarding_root).background = onboardingMaterial
+        applyFooterScreenInsets(findViewById(R.id.onboarding_content), findViewById(R.id.onboarding_footer), padRootForIme = false)
         primaryButtonBaseElevation = findViewById<AppCompatButton>(R.id.primary_button).elevation
         findViewById<AdaptiveCoordinatorLayout>(R.id.onboarding_root).configureAdaptiveMargin(
             AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
@@ -107,6 +125,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         setupWelcomeScreen()
         setupInput()
         setupButtons()
+        setupAiAndConfirmation()
         setupBackButton()
         setupPermissionRows()
         setupShareHistoryCheckbox()
@@ -135,6 +154,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     }
 
     override fun onDestroy() {
+        cancelIdentityMorph()
+        nanoCheck?.cancel()
+        onboardingMaterial.dispose()
         asyncGeneration++
         previewHandler.removeCallbacksAndMessages(null)
         previewFloatAnimator?.cancel()
@@ -150,6 +172,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     override fun onResume() {
         super.onResume()
+        onboardingMaterial.resumeMotion()
+        if (step == STEP_AI) renderAiReadiness()
         if (step == STEP_PERMISSIONS) {
             renderPermissionState()
             updateButtons()
@@ -163,17 +187,29 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     }
 
+    override fun onPause() {
+        onboardingMaterial.pauseMotion()
+        super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putInt("onboarding_step", step)
+        super.onSaveInstanceState(outState)
+    }
+
     private fun goToStep(next: Int) {
         if (next != STEP_PERMISSIONS) {
             permissionSequenceInProgress = false
         }
-        step = next
+        step = if (next == STEP_CONFIRM && accountSession.candidate == null) STEP_PROFILE else next
         renderStep(animate = true)
     }
 
     private fun setupInput() {
         findViewById<EditText>(R.id.username_input).apply {
-            filters = arrayOf(InputFilter.LengthFilter(15))
+            // Bound raw input without truncating a valid 15-character handle after its @ prefix.
+            // The normalized handle is validated separately before any network request.
+            filters = arrayOf(InputFilter.LengthFilter(OnboardingHandleInput.MAX_INPUT_LENGTH))
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     submitProfile()
@@ -204,6 +240,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                     requestNextPermission()
                 }
                 STEP_PROFILE -> submitProfile()
+                STEP_CONFIRM -> confirmProfile()
+                STEP_AI -> goToStep(STEP_WIDGETS)
                 STEP_WIDGETS -> {
                     requestWidgetPin()
                     goToStep(STEP_DONE)
@@ -215,6 +253,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             when (step) {
                 STEP_PERMISSIONS -> goToStep(STEP_PROFILE)
 
+                STEP_CONFIRM -> goToStep(STEP_PROFILE)
                 STEP_WIDGETS -> goToStep(STEP_DONE)
             }
         }
@@ -301,28 +340,33 @@ class OnboardingActivity : EdgeToEdgeActivity() {
 
     private fun renderStep(animate: Boolean = false) {
         cancelWelcomeButtonAnimation()
+        if (step != STEP_PROFILE && step != STEP_CONFIRM) cancelIdentityMorph()
         val steps = mapOf(
             STEP_OVERVIEW to R.id.step_overview,
             STEP_PERMISSIONS to R.id.step_permissions,
             STEP_PROFILE to R.id.step_profile,
+            STEP_CONFIRM to R.id.step_profile,
+            STEP_AI to R.id.step_ai,
             STEP_WIDGETS to R.id.step_widgets,
             STEP_DONE to R.id.step_done,
         )
-        steps.forEach { (which, viewId) ->
-            findViewById<View>(viewId).visibility = if (which == step) View.VISIBLE else View.GONE
+        steps.values.distinct().forEach { viewId ->
+            findViewById<View>(viewId).visibility = if (steps[step] == viewId) View.VISIBLE else View.GONE
         }
         findViewById<View>(R.id.onboarding_back).visibility =
             if (step == STEP_OVERVIEW) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.onboarding_root).setBackgroundResource(
-            if (step == STEP_OVERVIEW) {
-                R.drawable.onboarding_welcome_gradient_bg
-            } else {
-                R.drawable.onboarding_gradient_bg
-            },
-        )
+        if (step != STEP_OVERVIEW) onboardingMaterial.show(when (step) {
+            STEP_PERMISSIONS -> OnboardingMaterialDrawable.Stage.PERMISSIONS
+            STEP_PROFILE -> OnboardingMaterialDrawable.Stage.HANDLE
+            STEP_CONFIRM -> OnboardingMaterialDrawable.Stage.CONFIRM
+            STEP_AI -> OnboardingMaterialDrawable.Stage.AI
+            STEP_WIDGETS -> OnboardingMaterialDrawable.Stage.WIDGET
+            else -> OnboardingMaterialDrawable.Stage.DONE
+        }, animate)
         updateButtons()
         val imm = getSystemService(InputMethodManager::class.java)
         val input = findViewById<EditText>(R.id.username_input)
+        input.isEnabled = step == STEP_PROFILE
         if (step == STEP_PROFILE) {
             input.requestFocus()
             input.post { imm.showSoftInput(input, 0) }
@@ -332,10 +376,11 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         previewHandler.removeCallbacksAndMessages(null)
         previewFloatAnimator?.cancel()
         previewFloatAnimator = null
+        val identityMorphing = if (step == STEP_PROFILE || step == STEP_CONFIRM) renderIdentity(animate) else false
+        if (step == STEP_AI) { renderAiReadiness(); checkLocalAi() }
         if (step == STEP_WIDGETS) showWidgetPreview()
         if (step == STEP_DONE) showDoneProfileAvatar()
         if (step == STEP_PERMISSIONS) renderPermissionState()
-        settleBackground(animate)
         if (step == STEP_OVERVIEW) startOverviewTitleAnimation()
         else findViewById<AnimatedTitleView>(R.id.overview_title).cancel()
         if (step == STEP_DONE) startDoneTitleAnimation()
@@ -346,8 +391,9 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             if (step == STEP_DONE) {
                 animateDoneContentIn()
             } else {
-                steps[step]?.let { animateStepIn(findViewById(it), 18f, 320L) }
-                animateButtonsIn()
+                if (!identityMorphing)
+                    steps[step]?.let { animateStepIn(findViewById(it), 18f, 320L) }
+                // Footer controls switch state in place; only the page content and material animate.
             }
         }
     }
@@ -366,6 +412,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             post {
                 if (step == STEP_OVERVIEW && !this@OnboardingActivity.isFinishing && !this@OnboardingActivity.isDestroyed &&
                     lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    onboardingMaterial.revealWelcome()
                     play()
                 }
             }
@@ -388,26 +435,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                     play()
                 }
             }
-        }
-    }
-
-    // On the final step the blue remains at the top while the near-white
-    // (light) / near-black (dark) background settles into the bottom.
-    private fun settleBackground(animate: Boolean) {
-        val overlay = findViewById<View>(R.id.done_fade_overlay)
-        if (step == STEP_DONE) {
-            overlay.visibility = View.VISIBLE
-            if (animate) {
-                overlay.alpha = 0f
-                overlay.animate().alpha(1f).setStartDelay(150).setDuration(1100)
-                    .setInterpolator(DecelerateInterpolator()).start()
-            } else {
-                overlay.alpha = 1f
-            }
-        } else {
-            overlay.animate().cancel()
-            overlay.alpha = 0f
-            overlay.visibility = View.GONE
         }
     }
 
@@ -444,27 +471,23 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         }
     }
 
-    private fun animateButtonsIn() {
-        if (step == STEP_OVERVIEW) return
-        listOf(R.id.primary_button, R.id.secondary_button).forEach { id ->
-            findViewById<AppCompatButton>(id).takeIf { it.visibility == View.VISIBLE }?.apply {
-                val target = if (isEnabled) 1f else 0.5f
-                alpha = 0f
-                translationY = 12f * resources.displayMetrics.density
-                animate().alpha(target).translationY(0f)
-                    .setStartDelay(60).setDuration(280)
-                    .setInterpolator(DecelerateInterpolator()).start()
-            }
-        }
-    }
-
     private fun updateButtons() {
-        stepBackCallback.isEnabled = !isStarting && !addAccountMode && when (step) {
-            STEP_PERMISSIONS, STEP_PROFILE, STEP_DONE -> true
+        stepBackCallback.isEnabled = !isStarting && when (step) {
+            STEP_CONFIRM -> true
+            STEP_AI -> !addAccountMode
+            STEP_PERMISSIONS, STEP_PROFILE, STEP_DONE -> !addAccountMode
             STEP_WIDGETS -> !startedOnWidgetStep
             else -> false
         }
-        val showSecondary = step == STEP_PERMISSIONS || step == STEP_WIDGETS
+        val showSecondary = step == STEP_PERMISSIONS || step == STEP_WIDGETS || step == STEP_CONFIRM
+        val footer = findViewById<LinearLayout>(R.id.onboarding_footer)
+        val primary = findViewById<AppCompatButton>(R.id.primary_button)
+        val primaryOnRight = step == STEP_CONFIRM || step == STEP_PERMISSIONS
+        val primaryIndex = if (primaryOnRight) 1 else 0
+        if (footer.indexOfChild(primary) != primaryIndex) {
+            footer.removeView(primary)
+            footer.addView(primary, primaryIndex)
+        }
         findViewById<AppCompatButton>(R.id.primary_button).apply {
             text = when {
                 isStarting && step == STEP_PROFILE -> getString(R.string.onboarding_checking_account)
@@ -473,7 +496,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 step == STEP_PERMISSIONS && !permissionState().allGranted ->
                     getString(R.string.onboarding_allow_permissions)
                 step == STEP_PERMISSIONS -> getString(R.string.continue_button)
-                step == STEP_PROFILE && addAccountMode -> getString(R.string.add_account)
+                step == STEP_CONFIRM -> getString(R.string.onboarding_confirm_yes)
                 step == STEP_PROFILE -> getString(R.string.continue_button)
                 step == STEP_WIDGETS -> getString(R.string.add_widget)
                 else -> getString(R.string.continue_button)
@@ -490,8 +513,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                 } else {
                     width = 0
                     weight = 1f
-                    marginStart = 0
-                    marginEnd = if (showSecondary) {
+                    marginStart = if (primaryOnRight) dp(6f).toInt() else 0
+                    marginEnd = if (showSecondary && !primaryOnRight) {
                         (6 * resources.displayMetrics.density).toInt()
                     } else {
                         0
@@ -501,8 +524,12 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             elevation = if (step == STEP_OVERVIEW) dp(1f) else primaryButtonBaseElevation
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
+            layoutParams = (layoutParams as LinearLayout.LayoutParams).apply {
+                marginStart = if (primaryOnRight) 0 else dp(6f).toInt()
+                marginEnd = if (primaryOnRight) dp(6f).toInt() else 0
+            }
             text = getString(
-                R.string.skip,
+                if (step == STEP_CONFIRM) R.string.onboarding_confirm_no else R.string.skip,
             )
             visibility = if (showSecondary) View.VISIBLE else View.GONE
             isEnabled = !isStarting
@@ -663,32 +690,20 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         }) {
             val result = runCatching {
                 FxTwitterClient.fetchProfile(username, TwidgetStore.currentStats(this, username).userId).also { profile ->
-                    if (!profile.userName.equals(username, ignoreCase = true)) {
+                    if (!OnboardingHandleInput.sameAccount(profile.userName, username)) {
                         throw HttpTransport.HttpException(404, "FxTwitter returned a different account")
                     }
                 }
-            }
-            result.onSuccess { stats ->
-                if (addAccountMode) {
-                    TwidgetStore.addOnboardingAccount(this, username)
-                } else {
-                    TwidgetStore.completeOnboarding(this, username)
-                }
-                TwidgetStore.saveStats(this, stats)
-                runCatching {
-                    TopFollowersBridgeCache.fetch(this, username)
-                }.getOrNull()?.let { cached ->
-                    TopFollowersStore.write(this, username, cached)
-                }
-                TwidgetWidget.updateAll(this)
             }
             postUiIfCurrent(generation) {
                 isStarting = false
                 updateButtons()
                 val error = result.exceptionOrNull()
                 when {
-                    error == null && addAccountMode -> finish()
-                    error == null -> goToStep(STEP_WIDGETS)
+                    error == null -> {
+                        accountSession.candidate = result.getOrThrow()
+                        goToStep(STEP_CONFIRM)
+                    }
                     onboardingAccountIsMissing(error) -> showUsernameError(R.string.onboarding_account_not_found)
                     else -> Toast.makeText(
                         this,
@@ -697,6 +712,227 @@ class OnboardingActivity : EdgeToEdgeActivity() {
                     ).show()
                 }
             }
+        }
+    }
+
+    private fun setupAiAndConfirmation() {
+        fun reviewMaterial(button: AppCompatButton) {
+            button.setBackgroundResource(R.drawable.dashboard_report_chip)
+            button.backgroundTintList = null
+            button.supportBackgroundTintList = null
+            button.setTextColor(getColor(R.color.oneui_text_primary))
+        }
+        reviewMaterial(findViewById(R.id.primary_button))
+        reviewMaterial(findViewById(R.id.ai_setup_provider))
+        listOf(R.id.ai_brief_name, R.id.ai_review_name).forEach {
+            com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(findViewById(it), weight = 700)
+        }
+        listOf(R.id.ai_brief_icon to R.color.oneui_accent,
+            R.id.ai_review_icon to R.color.brief_insight_normal_start).forEach { (id, colour) ->
+            findViewById<ImageView>(id).apply {
+                val tint = getColor(colour)
+                imageTintList = android.content.res.ColorStateList.valueOf(tint)
+            }
+        }
+        findViewById<AppCompatButton>(R.id.secondary_button).apply {
+            backgroundTintList = null; supportBackgroundTintList = null
+            setBackgroundResource(R.drawable.onboarding_glass_button_bg)
+            setTextColor(getColor(R.color.oneui_text_primary))
+        }
+        findViewById<View>(R.id.confirm_import).setOnClickListener {
+            AlertDialog.Builder(this).setMessage(R.string.onboarding_ai_confirm_import)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.onboarding_confirm_yes) { _, _ -> confirmProfile(importAnalytics = true) }.show()
+        }
+        findViewById<View>(R.id.ai_readiness_card).setOnClickListener {
+            if (nanoCheck?.isActive != true) {
+                nanoCheckFinished = false
+                nanoStatus = null
+                renderAiReadiness()
+                checkLocalAi()
+            }
+        }
+        findViewById<View>(R.id.ai_setup_provider).setOnClickListener {
+            com.tjg.twidget.brief.BriefProviderSetupDialog.show(this,
+                onChatGptSignIn = { providerSignIn.launch(com.tjg.twidget.brief.BriefChatGptActivity.forSetup(this)) },
+                onConfigured = { renderAiReadiness() })
+        }
+    }
+
+    private fun cancelIdentityMorph() {
+        identityRevision++
+        val observer = findViewById<View>(R.id.profile_identity_host)?.viewTreeObserver
+        identityPreDraw?.let { if (observer?.isAlive == true) observer.removeOnPreDrawListener(it) }
+        identityPreDraw = null
+        identityAnimator?.removeAllListeners()
+        identityAnimator?.cancel()
+        identityAnimator = null
+    }
+
+    private fun renderIdentity(animate: Boolean): Boolean {
+        cancelIdentityMorph()
+        val revision = identityRevision
+        val confirm = step == STEP_CONFIRM
+        val host = findViewById<FrameLayout>(R.id.profile_identity_host)
+        val input = findViewById<EditText>(R.id.username_input)
+        val profile = findViewById<View>(R.id.detected_profile)
+        val extras = findViewById<View>(R.id.confirm_import_group)
+        val willAnimate = animate && ValueAnimator.areAnimatorsEnabled() &&
+            (confirm || host.layoutParams.height > dp(60f).toInt())
+        findViewById<TextView>(R.id.profile_title).setText(if (confirm) R.string.onboarding_confirm_title else R.string.onboarding_profile_title)
+        findViewById<View>(R.id.profile_subtitle).visibility = if (confirm) View.INVISIBLE else View.VISIBLE
+        findViewById<View>(R.id.share_history_option).visibility =
+            if (!confirm && shouldShowOnboardingHistoryOption(addAccountMode)) View.VISIBLE else View.GONE
+        if (confirm) accountSession.candidate?.let { stats ->
+            findViewById<TextView>(R.id.detected_name).apply {
+                com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this, weight = 700)
+                text = stats.fullName.ifBlank { stats.userName }
+            }
+            findViewById<TextView>(R.id.detected_handle).text = "@${OnboardingHandleInput.normalize(stats.userName)}"
+            findViewById<View>(R.id.detected_verified).visibility = if (stats.isVerified == true) View.VISIBLE else View.GONE
+            findViewById<TextView>(R.id.detected_bio).apply {
+                text = stats.profileDetails.bio.orEmpty()
+                visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
+            }
+            ProfileImageLoader.loadInto(this, findViewById(R.id.detected_avatar), stats.profileImage)
+        }
+
+        input.visibility = View.VISIBLE
+        input.isEnabled = !confirm
+        profile.visibility = View.VISIBLE
+        extras.visibility = if (confirm) View.VISIBLE else View.GONE
+        // Wait for the actual viewport width. A layout listener must never call renderIdentity(false):
+        // it can run again during the expansion and silently replace the animation with its last frame.
+        val pending = object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (revision != identityRevision || isFinishing || isDestroyed) {
+                    if (host.viewTreeObserver.isAlive) host.viewTreeObserver.removeOnPreDrawListener(this)
+                    return true
+                }
+                if (host.width <= 0) return true
+                host.viewTreeObserver.removeOnPreDrawListener(this)
+                identityPreDraw = null
+                val startHeight = host.height.coerceAtLeast(dp(60f).toInt())
+                // Measure once, unconstrained by the collapsed host; leave the content at that height.
+                // Only the outer card expands, so text cannot reflow on every animation frame.
+                profile.measure(View.MeasureSpec.makeMeasureSpec(host.width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                val profileHeight = profile.measuredHeight.coerceAtLeast(dp(100f).toInt())
+                profile.layoutParams = profile.layoutParams.apply { height = profileHeight }
+                val endHeight = if (confirm) profileHeight else dp(60f).toInt()
+                val profileAlpha = profile.alpha
+                val inputAlpha = input.alpha
+                val profileY = profile.translationY
+                fun frame(t: Float) {
+                    if (revision != identityRevision) return
+                    val height = (startHeight + (endHeight - startHeight) * t).toInt()
+                    if (host.layoutParams.height != height) host.layoutParams = host.layoutParams.apply { this.height = height }
+                    val targetAlpha = if (confirm) 1f else 0f
+                    val fade = if (confirm) ((t - .2f) / .8f).coerceIn(0f, 1f) else (t * 3f).coerceAtMost(1f)
+                    profile.alpha = profileAlpha + (targetAlpha - profileAlpha) * fade
+                    profile.translationY = profileY + ((if (confirm) 0f else dp(12f)) - profileY) * t
+                    val inputFade = if (confirm) (t * 3f).coerceAtMost(1f) else ((t - .2f) / .8f).coerceIn(0f, 1f)
+                    input.alpha = inputAlpha + ((if (confirm) 0f else 1f) - inputAlpha) * inputFade
+                    extras.alpha = profile.alpha
+                }
+                fun finish() {
+                    if (revision != identityRevision) return
+                    frame(1f)
+                    input.visibility = if (confirm) View.INVISIBLE else View.VISIBLE
+                    profile.visibility = if (confirm) View.VISIBLE else View.GONE
+                    identityAnimator = null
+                }
+                if (willAnimate) {
+                    identityAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                        duration = 650L
+                        interpolator = PathInterpolator(.22f, 0f, .12f, 1f)
+                        addUpdateListener { frame(it.animatedValue as Float) }
+                        addListener(object : android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationEnd(animation: android.animation.Animator) { finish() }
+                        })
+                        frame(0f)
+                        start()
+                    }
+                    return true
+                }
+                finish()
+                return startHeight == endHeight
+            }
+        }
+        identityPreDraw = pending
+        host.viewTreeObserver.addOnPreDrawListener(pending)
+        host.invalidate()
+        return willAnimate
+    }
+
+    private fun confirmProfile(importAnalytics: Boolean = false) {
+        val profile = accountSession.confirm { profile ->
+            val username = OnboardingHandleInput.normalize(profile.userName)
+            if (addAccountMode) TwidgetStore.addOnboardingAccount(this, username)
+            else TwidgetStore.completeOnboarding(this, username)
+            TwidgetStore.saveStats(this, profile)
+            AppExecutors.execute {
+                runCatching { TopFollowersBridgeCache.fetch(this, username) }.getOrNull()?.let {
+                    TopFollowersStore.write(this, username, it)
+                }
+                TwidgetWidget.updateAll(this)
+            }
+        } ?: return
+        val username = OnboardingHandleInput.normalize(profile.userName)
+        if (addAccountMode) {
+            if (importAnalytics) startActivity(Intent(this, com.tjg.twidget.analytics.AnalyticsImportActivity::class.java)
+                .putExtra(com.tjg.twidget.analytics.AnalyticsImportActivity.EXTRA_USERNAME, username))
+            finish()
+            return
+        }
+        goToStep(STEP_AI)
+        if (importAnalytics) startActivity(Intent(this, com.tjg.twidget.analytics.AnalyticsImportActivity::class.java)
+            .putExtra(com.tjg.twidget.analytics.AnalyticsImportActivity.EXTRA_USERNAME, username))
+    }
+
+    private fun checkLocalAi() {
+        if (nanoCheck?.isActive == true || nanoCheckFinished) return
+        nanoCheck = lifecycleScope.launch {
+            val probe = try {
+                kotlinx.coroutines.withTimeoutOrNull(8000L) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        com.tjg.twidget.brief.GeminiNanoBriefProvider.probe(this@OnboardingActivity)
+                    }
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { null }
+            nanoStatus = probe?.status
+            nanoCheckFinished = true
+            if (step == STEP_AI) renderAiReadiness()
+        }
+    }
+
+    private fun renderAiReadiness() {
+        val text = when (nanoStatus) {
+            com.tjg.twidget.brief.BriefLocalStatus.AVAILABLE -> R.string.onboarding_ai_ready to R.string.onboarding_ai_ready_summary
+            com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADABLE -> R.string.onboarding_ai_download to R.string.onboarding_ai_download_summary
+            com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADING -> R.string.onboarding_ai_downloading to R.string.onboarding_ai_downloading_summary
+            com.tjg.twidget.brief.BriefLocalStatus.UNAVAILABLE -> R.string.onboarding_ai_cloud to R.string.onboarding_ai_cloud_summary
+            null -> if (nanoCheckFinished) R.string.onboarding_ai_unknown to R.string.onboarding_ai_unknown_summary
+                else R.string.onboarding_ai_checking to R.string.onboarding_ai_checking_summary
+        }
+        findViewById<TextView>(R.id.ai_readiness_title).setText(text.first)
+        findViewById<TextView>(R.id.ai_readiness_summary).setText(text.second)
+        findViewById<ImageView>(R.id.ai_readiness_indicator).apply {
+            visibility = if (nanoStatus == null) View.GONE else View.VISIBLE
+            setImageResource(when (nanoStatus) {
+                com.tjg.twidget.brief.BriefLocalStatus.AVAILABLE -> R.drawable.ic_dropdown_check
+                com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADABLE,
+                com.tjg.twidget.brief.BriefLocalStatus.DOWNLOADING -> R.drawable.ic_settings_download
+                else -> R.drawable.ic_oneui_info_outline
+            })
+            imageTintList = android.content.res.ColorStateList.valueOf(getColor(
+                if (nanoStatus == com.tjg.twidget.brief.BriefLocalStatus.AVAILABLE) R.color.oneui_accent else R.color.oneui_text_secondary))
+        }
+        findViewById<AppCompatButton>(R.id.ai_setup_provider).apply {
+            visibility = if (nanoStatus == com.tjg.twidget.brief.BriefLocalStatus.AVAILABLE) View.GONE else View.VISIBLE
+            setText(if (com.tjg.twidget.brief.BriefSettingsStore.cloudApiKey(this@OnboardingActivity).isNotBlank())
+                R.string.onboarding_ai_cloud_connected else R.string.onboarding_ai_setup_cloud)
         }
     }
 
@@ -750,10 +986,10 @@ class OnboardingActivity : EdgeToEdgeActivity() {
     }
 
     private fun cleanUsername(): String =
-        findViewById<EditText>(R.id.username_input).text.toString().trim().trimStart('@')
+        OnboardingHandleInput.normalize(findViewById<EditText>(R.id.username_input).text.toString())
 
     private fun String.isValidUsername(): Boolean =
-        matches(Regex("^[A-Za-z0-9_]{1,15}$"))
+        OnboardingHandleInput.isValid(this)
 
     companion object {
         const val EXTRA_ADD_ACCOUNT = "com.tjg.twidget.extra.ADD_ACCOUNT"
@@ -761,6 +997,8 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         private const val STEP_OVERVIEW = 0
         private const val STEP_PERMISSIONS = 1
         private const val STEP_PROFILE = 2
+        private const val STEP_CONFIRM = 3
+        private const val STEP_AI = 6
         private const val STEP_WIDGETS = 4
         private const val STEP_DONE = 5
         private const val WELCOME_BUTTON_START_DELAY_MS = 180L

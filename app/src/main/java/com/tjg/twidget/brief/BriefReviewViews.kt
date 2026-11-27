@@ -69,6 +69,12 @@ internal object BriefReviewViews {
         (LayoutInflater.from(context).inflate(R.layout.view_review_button, null) as AppCompatButton).apply {
             setText(label)
             typeface = TwidgetFonts.forApp(context, 700)
+            if (primary && label == R.string.review_view) {
+                backgroundTintList = null
+                androidx.core.view.ViewCompat.setBackgroundTintList(this, null)
+                setBackgroundResource(R.drawable.dashboard_report_chip)
+                setTextColor(context.getColor(R.color.oneui_text_primary))
+            }
             if (!primary) {
                 backgroundTintList = ColorStateList.valueOf(context.getColor(R.color.oneui_card_bg))
                 setTextColor(context.getColor(R.color.oneui_text_primary))

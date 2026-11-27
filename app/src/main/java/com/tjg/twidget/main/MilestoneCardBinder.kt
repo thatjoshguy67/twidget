@@ -79,6 +79,7 @@ internal class MilestoneCardBinder(
         root.findViewById<TextView>(R.id.milestone_message).text =
             boldTarget(message.body, target)
         root.contentDescription = "${message.title}. ${message.body}"
+        MilestoneCelebration.attach(root, account, settings, snapshot.value)
         return root
     }
 

@@ -93,6 +93,17 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
             startActivity(intent)
         }
         row(screen, "preview_parameters", R.string.brief_preview_parameters, arrow = true) { open(BriefDebugPage.PREVIEW_PARAMETERS) }
+        screen.addPreference(androidx.preference.SwitchPreferenceCompat(context).apply {
+            key = com.tjg.twidget.main.MilestoneCelebration.DEBUG_FORCE_KEY
+            isPersistent = false
+            title = getString(R.string.brief_force_celebrations)
+            summary = getString(R.string.brief_force_celebrations_summary)
+            isChecked = com.tjg.twidget.main.MilestoneCelebration.forceEnabled(context)
+            setOnPreferenceChangeListener { _, value ->
+                com.tjg.twidget.main.MilestoneCelebration.setForceEnabled(context, value as Boolean)
+                true
+            }
+        })
         row(screen, "onboarding", R.string.debug_show_onboarding, enabled = username.isNotBlank()) { startActivity(BriefOnboardingActivity.intent(context, username)) }
         row(screen, "home_generation", R.string.debug_home_generation, getString(R.string.debug_home_generation_summary)) {
             BriefHomeRefresh.preview()

@@ -1,5 +1,8 @@
 const int MAX_BRUSHES = 20;
 
+uniform float uBottomWeight;
+uniform float uSplashHeight;
+uniform float uCornerSplash;
 uniform float2  uResolution;
 uniform float2  uClipCenter;
 uniform float2  uClipHalfSize;
@@ -148,6 +151,11 @@ half4 debugControlPoints(float2 fragCoord) {
 half4 main(float2 originFragCoord) {
     float2 fragCoord = originFragCoord * uResolution;
     float ca = clipAlpha(originFragCoord, fragCoord);
+    // Streak cards keep a quiet top, with colour returning down the sides.
+    float2 uv = originFragCoord / max(uOriginalResolution, float2(1.0));
+    float sideWrap = smoothstep(0.20, 0.46, abs(uv.x - 0.5)) * uCornerSplash;
+    float splash = max(smoothstep(0.02, uSplashHeight, uv.y), sideWrap);
+    ca *= mix(1.0, mix(0.12, 1.0, splash), uBottomWeight);
     //return half4(ca, ca, ca, 1.0);
     //return debugSnakePath(fragCoord, ca);
 

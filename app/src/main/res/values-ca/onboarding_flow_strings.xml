@@ -1,0 +1,28 @@
+<resources>
+    <string name="onboarding_confirm_title">Ets tu?</string>
+    <string name="onboarding_confirm_yes">Sí</string>
+    <string name="onboarding_confirm_no">No, canvia-ho</string>
+    <string name="onboarding_optional_import">Opcional</string>
+    <string name="onboarding_import_title">Importació d’analítiques de Twitter/X</string>
+    <string name="onboarding_import_summary">Obté una visió més completa del teu historial de Twitter/X amb una importació única.</string>
+    <string name="onboarding_ai_title">Funcions d’IA</string>
+    <string name="onboarding_ai_brief">El teu resum</string>
+    <string name="onboarding_ai_brief_summary">Un resum personalitzat basat en les analítiques del teu perfil que canvia al llarg del dia.</string>
+    <string name="onboarding_ai_review">Anàlisi de piulades</string>
+    <string name="onboarding_ai_review_summary">Obté informació sobre les teves publicacions, les reaccions del públic, què funciona i on pots millorar.</string>
+    <string name="onboarding_ai_checking">Comprovant la compatibilitat amb la IA local…</string>
+    <string name="onboarding_ai_checking_summary">Comprovant la disponibilitat de Gemini Nano en aquest dispositiu. Pots continuar mentre acaba.</string>
+    <string name="onboarding_ai_ready">El teu dispositiu admet IA local</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano està preparat. El mode automàtic prova primer la IA local i, si cal, recorre al proveïdor al núvol connectat.</string>
+    <string name="onboarding_ai_download">Cal baixar Gemini Nano</string>
+    <string name="onboarding_ai_download_summary">Aquest dispositiu admet Gemini Nano. Baixa el model als ajustos del teu resum per utilitzar la IA local o connecta un proveïdor al núvol.</string>
+    <string name="onboarding_ai_downloading">Gemini Nano s’està baixant</string>
+    <string name="onboarding_ai_downloading_summary">La IA local estarà preparada quan acabi la baixada del model. També pots connectar un proveïdor al núvol.</string>
+    <string name="onboarding_ai_cloud">Connecta un proveïdor al núvol</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano no està disponible ara mateix en aquest dispositiu. Inicia sessió amb ChatGPT o afegeix una clau API per utilitzar les funcions d’IA.</string>
+    <string name="onboarding_ai_unknown">La comprovació de la IA local no ha acabat</string>
+    <string name="onboarding_ai_unknown_summary">Toca per tornar-ho a comprovar. Pots continuar i configurar la IA més endavant als ajustos del teu resum.</string>
+    <string name="onboarding_ai_setup_cloud">Configura un proveïdor al núvol</string>
+    <string name="onboarding_ai_cloud_connected">Proveïdor al núvol connectat</string>
+    <string name="onboarding_ai_confirm_import">Vols utilitzar aquest compte i importar-ne les analítiques?</string>
+</resources>

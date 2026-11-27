@@ -283,6 +283,8 @@ object TwidgetStore {
         prefs(context).getBoolean(KEY_DEBUG_MENU, false)
 
     fun setDebugMenuUnlocked(context: Context, unlocked: Boolean) {
+        val clearCelebrations = !unlocked && prefs(context)
+            .getBoolean(com.tjg.twidget.main.MilestoneCelebration.DEBUG_FORCE_KEY, false)
         prefs(context).edit().apply {
             putBoolean(KEY_DEBUG_MENU, unlocked)
             // A faked update must not leave a phantom badge behind once the
@@ -291,8 +293,10 @@ object TwidgetStore {
                 remove(KEY_FAKE_UPDATE)
                 remove(KEY_SPOOFED_APP_VERSION)
                 remove(KEY_SPOOFED_APP_VERSION_ENABLED)
+                remove(com.tjg.twidget.main.MilestoneCelebration.DEBUG_FORCE_KEY)
             }
         }.apply()
+        if (clearCelebrations) com.tjg.twidget.main.MilestoneCelebration.setForceEnabled(context, false)
     }
 
     fun fakeUpdateAvailable(context: Context): Boolean =

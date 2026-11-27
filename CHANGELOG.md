@@ -4,122 +4,68 @@ All notable changes to Twidget are documented here.
 
 ## [Unreleased]
 
-- Explain follower losses that overlap widespread declines without claiming a
-  confirmed cause or treating losses as progress towards a growth goal. Include
-  these explanations in every supported language.
-- Keep graph tooltips within narrow chart bounds.
-
-- Give Your Brief layered blue backgrounds that adapt to the time of day,
-  weekends and light/dark appearance.
-- Adapt posting-window guidance to whether the account’s stronger window is
-  upcoming, open or past, using known view counts from comparable-age tweets.
-- Celebrate reached account goals once per target with a short blue/silver effect
-  that respects reduced motion. Add background and timing previews to Brief debug
-  tools, and a celebration preview on Account goals when debugging is unlocked.
-
 ## [1.4.0-beta.1]
 
-A bigger dashboard, a more useful Your Brief, and more ways to understand your
-account's activity. This beta brings together the work since 1.3.0, including
-the earlier 1.3.1 beta changes. The stable version will be 1.4.0.
+A redesigned dashboard, smarter insights and new ways to see your profile data. An update worthy of jumping straight to v1.4.0! Here's everything new. 
 
 ### Dashboard and analytics
 
-- Rearrange and resize dashboard cards, with separate layouts for each account.
-  Hold a card for Enlarge/Shrink and Remove, or move after holding to rearrange.
-  Undo moves and removals, and use the accessible destination picker with a
-  keyboard or TalkBack. Layouts adapt when the screen size changes.
-- Add Interactions, Post stats, Engagement Mix, and Original vs Replies cards.
-  Explore measured activity across date ranges and keep engagement breakdowns
-  available when an imported CSV has only some of the metrics.
-- Compare accounts side by side with the new Compare accounts sheet.
-- Give expanded graphs more room, clearer date labels, comparisons and sample
-  context. Daily post charts use calendar days; missing observations stay unknown.
-- Keep older shared follower history available with its estimated-history notice.
-  Use available history for streaks and graphs without presenting estimated or
-  missing counts as exact measurements.
-- Improve CSV profile verification and accept small, bounded differences between
-  exports and saved follower snapshots. Follow-only exports still support unfollow
-  graphs, and larger inconsistencies remain errors.
-- Open dashboard tweets through one consistent entry point. Open media stacks in
-  X, show quoted tweets with their own context, and return without replaying the
-  dashboard entrance. Open cached Tweet Reports from best and worst tweet cards.
+The dashboard is completely reworked, with all new card designs and layouts. This is to accomodate improvements for a wide range of screen sizes. 
 
-### Your Brief and Tweet Report
+- Rearrange and resize dashboard cards, with separate layouts for each account. Because different profiles may prioritise different types of data. 
+- Press and hold a card to enter Edit Mode, resize a card, to add and remove cards, and rearrange cards. 
+- Made a mistake? You can now undo and redo changes, to bring it back to how it was before. 
+- All cards are designed to fit in a new grid system. The layout of these cards can adapt based on your screen size. So a phone can view two columns, and a tablet four. Foldables are also optimised. 
+- Added all new cards, like Engagement Mix, Follower count and Original vs Replies.
+- Older cards also got improvements. Follower graph shows unfollows, ratio cards get new comparison design, and stat cards can be expanded to show additional info.
 
-- Generate Your Brief and tweet reviews with a ChatGPT subscription or an OpenAI
-  API key, alongside the existing Gemini options. Local Brief generation remains
-  available on supported Gemini Nano devices; tweet reviews use cloud AI.
-- Add insights for audience momentum, conversations, content patterns, weekly
-  recaps, hashtags and posting experiments, with supporting charts and figures.
-- Refresh cards independently and keep successful copy while another card retries.
-  Reuse recent Brief runs and prepare updates quietly while Twidget is open.
-  Preserve the last successful heading and description across failures and restarts
-  on the Brief page, dashboard and widget.
-- Review recent tweets and engaged replies using their recorded performance,
-  similar-age comparisons and available media context. Keep replies separate from
-  original-post baselines, and older all-time totals separate from weekly results.
-- Save successful reviews across restarts, refresh them as new observations become
-  available, and keep the previous review if an update fails. Regenerate commentary
-  when the app language changes.
-- Improve Gemini retries and numerical validation. Keep measured statistics in the
-  app's cards and recover with qualitative advice when generated figures are invalid.
-  Missing context and sparse histories remain explicit.
-- Refresh Brief layouts, review previews, quoted-post cards, loading animations and
-  native floating navigation, with responsive columns and clearer review entry points.
+### Tweet Report
 
-### Followers and account history
+A new AI powered feature, Tweet Reviews can give you feedback on your posts. See post stats, audience reception, see what worked and what can be improved. 
 
-- Reconcile public FxTwitter follower lists once per UTC day, keeping the last
-  completed list available while a due scan runs. Show observed follower losses
-  between completed scans in the dashboard and history. These are interval
-  observations, not a complete record of every unfollow.
-- Use permanent account IDs for profile and timeline lookups where available.
-  Resume cached rankings with persistent cursors and handle terminal pages safely.
-- Keep Top Followers scans activity-based with immediate cached results. Public
-  FxTwitter lists reconcile daily; the paid provider keeps weekly full scans by
-  default. Results can be incomplete or update less often; please report stale or
-  missing rankings through GitHub Issues.
-- Carry history, widgets, goals, streaks, imports and cached rankings across verified
-  handle changes. Block conflicting local moves and keep legacy shared records
-  separate until their account identity can be verified.
-- Report the selected default public profile separately from tracked accounts when
-  shared history is enabled, using private installation reports with expiry and
-  durable selection-change/removal retries.
+- Compare a tweet against your other recent tweets, and get rankings. 
+- View a tweet's stats, like impressions, engagements, likes, etc...
+- Get insights into how your tweet performed, how it could be tweaked to perform better. 
+- Uses data from the open source X algorithm to inform its results. 
+- Check in at regular intervals on a tweet to see how its performance adapts over time. 
 
-### Widgets, setup and languages
+**This feature requires a cloud AI provider.** It's too demanding for a local model. 
 
-- Add Spanish and Catalan alongside English, German and French. Complete resource
-  coverage for the supported languages, including diagnostics and failure messages.
+### Your Brief
+
+Your Brief got a massive facelift, with new card designs, dynamic backgrounds, rich insights and more options. 
+
+- Use your ChatGPT subscription to power features like Tweet Review, as well as Your Brief rankings. 
+- You can also use an OpenAI API key, as well as the existing Gemini API option. 
+- Improved reliability and support for on-device Gemini Nano, for Your Brief rankings and card descriptions. 
+- Add insights for audience momentum, conversations, content patterns, weekly recaps, hashtags and posting experiments, with supporting charts and figures.
+- Added dynamic backgrounds that adjust based on the time of day. They animate, and look stunning. 
+- Adapt posting-window guidance to whether the account’s stronger posting window is upcoming, open or past, using measured views from comparable-age tweets.
+- Cards can refresh independently without forcing an entire regeneration. 
+- Your Brief can regenerate itself when you open Twidget, reducing how long you're staring at a loading screen. 
+- Added a new Dynamic widget style, with a background gradient that adapts throughout the day. Has adjustable opacity, with blur on One UI devices. 
+
+### Appearance
+
+Twidget gets a One UI 9.5 refresh, being the first third-party app to adopt it.
+
+- Updated drawer implimentation to newer floating style. 
+- Added outline effects to SESL elements, like floating toolbars, butttons, dialogs, etc... (You can turn those off in Settings > Appearance if you prefer)
+- Change the app's icon to one of three styles, with more coming in the future. 
+
+### Languages, widgets and other stuff
+
+- Added Spanish and Catalan alongside English, German and French. Complete resource coverage for the supported languages, including diagnostics and failure messages. Thanks Wigetta! 
   Preserve regional number/date conventions and let translated buttons wrap.
-- Add Settings → Widgets with previews and separate defaults for Followers, Your
-  Brief and Samsung lock-screen widgets. Refine follower lettering, artwork and
-  fitting across compact and expanded cards and One UI/Material styles.
-- Refresh onboarding with Samsung-inspired title animations and haptics. Optional
-  notification and alarm permissions can be skipped.
-- Reorganise Settings and improve native drawer, floating controls and keyboard
-  navigation.
-- Reduce bundled font and artwork overhead and preserve offline translations in
-  Play installs. Both GitHub and Play beta distributions use the 1.4.0 version series.
+- Add Settings → Widgets with previews and separate defaults for Followers, Your Brief and Samsung lock-screen widgets.
+- Celebrate reached account goals once per target with a short blue/silver effect that respects reduced motion. 
 
-### Maintenance
-
-- Update bridge dependencies to resolve four reported security vulnerabilities.
-- Align Android and bridge release metadata for 1.4.0 and prevent incomplete,
-  unregistered translation folders from entering a release.
-
-### Retired integrations
-
-- Remove the tweet composer, Buffer connection, Cloudinary uploads, scheduling
-  cards and generated tweet rewrites. Existing local draft archives are retained.
-  Manage posts already queued with Buffer directly in Buffer; this update does
-  not cancel them.
+- Discontinued the scheduled tweets feature, as it was added to the main X app recently. 
+- Removed the tweet composer, Buffer connection, scheduling cards and generated tweet rewrites. You can do this directly in the X app now, so Twidget can be more focused on data insights. 
 
 ### Contributors
 
-- Thanks to Aaron the Techie for German translations and onboarding/animation work,
-  Wigetta for Spanish and Catalan, and SadLinusGuy0 for widget settings, dashboard,
-  account migration, optimisations and fixes.
+- Thanks to Aaron the Techie for German translations and onboarding/animation work, Wigetta for Spanish and Catalan, and DaManMikey for the Gemini Nano fixes.
 
 ## [1.3.1-beta.1] - 2026-10-15
 

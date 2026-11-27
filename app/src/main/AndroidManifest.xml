@@ -142,7 +142,7 @@
         <activity
             android:name=".main.OnboardingActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustNothing" />
 
         <activity
             android:name=".widget.WidgetConfigActivity"

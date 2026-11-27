@@ -1,0 +1,28 @@
+<resources>
+    <string name="onboarding_confirm_title">Ben jij dit?</string>
+    <string name="onboarding_confirm_yes">Ja</string>
+    <string name="onboarding_confirm_no">Nee, wijzigen</string>
+    <string name="onboarding_optional_import">Optioneel</string>
+    <string name="onboarding_import_title">Twitter/X-analyses importeren</string>
+    <string name="onboarding_import_summary">Krijg een vollediger overzicht van je eerdere Twitter/X-gegevens met een eenmalige import.</string>
+    <string name="onboarding_ai_title">AI-functies</string>
+    <string name="onboarding_ai_brief">Jouw briefing</string>
+    <string name="onboarding_ai_brief_summary">Een persoonlijke briefing op basis van je profielanalyses die gedurende de dag verandert.</string>
+    <string name="onboarding_ai_review">Tweetanalyse</string>
+    <string name="onboarding_ai_review_summary">Krijg inzicht in je berichten, reacties van je publiek, wat werkt en waar je kunt verbeteren.</string>
+    <string name="onboarding_ai_checking">Ondersteuning voor lokale AI controleren…</string>
+    <string name="onboarding_ai_checking_summary">De beschikbaarheid van Gemini Nano op dit apparaat wordt gecontroleerd. Je kunt ondertussen doorgaan.</string>
+    <string name="onboarding_ai_ready">Je apparaat ondersteunt lokale AI</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano is gereed. De automatische modus probeert eerst lokale AI en valt indien nodig terug op je verbonden cloudprovider.</string>
+    <string name="onboarding_ai_download">Gemini Nano moet worden gedownload</string>
+    <string name="onboarding_ai_download_summary">Dit apparaat ondersteunt Gemini Nano. Download het model in de instellingen van Jouw briefing om lokale AI te gebruiken, of verbind een cloudprovider.</string>
+    <string name="onboarding_ai_downloading">Gemini Nano wordt gedownload</string>
+    <string name="onboarding_ai_downloading_summary">Lokale AI is gereed zodra het model is gedownload. Je kunt ook een cloudprovider verbinden.</string>
+    <string name="onboarding_ai_cloud">Verbind een cloudprovider</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano is momenteel niet beschikbaar op dit apparaat. Meld je aan met ChatGPT of voeg een API-sleutel toe om AI-functies te gebruiken.</string>
+    <string name="onboarding_ai_unknown">De controle voor lokale AI is niet voltooid</string>
+    <string name="onboarding_ai_unknown_summary">Tik om opnieuw te controleren. Je kunt doorgaan en AI later instellen in de instellingen van Jouw briefing.</string>
+    <string name="onboarding_ai_setup_cloud">Cloudprovider instellen</string>
+    <string name="onboarding_ai_cloud_connected">Cloudprovider verbonden</string>
+    <string name="onboarding_ai_confirm_import">Dit account gebruiken en analyses importeren?</string>
+</resources>

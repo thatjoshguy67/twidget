@@ -50,6 +50,32 @@ class UpcomingReleaseNotesTest {
     }
 
     @Test
+    fun debugBuildPreviewsLatestBetaForItsBaseWhenStableSectionIsAbsent() {
+        val markdown = """
+            ## [Unreleased]
+            Future work.
+            ## [1.4.0-beta.2]
+            New beta.
+            ### Widgets
+            - New appearance.
+            [1.4.0-beta.2]: https://example.com
+            ## [1.4.0-beta.1]
+            Older beta.
+            ## [1.5.0-beta.1]
+            Another version.
+        """.trimIndent()
+        val preview = UpcomingReleaseNotes.parse("1.4.0-dev.20261126.1200", markdown)!!
+        assertEquals("upcoming-1.4.0-beta.2", preview.tag)
+        assertEquals("Twidget v1.4.0-beta.2", preview.title)
+        assertTrue(preview.upcoming)
+        assertTrue(preview.prerelease)
+        assertEquals("New beta.\n### Widgets\n- New appearance.", preview.body)
+        assertEquals(listOf(preview), UpcomingReleaseNotes.merge(preview, emptyList()))
+        val published = listOf(release("twidget-v1.4.0-beta.2", beta = true))
+        assertEquals(published, UpcomingReleaseNotes.merge(preview, published))
+    }
+
+    @Test
     fun stableAndBetaBuildsNeverGetUpcomingNotes() {
         for (version in listOf("1.2.0", "1.2.0-beta.2", "invalid")) {
             assertNull(UpcomingReleaseNotes.parse(version, changelog))

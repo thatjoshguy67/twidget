@@ -63,7 +63,7 @@ internal object StreakCardFactory {
         StreakCardState.REVIVE -> R.string.streak_card_restart
     }
 
-    private fun background(context: Context, state: StreakCardState): GradientDrawable {
+    private fun background(context: Context, state: StreakCardState): android.graphics.drawable.Drawable {
         val night = context.resources.configuration.uiMode and
             android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
         val end = when (state) {
@@ -73,10 +73,8 @@ internal object StreakCardFactory {
                 if (night) 0xFF601F00.toInt() else 0xFFFFD5C0.toInt()
             StreakCardState.REVIVE -> if (night) 0xFF470000.toInt() else 0xFFFFC8C8.toInt()
         }
-        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-            intArrayOf(if (night) 0xFF171719.toInt() else Color.WHITE, end)).apply {
-            cornerRadius = dp(context, 28).toFloat()
-        }
+        return com.tjg.twidget.ui.StreakMaterialDrawable(context, end, dp(context, 28).toFloat())
+
     }
 
     fun create(

@@ -40,6 +40,9 @@ internal object NetworkResponseParsers {
             followingKnown = user.has("following") && !user.isNull("following"),
             postsKnown = (user.has("statuses") && !user.isNull("statuses")) || (user.has("tweets") && !user.isNull("tweets")),
             likesKnown = user.has("likes") && !user.isNull("likes"),
+            profileDetails = com.tjg.twidget.data.SharedProfileDetails(
+                bio = (user.opt("description") as? String)?.take(10_000),
+            ),
         )
     }
 

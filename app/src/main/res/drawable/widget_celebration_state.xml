@@ -1,0 +1,5 @@
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/widget_celebration_active" android:state_enabled="true" android:drawable="@android:color/transparent" />
+    <item android:id="@+id/widget_celebration_idle" android:drawable="@android:color/transparent" />
+    <transition android:fromId="@id/widget_celebration_idle" android:toId="@id/widget_celebration_active" android:drawable="@drawable/widget_celebration_motion" />
+</animated-selector>

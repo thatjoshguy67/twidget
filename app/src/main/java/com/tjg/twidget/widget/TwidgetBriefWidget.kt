@@ -61,13 +61,15 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minHeight)
             } else minHeight
 
+            val celebration = com.tjg.twidget.main.MilestoneCelebration.widgetTrigger(context, account, id)
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !TwidgetFonts.hasSystemOneUiSans) {
-                responsiveViews(context, id, options, width, height, account, snapshot)
+                responsiveViews(context, id, options, width, height, account, snapshot, celebration.show)
             } else {
-                createViews(context, id, width, height, account, snapshot)
+                createViews(context, id, width, height, account, snapshot, celebration.show)
             }
             if (!widgetSizeOptionsMatch(options, manager.getAppWidgetOptions(id))) return
             manager.updateAppWidget(id, views)
+            com.tjg.twidget.main.MilestoneCelebration.recordWidgetTrigger(context, celebration)
             BriefWidgetAppearanceSchedule.schedule(context)
             warmAvatars(context, manager, id, account)
         }
@@ -81,6 +83,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             currentHeight: Int,
             account: String,
             snapshot: com.tjg.twidget.brief.BriefSnapshot?,
+            celebrate: Boolean,
         ): RemoteViews {
             val views = linkedMapOf<SizeF, RemoteViews>()
             var bytes = 0L
@@ -92,7 +95,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                     dp(context, width), dp(context, height), BriefWidgetDynamicBackground.budget(budget, variants)) * variants else 0L
                 val cost = dp(context, width).toLong() * dp(context, height).toLong() * 4L * variants + textureCost
                 if (bytes + cost > budget || views.containsKey(key)) return
-                views[key] = createViews(context, id, width, height, account, snapshot)
+                views[key] = createViews(context, id, width, height, account, snapshot, celebrate)
                 bytes += cost
             }
             widgetSizes(options)
@@ -107,7 +110,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                 add(SizeF(231f, 111f), 352, 175)
             }
             if (views.isEmpty()) views[SizeF(currentWidth.toFloat(), currentHeight.toFloat())] =
-                createViews(context, id, currentWidth, currentHeight, account, snapshot)
+                createViews(context, id, currentWidth, currentHeight, account, snapshot, celebrate)
             return RemoteViews(views)
         }
 
@@ -118,6 +121,7 @@ class TwidgetBriefWidget : AppWidgetProvider() {
             height: Int,
             account: String,
             snapshot: com.tjg.twidget.brief.BriefSnapshot?,
+            celebrate: Boolean = com.tjg.twidget.main.MilestoneCelebration.forceEnabled(context),
         ): RemoteViews {
             val oneRow = height <= 110
             val settings = BriefWidgetDynamicBackground.effectiveSettings(TwidgetStore.widgetSettings(context, id))
@@ -173,6 +177,12 @@ class TwidgetBriefWidget : AppWidgetProvider() {
                         background = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && !dynamic) backgroundColor else null,
                         bitmapBudgetBytes = artworkBudget,
                     )
+                }
+                removeAllViews(R.id.widget_celebration_host)
+                if (celebrate && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+                    addView(R.id.widget_celebration_host, RemoteViews(context.packageName, R.layout.widget_celebration).apply {
+                        setBoolean(R.id.widget_celebration_effect, "setEnabled", true)
+                    })
                 }
                 setContentDescription(
                     android.R.id.background,

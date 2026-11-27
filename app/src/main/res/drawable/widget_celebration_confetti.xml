@@ -1,0 +1,99 @@
+<!-- Each named piece has its own position, rotation, flip and fade animation. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="360dp" android:height="180dp" android:viewportWidth="360" android:viewportHeight="180">
+    <group android:name="piece_0" android:translateX="16.00" android:translateY="182.00">
+        <path android:name="paper_0" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-3,-13 C9,-9 -10,-3 1,2 C9,6 -6,9 2,14 L5,11 C-2,8 13,6 4,0 C-5,-4 11,-9 0,-16 Z" />
+    </group>
+    <group android:name="piece_1" android:translateX="337.34" android:translateY="186.44">
+        <path android:name="paper_1" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-2.5,-4.0 h5.0 v8.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_2" android:translateX="29.32" android:translateY="190.88">
+        <path android:name="paper_2" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-3.0,-4.5 h6.0 v9.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_3" android:translateX="342.20" android:translateY="183.20">
+        <path android:name="paper_3" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-2.0,-5.0 h4.0 v10.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_4" android:translateX="24.46" android:translateY="187.64">
+        <path android:name="paper_4" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-2.5,-3.5 h5.0 v7.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_5" android:translateX="328.88" android:translateY="192.08">
+        <path android:name="paper_5" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-3.0,-4.0 h6.0 v8.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_6" android:translateX="19.60" android:translateY="184.40">
+        <path android:name="paper_6" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-2.0,-4.5 h4.0 v9.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_7" android:translateX="333.74" android:translateY="188.84">
+        <path android:name="paper_7" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-2.5,-5.0 h5.0 v10.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_8" android:translateX="32.92" android:translateY="193.28">
+        <path android:name="paper_8" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-3,-13 C9,-9 -10,-3 1,2 C9,6 -6,9 2,14 L5,11 C-2,8 13,6 4,0 C-5,-4 11,-9 0,-16 Z" />
+    </group>
+    <group android:name="piece_9" android:translateX="338.60" android:translateY="185.60">
+        <path android:name="paper_9" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-2.0,-4.0 h4.0 v8.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_10" android:translateX="28.06" android:translateY="190.04">
+        <path android:name="paper_10" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-2.5,-4.5 h5.0 v9.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_11" android:translateX="343.46" android:translateY="182.36">
+        <path android:name="paper_11" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-3.0,-5.0 h6.0 v10.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_12" android:translateX="23.20" android:translateY="186.80">
+        <path android:name="paper_12" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-2.0,-3.5 h4.0 v7.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_13" android:translateX="330.14" android:translateY="191.24">
+        <path android:name="paper_13" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-2.5,-4.0 h5.0 v8.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_14" android:translateX="18.34" android:translateY="183.56">
+        <path android:name="paper_14" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-3.0,-4.5 h6.0 v9.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_15" android:translateX="335.00" android:translateY="188.00">
+        <path android:name="paper_15" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-2.0,-5.0 h4.0 v10.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_16" android:translateX="31.66" android:translateY="192.44">
+        <path android:name="paper_16" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-3,-13 C9,-9 -10,-3 1,2 C9,6 -6,9 2,14 L5,11 C-2,8 13,6 4,0 C-5,-4 11,-9 0,-16 Z" />
+    </group>
+    <group android:name="piece_17" android:translateX="339.86" android:translateY="184.76">
+        <path android:name="paper_17" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-3.0,-4.0 h6.0 v8.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_18" android:translateX="26.80" android:translateY="189.20">
+        <path android:name="paper_18" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-2.0,-4.5 h4.0 v9.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_19" android:translateX="326.54" android:translateY="193.64">
+        <path android:name="paper_19" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-2.5,-5.0 h5.0 v10.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_20" android:translateX="21.94" android:translateY="185.96">
+        <path android:name="paper_20" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-3.0,-3.5 h6.0 v7.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_21" android:translateX="331.40" android:translateY="190.40">
+        <path android:name="paper_21" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-2.0,-4.0 h4.0 v8.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_22" android:translateX="17.08" android:translateY="182.72">
+        <path android:name="paper_22" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-2.5,-4.5 h5.0 v9.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_23" android:translateX="336.26" android:translateY="187.16">
+        <path android:name="paper_23" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-3.0,-5.0 h6.0 v10.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_24" android:translateX="30.40" android:translateY="191.60">
+        <path android:name="paper_24" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-3,-13 C9,-9 -10,-3 1,2 C9,6 -6,9 2,14 L5,11 C-2,8 13,6 4,0 C-5,-4 11,-9 0,-16 Z" />
+    </group>
+    <group android:name="piece_25" android:translateX="341.12" android:translateY="183.92">
+        <path android:name="paper_25" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-2.5,-4.0 h5.0 v8.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_26" android:translateX="25.54" android:translateY="188.36">
+        <path android:name="paper_26" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-3.0,-4.5 h6.0 v9.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_27" android:translateX="327.80" android:translateY="192.80">
+        <path android:name="paper_27" android:fillColor="#91D8FF" android:fillAlpha="0" android:pathData="M-2.0,-5.0 h4.0 v10.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_28" android:translateX="20.68" android:translateY="185.12">
+        <path android:name="paper_28" android:fillColor="#D6EDFF" android:fillAlpha="0" android:pathData="M-2.5,-3.5 h5.0 v7.0 h-5.0 Z" />
+    </group>
+    <group android:name="piece_29" android:translateX="332.66" android:translateY="189.56">
+        <path android:name="paper_29" android:fillColor="#FFFFFF" android:fillAlpha="0" android:pathData="M-3.0,-4.0 h6.0 v8.0 h-6.0 Z" />
+    </group>
+    <group android:name="piece_30" android:translateX="34.00" android:translateY="194.00">
+        <path android:name="paper_30" android:fillColor="#1881FF" android:fillAlpha="0" android:pathData="M-2.0,-4.5 h4.0 v9.0 h-4.0 Z" />
+    </group>
+    <group android:name="piece_31" android:translateX="337.52" android:translateY="186.32">
+        <path android:name="paper_31" android:fillColor="#45A8FF" android:fillAlpha="0" android:pathData="M-2.5,-5.0 h5.0 v10.0 h-5.0 Z" />
+    </group>
+</vector>

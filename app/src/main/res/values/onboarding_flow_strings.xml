@@ -1,0 +1,28 @@
+<resources>
+    <string name="onboarding_confirm_title">Is this you?</string>
+    <string name="onboarding_confirm_yes">Yes</string>
+    <string name="onboarding_confirm_no">No, change it</string>
+    <string name="onboarding_optional_import">Optional</string>
+    <string name="onboarding_import_title">Twitter/X analytics import</string>
+    <string name="onboarding_import_summary">Get a richer overview of your past Twitter/X data with a one-time import.</string>
+    <string name="onboarding_ai_title">AI features</string>
+    <string name="onboarding_ai_brief">Your Brief</string>
+    <string name="onboarding_ai_brief_summary">A personalised briefing based on your profile analytics that changes throughout the day.</string>
+    <string name="onboarding_ai_review">Tweet Review</string>
+    <string name="onboarding_ai_review_summary">Get intelligent insights into your posts, how audiences respond, what works and where you can improve.</string>
+    <string name="onboarding_ai_checking">Checking local AI support…</string>
+    <string name="onboarding_ai_checking_summary">Checking Gemini Nano availability on this device. You can continue while this finishes.</string>
+    <string name="onboarding_ai_ready">Your device supports local AI</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano is ready. Automatic mode tries local AI first, then falls back to your connected cloud provider if needed.</string>
+    <string name="onboarding_ai_download">Gemini Nano needs a download</string>
+    <string name="onboarding_ai_download_summary">This device supports Gemini Nano. Download its model in Your Brief settings to use local AI, or connect a cloud provider.</string>
+    <string name="onboarding_ai_downloading">Gemini Nano is downloading</string>
+    <string name="onboarding_ai_downloading_summary">Local AI will be ready when the model finishes downloading. You can also connect a cloud provider.</string>
+    <string name="onboarding_ai_cloud">Connect a cloud provider</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano is currently unavailable on this device. Sign in with ChatGPT or add an API key to use AI features.</string>
+    <string name="onboarding_ai_unknown">Local AI check did not finish</string>
+    <string name="onboarding_ai_unknown_summary">Tap to check again. You can continue and set up AI later in Your Brief settings.</string>
+    <string name="onboarding_ai_setup_cloud">Set up cloud provider</string>
+    <string name="onboarding_ai_cloud_connected">Cloud provider connected</string>
+    <string name="onboarding_ai_confirm_import">Use this account and import analytics?</string>
+</resources>

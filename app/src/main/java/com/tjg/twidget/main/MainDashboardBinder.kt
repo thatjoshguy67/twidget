@@ -243,7 +243,6 @@ internal class MainDashboardBinder(
                 container.canScrollVertically(-1) || editModeController.editMode ||
                     activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout).appBarLayout.top < 0
             }
-        container.columnCount = if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2
         container.clipChildren = false
         container.clipToPadding = false
         // Soft shadows extend past the grid; its wrapping column must not crop them.

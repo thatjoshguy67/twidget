@@ -178,7 +178,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             removeCallbacks(externalScroll)
         }
         recycler = view
-        val manager = object : GridLayoutManager(activity, if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2) {
+        val manager = object : GridLayoutManager(activity, view.columnCount) {
             override fun supportsPredictiveItemAnimations() = false
         }
         manager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -235,7 +235,6 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         val modeOnly = account == profile && items == next && this.editing != editing
         account = profile
         this.editing = editing
-        view.columnCount = if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2
         replace(next)
         if (items.isNotEmpty()) cards.notifyItemRangeChanged(0, items.size, if (profileChanged) PROFILE else if (modeOnly) MODE else DATA)
         headerAdapter?.notifyItemChanged(0)

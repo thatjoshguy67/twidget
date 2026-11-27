@@ -12,7 +12,8 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
     init {
         // XML chrome is inflated with this RecyclerView as its parent before
         // the account adapter attaches, so native LayoutParams must already exist.
-        layoutManager = GridLayoutManager(context, 2)
+        layoutManager = GridLayoutManager(context, DashboardLayoutPolicy.columns(
+            resources.configuration.smallestScreenWidthDp, resources.configuration.screenWidthDp))
         clipChildren = false
         clipToPadding = false
     }
@@ -46,6 +47,12 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
         val limit = (1200 * resources.displayMetrics.density).toInt()
         val width = if (MeasureSpec.getSize(widthMeasureSpec) > limit)
             MeasureSpec.makeMeasureSpec(limit, MeasureSpec.EXACTLY) else widthMeasureSpec
+        // Account for the rail, safe insets and multi-window bounds. A landscape
+        // phone remains compact even when its long edge exceeds the tablet threshold.
+        if (MeasureSpec.getMode(width) != MeasureSpec.UNSPECIFIED) {
+            columnCount = DashboardLayoutPolicy.columns(resources.configuration.smallestScreenWidthDp,
+                ((MeasureSpec.getSize(width) - paddingLeft - paddingRight) / resources.displayMetrics.density).toInt())
+        }
         super.onMeasure(width, heightMeasureSpec)
     }
 }

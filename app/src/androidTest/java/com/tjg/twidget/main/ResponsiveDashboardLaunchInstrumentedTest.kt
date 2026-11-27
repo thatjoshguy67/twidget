@@ -24,7 +24,9 @@ class ResponsiveDashboardLaunchInstrumentedTest {
                 assertFalse("Dashboard header starts collapsed", activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout).isExpanded)
                 val grid = activity.findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)
                 assertNotNull(grid)
-                assertEquals(if (activity.resources.configuration.screenWidthDp >= 600) 4 else 2, grid.columnCount)
+                assertEquals(com.tjg.twidget.ui.DashboardLayoutPolicy.columns(
+                    activity.resources.configuration.smallestScreenWidthDp,
+                    ((grid.width - grid.paddingLeft - grid.paddingRight) / activity.resources.displayMetrics.density).toInt()), grid.columnCount)
                 assertTrue(grid.childCount > 0)
                 val menu = activity.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.drawer_nav)
                 assertEquals("Accounts, native group divider and add-account item",
@@ -33,7 +35,7 @@ class ResponsiveDashboardLaunchInstrumentedTest {
                 cardWidth = grid.dashboardCardChildren().first().width
                 val height = grid.dashboardCardChildren().first().height
                 for (i in grid.dashboardCardChildren().indices) assertEquals(height, grid.dashboardCardChildren()[i].height)
-                if (activity.resources.configuration.screenWidthDp >= 600) {
+                if (activity.findViewById<View>(R.id.dashboard_root) is ResponsivePaneLayout) {
                     assertTrue(activity.findViewById<View>(dev.oneuiproject.oneui.design.R.id.navRailDrawerButton)
                         .getGlobalVisibleRect(Rect()))
                 }

@@ -82,13 +82,26 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     protected fun applyEdgeToEdgeInsets(
         root: View,
         padRootForIme: Boolean = true,
+        clipToStatusBarAndCutout: Boolean = false,
         onNavigationBarInset: ((Int) -> Unit)? = null,
     ) {
+        var safeViewport = androidx.core.graphics.Insets.NONE
+        fun updateViewportClip() {
+            if (!clipToStatusBarAndCutout) return
+            // The floating toolbar allows scrolling behind itself, but dashboard
+            // cards and the drawer must stop at the system status/cutout boundary.
+            // Keep the existing edge-to-edge navigation treatment at the bottom.
+            root.clipBounds = android.graphics.Rect(safeViewport.left, safeViewport.top,
+                (root.width - safeViewport.right).coerceAtLeast(safeViewport.left), root.height)
+        }
+        if (clipToStatusBarAndCutout) root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateViewportClip() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val safe = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout()
             )
+            safeViewport = safe
+            updateViewportClip()
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime()) && ime.bottom > 0
             val topPadding = if (SeslToolbarCompatibility.applyTopInset(view, safe.top)) 0 else safe.top

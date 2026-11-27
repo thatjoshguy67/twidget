@@ -114,10 +114,9 @@ internal class MainDrawerController(
             })
         } else {
             val mode = if (activity.resources.configuration.screenWidthDp >= 960) ResponsivePaneLayoutMode.LARGE else ResponsivePaneLayoutMode.MEDIUM
-            val large = activity.resources.configuration.screenWidthDp >= 600
             val closed = ResponsiveConfigBuilder.create(activity, mode, PaneState.CLOSED)
-                .widthPx(if (large) activity.resources.getDimensionPixelSize(
-                    com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width_closed) else 0).build()
+                .widthPx(activity.resources.getDimensionPixelSize(
+                    com.google.android.material.R.dimen.sesl_responsive_pane_navigation_drawer_width_closed)).build()
             pane.setOutsideTouchEnabled(false)
             pane.setPaneConfig(PaneState.CLOSED, closed.copy(nonBlurBGAlpha = 0f))
             pane.setPaneConfig(PaneState.OPENED, ResponsiveConfigBuilder.create(activity, mode, PaneState.OPENED)
@@ -144,7 +143,7 @@ internal class MainDrawerController(
             }
             val content = activity.findViewById<View>(com.google.android.material.R.id.responsive_pane_content)
             (content.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams).apply {
-                marginStart = if (large) closed.width + dp(8) else 0
+                marginStart = closed.width + dp(8)
                 content.layoutParams = this
             }
             slideRange = opened.width - closed.width
@@ -325,14 +324,14 @@ internal class MainDrawerController(
             layout.appBarLayout.seslAllowStartNestedScroll(true)
             showingEditNavigation = false
         }
-        layout.showNavigationButton = activity.resources.configuration.screenWidthDp < 600
+        layout.showNavigationButton = isPhoneDrawer
         layout.setNavigationButtonIcon(drawerIcon())
         layout.setNavigationButtonTooltip(
             activity.getString(OneUiDesignR.string.oui_des_navigation_drawer),
         )
         applyDrawerButtonAppearance(layout)
         layout.findViewById<Toolbar>(OneUiDesignR.id.toolbarlayout_main_toolbar).apply {
-            navigationIcon = if (activity.resources.configuration.screenWidthDp < 600) drawerIcon() else null
+            navigationIcon = if (isPhoneDrawer) drawerIcon() else null
             setNavigationOnClickListener { setDrawerOpen(true) }
         }
     }

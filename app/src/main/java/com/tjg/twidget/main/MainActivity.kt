@@ -124,7 +124,7 @@ class MainActivity : EdgeToEdgeActivity() {
             drawerController.renderHeader()
         }
         setupLaunchChrome()
-        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root)) { bottomInset ->
+        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root), clipToStatusBarAndCutout = true) { bottomInset ->
             findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)?.let { list ->
                 list.clipToPadding = false
                 list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, dp(96) + bottomInset)

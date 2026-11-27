@@ -5,7 +5,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
-import androidx.appcompat.view.WindowCallbackWrapper
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.tjg.twidget.R
 import com.tjg.twidget.ui.DashboardRecyclerView
@@ -29,14 +28,14 @@ internal class DashboardCatalogueTouchBridge(
 
     fun install() {
         val window = dialog.window ?: return
-        val original = window.callback
+        val original = window.callback ?: return
         originalCallback = original
-        val callback = object : WindowCallbackWrapper(original) {
+        val callback = object : Window.Callback by original {
             override fun dispatchTouchEvent(event: MotionEvent): Boolean {
                 if (!active) {
                     latest?.recycle()
                     latest = MotionEvent.obtain(event)
-                    return super.dispatchTouchEvent(event)
+                    return original.dispatchTouchEvent(event)
                 }
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
                     controller.finishDashboardDrag(false)

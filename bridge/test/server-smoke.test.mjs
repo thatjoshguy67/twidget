@@ -1061,3 +1061,29 @@ test("Fx reconciliation replaces yesterday's still-fresh cache and runs only onc
   assert.equal((await fetch(`${base}/history/example/top-followers/scan`, { method: "POST" })).status, 200);
   assert.equal(calls, 1);
 });
+
+
+test('verified legacy accounts sync interactions without binding old follower rows', async t => {
+  const day = Math.floor(Date.now() / DAY) * DAY;
+  const base = await startBridge(t, {}, { store: { version: 4,
+    accounts: { example: [{ ts: day - DAY, followers: 7, src: 'live' }] }, meta: { example: {} } } });
+  const verified = await fetch(`${base}/history/example?userId=123456`).then(r => r.json());
+  assert.equal(verified.legacyHistoryIdentity, 'handle-only');
+  const endpoint = `${base}/history/example/interactions`;
+  const initial = await fetch(endpoint).then(r => r.json());
+  assert.equal(initial.userId, '123456');
+  const send = userId => fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, daily: [{ date: '2026-01-01', likes: 0 }], posts: [] }) });
+  assert.equal((await send('wrong')).status, 409);
+  assert.equal((await send('123456')).status, 200);
+  const saved = await fetch(endpoint).then(r => r.json());
+  assert.equal(saved.daily[0].likes, 0);
+  assert.equal(saved.daily[0].views, null);
+  const history = await fetch(`${base}/history/example?userId=123456`).then(r => r.json());
+  assert.ok(history.legacyHistory.some(row => row.followers === 7));
+});
+
+test('history identity query rejects arrays before upstream work', async t => {
+  const base = await startBridge(t, {});
+  assert.equal((await fetch(`${base}/history/example?userId=123456&userId=123456`)).status, 400);
+});

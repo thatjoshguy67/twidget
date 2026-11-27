@@ -486,7 +486,7 @@ app.get("/history/:username", async (req, res) => {
   const all = req.query.all === "true" || req.query.all === "1";
   const key = username.toLowerCase();
   const requestedId = req.query.userId;
-  if (requestedId !== undefined && !/^[0-9]+$/.test(requestedId)) return res.status(400).json({ error: "invalid_user_id" });
+  if (requestedId !== undefined && (typeof requestedId !== "string" || !/^[0-9]+$/.test(requestedId))) return res.status(400).json({ error: "invalid_user_id" });
   const identity = await historyRepository.getMeta(key);
   if (requestedId && identity.userId && identity.userId !== requestedId) return res.status(409).json({ error: "history_identity_mismatch" });
   if (requestedId && !identity.userId && await historyRepository.hasAccount(key)) {
@@ -739,7 +739,7 @@ app.get("/history/:username/interactions", async (req, res) => {
   const key = username.toLowerCase();
   if (!(await historyRepository.hasAccount(key))) return res.status(404).json({ error: "history_account_not_registered" });
   const meta = await historyRepository.getMeta(key);
-  res.json({ userName: username, userId: meta.userId || "", ...(await historyRepository.getInteractions(key)) });
+  res.json({ userName: username, userId: meta.userId || meta.verifiedUserId || "", ...(await historyRepository.getInteractions(key)) });
 });
 
 app.post("/history/:username/interactions", historyJsonBody, async (req, res) => {
@@ -747,12 +747,13 @@ app.post("/history/:username/interactions", historyJsonBody, async (req, res) =>
   if (!username) return res.status(400).json({ error: "invalid_username" });
   const key = username.toLowerCase();
   const meta = await historyRepository.getMeta(key);
-  if (!meta.userId || req.body?.userId !== meta.userId) return res.status(409).json({ error: "history_identity_mismatch" });
+  const userId = meta.userId || meta.verifiedUserId;
+  if (!userId || req.body?.userId !== userId) return res.status(409).json({ error: "history_identity_mismatch" });
   let data;
   try { data = normalizeInteractionData(req.body); }
   catch { return res.status(400).json({ error: "invalid_interactions" }); }
-  if (!(await historyRepository.storeInteractions(key, data, { expectedUserId: meta.userId }))) return res.status(409).json({ error: "history_account_not_registered" });
-  res.json({ userId: meta.userId, ...(await historyRepository.getInteractions(key)) });
+  if (!(await historyRepository.storeInteractions(key, data, { expectedUserId: userId }))) return res.status(409).json({ error: "history_account_not_registered" });
+  res.json({ userId, ...(await historyRepository.getInteractions(key)) });
 });
 
 app.post("/history/:username/analytics-import", historyJsonBody, async (req, res) => {

@@ -86,3 +86,33 @@ test('PostgreSQL handle moves preserve history, scan rows and metadata with roll
     await admin.end();
   }
 });
+
+test('PostgreSQL legacy interactions retain verified ownership across identity changes', {
+  skip: !process.env.TWIDGET_TEST_POSTGRES_URL,
+}, async () => {
+  const admin = new pg.Pool({ connectionString: process.env.TWIDGET_TEST_POSTGRES_URL });
+  const schema = `twidget_interactions_${crypto.randomBytes(8).toString('hex')}`;
+  const pool = new pg.Pool({ connectionString: process.env.TWIDGET_TEST_POSTGRES_URL, options: `-c search_path=${schema}` });
+  try {
+    await admin.query(`CREATE SCHEMA ${schema}`);
+    const repo = new PostgresHistoryRepository({ pool, maxHistoryDays: 365 });
+    await repo.initialize();
+    await repo.registerAccount('legacy', [{ ts: Date.now(), followers: 100 }], 10);
+    await repo.patchMeta('legacy', { verifiedUserId: '42' });
+    const data = { daily: [{ date: '2026-01-01', likes: 7 }], posts: [] };
+    assert.equal(await repo.storeInteractions('legacy', data, { expectedUserId: '43' }), false);
+    assert.equal(await repo.storeInteractions('legacy', data, { expectedUserId: '42' }), true);
+    assert.equal((await repo.getInteractions('legacy')).daily[0].likes, 7);
+    assert.equal((await repo.getMeta('legacy')).userId, undefined);
+    await repo.patchMeta('legacy', { verifiedUserId: '43' });
+    assert.deepEqual(await repo.getInteractions('legacy'), { daily: [], posts: [] });
+    assert.equal(await repo.storeInteractions('legacy', data, { expectedUserId: '42' }), false);
+    assert.equal(await repo.storeInteractions('legacy', { daily: [], posts: [] }, { expectedUserId: '43' }), true);
+    assert.deepEqual(await repo.getInteractions('legacy'), { daily: [], posts: [] });
+    assert.equal((await repo.getHistory('legacy'))[0].followers, 100);
+  } finally {
+    await pool.end();
+    await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await admin.end();
+  }
+});

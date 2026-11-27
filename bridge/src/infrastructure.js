@@ -7,6 +7,16 @@ import { PRIMARY_PROFILE_RETENTION_DAYS, primaryProfileSummary } from "./primary
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Legacy follower rows stay handle-only. Interaction snapshots have their own
+// verified owner so a recycled handle cannot expose the previous owner's data.
+function ownedInteractions(data, meta = {}) {
+  const owner = meta.userId || meta.verifiedUserId || "";
+  if ((data?.userId && data.userId !== owner) || (!data?.userId && !meta.userId && owner)) {
+    return { daily: [], posts: [] };
+  }
+  return { daily: data?.daily || [], posts: data?.posts || [] };
+}
+
 export class LocalFixedWindowLimiter {
   constructor({ windowMs, maxKeys }) {
     this.windowMs = windowMs;
@@ -184,10 +194,12 @@ export class LocalHistoryRepository {
     }
     return normalizeStoredSamples(this.store.accounts[key], all ? Number.MAX_SAFE_INTEGER : this.maxHistoryDays, this.sampleRetentionDays, this.now());
   }
-  async getInteractions(key) { return this.store.interactions[key] || { daily: [], posts: [] }; }
+  async getInteractions(key) { return ownedInteractions(this.store.interactions[key], this.store.meta[key]); }
   async storeInteractions(key, data, { expectedUserId } = {}) {
-    if (!Object.hasOwn(this.store.accounts, key) || (expectedUserId !== undefined && this.store.meta[key]?.userId !== expectedUserId)) return false;
-    this.store.interactions[key] = mergeInteractionData(this.store.interactions[key], data);
+    const meta = this.store.meta[key] || {};
+    const userId = meta.userId || meta.verifiedUserId || "";
+    if (!Object.hasOwn(this.store.accounts, key) || (expectedUserId !== undefined && userId !== expectedUserId)) return false;
+    this.store.interactions[key] = { ...mergeInteractionData(ownedInteractions(this.store.interactions[key], meta), data), userId };
     await this.persist();
     return true;
   }
@@ -263,7 +275,7 @@ export class LocalHistoryRepository {
     this.store.meta[newKey] = { ...sourceMeta, ...targetMeta, userId };
     this.store.access[newKey] = Math.max(this.store.access[oldKey] || 0, this.store.access[newKey] || 0);
     if (!this.store.topFollowers[newKey] && this.store.topFollowers[oldKey]) this.store.topFollowers[newKey] = this.store.topFollowers[oldKey];
-    this.store.interactions[newKey] = mergeInteractionData(this.store.interactions[newKey], this.store.interactions[oldKey] || { daily: [], posts: [] });
+    this.store.interactions[newKey] = { ...mergeInteractionData(ownedInteractions(this.store.interactions[newKey], targetMeta), ownedInteractions(this.store.interactions[oldKey], sourceMeta)), userId };
     for (const report of Object.values(this.store.primaryProfiles)) {
       if (report.username === oldKey) report.username = newKey;
     }
@@ -719,17 +731,20 @@ export class PostgresHistoryRepository {
     });
   }
   async getInteractions(key) {
-    const result = await this.pool.query("SELECT data FROM twidget_interactions WHERE username = $1", [key]);
-    return result.rows[0]?.data || { daily: [], posts: [] };
+    const result = await this.pool.query(`SELECT i.data, a.metadata FROM twidget_history_accounts a
+      LEFT JOIN twidget_interactions i ON i.username = a.username WHERE a.username = $1`, [key]);
+    return ownedInteractions(result.rows[0]?.data, result.rows[0]?.metadata);
   }
   async storeInteractions(key, data, { expectedUserId } = {}) {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       const account = await client.query("SELECT metadata FROM twidget_history_accounts WHERE username = $1 FOR UPDATE", [key]);
-      if (!account.rowCount || (expectedUserId !== undefined && account.rows[0].metadata?.userId !== expectedUserId)) { await client.query("ROLLBACK"); return false; }
+      const meta = account.rows[0]?.metadata || {};
+      const userId = meta.userId || meta.verifiedUserId || "";
+      if (!account.rowCount || (expectedUserId !== undefined && userId !== expectedUserId)) { await client.query("ROLLBACK"); return false; }
       const old = await client.query("SELECT data FROM twidget_interactions WHERE username = $1", [key]);
-      const merged = mergeInteractionData(old.rows[0]?.data, data);
+      const merged = { ...mergeInteractionData(ownedInteractions(old.rows[0]?.data, meta), data), userId };
       await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [key, JSON.stringify(merged)]);
       await client.query("COMMIT");
       return true;
@@ -1171,7 +1186,7 @@ export class PostgresHistoryRepository {
       const sourceInteractions = interactionRows.rows.find(row => row.username === oldKey)?.data;
       if (sourceInteractions) {
         const targetInteractions = interactionRows.rows.find(row => row.username === newKey)?.data;
-        await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [newKey, JSON.stringify(mergeInteractionData(targetInteractions, sourceInteractions))]);
+        await client.query("INSERT INTO twidget_interactions (username, data) VALUES ($1, $2::jsonb) ON CONFLICT (username) DO UPDATE SET data = EXCLUDED.data", [newKey, JSON.stringify({ ...mergeInteractionData(ownedInteractions(targetInteractions, destination?.metadata), ownedInteractions(sourceInteractions, source.metadata)), userId })]);
       }
       await client.query("UPDATE twidget_top_follower_scans SET username = $2 WHERE username = $1", [oldKey, newKey]);
       await client.query("UPDATE twidget_primary_profiles SET username = $2 WHERE username = $1", [oldKey, newKey]);

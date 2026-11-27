@@ -4,6 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class DashboardLayoutPolicyTest {
+    @Test fun `brief adapts to narrow width short height and larger type`() {
+        assertEquals(184, DashboardLayoutPolicy.briefHeightDp(320, 568, 1f))
+        assertEquals(160, DashboardLayoutPolicy.briefHeightDp(411, 891, 1f))
+        assertEquals(120, DashboardLayoutPolicy.briefHeightDp(891, 411, 1f))
+        assertEquals(160, DashboardLayoutPolicy.briefHeightDp(1280, 800, 1f))
+        assertEquals(200, DashboardLayoutPolicy.briefHeightDp(320, 568, 1.2f))
+    }
+
     @Test fun `phone stays compact in both orientations`() {
         assertEquals(2, DashboardLayoutPolicy.columns(411, 411))
         assertEquals(2, DashboardLayoutPolicy.columns(411, 891))

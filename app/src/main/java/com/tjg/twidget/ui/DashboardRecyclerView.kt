@@ -44,7 +44,7 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val limit = (1200 * resources.displayMetrics.density).toInt()
+        val limit = (DashboardLayoutPolicy.MAX_CONTENT_WIDTH_DP * resources.displayMetrics.density).toInt()
         val width = if (MeasureSpec.getSize(widthMeasureSpec) > limit)
             MeasureSpec.makeMeasureSpec(limit, MeasureSpec.EXACTLY) else widthMeasureSpec
         // Account for the rail, safe insets and multi-window bounds. A landscape

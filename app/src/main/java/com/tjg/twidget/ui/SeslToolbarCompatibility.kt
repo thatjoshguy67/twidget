@@ -117,7 +117,15 @@ internal object SeslToolbarCompatibility {
             val collapsedToolbarHeight = maxOf(appBar.seslGetCollapsedHeight(), toolbarHeight.toFloat())
             val bottomAligned = (toolbar.layoutParams as? FrameLayout.LayoutParams)
                 ?.gravity?.and(Gravity.VERTICAL_GRAVITY_MASK) == Gravity.BOTTOM
-            val floating = FloatingToolbarLayout(root.context).apply {
+            val dashboard = root.findViewById<View>(com.tjg.twidget.R.id.dashboard_root) != null
+            val floating = object : FloatingToolbarLayout(root.context) {
+                override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                    val limit = (DashboardLayoutPolicy.MAX_CONTENT_WIDTH_DP * resources.displayMetrics.density).toInt()
+                    val bounded = if (dashboard && View.MeasureSpec.getSize(widthMeasureSpec) > limit)
+                        View.MeasureSpec.makeMeasureSpec(limit, View.MeasureSpec.EXACTLY) else widthMeasureSpec
+                    super.onMeasure(bounded, heightMeasureSpec)
+                }
+            }.apply {
                 enableScrollTransition(false, true)
                 id = View.generateViewId()
                 elevation = maxOf(appBar.elevation, 4 * resources.displayMetrics.density)

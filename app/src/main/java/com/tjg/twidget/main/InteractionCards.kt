@@ -179,9 +179,13 @@ internal object InteractionCards {
             maxLines = 1
             setAutoSizeTextTypeUniformWithConfiguration(16, 40, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
         }
-        values.addView(value(left), LinearLayout.LayoutParams(0, dp(activity, 50), 1f))
+        values.addView(value(left), LinearLayout.LayoutParams(0, dp(activity, 50), 1f).apply {
+            marginEnd = dp(activity, 8)
+        })
         if (wide && range != null) values.addView(text(activity, range, 16f, true, true).apply { gravity = Gravity.CENTER })
-        values.addView(value(right).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, dp(activity, 50), 1f))
+        values.addView(value(right).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, dp(activity, 50), 1f).apply {
+            marginStart = dp(activity, 8)
+        })
         root.addView(values)
         root.addView(InteractionSplitView(activity).apply { setValues(left, right) },
             LinearLayout.LayoutParams(-1, dp(activity, 35)).apply { topMargin = dp(activity, 10) })

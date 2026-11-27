@@ -124,11 +124,15 @@ class MainActivity : EdgeToEdgeActivity() {
             drawerController.renderHeader()
         }
         setupLaunchChrome()
-        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root), clipToStatusBarAndCutout = true) { bottomInset ->
+        applyEdgeToEdgeInsets(findViewById(R.id.dashboard_root), insetDrawerContent = true) { bottomInset ->
             findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)?.let { list ->
                 list.clipToPadding = false
                 list.setPadding(list.paddingLeft, list.paddingTop, list.paddingRight, dp(96) + bottomInset)
             }
+        }
+        com.tjg.twidget.ui.DashboardStatusBarFade.install(findViewById(R.id.dashboard_root)) {
+            findViewById<com.tjg.twidget.ui.DashboardRecyclerView>(R.id.dashboard_content)?.canScrollVertically(-1) == true ||
+                findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout).appBarLayout.top < 0
         }
         onBackPressedDispatcher.addCallback(this, editModeController.exitEditModeOnBack)
         // Bind the saved dashboard before its first frame. Remote refresh and

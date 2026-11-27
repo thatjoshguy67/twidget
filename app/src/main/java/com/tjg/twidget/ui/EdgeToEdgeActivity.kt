@@ -82,25 +82,14 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
     protected fun applyEdgeToEdgeInsets(
         root: View,
         padRootForIme: Boolean = true,
-        clipToStatusBarAndCutout: Boolean = false,
+        insetDrawerContent: Boolean = false,
         onNavigationBarInset: ((Int) -> Unit)? = null,
     ) {
-        var safeViewport = androidx.core.graphics.Insets.NONE
-        fun updateViewportClip() {
-            if (!clipToStatusBarAndCutout) return
-            // The floating toolbar allows scrolling behind itself, but dashboard
-            // cards and the drawer must stop at the system status/cutout boundary.
-            // Keep the existing edge-to-edge navigation treatment at the bottom.
-            root.clipBounds = android.graphics.Rect(0, safeViewport.top, root.width, root.height)
-        }
-        if (clipToStatusBarAndCutout) root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateViewportClip() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val safe = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or
                     WindowInsetsCompat.Type.displayCutout()
             )
-            safeViewport = safe
-            updateViewportClip()
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime()) && ime.bottom > 0
             val topPadding = if (SeslToolbarCompatibility.applyTopInset(view, safe.top)) 0 else safe.top
@@ -114,7 +103,7 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
                 scroll.setPadding(scroll.paddingLeft, scroll.paddingTop, scroll.paddingRight,
                     original + (safe.bottom - bottomPadding).coerceAtLeast(0))
             }
-            if (clipToStatusBarAndCutout && view is androidx.drawerlayout.widget.DrawerLayout) {
+            if (insetDrawerContent && view is androidx.drawerlayout.widget.DrawerLayout) {
                 // DrawerLayout ignores its own padding when placing content.
                 // Move the content inside the side insets instead of cropping it.
                 for (index in 0 until view.childCount) {

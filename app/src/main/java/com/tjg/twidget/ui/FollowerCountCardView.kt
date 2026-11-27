@@ -12,18 +12,20 @@ import com.tjg.twidget.widget.FollowerHeroLayout
 import com.tjg.twidget.widget.WidgetArtworkRenderer
 import com.tjg.twidget.widget.WidgetStyle
 
-/** Live vector text using exactly the home-screen widget's wrapping and font-axis fitting. */
+/** Widget font-axis fitting with a separate, grouped dashboard footer. */
 internal class FollowerCountCardView(context: Context) : View(context) {
     private var hero: FollowerHeroLayout? = null
     private var fitted: FollowerHeroLayout.Layout? = null
     private var fittedWidth = 0
     private var fittedHeight = 0
+    private var footerStart = 0
 
     fun bind(stats: ProfileStats, delta: Long) {
         val settings = TwidgetWidgetSettings(tintAlpha = 255, tintColor = 0, logo = TwidgetStore.LOGO_X,
             tapAction = TwidgetStore.TAP_APP, accountUsername = stats.userName, colorMode = TwidgetStore.COLOR_MODE_SYSTEM,
             fontFamily = TwidgetStore.FONT_GOOGLE_SANS_FLEX, language = AppLocales.applicationLocale().toLanguageTag(), style = WidgetStyle.MATERIAL)
         val (words, countWordCount) = WidgetArtworkRenderer.followerHeroWords(context, settings, stats, delta)
+        footerStart = countWordCount
         hero = WidgetArtworkRenderer.followerHero(context, settings, words, countWordCount,
             context.getColor(R.color.oneui_text_primary), context.getColor(R.color.oneui_text_secondary),
             context.getColor(if (delta < 0) R.color.metric_red else R.color.dashboard_count_editorial_delta))
@@ -41,7 +43,7 @@ internal class FollowerCountCardView(context: Context) : View(context) {
             fittedWidth = availableWidth
             fittedHeight = availableHeight
             fitted = hero?.fit(availableWidth.toFloat(), availableHeight.toFloat(),
-                WidgetArtworkRenderer.wordSpacing(context, availableWidth.toFloat()), 4 * resources.displayMetrics.density)
+                WidgetArtworkRenderer.wordSpacing(context, availableWidth.toFloat()), 4 * resources.displayMetrics.density, footerStart)
         }
         return fitted
     }

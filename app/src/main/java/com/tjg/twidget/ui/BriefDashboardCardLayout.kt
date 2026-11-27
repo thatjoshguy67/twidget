@@ -372,21 +372,39 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val config = resources.configuration
+        val compact = DashboardLayoutPolicy.compactBrief(config.screenWidthDp, config.screenHeightDp)
+        val widthDp = MeasureSpec.getSize(widthMeasureSpec) / resources.displayMetrics.density
         val metrics = com.tjg.twidget.widget.BriefWidgetArtworkRenderer.tallCardMetrics(
-            MeasureSpec.getSize(widthMeasureSpec) / resources.displayMetrics.density,
+            widthDp,
             MeasureSpec.getSize(heightMeasureSpec) / resources.displayMetrics.density,
         )
         val inset = dp(metrics.textInsetDp.roundToInt())
         setPadding(inset, inset, inset, inset)
+        orientation = if (compact) HORIZONTAL else VERTICAL
+        gravity = android.view.Gravity.CENTER_VERTICAL
         val icon = findViewById<View>(R.id.brief_dashboard_icon)
+        val iconSize = if (compact) 40 else if (widthDp < 380f) 32 else metrics.iconSizeDp.roundToInt()
+        val iconGap = if (compact) 12 else metrics.textGapDp.roundToInt()
         fun artwork(size: Int, gap: Int) {
             icon?.apply {
                 layoutParams.width = dp(size)
                 layoutParams.height = dp(size)
-                (layoutParams as LayoutParams).bottomMargin = dp(gap)
+                (layoutParams as LayoutParams).apply {
+                    bottomMargin = if (compact) 0 else dp(gap)
+                    marginEnd = if (compact) dp(gap) else 0
+                    leftMargin = if (compact && layoutDirection == View.LAYOUT_DIRECTION_RTL) dp(gap) else 0
+                    rightMargin = if (compact && layoutDirection != View.LAYOUT_DIRECTION_RTL) dp(gap) else 0
+                }
             }
         }
-        artwork(metrics.iconSizeDp.roundToInt(), metrics.textGapDp.roundToInt())
+        artwork(iconSize, iconGap)
+        findViewById<View>(R.id.brief_dashboard_copy)?.layoutParams?.let { params ->
+            params.width = if (compact) 0 else LayoutParams.MATCH_PARENT
+            params.height = if (compact) LayoutParams.MATCH_PARENT else 0
+        }
+        (findViewById<View>(R.id.brief_dashboard_content_group)?.layoutParams as? android.widget.FrameLayout.LayoutParams)
+            ?.gravity = if (compact) android.view.Gravity.CENTER_VERTICAL else android.view.Gravity.BOTTOM
         if (icon?.visibility == View.GONE) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
             return
@@ -403,18 +421,23 @@ class BriefDashboardCardLayout @JvmOverloads constructor(context: Context, attrs
             if (MeasureSpec.getSize(heightMeasureSpec) <= dp(160)) minOf(metrics.bodySizeSp, 14f) else metrics.bodySizeSp)
         body?.maxLines = 3
         if (title != null && body != null && MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED) {
-            val width = MeasureSpec.makeMeasureSpec((MeasureSpec.getSize(widthMeasureSpec) - inset * 2).coerceAtLeast(1), MeasureSpec.EXACTLY)
+            val textWidth = MeasureSpec.getSize(widthMeasureSpec) - inset * 2 -
+                if (compact) dp(iconSize + iconGap) else 0
+            val width = MeasureSpec.makeMeasureSpec(textWidth.coerceAtLeast(1), MeasureSpec.EXACTLY)
             fun intrinsic(text: TextView, lines: Int): Int {
                 text.maxLines = lines
                 text.measure(width, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
                 return text.measuredHeight
             }
-            var available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 - dp((metrics.iconSizeDp + metrics.textGapDp).roundToInt())).coerceAtLeast(0)
-            var gap = dp(6)
+            val available = (MeasureSpec.getSize(heightMeasureSpec) - inset * 2 -
+                if (compact) 0 else dp(iconSize + iconGap)).coerceAtLeast(0)
+            val gap = dp(6)
             var titleLines = 3
             var titleHeight = intrinsic(title, titleLines)
             val bodyHeights = (1..3).associateWith { intrinsic(body, it) }
-            val minimumBody = bodyHeights.getValue(1)
+            // Reserve two complete description lines before allocating a third
+            // heading line. Long headlines must not squeeze the description out.
+            val minimumBody = bodyHeights.getValue(2)
             while (titleLines > 1 && titleHeight + gap + minimumBody > available) {
                 titleHeight = intrinsic(title, --titleLines)
             }

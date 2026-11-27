@@ -111,7 +111,9 @@ internal enum class DashboardCardType(val id: String, val labelRes: Int, val siz
         ENGAGEMENT_MIX -> (160 + 65 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
         ORIGINAL_REPLIES -> (160 + 60 * (context.resources.configuration.fontScale - 1f).coerceAtLeast(0f)).toInt()
         TOP_FOLLOWERS -> 176
-        MILESTONE -> 160
+        MILESTONE -> context.resources.configuration.let {
+            com.tjg.twidget.ui.DashboardLayoutPolicy.briefHeightDp(it.screenWidthDp, it.screenHeightDp, it.fontScale)
+        }
         else -> 160
     }
     val supportsSizeVariants: Boolean get() = size == DashboardCardSize.HALF

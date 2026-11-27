@@ -56,7 +56,7 @@ internal class FollowerHeroLayout(
         }
     }
 
-    internal fun fit(width: Float, height: Float, wordGap: Float, lineGap: Float): Layout {
+    internal fun fit(width: Float, height: Float, wordGap: Float, lineGap: Float, footerStart: Int? = null): Layout {
         require(words.isNotEmpty() && width > 1f && height > 1f)
         // Leave a pixel for raster rounding/antialiasing. Reuse paints while
         // probing sizes during this render; never keep an unbounded global cache.
@@ -74,7 +74,11 @@ internal class FollowerHeroLayout(
         for (fullness in listOf(0f, -0.5f, -1f)) {
             val candidateRuns = runs(fullness)
             val layout = fitSize(maxWidth, maxHeight, wordGap, lineGap) { size, gap ->
-                wrap(candidateRuns, size, maxWidth, gap)
+                if (footerStart != null && footerStart in 1 until candidateRuns.size) {
+                    // Dashboard footers form a single supporting line, separate
+                    // from the number. Widget callers retain their original flow.
+                    wrap(candidateRuns.take(footerStart), size, maxWidth, gap) + listOf(candidateRuns.drop(footerStart))
+                } else wrap(candidateRuns, size, maxWidth, gap)
             }
             val score = layout.size * (1f + fullness * 0.10f)
             if (score > bestScore) {

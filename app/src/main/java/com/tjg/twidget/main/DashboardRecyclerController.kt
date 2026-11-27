@@ -63,6 +63,33 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     fun span(card: DashboardCardType): Int = overrides[card.id] ?: card.span(activity, account.ifBlank { activity.selectedAccount })
 
     private val heldViewport = Rect()
+    private var lastDragScrollTime = 0L
+    private val dragScroll = object : Runnable {
+        override fun run() {
+            val view = recycler ?: return
+            if (dragging == null || !view.isHoldingCard) return
+            val now = android.os.SystemClock.uptimeMillis()
+            val elapsed = (now - lastDragScrollTime).coerceIn(1, 64)
+            lastDragScrollTime = now
+            if (!view.isScrollingHeldCard && view.getLocalVisibleRect(heldViewport)) {
+                val edge = activity.dp(64).toFloat()
+                val top = maxOf(heldViewport.top, view.paddingTop)
+                val bottom = minOf(heldViewport.bottom, view.height - view.paddingBottom)
+                val y = view.lastTouchY
+                val proximity = when {
+                    y < top + edge -> -((top + edge - y) / edge).coerceIn(0f, 1f)
+                    y > bottom - edge -> ((y - bottom + edge) / edge).coerceIn(0f, 1f)
+                    else -> 0f
+                }
+                val distance = (proximity * activity.dp(480) * elapsed / 1000f).toInt()
+                if (distance != 0 && view.canScrollVertically(distance)) {
+                    view.scrollBy(0, distance)
+                    view.refreshCardDrag()
+                }
+            }
+            view.postOnAnimation(this)
+        }
+    }
     private val callback = object : ItemTouchHelper.Callback() {
         override fun getMovementFlags(view: RecyclerView, holder: RecyclerView.ViewHolder): Int =
             if (editing && holder is CardHolder && external == null && !binder.isResizing)
@@ -98,13 +125,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             // ItemTouchHelper already keeps the dragged card under the pointer.
         }
         override fun interpolateOutOfBoundsScroll(view: RecyclerView, size: Int, outOfBounds: Int,
-            totalSize: Int, elapsed: Long): Int {
-            val pointer = (view as? DashboardRecyclerView)?.lastTouchY ?: return 0
-            val edge = activity.dp(64)
-            if (pointer.isNaN() || (outOfBounds < 0 && pointer >= edge) ||
-                (outOfBounds > 0 && pointer <= view.height - edge)) return 0
-            return super.interpolateOutOfBoundsScroll(view, size, outOfBounds, totalSize, elapsed)
-        }
+            totalSize: Int, elapsed: Long): Int = 0 // The visible-viewport loop owns edge scrolling.
         override fun onSwiped(holder: RecyclerView.ViewHolder, direction: Int) = Unit
         override fun onSelectedChanged(holder: RecyclerView.ViewHolder?, state: Int) {
             super.onSelectedChanged(holder, state)
@@ -158,6 +179,8 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                 requestLayout()
             }
             restoreNestedScroll()
+            (view as? DashboardRecyclerView)?.endCardDrag()
+            view.removeCallbacks(dragScroll)
             dropTargets.reset()
             val id = (holder as? CardHolder)?.cardId
             if (id != null && dragging == id) {
@@ -174,8 +197,11 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             touch.attachToRecyclerView(null)
             adapter = null
             onGestureCancelled = null
+            onAdditionalPointer = null
             setOnDragListener(null)
             removeCallbacks(externalScroll)
+            removeCallbacks(dragScroll)
+            endCardDrag()
         }
         recycler = view
         val manager = object : GridLayoutManager(activity, view.columnCount) {
@@ -201,6 +227,14 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             .setStableIdMode(ConcatAdapter.Config.StableIdMode.ISOLATED_STABLE_IDS).build(), headerAdapter!!, cards, footerAdapter!!)
         touch.attachToRecyclerView(view)
         view.onGestureCancelled = { cancelled = true }
+        view.onAdditionalPointer = {
+            // RecyclerView splits extra pointers between child cards. Promote
+            // the existing stationary hold before that split can hide it.
+            (0 until view.childCount).any { index ->
+                (view.getChildAt(index).getTag(R.id.dashboard_card_gesture) as? DashboardCardGesture)
+                    ?.startDragFromHold() == true
+            }
+        }
         view.setOnDragListener { _, event ->
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> external != null && event.localState == external
@@ -268,7 +302,10 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         activity.editModeController.beginDashboardDrag(card, wrapper)
         dragging = card.id
         cancelled = false
+        view.beginCardDrag()
         touch.startDrag(holder)
+        lastDragScrollTime = android.os.SystemClock.uptimeMillis()
+        view.postOnAnimation(dragScroll)
         return true
     }
     fun showExternal(card: DashboardCardType, span: Int, order: List<String>) {
@@ -313,6 +350,8 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         nestedScrollBeforeDrag = null
     }
     private fun cancelNativeDrag() {
+        recycler?.removeCallbacks(dragScroll)
+        recycler?.endCardDrag()
         restoreNestedScroll()
         dropTargets.reset()
         if (dragging == null) return

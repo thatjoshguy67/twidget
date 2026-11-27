@@ -27,6 +27,7 @@ import kotlin.math.roundToInt
 class DashboardRecyclerInteractionInstrumentedTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private var activeGrid: DashboardRecyclerView? = null
+    private var activeActivity: MainActivity? = null
     private val fixture = listOf("avg_views", "post_rate", "follower_ratio", "daily_streak", "followers", "top_followers")
 
     @Suppress("DEPRECATION")
@@ -60,6 +61,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
                     grid(activity).layoutDirection = if (rtl) View.LAYOUT_DIRECTION_RTL else View.LAYOUT_DIRECTION_LTR
                     activity.editModeController.setEditMode(editing)
                     activeGrid = grid(activity)
+                    activeActivity = activity
                 }
                 settle()
                 scenario.onActivity { assertEquals(columns, grid(it).columnCount) }
@@ -67,6 +69,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
             }
         } finally {
             activeGrid = null
+            activeActivity = null
             instrumentation.runOnMainSync { resources?.updateConfiguration(original, metrics) }
             prefs.edit().apply {
                 prefs.all.keys.filter(::owned).forEach(::remove)
@@ -83,7 +86,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
     }
     private fun settle(ms: Long = 450) {
         SystemClock.sleep(ms)
-        instrumentation.waitForIdleSync()
+        instrumentation.runOnMainSync { }
         // Completion follows the native animator, including the device's
         // animation scale, rather than assuming a fixed number of frames.
         val deadline = SystemClock.uptimeMillis() + 3000
@@ -92,7 +95,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
             instrumentation.runOnMainSync { running = activeGrid?.itemAnimator?.isRunning == true }
             if (!running) break
             SystemClock.sleep(32)
-            instrumentation.waitForIdleSync()
+            instrumentation.runOnMainSync { }
         } while (SystemClock.uptimeMillis() < deadline)
     }
     private fun grid(activity: MainActivity) = activity.findViewById<DashboardRecyclerView>(R.id.dashboard_content)
@@ -582,6 +585,196 @@ class DashboardRecyclerInteractionInstrumentedTest {
             assertEquals(fixture, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
             assertSettledGrid(activity)
         }
+    }
+
+    private fun onDragActivity(block: (MainActivity) -> Unit) {
+        instrumentation.runOnMainSync { block(requireNotNull(activeActivity)) }
+    }
+
+    private fun pauseDuringDrag(ms: Long) {
+        SystemClock.sleep(ms)
+        instrumentation.runOnMainSync { } // Keep synchronization bounded while the list animates.
+    }
+
+    private fun awaitDragScroll(condition: () -> Boolean) {
+        val deadline = SystemClock.uptimeMillis() + 3000
+        do {
+            var reached = false
+            instrumentation.runOnMainSync { reached = condition() }
+            if (reached) return
+            SystemClock.sleep(32)
+        } while (SystemClock.uptimeMillis() < deadline)
+    }
+
+    private fun prepareLongDashboard() {
+        onDragActivity { activity ->
+            val order = (fixture + DashboardCardType.entries.take(22).map { it.id }).distinct()
+            TwidgetStore.saveDashboardCards(activity, order, activity.selectedAccount)
+            activity.render(refreshRemote = false)
+            activity.findViewById<dev.oneuiproject.oneui.layout.ToolbarLayout>(R.id.main_toolbar_layout)
+                .setExpanded(false, false)
+        }
+        pauseDuringDrag(450)
+        onDragActivity { activity -> activity.dashboardBinder.scrollToCard("post_rate", activity.dp(100)) }
+        pauseDuringDrag(450)
+    }
+
+    @Test fun heldCardScrollsAtBothVisibleEdgesAndStopsAfterRelease() {
+        for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
+            prepareLongDashboard()
+            lateinit var pointer: Pointer
+            var bottom = 0f
+            var top = 0f
+            var start = 0
+            var distance = 0
+            onDragActivity { activity ->
+                val view = grid(activity)
+                val source = tile(activity, "post_rate")
+                pointer = Pointer(view, source.left + source.width / 2f, source.top + source.height / 2f)
+                val visible = Rect().also(view::getLocalVisibleRect)
+                bottom = visible.bottom - activity.dp(4) - pointer.y
+                top = visible.top + activity.dp(4) - pointer.y
+                view.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrolled(view: RecyclerView, dx: Int, dy: Int) { distance += dy }
+                })
+                start = distance
+                pointer.send(MotionEvent.ACTION_DOWN)
+            }
+            pauseDuringDrag(650)
+            onDragActivity { pointer.send(MotionEvent.ACTION_MOVE, dy = bottom) }
+            awaitDragScroll { distance > start + requireNotNull(activeActivity).dp(100) }
+            var scrolled = 0
+            onDragActivity { activity ->
+                assertEquals("post_rate", activity.editModeController.draggedCardId)
+                scrolled = distance
+                assertTrue("A stationary finger at the visible bottom keeps scrolling", scrolled > start + activity.dp(100))
+                pointer.send(MotionEvent.ACTION_MOVE, dy = top)
+            }
+            awaitDragScroll { distance < scrolled - requireNotNull(activeActivity).dp(80) }
+            var released = 0
+            var releasedScroll = 0
+            onDragActivity { activity ->
+                released = distance
+                assertTrue("The top edge scrolls back up", released < scrolled - activity.dp(80))
+                grid(activity).addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrolled(view: RecyclerView, dx: Int, dy: Int) { releasedScroll += kotlin.math.abs(dy) }
+                })
+                pointer.send(MotionEvent.ACTION_UP, dy = top)
+            }
+            pauseDuringDrag(750)
+            onDragActivity { activity ->
+                assertNull(activity.editModeController.draggedCardId)
+                assertEquals("Releasing stops edge scrolling (independent of scrollbar estimates)", 0, releasedScroll)
+            }
+        }
+    }
+
+    @Test fun secondFingerScrollsWithoutTakingOverHeldCardAndPrimaryLiftDropsIt() {
+        for (columns in listOf(2, 4)) withDashboard(columns) { scenario ->
+            prepareLongDashboard()
+            lateinit var pointer: Pointer
+            lateinit var view: DashboardRecyclerView
+            var primaryX = 0f
+            var primaryY = 0f
+            var secondY = 0f
+            val down = SystemClock.uptimeMillis()
+            // Reverse pointer indices deliberately; ownership follows IDs, not array order.
+            fun two(action: Int) {
+                val properties = arrayOf(3, 0).map { id -> MotionEvent.PointerProperties().apply {
+                    this.id = id; toolType = MotionEvent.TOOL_TYPE_FINGER
+                } }.toTypedArray()
+                val coords = arrayOf(primaryX + 20f to secondY, primaryX to primaryY).map { (x, y) ->
+                    MotionEvent.PointerCoords().apply { this.x = x; this.y = y; pressure = 1f; size = 1f }
+                }.toTypedArray()
+                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, 2, properties, coords,
+                    0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+                view.dispatchTouchEvent(event)
+                event.recycle()
+            }
+            onDragActivity { activity ->
+                view = grid(activity)
+                pointer = pointer(activity, "post_rate")
+                primaryX = pointer.x; primaryY = pointer.y + if (columns == 2) activity.dp(24) else 0
+                secondY = primaryY + activity.dp(90)
+                pointer.send(MotionEvent.ACTION_DOWN)
+            }
+            pauseDuringDrag(650)
+            if (columns == 2) onDragActivity { pointer.send(MotionEvent.ACTION_MOVE, dy = primaryY - pointer.y) }
+            pauseDuringDrag(100)
+            var start = 0
+            var heldY = 0f
+            onDragActivity { activity ->
+                start = view.computeVerticalScrollOffset()
+                two(MotionEvent.ACTION_POINTER_DOWN)
+                assertEquals("A second finger can pick up a stationary held card", "post_rate", activity.editModeController.draggedCardId)
+            }
+            pauseDuringDrag(100)
+            onDragActivity { heldY = tile(it, "post_rate").y }
+            repeat(12) {
+                onDragActivity { activity -> secondY -= activity.dp(12); two(MotionEvent.ACTION_MOVE) }
+                pauseDuringDrag(20)
+            }
+            onDragActivity { activity ->
+                assertEquals("The first finger still owns the card", "post_rate", activity.editModeController.draggedCardId)
+                assertTrue("The second finger scrolls the list", view.computeVerticalScrollOffset() > start + activity.dp(70))
+                assertEquals("The held card stays under the first finger", heldY, tile(activity, "post_rate").y, 3f)
+                // Release the second finger; the first can continue dragging.
+                two(MotionEvent.ACTION_POINTER_UP)
+                assertTrue(view.isHoldingCard)
+                two(MotionEvent.ACTION_POINTER_DOWN)
+                two(MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT))
+                assertFalse("Lifting the original finger drops instead of transferring the card", view.isHoldingCard)
+            }
+            pauseDuringDrag(750)
+            onDragActivity { activity ->
+                assertNull(activity.editModeController.draggedCardId)
+                assertFalse(view.isScrollingHeldCard)
+            }
+        }
+    }
+
+    @Test fun systemSecondFingerCanScrollDirectlyFromAStationaryHold() = withDashboard(4) { scenario ->
+        prepareLongDashboard()
+        var x = 0f; var y = 0f; var secondX = 0f; var secondY = 0f
+        var step = 0f; var start = 0
+        onDragActivity { activity ->
+            val source = tile(activity, "post_rate")
+            val location = IntArray(2).also(source::getLocationOnScreen)
+            x = location[0] + source.width / 2f; y = location[1] + source.height / 2f
+            secondX = x + activity.dp(40); secondY = y + activity.dp(100)
+            step = activity.dp(12).toFloat()
+            start = grid(activity).computeVerticalScrollOffset()
+        }
+        val down = SystemClock.uptimeMillis()
+        fun send(action: Int, ids: List<Int>) {
+            val properties = ids.map { id -> MotionEvent.PointerProperties().apply {
+                this.id = id; toolType = MotionEvent.TOOL_TYPE_FINGER
+            } }.toTypedArray()
+            val coords = ids.map { id -> MotionEvent.PointerCoords().apply {
+                this.x = if (id == 0) x else secondX; this.y = if (id == 0) y else secondY
+                pressure = 1f; size = 1f
+            } }.toTypedArray()
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, ids.size, properties, coords,
+                0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
+        send(MotionEvent.ACTION_DOWN, listOf(0))
+        pauseDuringDrag(650)
+        onDragActivity { assertNotNull("The original finger opens card actions", menu()) }
+        send(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(0, 1))
+        onDragActivity { assertEquals("The second finger starts the held card before child touch splitting", "post_rate", it.editModeController.draggedCardId) }
+        repeat(12) { secondY -= step; send(MotionEvent.ACTION_MOVE, listOf(0, 1)); SystemClock.sleep(24) }
+        onDragActivity { activity ->
+            assertEquals("The real touch stream keeps the original card held", "post_rate", activity.editModeController.draggedCardId)
+            assertTrue("Second-finger scrolling passes through the dashboard's ancestors",
+                grid(activity).computeVerticalScrollOffset() > start + activity.dp(70))
+            assertNull(menu())
+        }
+        send(MotionEvent.ACTION_POINTER_UP, listOf(0, 1))
+        send(MotionEvent.ACTION_UP, listOf(1))
+        pauseDuringDrag(750)
+        onDragActivity { assertNull(it.editModeController.draggedCardId) }
     }
 
 

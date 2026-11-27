@@ -69,13 +69,25 @@ internal class DashboardCardGesture(
                 consume = false
                 return result
             }
-            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> {
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val result = consume
+                if (!startDragFromHold()) cancel()
+                return result
+            }
+            MotionEvent.ACTION_CANCEL -> {
                 val result = consume
                 cancel()
                 return result
             }
         }
         return consume
+    }
+    fun startDragFromHold(): Boolean {
+        if (!held) return false
+        held = false
+        onCancel()
+        owner.parent?.requestDisallowInterceptTouchEvent(false)
+        return onDrag()
     }
     fun cancel() {
         owner.removeCallbacks(hold)

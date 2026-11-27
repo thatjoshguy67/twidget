@@ -85,6 +85,9 @@ internal class DashboardCardMenu(private val activity: MainActivity) {
         val window = PopupWindow(root, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             isFocusable = !pointerHeld
+            // Extra fingers must stay in the dashboard's existing touch stream
+            // until the original hold ends, even when they land over the bubble.
+            isTouchable = !pointerHeld
             isOutsideTouchable = true
             inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
             elevation = 0f
@@ -326,6 +329,7 @@ internal class DashboardCardMenu(private val activity: MainActivity) {
     fun release() {
         popup?.takeIf { it.isShowing }?.apply {
             isFocusable = true
+            isTouchable = true
             update() // Only window flags change; no anchor lookup or remeasurement.
         }
     }

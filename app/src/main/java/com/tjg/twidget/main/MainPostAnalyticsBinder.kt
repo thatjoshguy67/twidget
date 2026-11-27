@@ -189,7 +189,7 @@ internal class MainPostAnalyticsBinder(
                             radius = mediaRadius / resources.displayMetrics.density).apply {
                             rotation = if (media.size > 1) if (index == 0) -3f else 3f else 0f
                             translationX = if (media.size > 1) cardDp(if (index == 0) -5 else 5).toFloat() else 0f
-                            addView(ImageView(activity).apply {
+                            addView(com.tjg.twidget.ui.DashboardMediaImageView(activity).apply {
                                 scaleType = ImageView.ScaleType.CENTER_CROP
                                 contentDescription = item.alt.ifBlank { activity.getString(R.string.post_media) }
                                 ProfileImageLoader.loadMediaInto(activity, this, item.url, mediaRadius.roundToInt())

@@ -30,6 +30,15 @@ class TopFollowersSesl95InstrumentedTest {
                 instrumentation.waitForIdleSync()
                 SystemClock.sleep(700)
                 scenario.onActivity { activity ->
+                    val row = activity.findViewById<RecyclerView>(R.id.top_followers_browse_list)
+                        .findViewHolderForAdapterPosition(0)!!.itemView
+                    val name = row.findViewById<android.widget.TextView>(R.id.top_follower_row_name)
+                    com.tjg.twidget.ui.TwidgetFonts.applyTo(row)
+                    if (android.os.Build.VERSION.SDK_INT >= 28) {
+                        assertEquals(700, name.typeface.weight)
+                        assertEquals(700, name.paint.typeface.weight)
+                    }
+                    assertFalse(name.paint.isFakeBoldText)
                     val search = activity.findViewById<SearchView>(R.id.top_followers_browse_search)
                     assertTrue(search is Sesl95SearchView)
                     assertFalse("Opening search must not steal focus", search.hasFocus())

@@ -61,7 +61,6 @@
     <string name="review_quoted_tweet">Quoted tweet</string>
     <string name="review_quoted_media">Quoted tweet · %1$s</string>
     <string name="review_open_quoted_tweet">Open quoted tweet</string>
-    <string name="dashboard_view_report">View report</string>
     <string name="coach_archived_counts">Your saved tweet has %1$s recorded views and %2$s public interactions.</string>
     <string name="coach_archived_counts_without_views">Your saved tweet has %1$s public interactions.</string>
     <string name="coach_archived_limit">These are saved lifetime totals. Their observation time is unavailable, so they cannot show recent growth or a fair comparison with this week’s tweets.</string>
@@ -71,4 +70,8 @@
     <string name="review_rank_only_post">This is the only eligible tweet from the past 30 days currently available.</string>
     <string name="review_rank_comparison">Ranked by recorded views against %1$d other recent tweets from the past 30 days. Ties share a rank.</string>
     <string name="review_preview_rank">Ranked %1$d/%2$d by views.</string>
+    <string name="review_type_post">Post</string>
+    <string name="review_type_thread">Thread</string>
+    <string name="review_show_all_replies">Show all replies</string>
+    <string name="review_hide_other_replies">Hide other replies</string>
 </resources>

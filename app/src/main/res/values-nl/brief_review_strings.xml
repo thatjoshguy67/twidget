@@ -61,7 +61,6 @@
     <string name="review_quoted_tweet">Geciteerde tweet</string>
     <string name="review_quoted_media">Geciteerde tweet · %1$s</string>
     <string name="review_open_quoted_tweet">Geciteerde tweet openen</string>
-    <string name="dashboard_view_report">Rapport bekijken</string>
     <string name="coach_archived_counts">Je opgeslagen tweet heeft %1$s gemeten weergaven en %2$s openbare interacties.</string>
     <string name="coach_archived_counts_without_views">Je opgeslagen tweet heeft %1$s openbare interacties.</string>
     <string name="coach_archived_limit">Dit zijn opgeslagen totalen sinds plaatsing. Het meetmoment is onbekend. Daardoor geven ze geen beeld van recente groei en zijn ze niet goed vergelijkbaar met tweets van deze week.</string>
@@ -71,4 +70,8 @@
     <string name="review_rank_only_post">Dit is momenteel de enige beschikbare tweet van de afgelopen 30 dagen die aan de criteria voldoet.</string>
     <string name="review_rank_comparison">Gerangschikt op gemeten weergaven naast %1$d andere recente tweets uit de afgelopen 30 dagen. Gelijke aantallen delen een positie.</string>
     <string name="review_preview_rank">Nummer %1$d/%2$d op weergaven.</string>
+    <string name="review_type_post">Bericht</string>
+    <string name="review_type_thread">Draadje</string>
+    <string name="review_show_all_replies">Alle antwoorden tonen</string>
+    <string name="review_hide_other_replies">Andere antwoorden verbergen</string>
 </resources>

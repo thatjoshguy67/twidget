@@ -14,6 +14,21 @@ class BriefReviewConversationTest {
     private fun input() = BriefCoachInput("published", "Post 1.", true, 0,
         BriefCoachReport(emptyList(), emptyList(), emptyList(), emptyList()), emptyList(), 1_800_000_000_100L, "en-US")
 
+    @Test fun cardTypesUseLinkedThreadEvidenceBeforeReplyStatus() {
+        val root = post(1)
+        val middle = post(2, 1)
+        val chain = listOf(root, middle, post(3, 2))
+        assertEquals(BriefReviewPostType.THREAD, BriefReviewPostType.resolve(root, chain))
+        assertEquals(BriefReviewPostType.THREAD, BriefReviewPostType.resolve(middle, chain))
+        assertEquals(BriefReviewPostType.REPLY, BriefReviewPostType.resolve(post(4, 1, "reader"), chain))
+        assertEquals(BriefReviewPostType.POST, BriefReviewPostType.resolve(root, listOf(post(2), post(3))))
+    }
+
+    @Test fun savedThreadTypeSurvivesMissingTimelineContext() {
+        assertEquals(BriefReviewPostType.THREAD, BriefReviewPostType.resolve(post(2, 1), savedKind = "thread"))
+        assertEquals(BriefReviewPostType.REPLY, BriefReviewPostType.resolve(post(2, 1)))
+    }
+
     @Test fun onlyThreeOrMoreLinkedSameAuthorPostsBecomeAThread() {
         val root = post(1)
         assertFalse(BriefReviewConversations.collect(root, listOf(post(2, 1))).isThread)

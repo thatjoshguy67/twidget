@@ -47,11 +47,27 @@ internal object BriefPostCoach {
     fun reviewablePosts(analytics: PostAnalytics?, username: String, now: Long): List<PostSummary> {
         if (!fresh(analytics, username, now)) return emptyList()
         analytics!!
-        val originals = (analytics.reviewPosts.ifEmpty { analytics.recentPosts }).filterNot(PostSummary::isReply)
-        val replies = (analytics.reviewPosts.ifEmpty { analytics.recentReplies }).filter { it.isReply && interactions(it) >= 10.0 }
+        val candidates = (analytics.reviewPosts + analytics.recentPosts + analytics.recentReplies).distinctBy(PostSummary::url)
+        val originals = candidates.filterNot(PostSummary::isReply)
+        val replies = candidates.filter { it.isReply &&
+            (BriefReviewConversations.cached(it, candidates).isThread || replyEligible(it, analytics)) }
         return (originals.sortedByDescending(PostSummary::timestamp) + replies.sortedByDescending(::interactions))
             .filter { ownValid(it, username) && PostAgeComparison.age(it, analytics) != null }
             .distinctBy(PostSummary::url).sortedByDescending(PostSummary::timestamp)
+    }
+
+    /** Discovery needs a measured reply baseline; manual reviews remain available without one. */
+    internal fun replyEligible(post: PostSummary, analytics: PostAnalytics): Boolean {
+        if (!post.isReply || !post.viewsKnown || !ownValid(post, analytics.userName) || interactions(post) < 3.0 ||
+            (PostAgeComparison.age(post, analytics) ?: Long.MAX_VALUE) > analytics.windowDays * DAY) return false
+        val peers = (analytics.reviewPosts + analytics.recentReplies).filter {
+            it.isReply && it.url != post.url && it.viewsKnown && ownValid(it, analytics.userName) &&
+                (PostAgeComparison.age(it, analytics) ?: Long.MAX_VALUE) <= analytics.windowDays * DAY &&
+                PostAgeComparison.similarAge(post, it, analytics)
+        }.distinctBy(PostSummary::url)
+        if (peers.size < MIN_PEERS) return false
+        val baseline = median(peers.map { it.views.toDouble() })
+        return baseline > 0.0 && post.views.toDouble() >= baseline * 2.0
     }
 
     /** Explicit dashboard selections also include young/quiet replies and the older all-time winner.

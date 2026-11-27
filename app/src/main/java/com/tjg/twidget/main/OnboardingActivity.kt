@@ -785,10 +785,11 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         if (confirm) accountSession.candidate?.let { stats ->
             findViewById<TextView>(R.id.detected_name).apply {
                 com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this, weight = 700)
-                text = stats.fullName.ifBlank { stats.userName }
+                text = com.tjg.twidget.ui.VerifiedBadge.decorate(this@OnboardingActivity,
+                    stats.fullName.ifBlank { stats.userName }, stats.isVerified, false,
+                    textSize.toInt(), scaleWithText = true)
             }
             findViewById<TextView>(R.id.detected_handle).text = "@${OnboardingHandleInput.normalize(stats.userName)}"
-            findViewById<View>(R.id.detected_verified).visibility = if (stats.isVerified == true) View.VISIBLE else View.GONE
             findViewById<TextView>(R.id.detected_bio).apply {
                 text = stats.profileDetails.bio.orEmpty()
                 visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE

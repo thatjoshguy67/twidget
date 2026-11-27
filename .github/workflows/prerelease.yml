@@ -1,11 +1,17 @@
-name: Pre-release
+name: Prepare beta draft
 
 on:
   workflow_dispatch:
+    inputs:
+      beta_number:
+        description: 'Beta number to prepare as an unpublished draft (1-18)'
+        required: true
+        default: '1'
+        type: string
 
 permissions:
   contents: write # create the tag and the GitHub Release
-  actions: read # download this run's signed Play artifact
+  actions: read
 
 concurrency:
   group: twidget-versioned-release
@@ -38,8 +44,6 @@ jobs:
   prerelease:
     needs: bridge
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,30 +90,26 @@ jobs:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
 
-      - name: Resolve beta number
+      - name: Resolve beta number and validate release notes
         id: beta
-        run: |
-          BASE=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
-          PREFIX="twidget-v${BASE}-beta."
-          CURRENT=$(git tag --points-at HEAD --list "${PREFIX}*" \
-            | sed -n "s/^${PREFIX}\([1-9][0-9]*\)$/\1/p" \
-            | sort -n | tail -1)
-          if [ -n "$CURRENT" ]; then
-            NUMBER=$CURRENT
-          else
-            LAST=$(git tag --list "${PREFIX}*" \
-              | sed -n "s/^${PREFIX}\([1-9][0-9]*\)$/\1/p" \
-              | sort -n | tail -1)
-            NUMBER=$((${LAST:-0} + 1))
-          fi
-          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
-
-      - name: Validate Play release notes before publishing
-        if: vars.PLAY_PUBLISHING_ENABLED == 'true'
         env:
-          BETA_NUMBER: ${{ steps.beta.outputs.number }}
+          BETA_NUMBER: ${{ inputs.beta_number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)-beta.$BETA_NUMBER"
+          if ! [[ "$BETA_NUMBER" =~ ^[1-9][0-9]*$ ]] || [ "$BETA_NUMBER" -gt 18 ]; then
+            echo "::error::beta_number must be between 1 and 18"
+            exit 1
+          fi
+          BASE=$(sed -n 's/^versionName=\(.*\)$/\1/p' version.properties)
+          VERSION="$BASE-beta.$BETA_NUMBER"
+          TAG="twidget-v$VERSION"
+          if gh release view "$TAG" --json isDraft,targetCommitish > existing-release.json 2>/dev/null; then
+            if ! jq -e --arg sha "$GITHUB_SHA" '.isDraft == true and .targetCommitish == $sha' existing-release.json >/dev/null; then
+              echo "::error::Refusing to replace a published release or a draft for another commit"
+              exit 1
+            fi
+          fi
+          echo "number=$BETA_NUMBER" >> "$GITHUB_OUTPUT"
           python3 .github/scripts/prepare-play-notes.py \
             "docs/play-console/$VERSION-release-notes.txt" "$RUNNER_TEMP/play-notes"
 
@@ -122,7 +122,7 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          ./gradlew testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintVitalGithubBeta \
+          ./gradlew testGithubBetaUnitTest assembleGithubBeta bundleGithubBeta lintGithubBeta \
             testPlayBetaUnitTest assemblePlayBeta bundlePlayBeta lintPlayBeta \
             -PbetaNumber=${{ steps.beta.outputs.number }} --no-daemon --stacktrace
 
@@ -199,14 +199,6 @@ jobs:
           path: play-artifacts/
           if-no-files-found: error
 
-      - name: Create tag if missing
-        run: |
-          TAG="twidget-v${{ steps.version.outputs.version }}"
-          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
-
       - name: Stage APK and AAB with version in filenames
         run: |
           cp app/build/outputs/apk/github/beta/app-github-beta.apk "twidget-v${{ steps.version.outputs.version }}.apk"
@@ -246,52 +238,39 @@ jobs:
             echo "::error::CHANGELOG.md has no notes for $VERSION."
             exit 1
           fi
-          # Auto-generated commit/PR changelog since the previous release.
-          printf '\n## Changes since the previous release\n\n' >> release-notes.md
-          gh api "repos/${{ github.repository }}/releases/generate-notes" \
-            -f tag_name="$TAG" --jq .body >> release-notes.md
+      - name: Prepare release checksums and metadata
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cp "docs/play-console/$VERSION-release-notes.txt" play-release-notes.txt
+          jq --arg sha "$GITHUB_SHA" --arg version "$VERSION" \
+            '{sourceCommit: $sha, version: $version, versionCode: .elements[0].versionCode, published: false}' \
+            app/build/outputs/apk/play/beta/output-metadata.json > release-manifest.json
+          mkdir -p release-assets
+          cp twidget-v*.apk twidget-v*.aab play-artifacts/* play-release-notes.txt release-manifest.json release-assets/
+          (cd release-assets && sha256sum * > SHA256SUMS)
+          python3 scripts/check-apk-size.py twidget-v*.apk play-artifacts/*.apk
 
-      - name: Publish GitHub pre-release
+      - name: Create unpublished GitHub beta draft
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           TAG="twidget-v$VERSION"
-          APK="twidget-v$VERSION.apk"
-          AAB="twidget-v$VERSION.aab"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --prerelease --notes-file release-notes.md
-            gh release upload "$TAG" "$APK" "$AAB" --clobber
+          if gh release view "$TAG" --json isDraft,targetCommitish > existing-release.json 2>/dev/null; then
+            if ! jq -e --arg sha "$GITHUB_SHA" '.isDraft == true and .targetCommitish == $sha' existing-release.json >/dev/null; then
+              echo "::error::Refusing to replace a published release or a draft for another commit"
+              exit 1
+            fi
+            gh release edit "$TAG" --draft --prerelease --notes-file release-notes.md
+            gh release upload "$TAG" release-assets/* --clobber
           else
-            gh release create "$TAG" "$APK" "$AAB" \
-              --prerelease \
-              --title "Twidget v$VERSION" \
-              --notes-file release-notes.md
+            gh release create "$TAG" release-assets/* \
+              --draft --prerelease --target "$GITHUB_SHA" \
+              --title "Twidget v$VERSION" --notes-file release-notes.md
           fi
+          printf '### Unpublished beta prepared\n\nVersion: %s\nCommit: %s\n\nGitHub draft only. No Discord notification or Google Play submission. Upload the Play AAB manually for review.\n' "$VERSION" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Notify Discord
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-          DISCORD_RELEASE_MENTION: ${{ vars.DISCORD_RELEASE_MENTION }}
-          RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_CHANNEL: beta
-          RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/twidget-v${{ steps.version.outputs.version }}
-        run: |
-          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "::warning::DISCORD_RELEASE_WEBHOOK_URL is not configured; skipping Discord notification."
-            exit 0
-          fi
-          bash .github/scripts/notify-discord-release.sh
-
-  play-publish:
-    needs: prerelease
-    if: vars.PLAY_PUBLISHING_ENABLED == 'true'
-    permissions:
-      contents: read
-      actions: read
-    uses: ./.github/workflows/play-publish.yml
-    with:
-      version: ${{ needs.prerelease.outputs.version }}
-      track: beta
-    secrets:
-      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      - name: Remove release keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"

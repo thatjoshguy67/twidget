@@ -116,6 +116,32 @@ open class BriefDebugOptionsFragment : InsetPreferenceFragment() {
                 "${getString(it.window.labelRes)} · ${it.sampleSize} comparable tweets · ${String.format(java.util.Locale.ROOT, "%.2f", it.ratio)}× runner-up median views"
             } ?: getString(R.string.brief_debug_timing_none))
         }
+        group(screen, R.string.brief_debug_backdrop_controls)
+        screen.addPreference(ListPreference(context).apply {
+            key = BriefBackdropDebug.PERIOD_KEY
+            title = getString(R.string.brief_debug_backdrop_period)
+            entries = (listOf(getString(R.string.brief_debug_backdrop_current)) + listOf(
+                R.string.brief_theme_morning, R.string.brief_theme_afternoon, R.string.brief_theme_evening,
+                R.string.brief_theme_night, R.string.brief_theme_weekend).map { getString(it) }).toTypedArray()
+            entryValues = (listOf("auto") + BriefBlueTheme.entries.map { it.name }).toTypedArray()
+            setDefaultValue("auto")
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        })
+        screen.addPreference(ListPreference(context).apply {
+            key = BriefBackdropDebug.APPEARANCE_KEY
+            title = getString(R.string.brief_debug_backdrop_appearance)
+            entries = arrayOf(getString(R.string.brief_debug_backdrop_follow_app),
+                getString(R.string.widget_tint_light), getString(R.string.widget_tint_dark))
+            entryValues = arrayOf("auto", "light", "dark")
+            setDefaultValue("auto")
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        })
+        row(screen, "preview_saved_backdrop", R.string.brief_debug_backdrop_open,
+            getString(R.string.brief_debug_backdrop_real_data), arrow = true,
+            enabled = username.isNotBlank() && BriefStore.read(context, username) != null) {
+            startActivity(TwidgetBriefActivity.contentIntent(context, username)
+                .putExtra(BriefBackdropDebug.EXTRA_SAVED_PREVIEW, true))
+        }
         group(screen, R.string.debug_ai_diagnostics)
         row(screen, "ai", R.string.debug_view_ai) { open(BriefDebugPage.AI) }
         group(screen, R.string.debug_tweet_reviews)

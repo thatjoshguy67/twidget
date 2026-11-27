@@ -422,7 +422,7 @@ internal class MainDashboardBinder(
         val spec = insightSpec(card, stats, history)
         return inflateCard(R.layout.metric_card_small_stat).apply {
             findViewById<ImageView>(R.id.metric_platform_icon).apply {
-                setImageResource(R.drawable.dashboard_platform_icon)
+                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(activity))
                 visibility = View.VISIBLE
             }
             findViewById<TextView>(R.id.metric_label).text = spec.label

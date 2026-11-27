@@ -43,6 +43,17 @@ internal object TwidgetHaptics {
         return { vibrator.cancel() }
     }
 
+    /** The caller supplies the visible animation's remaining, speed-scaled duration. */
+    fun animationReveal(view: View, durationMs: Long, startProgress: Float): () -> Unit {
+        if (durationMs <= 0 || !view.isHapticFeedbackEnabled ||
+            Settings.System.getInt(view.context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) == 0) return {}
+        val vibrator = view.context.getSystemService(Vibrator::class.java) ?: return {}
+        if (!vibrator.hasVibrator()) return {}
+        val envelope = AnimationHapticRamp.reveal(durationMs, startProgress, vibrator.hasAmplitudeControl())
+        vibrateTouch(vibrator, VibrationEffect.createWaveform(envelope.timings, envelope.amplitudes, -1))
+        return { vibrator.cancel() }
+    }
+
     fun supportsPrimitive(view: View, primitive: Int): Boolean {
         if (Build.VERSION.SDK_INT < 30) return false
         val vibrator = view.context.getSystemService(Vibrator::class.java) ?: return false

@@ -1,4 +1,11 @@
 <resources>
+    <string name="brief_debug_backdrop_controls" translatable="false">Backdrop with real data</string>
+    <string name="brief_debug_backdrop_period" translatable="false">Time of day</string>
+    <string name="brief_debug_backdrop_current" translatable="false">Current time</string>
+    <string name="brief_debug_backdrop_appearance" translatable="false">Light or dark variant</string>
+    <string name="brief_debug_backdrop_follow_app" translatable="false">Follow app theme</string>
+    <string name="brief_debug_backdrop_open" translatable="false">Preview saved Brief</string>
+    <string name="brief_debug_backdrop_real_data" translatable="false">Keep the saved heading, cards and statistics without regeneration. Appearance overrides apply only to Your Brief. Choose Current time and Follow app theme to reset.</string>
     <string name="brief_timing_upcoming">Plan for the %1$s</string>
     <string name="brief_timing_now">Your %1$s window is open</string>
     <string name="brief_timing_next">Try the %1$s tomorrow</string>

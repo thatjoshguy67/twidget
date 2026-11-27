@@ -28,11 +28,12 @@ class BriefPostCoachTest {
         assertTrue(exposure.evidence.any { "5 public interactions per 100 views" in it })
     }
 
-    @Test fun `replies qualify on their own interactions without entering original benchmarks`() {
+    @Test fun `standout replies qualify without entering original benchmarks`() {
         val original = post("original", views = 1000, likes = 50)
-        val reply = post("reply", views = 200, likes = 10, reply = true)
-        val quietReply = post("quiet-reply", views = 100, likes = 9, reply = true)
-        val analytics = analytics(listOf(original), listOf(reply, quietReply))
+        val reply = post("reply", views = 200, likes = 3, reply = true)
+        val quietReply = post("quiet-reply", views = 100, likes = 2, reply = true)
+        val peers = List(3) { post("peer-$it", views = 100, likes = 1, reply = true) }
+        val analytics = analytics(listOf(original), listOf(reply, quietReply) + peers)
         val reviews = BriefPostCoach.reviewablePosts(analytics, "example", now)
         assertEquals(listOf(original, reply), reviews)
         assertEquals(1, analytics.postsAnalyzed)
@@ -40,7 +41,33 @@ class BriefPostCoachTest {
         assertTrue(analytics.recentReplies.contains(quietReply))
         val report = BriefPostCoach.review(reply, analytics, strings, now)!!
         assertTrue(report.limitations.any { "parent conversation" in it })
-        assertFalse(report.evidence.any { "median" in it })
+        assertTrue(report.examples.all(PostSummary::isReply))
+    }
+
+    @Test fun `reply discovery needs known views interactions and a positive similar age baseline`() {
+        val target = post("target", views = 200, likes = 3, reply = true)
+        val peers = List(3) { post("peer-$it", views = 100, likes = 1, reply = true) }
+        val snapshot = analytics(emptyList(), peers + target)
+        assertTrue(BriefPostCoach.replyEligible(target, snapshot))
+        assertFalse(BriefPostCoach.replyEligible(target.copy(views = 199), snapshot))
+        assertFalse(BriefPostCoach.replyEligible(target.copy(likes = 2), snapshot))
+        assertFalse(BriefPostCoach.replyEligible(target.copy(viewsKnown = false), snapshot))
+        assertFalse(BriefPostCoach.replyEligible(target, analytics(emptyList(), peers.take(2) + target)))
+        assertFalse(BriefPostCoach.replyEligible(target, analytics(emptyList(), peers.map { it.copy(views = 0) } + target)))
+        assertFalse(BriefPostCoach.replyEligible(target, analytics(peers.map { it.copy(isReply = false) }, listOf(target))))
+        assertFalse(BriefPostCoach.replyEligible(target, analytics(emptyList(), peers.map { it.copy(timestamp = now - 2 * hour) } + target)))
+        val quiet = target.copy(views = 199)
+        val quietSnapshot = analytics(emptyList(), peers + quiet)
+        assertFalse(BriefPostCoach.reviewablePosts(quietSnapshot, "example", now).contains(quiet))
+        assertTrue(BriefPostCoach.reviewTargets(quietSnapshot, "example", now).contains(quiet))
+    }
+
+    @Test fun `connected thread entries remain discoverable below the reply threshold`() {
+        val root = post("101", likes = 0)
+        val second = post("102", likes = 0, reply = true).copy(replyToId = "101")
+        val third = post("103", likes = 0, reply = true).copy(replyToId = "102")
+        val snapshot = analytics(listOf(root), listOf(second, third))
+        assertEquals(setOf(root, second, third), BriefPostCoach.reviewablePosts(snapshot, "example", now).toSet())
     }
 
     @Test fun `reply comparisons cannot use originals or different formats`() {

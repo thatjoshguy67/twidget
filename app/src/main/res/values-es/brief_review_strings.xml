@@ -61,8 +61,11 @@
     <string name="review_quoted_tweet">Tuit citado</string>
     <string name="review_quoted_media">Tuit citado · %1$s</string>
     <string name="review_open_quoted_tweet">Abrir tuit citado</string>
-    <string name="dashboard_view_report">Ver informe</string>
     <string name="coach_archived_counts">Tu tuit guardado tiene %1$s visualizaciones y %2$s interacciones públicas registradas.</string>
     <string name="coach_archived_counts_without_views">Tu tuit guardado tiene %1$s interacciones públicas.</string>
     <string name="coach_archived_limit">Son totales acumulados guardados. No está disponible el momento de la observación, por lo que no pueden mostrar el crecimiento reciente ni una comparación justa con los tuits de esta semana.</string>
+    <string name="review_type_post">Publicación</string>
+    <string name="review_type_thread">Hilo</string>
+    <string name="review_show_all_replies">Mostrar todas las respuestas</string>
+    <string name="review_hide_other_replies">Ocultar otras respuestas</string>
 </resources>

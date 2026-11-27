@@ -39,7 +39,8 @@ internal object BriefPostCoachSection {
         val previews = visible.map { post ->
             val target = BriefReviewTarget(username, postUrl = post.url)
             preview(BriefReviewPreviewCopy.description(post, null, strings), BriefReviewTweetCard.create(activity, username, post = post, compact = true,
-                actions = listOf(BriefReviewAction(R.string.review_view) { openReview(target) }))).also { section ->
+                actions = listOf(BriefReviewAction(R.string.review_view) { openReview(target) }),
+                postType = BriefReviewPostType.resolve(post, allPosts))).also { section ->
                 descriptions += post to (section.getChildAt(0) as TextView)
             }
         }
@@ -51,12 +52,17 @@ internal object BriefPostCoachSection {
             descriptionLoad?.cancel()
             descriptionLoad = (activity as? LifecycleOwner)?.lifecycleScope?.launch {
                 val copy = withContext(Dispatchers.IO) {
-                    descriptions.map { (post, _) -> BriefReviewPreviewCopy.description(post,
-                        BriefPublishedReviewStore.read(activity, BriefReviewTarget(username, postUrl = post.url))?.let { saved ->
-                            saved.copy(subject = BriefReviewSubjects.withRanking(activity, saved.subject))
-                        }, strings) }
+                    descriptions.map { (post, _) ->
+                        val saved = BriefPublishedReviewStore.read(activity, BriefReviewTarget(username, postUrl = post.url))
+                        BriefReviewPreviewCopy.description(post, saved?.let {
+                            it.copy(subject = BriefReviewSubjects.withRanking(activity, it.subject))
+                        }, strings) to BriefReviewPostType.resolve(post, allPosts, saved?.subject?.input?.kind)
+                    }
                 }
-                descriptions.zip(copy).forEach { (binding, text) -> binding.second.text = text }
+                descriptions.zip(copy).forEach { (binding, result) ->
+                    binding.second.text = result.first
+                    BriefReviewTweetCard.setPostType(binding.second.parent as View, result.second)
+                }
             }
         }
         refreshDescriptions()

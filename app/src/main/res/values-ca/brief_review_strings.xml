@@ -61,8 +61,11 @@
     <string name="review_quoted_tweet">Tuit citat</string>
     <string name="review_quoted_media">Tuit citat · %1$s</string>
     <string name="review_open_quoted_tweet">Obrir tuit citat</string>
-    <string name="dashboard_view_report">Veure informe</string>
     <string name="coach_archived_counts">El teu tuit desat té %1$s visualitzacions i %2$s interaccions públiques registrades.</string>
     <string name="coach_archived_counts_without_views">El teu tuit desat té %1$s interaccions públiques.</string>
     <string name="coach_archived_limit">Són totals acumulats desats. No està disponible el moment de l\'observació, de manera que no poden mostrar el creixement recent ni una comparació justa amb els tuits d\'aquesta setmana.</string>
+    <string name="review_type_post">Publicació</string>
+    <string name="review_type_thread">Fil</string>
+    <string name="review_show_all_replies">Mostra totes les respostes</string>
+    <string name="review_hide_other_replies">Amaga les altres respostes</string>
 </resources>

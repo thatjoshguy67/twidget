@@ -14,6 +14,7 @@ The dashboard is completely reworked, with an all new layout and refreshed card 
 
 - Rearrange and resize dashboard cards, with separate layouts for each account. Because different profiles may prioritise different types of data.
 - Press and hold a card to enter Edit Mode, resize a card, to add and remove cards, and rearrange cards.
+- Drag cards from the catalogue into the dashboard, with edge scrolling and haptic feedback while rearranging.
 - Made a mistake? You can now undo changes, to bring it back to how it was before.
 - All cards are designed to fit in a new grid system. The layout of these cards can adapt based on your screen size. So a phone can view two columns, and a tablet four. Foldables are also optimised.
 - Added all new cards, like Engagement Mix, Follower count and Original vs Replies.
@@ -28,6 +29,7 @@ A new AI powered feature, Tweet Reviews can give you feedback on your posts. See
 - Get insights into how your tweet performed, how it could be tweaked to perform better.
 - Uses data from the open source X algorithm to inform its results.
 - Check in at regular intervals on a tweet to see how its performance adapts over time.
+- Distinguish posts, replies and threads in the review list. Discover standout replies against their own reply baseline, or choose to show all replies.
 
 **This feature requires a cloud AI provider.** It's too demanding for a local model.
 
@@ -39,7 +41,7 @@ Your Brief got a massive facelift, with new card designs, dynamic backgrounds, r
 - You can also use an OpenAI API key, as well as the existing Gemini API option.
 - Improved reliability and support for on-device Gemini Nano, for Your Brief rankings and card descriptions.
 - Add insights for audience momentum, conversations, content patterns, weekly recaps, hashtags and posting experiments, with supporting charts and figures.
-- Added dynamic backgrounds that adjust based on the time of day. They animate, and look stunning.
+- Added dynamic backgrounds that adjust based on the time of day. They animate, and look stunning. The review and analytics import screens share the new animated materials.
 - Adapt posting-window guidance to whether the account’s stronger posting window is upcoming, open or past, using measured views from comparable-age tweets.
 - Cards can refresh independently without forcing an entire regeneration.
 - Your Brief can regenerate itself when you open Twidget, reducing how long you're staring at a loading screen.

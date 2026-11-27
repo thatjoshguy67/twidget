@@ -40,6 +40,7 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
     private var parsedImport: XAnalyticsImport? = null
     private var step = STEP_INTRO
     private var asyncGeneration = 0L
+    private var material: com.tjg.twidget.brief.BriefFlowBackground? = null
 
     private val csvPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) readCsv(uri)
@@ -63,6 +64,12 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
         }
         stats = TwidgetStore.currentStats(this, username)
         setContentView(R.layout.activity_import_analytics)
+        material = com.tjg.twidget.brief.BriefFlowBackground(resources,
+            com.tjg.twidget.brief.BriefBlueTheme.current(),
+            resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES, phaseOffset = .18f).also {
+            findViewById<View>(R.id.import_root).background = it
+        }
         applyFooterScreenInsets(findViewById(R.id.import_content), findViewById(R.id.import_footer))
         findViewById<AdaptiveCoordinatorLayout>(R.id.import_root).configureAdaptiveMargin(
             AdaptiveCoordinatorLayout.MARGIN_PROVIDER_ADP_DEFAULT,
@@ -75,8 +82,19 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
     }
 
     override fun onDestroy() {
+        material?.dispose()
         asyncGeneration++
         super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        material?.resumeMotion()
+    }
+
+    override fun onPause() {
+        material?.pauseMotion()
+        super.onPause()
     }
 
     private fun setupAnalyticsLink() {
@@ -272,12 +290,14 @@ class AnalyticsImportActivity : EdgeToEdgeActivity() {
             STEP_FAILURE to R.id.import_step_failure,
         )
         steps.forEach { (which, id) -> findViewById<View>(id).visibility = if (which == step) View.VISIBLE else View.GONE }
-        findViewById<View>(R.id.import_root).setBackgroundResource(
+        material?.show(
             when (step) {
-                STEP_SUCCESS -> R.drawable.import_success_bg
-                STEP_FAILURE -> R.drawable.import_failure_bg
-                else -> R.drawable.import_gradient_bg
-            }
+                STEP_CONFIRM -> com.tjg.twidget.brief.BriefFlowBackground.State.CONFIRM
+                STEP_LOADING -> com.tjg.twidget.brief.BriefFlowBackground.State.LOADING
+                STEP_SUCCESS -> com.tjg.twidget.brief.BriefFlowBackground.State.SUCCESS
+                STEP_FAILURE -> com.tjg.twidget.brief.BriefFlowBackground.State.FAILURE
+                else -> com.tjg.twidget.brief.BriefFlowBackground.State.NORMAL
+            }, animate
         )
         configureButtons()
         if (animate) steps[step]?.let { id ->

@@ -105,9 +105,10 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
 
     fun startNowBriefMotion(
         startDelayMs: Long,
+        onTextReady: (() -> Unit)? = null,
         onEnd: (() -> Unit)? = null,
     ) {
-        startMotion(startDelayMs, onEnd = onEnd)
+        startMotion(startDelayMs, onEnd = onEnd, onTextReady = onTextReady)
     }
 
     fun startNowBriefTitleMotion(
@@ -115,8 +116,10 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
         onEnd: (() -> Unit)? = null,
         onBeforeEnd: (() -> Unit)? = null,
         beforeEndLeadMs: Long = 0L,
+        onRevealProgress: ((Float, Long) -> Unit)? = null,
+        onTextReady: (() -> Unit)? = null,
     ) {
-        startMotion(startDelayMs, onEnd, onBeforeEnd, beforeEndLeadMs)
+        startMotion(startDelayMs, onEnd, onBeforeEnd, beforeEndLeadMs, onRevealProgress, onTextReady)
     }
 
     private fun startMotion(
@@ -124,10 +127,13 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
         onEnd: (() -> Unit)? = null,
         onBeforeEnd: (() -> Unit)? = null,
         beforeEndLeadMs: Long = 0L,
+        onRevealProgress: ((Float, Long) -> Unit)? = null,
+        onTextReady: (() -> Unit)? = null,
     ) {
         animator?.cancel()
         if (spans.isEmpty() || !ValueAnimator.areAnimatorsEnabled()) {
             clearMotion()
+            onTextReady?.invoke()
             onBeforeEnd?.invoke()
             onEnd?.invoke()
             return
@@ -147,7 +153,11 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             textRevealStart + textRevealDuration,
             shaderFlowDuration,
         )
+        val durationScale = if (Build.VERSION.SDK_INT >= 33) ValueAnimator.getDurationScale() else
+            android.provider.Settings.Global.getFloat(context.contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
         var beforeEndStarted = false
+        var textReady = false
         val beforeEndRunnable = Runnable {
             beforeEndStarted = true
             onBeforeEnd?.invoke()
@@ -158,6 +168,8 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
             interpolator = android.view.animation.LinearInterpolator()
             addUpdateListener { animation ->
                 val elapsed = animation.currentPlayTime
+                onRevealProgress?.invoke((elapsed.toFloat() / totalDuration).coerceIn(0f, 1f),
+                    ((totalDuration - elapsed).coerceAtLeast(0L) * durationScale).toLong())
                 val shaderProgress = if (profile.shaderFlowDurationMs != null) {
                     SHADER_INTERPOLATOR.getInterpolation((elapsed.toFloat() / shaderFlowDuration).coerceIn(0f, 1f))
                 } else {
@@ -177,6 +189,10 @@ class NowBriefSubtitleMotionView @JvmOverloads constructor(
                         shaderProgress,
                         textRevealProgress,
                     )
+                }
+                if (!textReady && elapsed >= characterRevealDuration) {
+                    textReady = true
+                    onTextReady?.invoke()
                 }
                 invalidate()
             }

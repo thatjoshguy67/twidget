@@ -92,7 +92,7 @@ class DashboardPostReportInstrumentedTest {
                                         val tapBounds = card.touchDelegate.touchDelegateInfo.getRegionAt(0).bounds
                                         assertTrue("The compact pill keeps its larger hit area", tapBounds.height() >= activity.dp(48) - 1)
                                     }
-                                    assertEquals(activity.getString(R.string.dashboard_view_report), button.text.toString())
+                                    assertEquals(activity.getString(R.string.review_view), button.text.toString())
                                     assertTrue("Report label fits", button.paint.measureText(button.text.toString()) <= button.width - button.compoundPaddingLeft - button.compoundPaddingRight + 1)
                                     card.walk().filterIsInstance<TextView>().filter { it != button && it.text.toString().matches(Regex("[\\d.,]+[KMB]?")) }.forEach {
                                         assertTrue("Stat fits at $widthDp dp", it.paint.measureText(it.text.toString()) <= it.width + 1)

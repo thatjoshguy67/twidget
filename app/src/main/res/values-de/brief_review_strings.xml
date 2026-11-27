@@ -61,8 +61,11 @@
     <string name="review_quoted_tweet">Zitierter Tweet</string>
     <string name="review_quoted_media">Zitierter Tweet · %1$s</string>
     <string name="review_open_quoted_tweet">Zitierten Tweet öffnen</string>
-    <string name="dashboard_view_report">Bericht ansehen</string>
     <string name="coach_archived_counts">Dein gespeicherter Tweet hat %1$s erfasste Aufrufe und %2$s öffentliche Interaktionen.</string>
     <string name="coach_archived_counts_without_views">Dein gespeicherter Tweet hat %1$s öffentliche Interaktionen.</string>
     <string name="coach_archived_limit">Dies sind gespeicherte Gesamtsummen. Ihr Beobachtungszeitpunkt ist unbekannt. Sie zeigen daher kein aktuelles Wachstum und erlauben keinen fairen Vergleich mit den Tweets dieser Woche.</string>
+    <string name="review_type_post">Beitrag</string>
+    <string name="review_type_thread">Thread</string>
+    <string name="review_show_all_replies">Alle Antworten anzeigen</string>
+    <string name="review_hide_other_replies">Andere Antworten ausblenden</string>
 </resources>

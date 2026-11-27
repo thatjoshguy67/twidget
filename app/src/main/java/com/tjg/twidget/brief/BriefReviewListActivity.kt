@@ -21,10 +21,17 @@ import kotlinx.coroutines.withContext
 class BriefReviewListActivity : FoldablePopOverActivity() {
     private var load: Job? = null
     private var savedReviewLimit = 50
+    private var showAllReplies = false
+    private var material: BriefFlowBackground? = null
+    private var backdropKey: Triple<BriefBlueTheme, Boolean, Float>? = null
+    private data class Cards(val saved: List<com.tjg.twidget.analytics.PostSummary>,
+        val live: List<com.tjg.twidget.analytics.PostSummary>, val threadIds: Set<String>, val hasHiddenReplies: Boolean)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        delegate.localNightMode = BriefBackdropDebug.nightMode(this)
         super.onCreate(savedInstanceState)
         savedReviewLimit = savedInstanceState?.getInt("savedReviewLimit", 50) ?: 50
+        showAllReplies = savedInstanceState?.getBoolean("showAllReplies") ?: false
         setContentView(R.layout.activity_brief_tweet_review)
         val root = findViewById<View>(R.id.review_root)
         applyEdgeToEdgeInsets(root) { bottom -> BriefPageChrome.navigationInset(findViewById(R.id.review_scroll), bottom) }
@@ -37,7 +44,29 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
 
     override fun onResume() {
         super.onResume()
+        val mode = BriefBackdropDebug.nightMode(this)
+        if (delegate.localNightMode != mode) { delegate.localNightMode = mode; return }
+        val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+        val key = Triple(BriefBackdropDebug.period(this) ?: BriefBlueTheme.current(), night, resources.displayMetrics.density)
+        if (key != backdropKey) {
+            material?.dispose()
+            material = BriefFlowBackground(resources, key.first, night, phaseOffset = .1f).also {
+                findViewById<View>(R.id.review_root).background = it
+            }
+            backdropKey = key
+        }
+        material?.resumeMotion()
         loadCards()
+    }
+
+    override fun onPause() {
+        material?.pauseMotion()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        material?.dispose()
+        super.onDestroy()
     }
 
     private fun loadCards() {
@@ -47,10 +76,28 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
             if (!BriefSettingsStore.contentEnabled(this@BriefReviewListActivity, BriefContentCategory.TWEET_REVIEWS) ||
                 TwidgetStore.accounts(this@BriefReviewListActivity).none { it.equals(username, true) }) { finish(); return@launch }
             val excludedPosts = intent.getStringArrayListExtra(EXTRA_POSTS).orEmpty().toSet()
-            val (savedPosts, liveCards) = withContext(Dispatchers.IO) {
-                BriefPublishedReviewStore.posts(this@BriefReviewListActivity, username, savedReviewLimit + 1) to (
-                BriefPostCoach.reviewablePosts(AnalyticsClient.cached(this@BriefReviewListActivity, username), username,
-                    System.currentTimeMillis()))
+            val (savedPosts, liveCards, threadIds, hasHiddenReplies) = withContext(Dispatchers.IO) {
+                val saved = BriefPublishedReviewStore.posts(this@BriefReviewListActivity, username, savedReviewLimit + 1)
+                val analytics = AnalyticsClient.cached(this@BriefReviewListActivity, username)
+                val now = System.currentTimeMillis()
+                val eligible = BriefPostCoach.reviewablePosts(analytics, username, now)
+                val allReplies = BriefPostCoach.reviewTargets(analytics, username, now).filter { it.isReply }
+                val visibleIds = (eligible + saved.take(savedReviewLimit)).map { BriefPublishedReviewStore.postId(it.url) ?: it.url }.toSet()
+                val excludedIds = excludedPosts.mapNotNull(BriefPublishedReviewStore::postId).toSet()
+                val hiddenReplies = allReplies.any { post ->
+                    val id = BriefPublishedReviewStore.postId(post.url) ?: post.url
+                    id !in visibleIds && post.url !in excludedPosts && id !in excludedIds
+                }
+                val live = eligible + if (showAllReplies) allReplies else emptyList()
+                val candidates = analytics?.let { it.recentPosts + it.recentReplies + it.reviewPosts + it.historicalPosts }.orEmpty() + saved
+                val threads = (live + saved.take(savedReviewLimit)).distinctBy { it.url }.mapNotNull { post ->
+                    val stored = BriefPublishedReviewStore.read(this@BriefReviewListActivity,
+                        BriefReviewTarget(username, postUrl = post.url))
+                    BriefPublishedReviewStore.postId(post.url)?.takeIf {
+                        BriefReviewPostType.resolve(post, candidates, stored?.subject?.input?.kind) == BriefReviewPostType.THREAD
+                    }
+                }.toSet()
+                Cards(saved, live, threads, hiddenReplies)
             }
             val excludedIds = excludedPosts.mapNotNull(BriefPublishedReviewStore::postId).toSet()
             val posts = (liveCards + savedPosts.take(savedReviewLimit))
@@ -63,13 +110,20 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
             posts.forEach { post ->
                 val target = BriefReviewTarget(username, postUrl = post.url)
                 content.addView(BriefReviewTweetCard.create(this@BriefReviewListActivity, username, post = post, compact = true,
+                    postType = BriefReviewPostType.resolve(post,
+                        savedKind = if (BriefPublishedReviewStore.postId(post.url) in threadIds) "thread" else null),
                     actions = listOf(BriefReviewAction(R.string.review_view) { open(target) })),
                     BriefReviewViews.params(this@BriefReviewListActivity, 10))
             }
 
-            if (posts.isEmpty()) content.addView(BriefReviewViews.card(this@BriefReviewListActivity).apply {
+            if (posts.isEmpty() && !hasHiddenReplies) content.addView(BriefReviewViews.card(this@BriefReviewListActivity).apply {
                 addView(BriefReviewViews.text(this@BriefReviewListActivity, getString(R.string.review_list_empty)))
             })
+            if (hasHiddenReplies || showAllReplies) content.addView(BriefReviewViews.button(this@BriefReviewListActivity,
+                if (showAllReplies) R.string.review_hide_other_replies else R.string.review_show_all_replies, false) {
+                showAllReplies = !showAllReplies
+                loadCards()
+            }, BriefReviewViews.params(this@BriefReviewListActivity, 14))
             if (savedPosts.size > savedReviewLimit) content.addView(BriefReviewViews.button(this@BriefReviewListActivity,
                 R.string.review_more_saved, false) { savedReviewLimit += 50; loadCards() }, BriefReviewViews.params(this@BriefReviewListActivity, 14))
         }
@@ -77,6 +131,7 @@ class BriefReviewListActivity : FoldablePopOverActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt("savedReviewLimit", savedReviewLimit)
+        outState.putBoolean("showAllReplies", showAllReplies)
         super.onSaveInstanceState(outState)
     }
 

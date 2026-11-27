@@ -61,8 +61,11 @@
     <string name="review_quoted_tweet">Tweet cité</string>
     <string name="review_quoted_media">Tweet cité · %1$s</string>
     <string name="review_open_quoted_tweet">Ouvrir le tweet cité</string>
-    <string name="dashboard_view_report">Voir le rapport</string>
     <string name="coach_archived_counts">Votre tweet enregistré compte %1$s vues et %2$s interactions publiques.</string>
     <string name="coach_archived_counts_without_views">Votre tweet enregistré compte %1$s interactions publiques.</string>
     <string name="coach_archived_limit">Ces totaux cumulés ont été enregistrés auparavant. Leur date d’observation est inconnue : ils ne permettent pas de mesurer la croissance récente ni de les comparer équitablement aux tweets de cette semaine.</string>
+    <string name="review_type_post">Publication</string>
+    <string name="review_type_thread">Fil</string>
+    <string name="review_show_all_replies">Afficher toutes les réponses</string>
+    <string name="review_hide_other_replies">Masquer les autres réponses</string>
 </resources>

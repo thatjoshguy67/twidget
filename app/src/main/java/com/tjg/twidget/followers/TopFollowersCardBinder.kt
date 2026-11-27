@@ -153,7 +153,7 @@ internal class TopFollowersCardBinder(
                 setOnClickListener { openBrowse(account) }
             }
             addView(android.widget.ImageView(activity).apply {
-                setImageResource(R.drawable.dashboard_platform_icon)
+                setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(activity))
                 imageTintList = ColorStateList.valueOf(secondaryColor)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginEnd = dp(10) })
@@ -202,6 +202,7 @@ internal class TopFollowersCardBinder(
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(label("", 16f, primaryColor, 700).apply {
+                    com.tjg.twidget.ui.TwidgetFonts.dashboardHeading(this, weight = 700)
                     text = VerifiedBadge.decorate(activity, follower.name, follower.verified, null, dp(15))
                     gravity = Gravity.START
                     textAlignment = View.TEXT_ALIGNMENT_VIEW_START

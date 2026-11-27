@@ -128,6 +128,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private var providerSetupRequired = false
     private var apiKeyPromptShown = false
     private var apiKeyDialog: AlertDialog? = null
+    private val savedBackdropPreview get() = TwidgetStore.debugMenuUnlocked(this) &&
+        intent.getBooleanExtra(BriefBackdropDebug.EXTRA_SAVED_PREVIEW, false)
 
     private val providerSignIn = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK && BriefSettingsStore.cloudApiKey(this).isNotBlank()) providerConfigured()
@@ -141,6 +143,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        delegate.localNightMode = BriefBackdropDebug.nightMode(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_twidget_brief)
         findViewById<View>(R.id.brief_root).addOnLayoutChangeListener { view, left, _, right, _, oldLeft, _, oldRight, _ ->
@@ -164,7 +167,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
         entryCelebrationPlayed = savedInstanceState?.getBoolean("brief_entry_celebration_played") ?: false
         apiKeyPromptShown = intent.getBooleanExtra(EXTRA_API_KEY_PROMPT_SHOWN, false)
-        if (debugScenario == BriefDebugScenario.REAL) BriefSettingsStore.setEnabled(this, true)
+        if (debugScenario == BriefDebugScenario.REAL && !savedBackdropPreview) BriefSettingsStore.setEnabled(this, true)
 
         bindChrome()
         applyContextBackground()
@@ -189,14 +192,26 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
         showLaunchShell()
         afterFirstFrame {
-            if (savedInstanceState == null) {
-                com.tjg.twidget.ui.TwidgetHaptics.quickRise(findViewById(R.id.brief_root))
-            }
             loadInitialBrief()
         }
     }
 
     private fun loadInitialBrief() {
+        if (savedBackdropPreview) {
+            lifecycleScope.launch {
+                val cached = withContext(Dispatchers.IO) {
+                    BriefStore.read(this@TwidgetBriefActivity, username)?.let {
+                        it to AnalyticsClient.cached(this@TwidgetBriefActivity, username)
+                    }
+                }
+                if (cached == null) { finish(); return@launch }
+                render(cached.first, cached.second)
+                prepareBriefEntrance()
+                setLoading(false)
+                startPreparedBriefEntrance()
+            }
+            return
+        }
         if (debugScenario == BriefDebugScenario.COMPONENTS) {
             render(BriefSnapshot(username, System.currentTimeMillis(), 0, 0, 0, 130, 20, 6, 0, 0,
                 emptyList(), topFollowerRanks = emptyMap()))
@@ -308,11 +323,18 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onResume() {
         super.onResume()
+        val backdropMode = BriefBackdropDebug.nightMode(this)
+        if (delegate.localNightMode != backdropMode) {
+            delegate.localNightMode = backdropMode
+            return
+        }
+        if (loadingBrief) startRegenerationHaptics()
         applyContextBackground()
         startBackgroundMotion()
         startBackgroundEntry()
         findViewById<View>(R.id.brief_root).post { forceCelebrationOnEntry() }
         if (backgroundUnlockStarted || !intent.getBooleanExtra(EXTRA_FROM_ONBOARDING, false)) startBackgroundUnlock()
+        if (savedBackdropPreview) return
         if (renderedTimingHour != java.time.ZonedDateTime.now().withMinute(0).withSecond(0).withNano(0)) {
             renderedSnapshot?.let { render(it) }
         }
@@ -361,6 +383,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         animateOnComplete: Boolean = showSpinner,
         clearContentPendingOnSuccess: Boolean = false,
     ) {
+        if (savedBackdropPreview) return
         lifecycleScope.launch {
             var entrancePrepared = false
             if (showSpinner || forceAi) setLoading(true)
@@ -429,6 +452,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
             BriefRunCache.providerMatches(BriefSettingsStore.provider(this), source.providerUsed)
 
     override fun onPause() {
+        stopContentHaptics()
+        stopRegenerationHaptics()
         entryCelebrationPlayed = false
         backgroundMotion?.cancel()
         backgroundMotion = null
@@ -492,6 +517,14 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun setLoading(loading: Boolean) {
+        if (loading && !loadingBrief) summaryCopyReady = false
+        loadingBrief = loading
+        if (loading) {
+            stopContentHaptics()
+            startRegenerationHaptics()
+        } else {
+            stopRegenerationHaptics()
+        }
         syncChatGptLoginCards()
         val remembered = visiblePresentation != null
         val showBrief = !loading && (remembered || !providerSetupRequired)
@@ -764,12 +797,16 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     }
 
     private fun postCard(post: PostSummary, sourceAttribution: String = ""): View {
+        val analytics = AnalyticsClient.cached(this, username)
         val eligible = BriefSettingsStore.contentEnabled(this, BriefContentCategory.TWEET_REVIEWS) &&
-            BriefPostCoach.reviewablePosts(AnalyticsClient.cached(this, username), username, System.currentTimeMillis())
+            BriefPostCoach.reviewablePosts(analytics, username, System.currentTimeMillis())
                 .any { it.url == post.url }
         val actions = if (eligible) listOf(BriefReviewAction(R.string.review_view) { openReview(post) }) else emptyList()
         return BriefReviewTweetCard.create(this, username, post = post, compact = true, actions = actions,
-            sourceAttribution = sourceAttribution)
+            sourceAttribution = sourceAttribution,
+            postType = BriefReviewPostType.resolve(post, analytics?.let {
+                it.recentPosts + it.recentReplies + it.reviewPosts + it.historicalPosts
+            }.orEmpty()))
     }
 
     private fun openReview(post: PostSummary) = startRightSidePopOverActivity(
@@ -884,6 +921,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
             .showStaticText(summary.title)
         findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body).showStaticText(summary.body)
+        summaryCopyReady = summary.title.isNotBlank() && summary.body.isNotBlank()
+        if (summaryCopyReady) stopRegenerationHaptics()
         val columns = configureResponsiveLayout()
         val container = findViewById<LinearLayout>(R.id.brief_cards)
         findViewById<View>(R.id.brief_footer).visibility = if (debugScenario == BriefDebugScenario.COMPONENTS) View.GONE else View.VISIBLE
@@ -984,6 +1023,7 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
     private fun reflowForViewport(force: Boolean = false) {
         val snapshot = renderedSnapshot ?: return
         if (!force && viewportWidth() == renderedViewportWidth) return
+        stopContentHaptics()
         // Old column translations and delayed entrance callbacks must not restore the previous width.
         entranceGeneration++
         entranceInProgress = false
@@ -1306,8 +1346,46 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
         }
     }
 
+    private var loadingBrief = false
+    private var summaryCopyReady = false
+    private var regenerationHaptics: kotlinx.coroutines.Job? = null
+    private var cancelRegenerationHaptic: (() -> Unit)? = null
+    private var cancelContentHaptic: (() -> Unit)? = null
+    private var contentHapticsEnabled = false
+
+    private fun stopContentHaptics() {
+        contentHapticsEnabled = false
+        cancelContentHaptic?.invoke()
+        cancelContentHaptic = null
+    }
+
+    private fun stopRegenerationHaptics() {
+        regenerationHaptics?.cancel()
+        regenerationHaptics = null
+        cancelRegenerationHaptic?.invoke()
+        cancelRegenerationHaptic = null
+    }
+
+    private fun startRegenerationHaptics() {
+        if (!loadingBrief || summaryCopyReady || regenerationHaptics?.isActive == true || !ValueAnimator.areAnimatorsEnabled() ||
+            !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        regenerationHaptics = lifecycleScope.launch {
+            // Cached loads finish silently; only a visible wait gets a quiet, unhurried tick.
+            kotlinx.coroutines.delay(900L)
+            while (loadingBrief && !summaryCopyReady) {
+                if (hasWindowFocus() && ValueAnimator.areAnimatorsEnabled()) {
+                    cancelRegenerationHaptic?.invoke()
+                    cancelRegenerationHaptic = com.tjg.twidget.ui.TwidgetHaptics.previewPrimitive(
+                        findViewById(R.id.brief_root), 8, .05f)
+                }
+                kotlinx.coroutines.delay(1400L)
+            }
+        }
+    }
+
     private fun prepareBriefEntrance() {
         if (entranceInProgress) return
+        stopContentHaptics()
         entranceInProgress = true
         entranceStarted = false
         entranceGeneration++
@@ -1371,7 +1449,8 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     private fun applyContextBackground() {
         val preview = if (TwidgetStore.debugMenuUnlocked(this)) intent.getStringExtra("brief_blue_theme") else null
-        val theme = BriefBlueTheme.entries.firstOrNull { it.name == preview } ?: BriefBlueTheme.current()
+        val theme = BriefBlueTheme.entries.firstOrNull { it.name == preview }
+            ?: BriefBackdropDebug.period(this) ?: BriefBlueTheme.current()
         val key = Triple(theme, isNight(), resources.displayMetrics.density)
         if (appliedBlueTheme != key) {
             appliedBlueTheme = key
@@ -1432,20 +1511,39 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) forceCelebrationOnEntry()
+        if (hasFocus) {
+            if (loadingBrief) startRegenerationHaptics()
+            forceCelebrationOnEntry()
+        } else {
+            stopContentHaptics()
+            stopRegenerationHaptics()
+        }
     }
 
     private fun startPreparedBriefEntrance() {
+        stopRegenerationHaptics()
         startBackgroundUnlock()
         if (!entranceInProgress || entranceStarted) return
         entranceStarted = true
         val generation = entranceGeneration
-        findViewById<View>(R.id.brief_scroll).post {
+        val scroll = findViewById<View>(R.id.brief_scroll)
+        scroll.post {
             if (isFinishing || isDestroyed || generation != entranceGeneration) return@post
+            contentHapticsEnabled = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+            var revealHapticStarted = false
+            var pendingSummaryText = 2
+            val summaryTextReady = {
+                if (generation == entranceGeneration && --pendingSummaryText == 0) {
+                    summaryCopyReady = true
+                    stopRegenerationHaptics()
+                    stopContentHaptics()
+                }
+            }
             val sections = entranceSections.toList()
             var remaining = sections.size + 3 // Heading, description, footer and each card.
             val finished = {
                 if (generation == entranceGeneration && --remaining == 0) {
+                    stopContentHaptics()
                     entranceInProgress = false
                     entranceStarted = false
                     val pending = pendingEntranceRender
@@ -1455,9 +1553,21 @@ class TwidgetBriefActivity : FoldablePopOverActivity() {
                 }
             }
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_title)
-                .startNowBriefTitleMotion(TITLE_DELAY_MS, onEnd = finished)
+                .startNowBriefTitleMotion(TITLE_DELAY_MS, onEnd = finished, onTextReady = summaryTextReady,
+                    onRevealProgress = { progress, remainingMs ->
+                    if (contentHapticsEnabled && generation == entranceGeneration && scroll.isShown && scroll.alpha > .01f &&
+                        ValueAnimator.areAnimatorsEnabled() && hasWindowFocus() &&
+                        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        if (!revealHapticStarted && remainingMs > 0) {
+                            revealHapticStarted = true
+                            cancelContentHaptic?.invoke()
+                            cancelContentHaptic = com.tjg.twidget.ui.TwidgetHaptics.animationReveal(
+                                findViewById(R.id.brief_root), remainingMs, progress)
+                        }
+                    }
+                })
             findViewById<NowBriefSubtitleMotionView>(R.id.brief_summary_body)
-                .startNowBriefMotion(COPY_DELAY_MS) {
+                .startNowBriefMotion(COPY_DELAY_MS, onTextReady = summaryTextReady) {
                     sections.forEach { section ->
                         startNowBriefCardEntrance(section, 0L, finished)
                     }

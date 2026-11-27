@@ -70,7 +70,8 @@ internal class BriefReviewScreen(private val context: Context, private val callb
             original.removeAllViews()
             state.subject?.let { subject -> original.addView(BriefReviewTweetCard.create(context,
                 subject.target.username, requireNotNull(subject.post), reviewPreview = true, openOnCardTap = true,
-                onClick = subject.post?.let { post -> { callbacks.openPost(post) } })) }
+                onClick = subject.post?.let { post -> { callbacks.openPost(post) } },
+                postType = BriefReviewPostType.resolve(requireNotNull(subject.post), savedKind = subject.input.kind))) }
         }
         original.rotation = 0f
         original.elevation = 0f

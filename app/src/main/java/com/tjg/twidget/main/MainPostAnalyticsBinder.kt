@@ -105,7 +105,7 @@ internal class MainPostAnalyticsBinder(
                 isBaselineAligned = false
                 minimumHeight = cardDp(24)
                 addView(ImageView(activity).apply {
-                    setImageResource(R.drawable.dashboard_platform_icon)
+                    setImageResource(com.tjg.twidget.ui.AppAppearance.logoDrawable(activity))
                     imageTintList = ColorStateList.valueOf(activity.getColor(R.color.oneui_text_secondary))
                     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 }, LinearLayout.LayoutParams(cardDp(16), cardDp(16)).apply { marginEnd = cardDp(10) })

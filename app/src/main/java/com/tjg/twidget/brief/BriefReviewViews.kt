@@ -146,10 +146,18 @@ private class BriefTweetActions(context: Context, private val stackActions: Bool
 
 /** Shared native tweet surface for entry points, the published review header. */
 internal object BriefReviewTweetCard {
+    fun setPostType(card: View, type: BriefReviewPostType) {
+        card.findViewWithTag<ImageView>("brief_review_post_type")?.apply {
+            setImageResource(type.icon)
+            contentDescription = context.getString(type.label)
+        }
+    }
+
     fun create(context: Context, username: String, post: PostSummary, compact: Boolean = false,
         actions: List<BriefReviewAction> = emptyList(), onClick: (() -> Unit)? = null,
         sourceAttribution: String = "", reviewPreview: Boolean = false, openOnCardTap: Boolean = false,
-        stackCompactActions: Boolean = false): View {
+        stackCompactActions: Boolean = false,
+        postType: BriefReviewPostType = BriefReviewPostType.resolve(post)): View {
         val stats = TwidgetStore.currentStats(context, username)
         val quoted = post?.quotedPost
         val mediaHeight = when {
@@ -188,7 +196,11 @@ internal object BriefReviewTweetCard {
                 val source = date
                 addView(BriefReviewViews.text(context, listOf("@$username", source, sourceAttribution).filter(String::isNotBlank).joinToString(" · "), 12f, secondary = true))
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(BriefReviewViews.icon(context, R.drawable.ic_logo_twitter))
+            addView(BriefReviewViews.icon(context, postType.icon).apply {
+                tag = "brief_review_post_type"
+                contentDescription = context.getString(postType.label)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            })
         }
         result.addView(header)
         if (post != null) {

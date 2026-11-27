@@ -55,8 +55,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/oneui_text_primary"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textSize="20sp" />
 
             <TextView
                 android:id="@+id/top_follower_row_username"

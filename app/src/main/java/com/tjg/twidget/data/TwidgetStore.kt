@@ -866,8 +866,7 @@ object TwidgetStore {
         val monthly = when (range) {
             HistoryRange.YEAR -> true
             HistoryRange.ALL_TIME -> {
-                val real = all.filterNot { it.estimated }
-                val firstDay = startOfDay(real.minOfOrNull { it.timestamp } ?: System.currentTimeMillis())
+                val firstDay = startOfDay(all.minOfOrNull { it.timestamp } ?: System.currentTimeMillis())
                 val today = startOfDay(System.currentTimeMillis())
                 (today - firstDay) > 89 * DAY_MILLIS
             }
@@ -909,8 +908,7 @@ object TwidgetStore {
     }
 
     private fun allTimeBucketEnds(all: List<HistorySample>, today: Long): List<Long> {
-        val real = all.filterNot { it.estimated }
-        val firstDay = startOfDay(real.minOfOrNull { it.timestamp } ?: today)
+        val firstDay = startOfDay(all.minOfOrNull { it.timestamp } ?: today)
         val spanDays = ((today - firstDay) / DAY_MILLIS).coerceAtLeast(1)
         val bucketCount = minOf(12, spanDays.toInt()).coerceAtLeast(1)
         if (bucketCount == 1) return listOf(today)
@@ -949,7 +947,7 @@ object TwidgetStore {
             HistoryRange.MONTH -> today - 29 * DAY_MILLIS
             HistoryRange.THREE_MONTHS -> today - 89 * DAY_MILLIS
             HistoryRange.YEAR -> today - 364 * DAY_MILLIS
-            HistoryRange.ALL_TIME -> all.filterNot { it.estimated }
+            HistoryRange.ALL_TIME -> all
                 .minOfOrNull { startOfDay(it.timestamp) } ?: today
         }
     }

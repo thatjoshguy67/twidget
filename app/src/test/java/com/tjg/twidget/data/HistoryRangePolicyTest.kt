@@ -7,6 +7,24 @@ import org.junit.Test
 
 class HistoryRangePolicyTest {
     @Test
+    fun allTimeChartIncludesLegacyEstimatesBeforeTodaysVerifiedSample() {
+        val today = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val old = sample(0).copy(timestamp = today - 30L * 86400000, estimated = true)
+        val current = sample(0).copy(timestamp = today, followers = 200)
+        val chart = TwidgetStore.chartHistory(listOf(old, current), HistoryRange.ALL_TIME)
+        assertTrue(chart.size > 1)
+        assertEquals(old.timestamp, chart.first().timestamp)
+        assertTrue(chart.first().estimated)
+        assertEquals(current.followers, chart.last().followers)
+        assertFalse(chart.last().estimated)
+    }
+
+    @Test
     fun allTimeIsAlwaysAvailable() {
         assertTrue(HistoryRangePolicy.isAvailable(HistoryRange.ALL_TIME, emptyList()))
     }

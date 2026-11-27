@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="goal_noun_followers">
+        <item quantity="one">volger</item>
+        <item quantity="other">volgers</item>
+    </plurals>
+    <plurals name="goal_noun_verified">
+        <item quantity="one">geverifieerde volger</item>
+        <item quantity="other">geverifieerde volgers</item>
+    </plurals>
+    <plurals name="goal_noun_impressions">
+        <item quantity="one">vertoning</item>
+        <item quantity="other">vertoningen</item>
+    </plurals>
+    <plurals name="goal_noun_engagement">
+        <item quantity="one">betrokkenheidspercentage</item>
+        <item quantity="other">betrokkenheidspercentage</item>
+    </plurals>
+    <plurals name="widget_count_followers">
+        <item quantity="one">Volger</item>
+        <item quantity="other">Volgers</item>
+    </plurals>
+</resources>

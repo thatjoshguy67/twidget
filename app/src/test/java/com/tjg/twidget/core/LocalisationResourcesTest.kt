@@ -39,7 +39,7 @@ class LocalisationResourcesTest {
             }
         }
     }
-    @Test fun everyRegisteredLanguageHasEveryResourceAndMatchingFormatArguments() {
+    @Test fun registeredLanguagesHaveValidResourcesAndMatchingFormatArguments() {
         val expected = entries("")
         val locales = DocumentBuilderFactory.newInstance().newDocumentBuilder()
             .parse(File(res, "xml/locales_config.xml")).getElementsByTagName("locale")
@@ -47,13 +47,23 @@ class LocalisationResourcesTest {
             val lang = (locales.item(i) as Element).getAttribute("android:name")
             if (lang == "en") continue
             val actual = entries(lang)
-            assertEquals("$lang resources", expected.keys, actual.keys)
+            // Dutch was contributed against an earlier release. Android uses the default
+            // string for newer resources while the Dutch translations catch up.
+            if (lang == "nl") {
+                assertTrue("Dutch must include the app and widget language labels",
+                    actual.keys.containsAll(listOf("language_dutch", "widget_language_nl")))
+                assertTrue("Obsolete Dutch resources: ${actual.keys - expected.keys}", expected.keys.containsAll(actual.keys))
+            } else {
+                assertEquals("$lang resources", expected.keys, actual.keys)
+            }
             val format = Regex("%(?:[0-9]+\\$)?[a-zA-Z]")
-            for ((key, original) in expected) {
+            for ((key, translated) in actual) {
+                val original = expected.getValue(key)
+                assertEquals("$lang/$key resource type", original.tagName, translated.tagName)
                 assertEquals("$lang/$key arguments", format.findAll(original.textContent).map { it.value }.toSet(),
-                    format.findAll(actual.getValue(key).textContent).map { it.value }.toSet())
+                    format.findAll(translated.textContent).map { it.value }.toSet())
                 if (original.tagName == "plurals" && lang in setOf("ca", "es", "fr")) {
-                    val items = actual.getValue(key).getElementsByTagName("item")
+                    val items = translated.getElementsByTagName("item")
                     val quantities = (0 until items.length).map { (items.item(it) as Element).getAttribute("quantity") }
                     assertTrue("$lang/$key requires many and other", quantities.containsAll(listOf("many", "other")))
                 }

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_data_sources">Gegevens en bronnen</string>
+    <string name="settings_your_brief">Jouw Overzicht</string>
+    <string name="settings_notifications">Meldingen</string>
+    <string name="settings_scheduled_tweets">Geplande tweets</string>
+    <string name="settings_main_account">Hoofdaccount</string>
+    <string name="settings_other_accounts">Overige accounts</string>
+    <string name="settings_alternate_sources">Alternatieve bronnen beheren</string>
+    <string name="settings_self_hosted_bridge">Zelf-gehoste Twidget-bridge</string>
+    <string name="settings_widget_defaults">Widgetstandaarden</string>
+    <string name="settings_system_default">Systeemstandaard</string>
+    <string name="settings_analytics_import">X-statistieken importeren</string>
+    <string name="settings_import_pending">In afwachting</string>
+    <string name="settings_imported">Geïmporteerd</string>
+    <string name="settings_connected">Verbonden</string>
+    <string name="settings_enable_dummy">Dummyprofiel inschakelen</string>
+    <string name="settings_android_api">Android API %1$d</string>
+    <string name="settings_last_error">Laatste fout: %1$s</string>
+    <string name="settings_palette_seed">Seed</string>
+    <string name="settings_palette_primary_light">Primair · licht</string>
+    <string name="settings_palette_primary_dark">Primair · donker</string>
+    <string name="settings_palette_control_light">Besturing · licht</string>
+    <string name="settings_palette_control_dark">Besturing · donker</string>
+    <string name="settings_palette_token">%1$s: %2$s</string>
+    <string name="settings_demo_name">Twidget Demo</string>
+    <string name="settings_brief_description">%1$s\n\n%2$s</string>
+    <string name="settings_update_channel">Updatekanaal</string>
+    <string name="settings_app_font">App-lettertype</string>
+    <string name="settings_app_font_default">Standaard (One UI Sans)</string>
+    <string name="settings_font_tip_title">Tip voor aangepast lettertype</string>
+    <string name="settings_font_tip_summary">Gebruik SamFonts om je One UI-systeemlettertype te wijzigen en kies vervolgens Systeemstandaard bij App-lettertype.</string>
+    <string name="settings_font_tip_link">SamFonts downloaden</string>
+</resources>

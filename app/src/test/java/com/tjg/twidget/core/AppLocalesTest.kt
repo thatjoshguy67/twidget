@@ -25,6 +25,14 @@ class AppLocalesTest {
         assertEquals(ca, AppLocales.resolve("ca-ES"))
     }
 
+    @Test fun dutchIsSupportedForAppFormattingAndExplicitWidgetLanguages() {
+        val dutch = Locale.forLanguageTag("nl-NL")
+        val belgianDutch = Locale.forLanguageTag("nl-BE")
+        assertEquals(dutch, AppLocales.supportedLocale(dutch))
+        assertEquals(belgianDutch, AppLocales.resolve("nl-BE"))
+        assertEquals("12.345", AppLocales.integer(12_345, dutch))
+    }
+
     @Test fun unsupportedLanguagesUseEnglishButSupportedRegionsKeepTheirFormatting() {
         assertEquals(Locale.forLanguageTag("en-JP"), AppLocales.supportedLocale(Locale.JAPAN))
         assertEquals(Locale.GERMANY, AppLocales.supportedLocale(Locale.GERMANY))

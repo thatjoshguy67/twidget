@@ -8,6 +8,7 @@
     <string name="widget_language_en">Anglais (English)</string>
     <string name="widget_language_fr">Français</string>
     <string name="widget_language_es">Espagnol (Español)</string>
+    <string name="widget_language_nl">Néerlandais (Nederlands)</string>
     <string name="lockscreen_follower_1x1_label">Abonnés 1x1</string>
     <string name="lockscreen_follower_2x1_label">Abonnés 2x1</string>
     <string name="last_synced">Dernière synchronisation : %1$s</string>
@@ -117,6 +118,7 @@
     <string name="language_english">Anglais (English)</string>
     <string name="language_french">Français</string>
     <string name="language_spanish">Espagnol (Español)</string>
+    <string name="language_dutch">Néerlandais (Nederlands)</string>
     <string name="milestone_use_auto">Utiliser le palier automatique</string>
     <string name="milestone_edit_button">Modifier</string>
     <string name="milestone_show_percent">Afficher le pourcentage de progression</string>
@@ -1015,4 +1017,5 @@
     <string name="brief_debug_diagnose_generation_summary">Enregistre les réponses rejetées du modèle, les données de référence et les détails de validation pour cette exécution de débogage uniquement</string>
     <string name="brief_debug_diagnosis_report">Rapport de diagnostic de génération</string>
     <string name="brief_debug_no_diagnosis">Aucun diagnostic détaillé enregistré</string>
+    <string name="about_damanmikey_summary">Traduit en néerlandais et rendu l’IA locale fonctionnelle sur davantage d’appareils via AICore</string>
 </resources>

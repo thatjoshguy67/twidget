@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_followers_browser_title">Topvolgers</string>
+    <string name="top_followers_browser_search">Volgers zoeken</string>
+    <string name="top_followers_browser_search_hint">Zoeken</string>
+    <string name="top_followers_browser_refresh">Volledige lijst vernieuwen</string>
+    <string name="top_followers_browser_refreshed">%1$d volgers gesynchroniseerd</string>
+    <string name="top_followers_browser_refresh_failed">Kan de volledige volgerslijst niet vernieuwen. Probeer het opnieuw.</string>
+    <string name="top_followers_browser_empty">Er is nog geen volgersranglijst beschikbaar.</string>
+    <string name="top_followers_browser_no_results">Geen volgers gevonden die overeenkomen met je zoekopdracht.</string>
+</resources>

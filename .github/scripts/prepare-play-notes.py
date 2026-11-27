@@ -10,6 +10,9 @@ def parse_notes(text):
     notes = {}
     for match in pattern.finditer(text):
         locale, body = match.group(1), match.group(2).strip()
+        # Play's locale identifiers are not all regional BCP-47 tags.
+        if locale == "ca-ES":
+            raise ValueError("Google Play uses ca for Catalan; replace ca-ES with ca")
         if locale in notes:
             raise ValueError(f"Duplicate locale: {locale}")
         if not body or len(body) > 500:

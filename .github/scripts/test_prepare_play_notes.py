@@ -17,6 +17,11 @@ class PlayNotesTests(unittest.TestCase):
             {"en-GB": "• Fixes\nMore changes", "fr-FR": "Améliorations"},
         )
 
+    def test_catalan_uses_play_language_code(self):
+        self.assertEqual(parse_notes("<ca>\nNovetats\n</ca>"), {"ca": "Novetats"})
+        with self.assertRaisesRegex(ValueError, "Google Play uses ca for Catalan"):
+            parse_notes("<ca-ES>\nNovetats\n</ca-ES>")
+
     def test_character_limit(self):
         self.assertEqual(len(parse_notes(f"<en-GB>\n{'é' * 500}\n</en-GB>")["en-GB"]), 500)
         with self.assertRaises(ValueError):

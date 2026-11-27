@@ -38,7 +38,7 @@ Novedades de la beta 1.4:
 - ¡Y mucho más!
 </es-ES>
 
-<ca-ES>
+<ca>
 Novetats de la beta 1.4:
 - Tauler redissenyat amb targetes noves, més personalització i millor suport per a pantalles grans.
 - Les ressenyes de tuits t’ajuden a entendre els teus tuits i com millorar-los.
@@ -46,7 +46,7 @@ Novetats de la beta 1.4:
 - Millor suport per a Gemini Nano i ús del teu compte de ChatGPT per a la IA al núvol.
 - Afegits neerlandès, castellà i català.
 - I molt més!
-</ca-ES>
+</ca>
 
 <nl-NL>
 Nieuw in 1.4 Bèta 1:

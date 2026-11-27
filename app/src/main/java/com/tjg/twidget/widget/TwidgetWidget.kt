@@ -365,6 +365,7 @@ open class TwidgetWidget : AppWidgetProvider() {
                 "fr" -> frenchNumberWords(value)
                 "es" -> SpanishNumberWords.spell(value)
                 "ca" -> CatalanNumberWords.spell(value)
+                "nl" -> DutchNumberWords.spell(value)
                 else -> numberWords(value)
             }
         }

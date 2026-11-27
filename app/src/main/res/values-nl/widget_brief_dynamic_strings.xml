@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_brief_dynamic">Dynamische achtergrond</string>
+    <string name="widget_brief_dynamic_summary">Meng je gekozen kleuren achter Jouw Overzicht.</string>
+    <string name="widget_brief_primary_colour">Eerste kleur</string>
+    <string name="widget_brief_secondary_colour">Tweede kleur</string>
+    <string name="widget_brief_background">Achtergrond</string>
+    <string name="widget_brief_background_type">Type achtergrond</string>
+    <string name="widget_brief_basic">Eenvoudig</string>
+    <string name="widget_brief_dynamic_colour">Dynamische kleur</string>
+    <string name="widget_brief_automatic_colours">Verandert automatisch door de dag heen.</string>
+</resources>

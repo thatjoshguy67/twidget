@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="l10n_error_unknown">Er ging iets mis. Probeer het opnieuw.</string>
+    <string name="l10n_error_empty_thread">Voeg minstens één bericht aan de reeks toe.</string>
+    <string name="l10n_error_empty_item">Een bericht in de reeks moet tekst of media bevatten.</string>
+    <string name="l10n_error_text_limit">De tekst mag maximaal %1$s tekens bevatten.</string>
+    <string name="l10n_error_media_limit">Een bericht kan maximaal %1$s mediabijlagen bevatten.</string>
+    <string name="l10n_error_future_time">Het geplande tijdstip moet in de toekomst liggen.</string>
+    <string name="l10n_error_schedule_failed">Inplannen mislukt. Probeer het opnieuw.</string>
+    <string name="l10n_error_reminder_failed">De herinnering kon niet worden ingepland. Controleer de alarmmachtigingen.</string>
+    <string name="l10n_error_read_media">De geselecteerde media konden niet worden gelezen.</string>
+    <string name="l10n_error_media_large">Het mediabestand is te groot.</string>
+    <string name="l10n_error_save_media">De media konden niet worden opgeslagen. Controleer de opslagmachtigingen en probeer het opnieuw.</string>
+    <string name="l10n_error_download_media">De media konden niet worden gedownload. Controleer je verbinding.</string>
+    <string name="l10n_error_csv_anchor">Voor het gekozen account is nog geen bruikbaar aantal volgers beschikbaar.</string>
+    <string name="l10n_error_csv_empty">Het bestand bevat geen rijen met statistieken.</string>
+    <string name="l10n_error_csv_column">De kolom %1$s ontbreekt.</string>
+    <string name="l10n_error_csv_row">Rij %1$s is onvolledig of bevat een ongeldige waarde in %2$s.</string>
+    <string name="l10n_error_csv_year">De export bevat meer dan een jaar aan gegevens.</string>
+    <string name="l10n_error_csv_duplicate">De export bevat dubbele datums.</string>
+    <string name="l10n_error_csv_invalid">Het bestand met statistieken kon niet worden gelezen. Controleer de kolommen en waarden.</string>
+    <string name="l10n_error_account_changed">Het opgeslagen account is gewijzigd. Probeer het opnieuw.</string>
+    <string name="l10n_error_account_identity">De nieuwe gebruikersnaam hoort bij een ander X-account.</string>
+    <string name="l10n_error_account_stale">De opgehaalde profielgegevens zijn ouder dan je opgeslagen gegevens. Probeer het opnieuw.</string>
+    <string name="l10n_error_account_exists">Voor die gebruikersnaam zijn al gegevens opgeslagen. Je bestaande accounts zijn behouden.</string>
+    <string name="l10n_error_account_invalid">Voer een geldige X-gebruikersnaam in.</string>
+    <string name="l10n_error_account_save">De accountgegevens konden niet worden opgeslagen. Start de app opnieuw om veilig te herstellen.</string>
+    <string name="l10n_widget_followers_of">volgers</string>
+    <string name="l10n_import_localized_range">%1$s tot %2$s</string>
+    <string name="l10n_error_csv_inconsistent">Rij %1$s vermeldt %2$s interacties, minder dan de %3$s zichtbare acties.</string>
+    <string name="l10n_error_csv_gap">Er ontbreken gegevens tussen %1$s en %2$s.</string>
+    <string name="l10n_error_csv_size">Het bestand met statistieken is te groot. De limiet is %1$s tekens.</string>
+    <string name="l10n_error_csv_quotes">In het bestand staat een waarde waarvan het afsluitende aanhalingsteken ontbreekt.</string>
+</resources>

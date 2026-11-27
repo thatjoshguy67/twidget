@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_goal_card_progress">%1$s / %2$s · %3$d%%</string>
+    <string name="brief_goal_card_unknown">Je doel: %1$s · huidige waarde onbekend</string>
+    <string name="brief_goal_current_value">Huidige waarde</string>
+    <string name="brief_goal_target_value">Je doel</string>
+    <string name="brief_goal_progress_value">Voortgang</string>
+</resources>

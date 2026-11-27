@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_preview_cards">Voorbeeld van overzichtskaarten</string>
+    <string name="brief_preview_parameters">Voorbeeldinstellingen aanpassen</string>
+    <string name="brief_preview_cards_summary">Elk kaartontwerp met voorbeeldgegevens. Wijzig de voorbeeldstatus in de debug-instellingen.</string>
+    <string name="brief_preview_all_variants">Alle varianten tonen</string>
+</resources>

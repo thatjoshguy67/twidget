@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compare_title">Vergelijken</string>
+    <string name="compare_done">Klaar</string>
+    <string name="compare_vs">tegen</string>
+    <string name="compare_choose">Account kiezen</string>
+    <string name="compare_type_handle">Voer een openbare gebruikersnaam in</string>
+    <string name="compare_handle_hint">Gebruikersnaam</string>
+    <string name="compare_cancel">Annuleren</string>
+    <string name="compare_use_account">Account gebruiken</string>
+    <string name="compare_invalid_handle">Voer een geldige X-gebruikersnaam in.</string>
+    <string name="compare_loading">Laden…</string>
+    <string name="compare_load_error">Dit account kon niet worden geladen.</string>
+    <string name="compare_analytics_error">Berichtstatistieken niet beschikbaar.</string>
+    <string name="compare_retry">Opnieuw proberen</string>
+    <string name="compare_followers">Volgers</string>
+    <string name="compare_engagement">Betrokkenheid</string>
+    <string name="compare_likes">Likes</string>
+    <string name="compare_reposts">Reposts</string>
+    <string name="compare_views">Weergaven</string>
+    <string name="compare_weekly_delta">%1$s deze week</string>
+    <string name="compare_pick_description">Account kiezen: %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s: %3$s</string>
+    <string name="compare_footnote">Gemeten originele berichten uit de laatste 7 dagen. De cijfers zijn totalen tot nu toe en kunnen op een steekproef berusten.</string>
+    <string name="compare_missing">—</string>
+</resources>

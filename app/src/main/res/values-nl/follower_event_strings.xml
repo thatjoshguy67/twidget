@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_event_context_needed">Groei onzeker</string>
+    <string name="follower_event_caveat">Dit verlies valt samen met ongebruikelijke dalingen bij gevolgde accounts. De oorzaak is niet bevestigd. Uit veranderingen in volgers alleen kun je niet afleiden dat je berichten slechter presteerden.</string>
+    <string name="follower_event_chart_heading">Volgers · brede daling</string>
+</resources>

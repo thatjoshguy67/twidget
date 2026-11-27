@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dashboard_undo">Ongedaan maken</string>
+    <string name="dashboard_card_moved">Kaart verplaatst</string>
+    <string name="dashboard_card_removed">Kaart verwijderd</string>
+    <string name="dashboard_card_added">Kaart toegevoegd</string>
+    <string name="dashboard_move_to">Verplaatsen naar…</string>
+    <string name="dashboard_before_card">Vóór %1$s</string>
+    <string name="dashboard_after_card">Na %1$s</string>
+    <string name="dashboard_drop_here">%1$s hierheen verplaatsen</string>
+    <string name="dashboard_card_resized">Kaartformaat aangepast</string>
+    <string name="dashboard_size_enlarge">Vergroten</string>
+    <string name="dashboard_size_shrink">Verkleinen</string>
+    <string name="dashboard_remove_card">Verwijderen</string>
+</resources>

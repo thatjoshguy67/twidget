@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_setup_provider_title">Kies je AI-provider</string>
+    <string name="brief_setup_chatgpt">ChatGPT-abonnement</string>
+    <string name="brief_setup_chatgpt_summary">Aanbevolen. Gebruik je ChatGPT-abonnement voor overzichten en tweetanalyses. De gebruikslimieten van je abonnement gelden.</string>
+    <string name="brief_setup_openai">OpenAI API-sleutel</string>
+    <string name="brief_setup_openai_summary">Gebruik een OpenAI API-sleutel. API-gebruik wordt apart van ChatGPT gefactureerd.</string>
+    <string name="brief_setup_gemini">Gemini API-sleutel</string>
+    <string name="brief_setup_gemini_summary">Gebruik een API-sleutel van Google AI Studio voor Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Doorgaan met ChatGPT</string>
+    <string name="brief_setup_enter_key">API-sleutel invoeren</string>
+</resources>

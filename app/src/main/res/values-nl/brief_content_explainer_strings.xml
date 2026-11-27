@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Reacties en citaattweets in je recente steekproef, afgezet tegen de gemeten weergaven. De aantallen tellen op en betreffen geen unieke personen.</string>
+    <string name="brief_content_patterns_explainer">Vergelijk de mediane weergaven van teksttweets, afbeeldingen en video’s die ongeveer even lang online staan. Dit verschijnt zodra er genoeg vergelijkbare gegevens zijn.</string>
+    <string name="brief_content_momentum_explainer">Vergelijk je netto verandering in volgers van de laatst gemeten week met die van de week ervoor.</string>
+    <string name="brief_content_recap_explainer">Je gemeten verandering in volgers en een steekproef van tweets die de afgelopen week zijn geplaatst. Weergaven zijn totalen sinds plaatsing.</string>
+    <string name="brief_content_topics_explainer">Bekijk welke terugkerende hashtags hogere mediane weergaven hebben dan andere tweets die ongeveer even lang online staan. Dit is gebaseerd op je steekproef.</string>
+    <string name="brief_content_experiments_explainer">Probeer een formaat op basis van patronen in je recente berichten. Vergelijk je volgende tweet zodra die ongeveer even lang online staat. Het resultaat kan anders uitvallen.</string>
+</resources>

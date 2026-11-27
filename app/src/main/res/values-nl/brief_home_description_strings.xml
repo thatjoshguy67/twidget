@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_home_description_restart">Pak je ritme weer op en begin een nieuwe reeks.</string>
+    <string name="brief_home_description_streak_active">Je bouwt een ritme op. Houd het vast.</string>
+    <string name="brief_home_description_streak_due">Plaats vandaag een bericht om je reeks voort te zetten.</string>
+    <string name="brief_home_description_goal">Je volgende doel komt in zicht. Bekijk je voortgang en bepaal je volgende stap.</string>
+    <string name="brief_home_description_followers">Ontdek opvallende accounts onder je volgers.</string>
+    <string name="brief_home_description_audience">Bekijk hoe je publiek verandert en bepaal je volgende stap.</string>
+    <string name="brief_home_description_post">Bekijk een recent bericht en ontdek wat je hierna kunt proberen.</string>
+    <string name="brief_home_description_timing">Vind een geschikt tijdvak voor je volgende bericht op basis van je recente activiteit.</string>
+    <string name="brief_home_description_patterns">Ontdek welke onderwerpen en formaten bij je publiek aanslaan.</string>
+    <string name="brief_home_description_overview">Bekijk je recente activiteit en bepaal waar je je nu op wilt richten.</string>
+</resources>

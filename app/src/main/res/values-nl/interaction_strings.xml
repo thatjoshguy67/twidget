@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="interactions_title">Interacties</string>
+    <string name="interaction_stats_title">Berichtstatistieken</string>
+    <string name="interaction_mix_title">Verdeling van interacties</string>
+    <string name="interaction_split_title">Tweets en reacties</string>
+    <string name="interaction_likes">Likes</string>
+    <string name="interaction_reposts">Reposts</string>
+    <string name="interaction_replies">Reacties</string>
+    <string name="interaction_shares">Gedeeld</string>
+    <string name="interaction_quotes">Citaattweets</string>
+    <string name="interaction_bookmarks">Bladwijzers</string>
+    <string name="interaction_views">Weergaven</string>
+    <string name="interaction_original">Tweets</string>
+    <string name="interaction_total">totaal</string>
+    <string name="interaction_range_7">7D</string>
+    <string name="interaction_range_30">30D</string>
+    <string name="interaction_range_90">90D</string>
+    <string name="interaction_last_7">Afgelopen 7 dagen</string>
+    <string name="interaction_last_30">Afgelopen 30 dagen</string>
+    <string name="interaction_last_90">Afgelopen 90 dagen</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_empty">Nog geen gegevens voor deze statistiek. Importeer X Analytics of vernieuw je openbare berichten.</string>
+    <string name="interaction_mix_unavailable">Verdeling niet beschikbaar bij onvolledige gegevens</string>
+    <string name="interaction_split_empty">Geen berichten gemeten in deze periode</string>
+    <string name="interaction_by_post_date">Dagelijkse activiteit uit CSV. Openbare aantallen per plaatsingsdatum.</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Context van de reeks: %1$d gekoppelde tweets.</string>
+    <string name="review_replies_unavailable">De huidige gegevensbron levert geen reactietekst.</string>
+    <string name="review_replies_empty">Er is geen tekst van reacties ontvangen. Hoe het publiek reageerde, kon niet worden beoordeeld.</string>
+    <string name="review_replies_sample">Steekproef van %1$d reacties. Deze vertegenwoordigt slechts een deel van het publiek.</string>
+</resources>

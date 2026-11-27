@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_filters">Filters</string>
+    <string name="floating_filters_active">Filters · %1$d</string>
+    <string name="floating_sort">Sorteren op</string>
+    <string name="floating_sort_count">Meeste volgers</string>
+    <string name="floating_sort_name">Naam A–Z</string>
+    <string name="floating_min_followers">Minimaal aantal volgers</string>
+    <string name="floating_all">Alle</string>
+    <string name="floating_10k">10K+</string>
+    <string name="floating_100k">100K+</string>
+    <string name="floating_reset">Filters wissen</string>
+    <string name="floating_results">%1$d resultaten</string>
+    <string name="floating_shortcuts">Sneltoetsen</string>
+    <string name="floating_shortcut_hint">Sneltoetsen · Ctrl+/</string>
+    <string name="floating_shortcut_navigation">Tab / Shift+Tab: focus verplaatsen\nEnter / spatie: activeren\nEsc: actief venster sluiten of teruggaan</string>
+    <string name="floating_shortcut_search">Zoeken · Ctrl+F</string>
+    <string name="floating_shortcut_filters">Filters · Ctrl+Shift+F</string>
+    <string name="floating_expand_filters">Filters uitvouwen</string>
+    <string name="floating_collapse_filters">Filters invouwen</string>
+    <string name="floating_matching_followers">%1$d van %2$d geladen volgers voldoen aan de filters</string>
+</resources>

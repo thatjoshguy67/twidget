@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_preview_posted">Je plaatste dit %1$s.</string>
+    <string name="review_preview_replied">Je reageerde %1$s.</string>
+    <string name="review_preview_just_now">zojuist</string>
+    <string name="review_preview_invite">Bekijk hoe deze tweet presteerde en wat je hierna kunt proberen.</string>
+    <string name="review_preview_invite_reply">Bekijk hoe deze reactie presteerde en wat je hierna kunt proberen.</string>
+    <string name="review_preview_counts">Bij de analyse had %1$s %2$s en %3$s.</string>
+    <string name="review_preview_interactions">Bij de analyse had %1$s %2$s openbare interacties. Weergaven waren niet beschikbaar.</string>
+    <string name="review_preview_both_higher">Het bericht kreeg meer weergaven en interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_both_lower">Het bericht kreeg minder weergaven en interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_more_views_fewer_interactions">Het bericht kreeg meer weergaven, maar minder interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_fewer_views_more_interactions">Het bericht kreeg minder weergaven, maar meer interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_higher_reach">Het bericht kreeg meer weergaven dan je vergelijkbare tweets.</string>
+    <string name="review_preview_lower_reach">Het bericht kreeg minder weergaven dan je vergelijkbare tweets.</string>
+    <string name="review_preview_more_interactions">Het bericht kreeg meer interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_fewer_interactions">Het bericht kreeg minder interacties dan je vergelijkbare tweets.</string>
+    <string name="review_preview_typical">De weergaven en interacties lagen dicht bij die van je vergelijkbare tweets.</string>
+    <string name="review_preview_typical_interactions">Het aantal interacties lag dicht bij dat van je vergelijkbare tweets.</string>
+    <plurals name="review_preview_minutes">
+        <item quantity="one">%1$s minuut geleden</item>
+        <item quantity="other">%1$s minuten geleden</item>
+    </plurals>
+    <plurals name="review_preview_hours">
+        <item quantity="one">%1$s uur geleden</item>
+        <item quantity="other">%1$s uur geleden</item>
+    </plurals>
+    <plurals name="review_preview_days">
+        <item quantity="one">%1$s dag geleden</item>
+        <item quantity="other">%1$s dagen geleden</item>
+    </plurals>
+    <plurals name="review_preview_weeks">
+        <item quantity="one">%1$s week geleden</item>
+        <item quantity="other">%1$s weken geleden</item>
+    </plurals>
+    <plurals name="review_preview_months">
+        <item quantity="one">%1$s maand geleden</item>
+        <item quantity="other">%1$s maanden geleden</item>
+    </plurals>
+    <plurals name="review_preview_years">
+        <item quantity="one">%1$s jaar geleden</item>
+        <item quantity="other">%1$s jaar geleden</item>
+    </plurals>
+    <string name="review_preview_subject_tweet">je tweet</string>
+    <string name="review_preview_subject_reply">je reactie</string>
+    <plurals name="review_preview_view_count">
+        <item quantity="one">%1$s weergave</item>
+        <item quantity="other">%1$s weergaven</item>
+    </plurals>
+    <plurals name="review_preview_interaction_count">
+        <item quantity="one">%1$s openbare interactie</item>
+        <item quantity="other">%1$s openbare interacties</item>
+    </plurals>
+</resources>

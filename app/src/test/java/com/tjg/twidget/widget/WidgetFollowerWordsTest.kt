@@ -15,6 +15,29 @@ class WidgetFollowerWordsTest {
         assertTrue(TwidgetWidget.followersInWords(Long.MAX_VALUE, ca).isNotBlank())
     }
 
+    @Test fun spellsDutchFollowerCounts() {
+        val dutch = Locale.forLanguageTag("nl-NL")
+        val examples = listOf(
+            0L to "Nul",
+            1L to "Een",
+            22L to "Tweeëntwintig",
+            93L to "Drieënnegentig",
+            101L to "Honderdeen",
+            222L to "Tweehonderdtweeëntwintig",
+            1_000L to "Duizend",
+            3_025L to "Drieduizend vijfentwintig",
+            1_234_567L to "Een miljoen tweehonderdvierendertigduizend vijfhonderdzevenenzestig",
+            1_000_000_000L to "Een miljard",
+            1_000_000_000_000L to "Een biljoen",
+            1_000_000_000_000_000L to "Een biljard",
+            1_000_000_000_000_000_000L to "Een triljoen",
+        )
+        for ((value, words) in examples) {
+            assertEquals(words, TwidgetWidget.followersInWords(value, dutch))
+        }
+        assertTrue(TwidgetWidget.followersInWords(Long.MAX_VALUE, dutch).startsWith("Negen triljoen "))
+    }
+
     @Test
     fun spellsFollowerCountsBeyondOneMillion() {
         assertEquals("Zero", TwidgetWidget.followersInWords(0L))

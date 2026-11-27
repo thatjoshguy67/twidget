@@ -47,15 +47,7 @@ class LocalisationResourcesTest {
             val lang = (locales.item(i) as Element).getAttribute("android:name")
             if (lang == "en") continue
             val actual = entries(lang)
-            // Dutch was contributed against an earlier release. Android uses the default
-            // string for newer resources while the Dutch translations catch up.
-            if (lang == "nl") {
-                assertTrue("Dutch must include the app and widget language labels",
-                    actual.keys.containsAll(listOf("language_dutch", "widget_language_nl")))
-                assertTrue("Obsolete Dutch resources: ${actual.keys - expected.keys}", expected.keys.containsAll(actual.keys))
-            } else {
-                assertEquals("$lang resources", expected.keys, actual.keys)
-            }
+            assertEquals("$lang resources", expected.keys, actual.keys)
             val format = Regex("%(?:[0-9]+\\$)?[a-zA-Z]")
             for ((key, translated) in actual) {
                 val original = expected.getValue(key)

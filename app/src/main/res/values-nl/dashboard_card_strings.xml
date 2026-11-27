@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="follower_count">Aantal volgers</string>
+    <string name="follower_graph">Volgersgrafiek</string>
+    <string name="dashboard_expand_card">%1$s uitvouwen</string>
+    <string name="dashboard_shrink_card">%1$s invouwen</string>
+    <string name="card_catalogue_add_size">%1$s toevoegen, %2$s</string>
+    <string name="dashboard_tweet_streak">Tweetreeks</string>
+</resources>

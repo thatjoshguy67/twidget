@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Koppel je ChatGPT-account voor uitgebreidere inzichten binnen de limieten van je abonnement</string>
+    <string name="brief_chatgpt_link_title">Koppel je ChatGPT-account</string>
+    <string name="brief_chatgpt_link_dismiss">Sluiten</string>
+    <string name="debug_chatgpt_card_preview">Voorbeeld van de ChatGPT-koppelkaart</string>
+    <string name="debug_chatgpt_card_preview_summary">Alleen een voorbeeld · Je wordt niet aangemeld en je eenmalige prompt blijft gelijk.</string>
+</resources>

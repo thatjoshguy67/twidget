@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dashboard_expand_card_left">%1$s naar links vergroten</string>
+    <string name="dashboard_expand_card_right">%1$s naar rechts vergroten</string>
+    <string name="dashboard_shrink_card_left">%1$s vanaf links verkleinen</string>
+    <string name="dashboard_shrink_card_right">%1$s vanaf rechts verkleinen</string>
+</resources>

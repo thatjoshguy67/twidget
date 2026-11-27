@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_timing_upcoming">Plan voor de %1$s</string>
+    <string name="brief_timing_now">Je tijdvak voor de %1$s is begonnen</string>
+    <string name="brief_timing_next">Probeer morgen in de %1$s te posten</string>
+    <string name="brief_timing_evidence">Van je recente tweets die ongeveer even lang online stonden, hadden tweets in de %1$s een hoger mediaan aantal weergaven. Probeer dit tijdvak opnieuw om te zien of het patroon terugkomt.</string>
+    <string name="milestone_celebration_message">Doel bereikt. Goed gedaan!</string>
+</resources>

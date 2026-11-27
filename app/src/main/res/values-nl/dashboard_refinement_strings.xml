@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dashboard_activity_week">Activiteit deze week</string>
+    <string name="dashboard_best_streak">Langste reeks</string>
+    <string name="dashboard_net_posts">Netto berichten</string>
+    <string name="dashboard_likes">Likes</string>
+    <string name="dashboard_replies">Reacties</string>
+    <string name="dashboard_reposts">Reposts + citaten</string>
+    <string name="dashboard_median">Mediaan</string>
+    <string name="dashboard_post_rank">Bericht %1$d</string>
+    <string name="dashboard_today">Vandaag</string>
+    <string name="dashboard_net_growth">Netto groei</string>
+    <string name="dashboard_coverage">Beschikbare gegevens</string>
+    <string name="dashboard_sample">Geanalyseerde steekproef</string>
+    <string name="dashboard_period_net">Netto %1$s · %2$s</string>
+    <string name="dashboard_recent_posts">Steekproef van recente berichten</string>
+    <string name="dashboard_imported">Geïmporteerde statistieken</string>
+    <string name="dashboard_days">Dagen</string>
+    <string name="dashboard_no_comparison">Meer geschiedenis nodig</string>
+    <string name="dashboard_streak_start">Vandaag beginnen</string>
+    <string name="dashboard_move_earlier">Naar voren</string>
+    <string name="dashboard_move_later">Naar achteren</string>
+    <string name="dashboard_observed_net_period">Gemeten netto %1$s · %2$s</string>
+</resources>

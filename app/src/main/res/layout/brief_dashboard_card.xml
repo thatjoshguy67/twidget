@@ -51,7 +51,7 @@
                 android:fontFamily="sec"
                 android:includeFontPadding="false"
                 android:maxLines="3"
-                android:textColor="@color/brief_explore_body"
+                android:textColor="@color/brief_explore_title"
                 android:textSize="16sp" />
         </LinearLayout>
 

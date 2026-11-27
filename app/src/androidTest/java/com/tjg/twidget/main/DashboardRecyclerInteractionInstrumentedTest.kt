@@ -746,7 +746,7 @@ class DashboardRecyclerInteractionInstrumentedTest {
             start = grid(activity).computeVerticalScrollOffset()
         }
         val down = SystemClock.uptimeMillis()
-        fun send(action: Int, ids: List<Int>) {
+        fun send(action: Int, ids: List<Int>, flick: Boolean = false) {
             val properties = ids.map { id -> MotionEvent.PointerProperties().apply {
                 this.id = id; toolType = MotionEvent.TOOL_TYPE_FINGER
             } }.toTypedArray()
@@ -754,9 +754,20 @@ class DashboardRecyclerInteractionInstrumentedTest {
                 this.x = if (id == 0) x else secondX; this.y = if (id == 0) y else secondY
                 pressure = 1f; size = 1f
             } }.toTypedArray()
-            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, ids.size, properties, coords,
+            val now = SystemClock.uptimeMillis()
+            val event = MotionEvent.obtain(down, if (flick) now - 24 else now, action, ids.size, properties, coords,
                 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
-            instrumentation.sendPointerSync(event)
+            if (flick) repeat(3) { index ->
+                secondY -= step
+                coords[1].y = secondY
+                event.addBatch(now - 16 + index * 8L, coords, 0)
+            }
+            if (flick) onDragActivity { activity ->
+                val view = grid(activity)
+                val origin = IntArray(2).also(view::getLocationOnScreen)
+                event.offsetLocation(-origin[0].toFloat(), -origin[1].toFloat())
+                view.dispatchTouchEvent(event)
+            } else instrumentation.sendPointerSync(event)
             event.recycle()
         }
         send(MotionEvent.ACTION_DOWN, listOf(0))
@@ -771,8 +782,20 @@ class DashboardRecyclerInteractionInstrumentedTest {
                 grid(activity).computeVerticalScrollOffset() > start + activity.dp(70))
             assertNull(menu())
         }
-        send(MotionEvent.ACTION_POINTER_UP, listOf(0, 1))
-        send(MotionEvent.ACTION_UP, listOf(1))
+        // Real devices batch fast movement; avoid making a "fling" out of
+        // the emulator injector's 50-200 ms gaps between individual commands.
+        send(MotionEvent.ACTION_MOVE, listOf(0, 1), flick = true)
+        var momentumDistance = 0
+        onDragActivity { activity -> grid(activity).addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(view: RecyclerView, dx: Int, dy: Int) { momentumDistance += dy }
+        }) }
+        send(MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), listOf(0, 1))
+        pauseDuringDrag(250)
+        onDragActivity { activity ->
+            assertEquals("Momentum preserves the held card", "post_rate", activity.editModeController.draggedCardId)
+            assertTrue("The scrolling finger's fling continues after it lifts", momentumDistance > 0)
+        }
+        send(MotionEvent.ACTION_UP, listOf(0))
         pauseDuringDrag(750)
         onDragActivity { assertNull(it.editModeController.draggedCardId) }
     }

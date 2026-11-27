@@ -64,6 +64,8 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
 
     private val heldViewport = Rect()
     private var lastDragScrollTime = 0L
+    private val edgeScrollRamp = DashboardEdgeScrollRamp()
+    private var edgeScrollRemainder = 0f
     private val dragScroll = object : Runnable {
         override fun run() {
             val view = recycler ?: return
@@ -81,11 +83,18 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                     y > bottom - edge -> ((y - bottom + edge) / edge).coerceIn(0f, 1f)
                     else -> 0f
                 }
-                val distance = (proximity * activity.dp(480) * elapsed / 1000f).toInt()
+                val speed = edgeScrollRamp.speed(proximity, now)
+                if (speed == 0f) edgeScrollRemainder = 0f
+                edgeScrollRemainder += speed * activity.resources.displayMetrics.density * elapsed / 1000f
+                val distance = edgeScrollRemainder.toInt()
+                edgeScrollRemainder -= distance
                 if (distance != 0 && view.canScrollVertically(distance)) {
                     view.scrollBy(0, distance)
                     view.refreshCardDrag()
                 }
+            } else {
+                edgeScrollRamp.reset()
+                edgeScrollRemainder = 0f
             }
             view.postOnAnimation(this)
         }
@@ -303,6 +312,8 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         dragging = card.id
         cancelled = false
         view.beginCardDrag()
+        edgeScrollRamp.reset()
+        edgeScrollRemainder = 0f
         touch.startDrag(holder)
         lastDragScrollTime = android.os.SystemClock.uptimeMillis()
         view.postOnAnimation(dragScroll)

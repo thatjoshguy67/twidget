@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.VelocityTracker
+import android.widget.OverScroller
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -27,10 +29,28 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
     private var scrollY = 0f
     private var scrollRemainder = 0f
     private var scrollStarted = false
+    private var dragVelocity: VelocityTracker? = null
+    private val heldScroller = OverScroller(context)
+    private var flingY = 0
+    private val heldFling = object : Runnable {
+        override fun run() {
+            if (!isHoldingCard || !heldScroller.computeScrollOffset()) return
+            val dy = heldScroller.currY - flingY
+            flingY = heldScroller.currY
+            if (dy != 0 && !canScrollVertically(dy)) { heldScroller.abortAnimation(); return }
+            scrollBy(0, dy)
+            refreshCardDrag()
+            postOnAnimation(this)
+        }
+    }
+    private fun stopHeldFling() {
+        heldScroller.abortAnimation()
+        removeCallbacks(heldFling)
+    }
     private var heldEvent: MotionEvent? = null
     internal var isHoldingCard = false
         private set
-    internal val isScrollingHeldCard get() = scrollPointer != -1
+    internal val isScrollingHeldCard get() = scrollPointer != -1 || !heldScroller.isFinished
     private var swallowRemainingPointers = false
 
     internal fun beginCardDrag() {
@@ -39,8 +59,12 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
     }
 
     internal fun endCardDrag() {
+        if (isHoldingCard) stopScroll()
         isHoldingCard = false
         scrollPointer = -1
+        dragVelocity?.recycle()
+        dragVelocity = null
+        stopHeldFling()
         heldEvent?.recycle()
         heldEvent = null
     }
@@ -78,12 +102,31 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
 
         val lifted = if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) event.actionIndex else -1
         if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN && scrollPointer == -1) {
+            stopHeldFling()
+            dragVelocity?.recycle()
+            dragVelocity = VelocityTracker.obtain()
             scrollPointer = event.getPointerId(event.actionIndex)
             scrollY = event.getY(event.actionIndex)
             scrollRemainder = 0f
             scrollStarted = false
         }
         val scrollIndex = event.findPointerIndex(scrollPointer)
+        // Match RecyclerView: calculate release velocity from movement samples,
+        // before adding the pointer-up event (which can clear that pointer's history).
+        if (scrollIndex >= 0 && (event.actionMasked == MotionEvent.ACTION_MOVE ||
+                event.actionMasked == MotionEvent.ACTION_POINTER_DOWN)) {
+            for (history in 0..event.historySize) {
+                val current = history == event.historySize
+                val sample = MotionEvent.obtain(event.downTime,
+                    if (current) event.eventTime else event.getHistoricalEventTime(history),
+                    if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) MotionEvent.ACTION_DOWN else MotionEvent.ACTION_MOVE,
+                    if (current) event.getX(scrollIndex) else event.getHistoricalX(scrollIndex, history),
+                    if (current) event.getY(scrollIndex) else event.getHistoricalY(scrollIndex, history), 0)
+                sample.source = event.source
+                dragVelocity?.addMovement(sample)
+                sample.recycle()
+            }
+        }
         if (event.actionMasked == MotionEvent.ACTION_MOVE && scrollIndex >= 0) {
             scrollRemainder += scrollY - event.getY(scrollIndex)
             scrollY = event.getY(scrollIndex)
@@ -100,7 +143,23 @@ class DashboardRecyclerView @JvmOverloads constructor(context: Context, attrs: A
                 scrollBy(0, distance)
             }
         }
-        if (lifted == scrollIndex) scrollPointer = -1
+        if (lifted >= 0 && lifted == scrollIndex) {
+            if (scrollStarted && lifted != primaryIndex) {
+                val velocity = dragVelocity
+                velocity?.computeCurrentVelocity(1000, ViewConfiguration.get(context).scaledMaximumFlingVelocity.toFloat())
+                val speed = -(velocity?.yVelocity ?: 0f).toInt()
+                if (kotlin.math.abs(speed) >= ViewConfiguration.get(context).scaledMinimumFlingVelocity) {
+                    flingY = 0
+                    // RecyclerView's own flinger is cancelled by ItemTouchHelper's
+                    // interception. Use the same Android physics alongside the hold.
+                    heldScroller.fling(0, 0, 0, speed, 0, 0, Int.MIN_VALUE, Int.MAX_VALUE)
+                    postOnAnimation(heldFling)
+                }
+            }
+            scrollPointer = -1
+            dragVelocity?.recycle()
+            dragVelocity = null
+        }
 
         // ItemTouchHelper normally adopts a newly added pointer. Give it only
         // the original finger so scrolling cannot move or release the held card.

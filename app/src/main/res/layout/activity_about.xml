@@ -246,8 +246,8 @@
                     android:layout_height="wrap_content"
                     app:showTopDivider="true"
                     app:fullWidthDivider="true"
-                    app:title="DaManMikey"
-                    app:summary="Thank you for the Gemini Nano implementation in Kairo."
+                    app:title="@string/about_damanmikey_title"
+                    app:summary="@string/about_damanmikey_summary"
                     app:summaryMaxLines="4" />
 
                 <dev.oneuiproject.oneui.widget.CardItemView

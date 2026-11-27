@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="streak_days">
+        <item quantity="one">%1$d dag</item>
+        <item quantity="other">%1$d dagen</item>
+    </plurals>
+    <string name="streak_safe_until_tomorrow">Je reeks is veilig tot morgen</string>
+    <string name="streak_post_to_continue">Tweet vandaag om je reeks voort te zetten</string>
+    <string name="streak_expiring_soon">Tweet binnen 10 minuten voordat je reeks verloopt</string>
+    <string name="streak_revive">Tweet vandaag om een plaatsingsreeks te starten</string>
+</resources>

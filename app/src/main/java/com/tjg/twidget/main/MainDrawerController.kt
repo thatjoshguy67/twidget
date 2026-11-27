@@ -102,7 +102,10 @@ internal class MainDrawerController(
                 override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
                     // DrawerLayout ignores start margins. Retain its direct blur
                     // surface and apply just the inset along its native slide.
-                    nativeDrawer.translationX = edgeGap * slideOffset
+                    val safe = androidx.core.view.ViewCompat.getRootWindowInsets(drawer)?.getInsets(
+                        androidx.core.view.WindowInsetsCompat.Type.systemBars() or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+                    val sideInset = if (nativeDrawer.layoutDirection == View.LAYOUT_DIRECTION_RTL) -(safe?.right ?: 0) else safe?.left ?: 0
+                    nativeDrawer.translationX = (edgeGap + sideInset) * slideOffset
                 }
                 override fun onDrawerStateChanged(newState: Int) {
                     // Canvas blur is captured once per native sliding transition, not per frame.

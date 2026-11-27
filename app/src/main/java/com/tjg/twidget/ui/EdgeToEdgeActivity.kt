@@ -91,8 +91,7 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
             // The floating toolbar allows scrolling behind itself, but dashboard
             // cards and the drawer must stop at the system status/cutout boundary.
             // Keep the existing edge-to-edge navigation treatment at the bottom.
-            root.clipBounds = android.graphics.Rect(safeViewport.left, safeViewport.top,
-                (root.width - safeViewport.right).coerceAtLeast(safeViewport.left), root.height)
+            root.clipBounds = android.graphics.Rect(0, safeViewport.top, root.width, root.height)
         }
         if (clipToStatusBarAndCutout) root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateViewportClip() }
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
@@ -115,7 +114,21 @@ abstract class EdgeToEdgeActivity : AppCompatActivity() {
                 scroll.setPadding(scroll.paddingLeft, scroll.paddingTop, scroll.paddingRight,
                     original + (safe.bottom - bottomPadding).coerceAtLeast(0))
             }
-            view.setPadding(safe.left, topPadding, safe.right, bottomPadding)
+            if (clipToStatusBarAndCutout && view is androidx.drawerlayout.widget.DrawerLayout) {
+                // DrawerLayout ignores its own padding when placing content.
+                // Move the content inside the side insets instead of cropping it.
+                for (index in 0 until view.childCount) {
+                    val child = view.getChildAt(index)
+                    val params = child.layoutParams as? androidx.drawerlayout.widget.DrawerLayout.LayoutParams ?: continue
+                    if (params.gravity != android.view.Gravity.NO_GRAVITY) continue
+                    if (params.leftMargin != safe.left || params.rightMargin != safe.right) {
+                        params.leftMargin = safe.left
+                        params.rightMargin = safe.right
+                        child.layoutParams = params
+                    }
+                }
+                view.setPadding(0, topPadding, 0, bottomPadding)
+            } else view.setPadding(safe.left, topPadding, safe.right, bottomPadding)
             // The drawer surface stops above system navigation even when the
             // page scrolls behind it. Root padding may already cover part or all
             // of this space (including the keyboard), so avoid counting it twice.

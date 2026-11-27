@@ -6,66 +6,66 @@ All notable changes to Twidget are documented here.
 
 ## [1.4.0-beta.1]
 
-A redesigned dashboard, smarter insights and new ways to see your profile data. An update worthy of jumping straight to v1.4.0! Here's everything new. 
+A redesigned dashboard, smarter insights and new ways to see your profile data. An update worthy of jumping straight to v1.4.0! Here's everything new.
 
 ### Dashboard and analytics
 
-The dashboard is completely reworked, with all new card designs and layouts. This is to accomodate improvements for a wide range of screen sizes. 
+The dashboard is completely reworked, with an all new layout and refreshed card designs. This should mean a better experience for a wide range of screen sizes.
 
-- Rearrange and resize dashboard cards, with separate layouts for each account. Because different profiles may prioritise different types of data. 
-- Press and hold a card to enter Edit Mode, resize a card, to add and remove cards, and rearrange cards. 
-- Made a mistake? You can now undo and redo changes, to bring it back to how it was before. 
-- All cards are designed to fit in a new grid system. The layout of these cards can adapt based on your screen size. So a phone can view two columns, and a tablet four. Foldables are also optimised. 
+- Rearrange and resize dashboard cards, with separate layouts for each account. Because different profiles may prioritise different types of data.
+- Press and hold a card to enter Edit Mode, resize a card, to add and remove cards, and rearrange cards.
+- Made a mistake? You can now undo changes, to bring it back to how it was before.
+- All cards are designed to fit in a new grid system. The layout of these cards can adapt based on your screen size. So a phone can view two columns, and a tablet four. Foldables are also optimised.
 - Added all new cards, like Engagement Mix, Follower count and Original vs Replies.
 - Older cards also got improvements. Follower graph shows unfollows, ratio cards get new comparison design, and stat cards can be expanded to show additional info.
 
 ### Tweet Report
 
-A new AI powered feature, Tweet Reviews can give you feedback on your posts. See post stats, audience reception, see what worked and what can be improved. 
+A new AI powered feature, Tweet Reviews can give you feedback on your posts. See post stats, audience reception, see what worked and what can be improved.
 
-- Compare a tweet against your other recent tweets, and get rankings. 
+- Compare a tweet against your other recent tweets, and get rankings.
 - View a tweet's stats, like impressions, engagements, likes, etc...
-- Get insights into how your tweet performed, how it could be tweaked to perform better. 
-- Uses data from the open source X algorithm to inform its results. 
-- Check in at regular intervals on a tweet to see how its performance adapts over time. 
+- Get insights into how your tweet performed, how it could be tweaked to perform better.
+- Uses data from the open source X algorithm to inform its results.
+- Check in at regular intervals on a tweet to see how its performance adapts over time.
 
-**This feature requires a cloud AI provider.** It's too demanding for a local model. 
+**This feature requires a cloud AI provider.** It's too demanding for a local model.
 
 ### Your Brief
 
-Your Brief got a massive facelift, with new card designs, dynamic backgrounds, rich insights and more options. 
+Your Brief got a massive facelift, with new card designs, dynamic backgrounds, rich insights and more options.
 
-- Use your ChatGPT subscription to power features like Tweet Review, as well as Your Brief rankings. 
-- You can also use an OpenAI API key, as well as the existing Gemini API option. 
-- Improved reliability and support for on-device Gemini Nano, for Your Brief rankings and card descriptions. 
+- Use your ChatGPT subscription to power features like Tweet Review, as well as Your Brief rankings.
+- You can also use an OpenAI API key, as well as the existing Gemini API option.
+- Improved reliability and support for on-device Gemini Nano, for Your Brief rankings and card descriptions.
 - Add insights for audience momentum, conversations, content patterns, weekly recaps, hashtags and posting experiments, with supporting charts and figures.
-- Added dynamic backgrounds that adjust based on the time of day. They animate, and look stunning. 
+- Added dynamic backgrounds that adjust based on the time of day. They animate, and look stunning.
 - Adapt posting-window guidance to whether the account’s stronger posting window is upcoming, open or past, using measured views from comparable-age tweets.
-- Cards can refresh independently without forcing an entire regeneration. 
-- Your Brief can regenerate itself when you open Twidget, reducing how long you're staring at a loading screen. 
-- Added a new Dynamic widget style, with a background gradient that adapts throughout the day. Has adjustable opacity, with blur on One UI devices. 
+- Cards can refresh independently without forcing an entire regeneration.
+- Your Brief can regenerate itself when you open Twidget, reducing how long you're staring at a loading screen.
+- Added a new Dynamic widget style, with a background gradient that adapts throughout the day. Has adjustable opacity, with blur on One UI devices.
 
 ### Appearance
 
-Twidget gets a One UI 9.5 refresh, being the first third-party app to adopt it.
+Twidget gets a One UI 9.5 refresh.
 
-- Updated drawer implimentation to newer floating style. 
-- Added outline effects to SESL elements, like floating toolbars, butttons, dialogs, etc... (You can turn those off in Settings > Appearance if you prefer)
-- Change the app's icon to one of three styles, with more coming in the future. 
+- Updated drawer implementation to newer floating style.
+- Added outline effects to SESL elements, like floating toolbars, buttons, dialogs, etc... (You can turn those off in Settings > Appearance if you prefer)
+- Change the app's icon to one of three styles, with more coming in the future.
 
 ### Languages, widgets and other stuff
 
-- Added Spanish and Catalan alongside English, German and French. Complete resource coverage for the supported languages, including diagnostics and failure messages. Thanks Wigetta! 
+- Added Spanish, Catalan and Dutch alongside English, German and French. Complete resource coverage for the supported languages, including diagnostics and failure messages. Thanks to Wigetta for Spanish and Catalan, and DaManMikey for Dutch!
   Preserve regional number/date conventions and let translated buttons wrap.
 - Add Settings → Widgets with previews and separate defaults for Followers, Your Brief and Samsung lock-screen widgets.
-- Celebrate reached account goals once per target with a short blue/silver effect that respects reduced motion. 
+- Celebrate reached account goals once per target with a short blue/silver effect that respects reduced motion.
 
-- Discontinued the scheduled tweets feature, as it was added to the main X app recently. 
-- Removed the tweet composer, Buffer connection, scheduling cards and generated tweet rewrites. You can do this directly in the X app now, so Twidget can be more focused on data insights. 
+- Discontinued the scheduled tweets feature, as it was added to the main X app recently.
+- Removed the tweet composer, Buffer connection, scheduling cards and generated tweet rewrites. You can do this directly in the X app now, so Twidget can be more focused on data insights.
 
 ### Contributors
 
-- Thanks to Aaron the Techie for German translations and onboarding/animation work, Wigetta for Spanish and Catalan, and DaManMikey for the Gemini Nano fixes.
+- Thanks to Aaron the Techie for German translations and onboarding/animation work, Wigetta for Spanish and Catalan, and DaManMikey for Dutch localisation and Gemini Nano fixes.
 
 ## [1.3.1-beta.1] - 2026-10-15
 
@@ -427,7 +427,7 @@ support, richer follower rankings, and more reliable scheduling.
 - **See your next milestone.** Set goals from the dashboard and follow your
   progress towards each target. Enter your own follower goal or choose a preset.
 - **Keep your posting streak going.** A new daily streak card tracks consecutive
-  days with original posts, rewarding consistent activity. 
+  days with original posts, rewarding consistent activity.
 - **Explore more of your history.** Open expanded charts and view longer time
   ranges as your account history grows.
 

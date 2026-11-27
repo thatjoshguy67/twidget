@@ -3,7 +3,7 @@ New in 1.4 Beta 1
 • Rearrange and resize dashboard cards; compare accounts and explore interactions and post stats.
 • Your Brief and Tweet Reports support ChatGPT/OpenAI, with new insights and saved reviews.
 • Improved follower history, observed losses and CSV imports.
-• Spanish and Catalan, refreshed setup and widget settings.
+• Spanish, Catalan and Dutch, refreshed setup and widget settings.
 • Composer, Buffer and Cloudinary retired. Local drafts are kept; manage queued posts in Buffer.
 </en-GB>
 
@@ -12,7 +12,7 @@ Neu in 1.4 Beta 1
 • Dashboard-Karten verschieben und skalieren, Konten vergleichen und Interaktionen auswerten.
 • Dein Briefing und Tweet-Berichte mit ChatGPT/OpenAI, neuen Einblicken und gespeicherten Bewertungen.
 • Verbesserter Follower-Verlauf, beobachtete Verluste und CSV-Importe.
-• Spanisch und Katalanisch, neue Einrichtung und Widget-Einstellungen.
+• Spanisch, Katalanisch und Niederländisch, neue Einrichtung und Widget-Einstellungen.
 • Editor, Buffer und Cloudinary entfernt. Lokale Entwürfe bleiben; geplante Beiträge in Buffer verwalten.
 </de-DE>
 
@@ -21,7 +21,7 @@ Nouveautés de la bêta 1.4
 • Réorganisez les cartes, comparez les comptes et explorez interactions et statistiques.
 • Votre Brief et les rapports de tweets avec ChatGPT/OpenAI, de nouvelles analyses et des avis enregistrés.
 • Historique des abonnés, pertes observées et imports CSV améliorés.
-• Espagnol et catalan, configuration et réglages des widgets revus.
+• Espagnol, catalan et néerlandais, configuration et réglages des widgets revus.
 • Éditeur, Buffer et Cloudinary retirés. Brouillons locaux conservés ; gérez les publications programmées dans Buffer.
 </fr-FR>
 
@@ -30,7 +30,7 @@ Novedades de la beta 1.4
 • Reorganiza y redimensiona tarjetas, compara cuentas y explora interacciones y estadísticas.
 • Tu Brief e informes de tuits con ChatGPT/OpenAI, nuevos análisis y reseñas guardadas.
 • Mejoras en el historial de seguidores, pérdidas observadas e importaciones CSV.
-• Español y catalán, nueva configuración y ajustes de widgets.
+• Español, catalán y neerlandés, nueva configuración y ajustes de widgets.
 • Editor, Buffer y Cloudinary retirados. Se conservan los borradores locales; gestiona las publicaciones pendientes en Buffer.
 </es-ES>
 
@@ -39,6 +39,15 @@ Novetats de la beta 1.4
 • Reorganitza i redimensiona targetes, compara comptes i explora interaccions i estadístiques.
 • El teu Brief i informes de tuits amb ChatGPT/OpenAI, noves anàlisis i ressenyes desades.
 • Millores a l’historial de seguidors, pèrdues observades i importacions CSV.
-• Castellà i català, configuració i ajustos dels ginys renovats.
+• Castellà, català i neerlandès, configuració i ajustos dels ginys renovats.
 • Editor, Buffer i Cloudinary retirats. Es conserven els esborranys locals; gestiona les publicacions pendents a Buffer.
 </ca-ES>
+
+<nl-NL>
+Nieuw in 1.4 Bèta 1
+• Pas dashboardkaarten aan, vergelijk accounts en bekijk interacties en berichtstatistieken.
+• Jouw Brief en Tweetrapporten met ChatGPT/OpenAI, nieuwe inzichten en opgeslagen beoordelingen.
+• Verbeterde volgersgeschiedenis, waargenomen verliezen en CSV-import.
+• Spaans, Catalaans en Nederlands, vernieuwde widgetinstellingen.
+• Tweeteditor, Buffer en Cloudinary verwijderd. Lokale concepten blijven bewaard; beheer geplande berichten in Buffer.
+</nl-NL>

@@ -719,7 +719,6 @@ class OnboardingActivity : EdgeToEdgeActivity() {
         fun reviewMaterial(button: AppCompatButton) {
             button.setBackgroundResource(R.drawable.dashboard_report_chip)
             button.backgroundTintList = null
-            button.supportBackgroundTintList = null
             button.setTextColor(getColor(R.color.oneui_text_primary))
         }
         reviewMaterial(findViewById(R.id.primary_button))
@@ -735,7 +734,7 @@ class OnboardingActivity : EdgeToEdgeActivity() {
             }
         }
         findViewById<AppCompatButton>(R.id.secondary_button).apply {
-            backgroundTintList = null; supportBackgroundTintList = null
+            backgroundTintList = null
             setBackgroundResource(R.drawable.onboarding_glass_button_bg)
             setTextColor(getColor(R.color.oneui_text_primary))
         }

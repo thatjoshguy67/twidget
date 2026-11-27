@@ -157,7 +157,9 @@ internal class MainDashboardBinder(
     internal fun previewSpan(card: DashboardCardType): Int = nativeCards.span(card)
     internal fun cardIds(): List<String> = nativeCards.cardIds
     internal fun applyCardOrder(order: List<String>) = nativeCards.applyOrder(order)
-    internal fun showExternalCard(card: DashboardCardType, span: Int, order: List<String>) = nativeCards.showExternal(card, span, order)
+    internal fun prepareAddedCard(card: DashboardCardType, span: Int, order: List<String>, rawY: Float, ready: (View?) -> Unit) =
+        nativeCards.prepareAddedCard(card, span, order, rawY, ready)
+    internal fun startPreparedCardDrag(card: DashboardCardType, source: View) = nativeCards.startDrag(card, source)
     internal fun finishCardDrag(order: List<String>) { nativeCards.finishDrag(order); applyDeferredBinding() }
     internal fun previewCardResize(card: DashboardCardType, span: Int, order: List<String>) = nativeCards.previewResize(card, span, order)
     internal fun finishCardResize(card: DashboardCardType, order: List<String>) { nativeCards.finishResize(card, order); applyDeferredBinding() }

@@ -1,6 +1,5 @@
 package com.tjg.twidget.main
 
-import android.view.DragEvent
 import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -200,20 +199,13 @@ internal class MainEditModeController(private val activity: MainActivity) {
         .mapNotNull(DashboardCardType::fromId)
         .filter { !it.requiresAnalyticsImport() || hasAnalyticsImport() }
         .filter { it != DashboardCardType.MILESTONE || activity.selectedAccount.equals(TwidgetStore.settings(activity).username, ignoreCase = true) }
-    fun startDrawerCardDrag(card: DashboardCardType, source: View, preview: View, span: Int = card.span(activity, activity.selectedAccount)): Boolean {
+    fun startDrawerCardDrag(card: DashboardCardType, span: Int, rawY: Float, ready: (View?) -> Unit): Boolean {
         val current = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
         if (interacting || card !in availableDashboardCards() || card.id in current) return false
         if (!editMode) setEditMode(true)
         beginDashboardDrag(card, null, span)
-        activity.dashboardBinder.showExternalCard(card, span, dragPreviewOrder!!)
-        source.setOnDragListener { _, event ->
-            if (event.action == DragEvent.ACTION_DRAG_ENDED) finishDashboardDrag(false)
-            true
-        }
-        val started = source.startDragAndDrop(android.content.ClipData.newPlainText("dashboard_card", card.id),
-            View.DragShadowBuilder(preview), card.id, View.DRAG_FLAG_GLOBAL)
-        if (started) TwidgetHaptics.dragPickup(source) else finishDashboardDrag(false)
-        return started
+        activity.dashboardBinder.prepareAddedCard(card, span, dragPreviewOrder!!, rawY, ready)
+        return true
     }
     fun addDashboardCard(card: DashboardCardType, span: Int = card.span(activity, activity.selectedAccount)) {
         if (interacting) return
@@ -224,6 +216,7 @@ internal class MainEditModeController(private val activity: MainActivity) {
         TwidgetStore.saveDashboardCards(activity, before.order + card.id, before.account)
         TwidgetHaptics.confirm(activity.findViewById(R.id.dashboard_content))
         activity.render(refreshRemote = false)
+        activity.dashboardBinder.scrollToCard(card.id)
         offerUndo(before, R.string.dashboard_card_added)
     }
     fun resizeDashboardCard(card: DashboardCardType) {

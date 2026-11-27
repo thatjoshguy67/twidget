@@ -801,6 +801,91 @@ class DashboardRecyclerInteractionInstrumentedTest {
     }
 
 
+    @Test fun cataloguePickupUsesLiveCardsAndSupportsSecondFingerScrollCancelDropAndUndo() {
+        for (columns in listOf(2, 4)) withDashboard(columns) {
+            prepareLongDashboard()
+            var before = emptyList<String>()
+            onDragActivity { before = TwidgetStore.dashboardCards(it, it.selectedAccount) }
+            fun catalogue(name: String) = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                .flatMap(::descendants).first { it.transitionName == name }
+            val span = if (columns == 2) 1 else 2
+            onDragActivity { it.editModeController.showAddCardDialog() }
+            pauseDuringDrag(450)
+            onDragActivity { catalogue("catalogue_row_METRICS").performClick() }
+            pauseDuringDrag(500)
+            var x = 0f; var y = 0f; var secondY = 0f; var delta = 0f
+            onDragActivity { activity ->
+                val option = catalogue("catalogue_variant_follower_count_$span")
+                val scroll = catalogue("catalogue_scroll") as androidx.core.widget.NestedScrollView
+                val rect = Rect(0, 0, option.width, option.height)
+                scroll.offsetDescendantRectToMyCoords(option, rect)
+                scroll.scrollBy(0, rect.top - activity.dp(32))
+            }
+            pauseDuringDrag(150)
+            onDragActivity { activity ->
+                val option = catalogue("catalogue_variant_follower_count_$span")
+                val rect = Rect().also(option::getGlobalVisibleRect)
+                assertTrue("Catalogue preview is visible before pickup", rect.height() > 0)
+                x = rect.centerX().toFloat(); y = rect.centerY().toFloat()
+                secondY = y - activity.dp(30); delta = activity.dp(10).toFloat()
+            }
+            val down = SystemClock.uptimeMillis()
+            fun send(action: Int, two: Boolean = false) {
+                val ids = if (two) listOf(0, 1) else listOf(0)
+                val properties = ids.map { id -> MotionEvent.PointerProperties().apply {
+                    this.id = id; toolType = MotionEvent.TOOL_TYPE_FINGER
+                } }.toTypedArray()
+                val coords = ids.map { id -> MotionEvent.PointerCoords().apply {
+                    this.x = if (id == 0) x else x + delta
+                    this.y = if (id == 0) y else secondY
+                    pressure = 1f; size = 1f
+                } }.toTypedArray()
+                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, ids.size, properties, coords,
+                    0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+                instrumentation.sendPointerSync(event)
+                event.recycle()
+            }
+            send(MotionEvent.ACTION_DOWN)
+            pauseDuringDrag(850)
+            var scrolled = 0
+            var direction = -1
+            onDragActivity { activity ->
+                val view = grid(activity)
+                direction = if (view.canScrollVertically(1)) -1 else 1
+                assertEquals("follower_count", activity.editModeController.draggedCardId)
+                assertTrue("The catalogue hands off to the native held-card stream", view.isHoldingCard)
+                val source = tile(activity, "follower_count")
+                assertTrue("New cards have real content while held", descendants(source).any { it.getTag(R.id.dashboard_card_content) == true })
+                assertEquals(span, activity.dashboardBinder.previewSpan(DashboardCardType.FOLLOWER_COUNT))
+                assertEquals("Pickup remains provisional", before, TwidgetStore.dashboardCards(activity, activity.selectedAccount))
+                view.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrolled(view: RecyclerView, dx: Int, dy: Int) { scrolled += kotlin.math.abs(dy) }
+                })
+            }
+            send(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), true)
+            repeat(8) { secondY += direction * delta; send(MotionEvent.ACTION_MOVE, true); SystemClock.sleep(24) }
+            onDragActivity { assertTrue("Second-finger scrolling works on a newly added card: holding=${grid(it).isHoldingCard}, scrolling=${grid(it).isScrollingHeldCard}, up=${grid(it).canScrollVertically(-1)}, down=${grid(it).canScrollVertically(1)}", scrolled > 0) }
+            send(MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), true)
+            send(if (columns == 2) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP)
+            pauseDuringDrag(900)
+            onDragActivity { activity ->
+                assertFalse(grid(activity).isHoldingCard)
+                assertNull(activity.editModeController.draggedCardId)
+                val saved = TwidgetStore.dashboardCards(activity, activity.selectedAccount)
+                if (columns == 2) {
+                    assertEquals("Cancellation removes the provisional card", before, saved)
+                    assertFalse(activity.dashboardBinder.cardIds().contains("follower_count"))
+                } else {
+                    assertEquals(1, saved.count { it == "follower_count" })
+                    assertTrue("Dropping preserves the chosen large size", TwidgetStore.isDashboardCardExpanded(activity, "follower_count", activity.selectedAccount))
+                    activity.findViewById<View>(com.google.android.material.R.id.snackbar_action).performClick()
+                }
+            }
+            pauseDuringDrag(450)
+            onDragActivity { activity -> assertEquals("Undo restores the original layout", before, TwidgetStore.dashboardCards(activity, activity.selectedAccount)) }
+        }
+    }
+
     @Test fun nativeRowsAlignWithTopFollowersAndUndoRestoresProfileScopedMoves() = withDashboard(4) { scenario ->
         val other = "native-dashboard-other-profile"
         scenario.onActivity { activity ->

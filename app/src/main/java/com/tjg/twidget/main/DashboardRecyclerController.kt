@@ -3,8 +3,6 @@ package com.tjg.twidget.main
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.graphics.drawable.GradientDrawable
-import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -17,7 +15,6 @@ import com.tjg.twidget.R
 import com.tjg.twidget.data.TwidgetStore
 import com.tjg.twidget.ui.DashboardRecyclerView
 import com.tjg.twidget.ui.TwidgetHaptics
-import kotlin.math.abs
 
 /** Owns the native list and its provisional drag order; saved state changes only on commit. */
 internal class DashboardRecyclerController(private val activity: MainActivity, private val binder: MainDashboardBinder) {
@@ -27,7 +24,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     private var items = emptyList<DashboardCardType>()
     private val overrides = mutableMapOf<String, Int>()
     private var dragging: String? = null
-    private var external: String? = null
+    private var incomingCard: String? = null
     private var cancelled = false
     private val dropTargets = DashboardDropTargetPolicy(activity.dp(6).toFloat())
     private var nestedScrollBeforeDrag: Boolean? = null
@@ -35,31 +32,9 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     private var footerAdapter: ChromeAdapter? = null
     private val cards = CardAdapter()
     private val landingPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var externalX = 0f
-    private var externalY = 0f
-    private var externalPointerInside = false
-    private var lastExternalX = Float.NaN
-    private var lastExternalY = Float.NaN
-    private val externalScroll = object : Runnable {
-        override fun run() {
-            val view = recycler ?: return
-            if (external == null || !externalPointerInside) return
-            val edge = activity.dp(64)
-            val distance = when {
-                externalY < edge -> -((edge - externalY) / edge * activity.dp(8)).toInt()
-                externalY > view.height - edge -> ((externalY - view.height + edge) / edge * activity.dp(8)).toInt()
-                else -> 0
-            }
-            if (distance != 0 && view.canScrollVertically(distance)) {
-                view.scrollBy(0, distance)
-                updateExternalTarget(force = true)
-            }
-            view.postOnAnimation(this)
-        }
-    }
 
     val cardIds: List<String> get() = items.map { it.id }
-    val isDragging get() = dragging != null || external != null
+    val isDragging get() = dragging != null || incomingCard != null
     fun span(card: DashboardCardType): Int = overrides[card.id] ?: card.span(activity, account.ifBlank { activity.selectedAccount })
 
     private val heldViewport = Rect()
@@ -101,13 +76,13 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     }
     private val callback = object : ItemTouchHelper.Callback() {
         override fun getMovementFlags(view: RecyclerView, holder: RecyclerView.ViewHolder): Int =
-            if (editing && holder is CardHolder && external == null && !binder.isResizing)
+            if (editing && holder is CardHolder && !binder.isResizing)
                 makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT, 0) else 0
         override fun isLongPressDragEnabled() = false
         override fun isItemViewSwipeEnabled() = false
         override fun getAnimationDuration(view: RecyclerView, type: Int, dx: Float, dy: Float) = 200L
         override fun canDropOver(view: RecyclerView, current: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder) =
-            target is CardHolder && target.cardId != external
+            target is CardHolder
         override fun chooseDropTarget(selected: RecyclerView.ViewHolder, targets: MutableList<RecyclerView.ViewHolder>, x: Int, y: Int): RecyclerView.ViewHolder? {
             val view = recycler ?: return null
             val tile = selected.itemView
@@ -207,8 +182,6 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             adapter = null
             onGestureCancelled = null
             onAdditionalPointer = null
-            setOnDragListener(null)
-            removeCallbacks(externalScroll)
             removeCallbacks(dragScroll)
             endCardDrag()
         }
@@ -244,27 +217,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
                     ?.startDragFromHold() == true
             }
         }
-        view.setOnDragListener { _, event ->
-            when (event.action) {
-                DragEvent.ACTION_DRAG_STARTED -> external != null && event.localState == external
-                DragEvent.ACTION_DRAG_LOCATION -> {
-                    externalX = event.x; externalY = event.y
-                    if (!externalPointerInside) {
-                        externalPointerInside = true
-                        view.postOnAnimation(externalScroll)
-                    }
-                    updateExternalTarget(); true
-                }
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    externalPointerInside = false
-                    view.removeCallbacks(externalScroll)
-                    true
-                }
-                DragEvent.ACTION_DROP -> { activity.editModeController.finishDashboardDrag(true); true }
-                DragEvent.ACTION_DRAG_ENDED -> { activity.editModeController.finishDashboardDrag(false); true }
-                else -> external != null
-            }
-        }
+
     }
 
     fun submit(profile: String, next: List<DashboardCardType>, editing: Boolean) {
@@ -301,14 +254,14 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
     fun applyOrder(order: List<String>) = replace(items.sortedBy { order.indexOf(it.id) })
     fun startDrag(card: DashboardCardType, wrapper: View): Boolean {
         val view = recycler ?: return false
-        if (!editing || isDragging || binder.isResizing) return false
+        if (!editing || dragging != null || (incomingCard != null && incomingCard != card.id) || binder.isResizing) return false
         val holder = view.getChildViewHolder(wrapper) as? CardHolder ?: return false
         view.stopScroll()
         view.itemAnimator?.endAnimations()
         dropTargets.reset()
         nestedScrollBeforeDrag = view.isNestedScrollingEnabled
         view.isNestedScrollingEnabled = false
-        activity.editModeController.beginDashboardDrag(card, wrapper)
+        if (incomingCard == null) activity.editModeController.beginDashboardDrag(card, wrapper)
         dragging = card.id
         cancelled = false
         view.beginCardDrag()
@@ -319,38 +272,45 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         view.postOnAnimation(dragScroll)
         return true
     }
-    fun showExternal(card: DashboardCardType, span: Int, order: List<String>) {
-        external = card.id
+    fun prepareAddedCard(card: DashboardCardType, span: Int, order: List<String>, rawY: Float, ready: (View?) -> Unit) {
+        val view = recycler ?: return
+        incomingCard = card.id
         overrides[card.id] = span
         cancelled = false
-        lastExternalX = Float.NaN; lastExternalY = Float.NaN
-        replace((items + card).distinct().sortedBy { order.indexOf(it.id) })
-        externalPointerInside = false
-    }
-    private fun updateExternalTarget(force: Boolean = false) {
-        val view = recycler ?: return
-        val id = external ?: return
-        if (!force && !lastExternalX.isNaN() && abs(externalX - lastExternalX) < activity.dp(12) && abs(externalY - lastExternalY) < activity.dp(12)) return
-        val children = (0 until view.childCount).map { view.getChildAt(it) }
-            .filter { it.tag is String && DashboardCardType.fromId(it.tag as String) != null }
-        if (children.any { it.tag == id && externalX >= it.left && externalX <= it.right && externalY >= it.top && externalY <= it.bottom }) return
-        val target = children.filter { it.tag != id }.minByOrNull {
-            val dx = (externalX - it.left - it.width / 2).toDouble()
-            val dy = (externalY - it.top - it.height / 2).toDouble()
-            dx * dx + dy * dy
-        } ?: return
-        val type = DashboardCardType.fromId(target.tag as String) ?: return
-        val after = if (span(type) == view.columnCount) externalY > target.top + target.height / 2
-            else (externalX > target.left + target.width / 2) != (view.layoutDirection == View.LAYOUT_DIRECTION_RTL)
-        activity.editModeController.previewMoveDashboardCard(id, type.id, after)
-        lastExternalX = externalX; lastExternalY = externalY
+        val origin = IntArray(2).also(view::getLocationOnScreen)
+        val y = rawY - origin[1]
+        val target = (0 until view.childCount).map { view.getChildAt(it) }
+            .filter { it.tag is String && it.tag in cardIds }
+            .minByOrNull { kotlin.math.abs(it.top + it.height / 2f - y) }
+        val targetId = target?.tag as? String
+        val desiredOrder = order.toMutableList().apply {
+            remove(card.id)
+            add(indexOf(targetId).takeIf { it >= 0 } ?: size, card.id)
+        }
+        // Keep the transaction's order identical to the live list before pickup.
+        if (targetId != null) activity.editModeController.previewMoveDashboardCard(card.id, targetId, false)
+        replace((items + card).distinct().sortedBy { desiredOrder.indexOf(it.id) })
+        val position = items.indexOf(card) + 1
+        view.getLocalVisibleRect(heldViewport)
+        val offset = (y - activity.dp(card.preferredHeightDp(activity)) / 2f).toInt()
+            .coerceIn(heldViewport.top, maxOf(heldViewport.top, heldViewport.bottom - activity.dp(card.preferredHeightDp(activity))))
+        (view.layoutManager as? GridLayoutManager)?.scrollToPositionWithOffset(position, offset - view.paddingTop)
+        view.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int,
+                oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                view.removeOnLayoutChangeListener(this)
+                if (incomingCard != card.id) return
+                val holder = (0 until view.childCount).map { view.getChildAt(it) }.firstOrNull { it.tag == card.id }
+                if (holder == null) activity.editModeController.finishDashboardDrag(false)
+                ready(holder)
+            }
+        })
+        view.requestLayout()
     }
     fun finishDrag(order: List<String>) {
         cancelNativeDrag()
-        val added = external
-        external = null
-        externalPointerInside = false
-        recycler?.removeCallbacks(externalScroll)
+        val added = incomingCard
+        incomingCard = null
         overrides.clear()
         val saved = order.mapNotNull(DashboardCardType::fromId).filter { it in items }
         replace(saved)
@@ -405,16 +365,10 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
         init { setHasStableIds(true) }
         override fun getItemCount() = items.size
         override fun getItemId(position: Int) = items[position].ordinal.toLong()
-        override fun getItemViewType(position: Int) = items[position].ordinal + if (items[position].id == external) 1000 else 0
+        override fun getItemViewType(position: Int) = items[position].ordinal
         override fun onCreateViewHolder(parent: ViewGroup, type: Int): CardHolder {
-            val card = DashboardCardType.entries[type % 1000]
-            val wrapper = if (type >= 1000) FrameLayout(activity).apply {
-                tag = card.id
-                background = GradientDrawable().apply {
-                    cornerRadius = activity.dp(28).toFloat()
-                    setColor((activity.getColor(R.color.oneui_text_secondary) and 0x00ffffff) or 0x18000000)
-                }
-            } else binder.createRecyclerCard(card)
+            val card = DashboardCardType.entries[type]
+            val wrapper = binder.createRecyclerCard(card)
             wrapper.layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, activity.dp(card.preferredHeightDp(activity)))
             return CardHolder(wrapper, card.id)
         }
@@ -424,7 +378,7 @@ internal class DashboardRecyclerController(private val activity: MainActivity, p
             holder.wrapper.setTag(R.id.dashboard_card_span, span(card))
             holder.wrapper.setTag(R.id.dashboard_preferred_height, card.preferredHeightDp(activity))
             holder.wrapper.layoutParams.height = activity.dp(card.preferredHeightDp(activity))
-            if (card.id != external) binder.bindRecyclerCard(holder.wrapper, card, refreshContent = !holder.fresh && (payloads.isEmpty() || DATA in payloads || RESIZE in payloads || PROFILE in payloads),
+            binder.bindRecyclerCard(holder.wrapper, card, refreshContent = !holder.fresh && (payloads.isEmpty() || DATA in payloads || RESIZE in payloads || PROFILE in payloads),
                 reuseContent = PROFILE !in payloads)
             holder.fresh = false
         }

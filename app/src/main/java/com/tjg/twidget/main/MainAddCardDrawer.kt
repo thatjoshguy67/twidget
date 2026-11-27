@@ -48,6 +48,7 @@ internal class MainAddCardDrawer(
     private val controller: MainEditModeController,
 ) {
     private val dialog = BottomSheetDialog(activity)
+    private val dragTouch = DashboardCatalogueTouchBridge(activity, dialog, controller)
     private val content = LinearLayout(activity).apply {
         orientation = LinearLayout.VERTICAL
         transitionName = "catalogue_content"
@@ -125,7 +126,7 @@ internal class MainAddCardDrawer(
             clipToOutline = true
         }
         drawerRoot = root
-        dialog.setOnDismissListener { heightAnimator?.cancel() }
+        dialog.setOnDismissListener { heightAnimator?.cancel(); dragTouch.dispose() }
         root.contentDescription = activity.getString(R.string.add_cards_title)
         root.addView(View(activity).apply {
             background = rounded((activity.getColor(R.color.oneui_text_primary) and 0x00ffffff) or 0x4d000000, 2)
@@ -160,6 +161,7 @@ internal class MainAddCardDrawer(
         dialog.setDismissWithAnimation(true)
         rebuild()
         dialog.show()
+        dragTouch.install()
     }
 
     private fun animateSections(startHeights: Map<DashboardCardGroup, Int> = sections.mapValues { it.value.revealHeight }) {
@@ -389,9 +391,7 @@ internal class MainAddCardDrawer(
                 else activity.getString(R.string.card_catalogue_add_named, activity.getString(card.labelRes))
             setOnLongClickListener(object : View.OnLongClickListener {
                 override fun onLongClick(view: View): Boolean {
-                    if (!controller.startDrawerCardDrag(card, this@apply, preview, span)) return true
-                    dialog.setDismissWithAnimation(false)
-                    dialog.dismiss()
+                    dragTouch.start(card, span)
                     return true
                 }
                 override fun onLongClickUseDefaultHapticFeedback(view: View): Boolean = false

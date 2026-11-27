@@ -268,11 +268,12 @@ internal class MainDashboardBinder(
         activity.findViewById<ViewGroup>(R.id.main_refresh).apply {
             clipChildren = false
             clipToPadding = false
-            // Bound dashboard drawing below the app bar while retaining shadows
-            // within the scroll viewport.
+            // Keep the capture ancestry unclipped too: the scrolling content is
+            // offset by AppBarLayout. Clipping this wrapper rebases Samsung's
+            // canvas blur to the viewport instead of the toolbar's window position.
             (parent as? ViewGroup)?.apply {
-                clipChildren = true
-                clipToPadding = true
+                clipChildren = false
+                clipToPadding = false
             }
         }
         bindPrivateAccountNotice(notices, stats)

@@ -11,7 +11,7 @@ internal object BriefHomeGlowPolicy {
         BriefCardType.STREAK -> if (streak > 0) BriefHomeGlowMood.GROWTH else BriefHomeGlowMood.RESET
         BriefCardType.SLOWDOWN, BriefCardType.INACTIVITY, BriefCardType.WORST_POST -> BriefHomeGlowMood.RESET
         BriefCardType.FOLLOWER_CONTEXT, BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.SUMMARY -> when {
-            week < 0 || week == 0L && today < 0 -> BriefHomeGlowMood.RESET
+            week < 0 || today < 0 -> BriefHomeGlowMood.RESET
             week > 0 || today > 0 -> BriefHomeGlowMood.GROWTH
             else -> BriefHomeGlowMood.NEUTRAL
         }

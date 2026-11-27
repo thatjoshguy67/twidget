@@ -491,7 +491,9 @@ internal class MainDashboardBinder(
             snapshot.followersToday, snapshot.followersWeek, streak.streak)
         root.findViewById<ImageView>(R.id.brief_dashboard_icon)?.apply {
             setImageBitmap(com.tjg.twidget.widget.BriefWidgetArtworkRenderer.stateIcon(
-                activity, heroType, account, activity.dp(60), activity.getColor(R.color.brief_explore_title)))
+                activity, com.tjg.twidget.brief.BriefHomeIconPolicy.artworkType(heroType,
+                    snapshot.followersToday, snapshot.followersWeek, streak.streak),
+                account, activity.dp(60), activity.getColor(R.color.brief_explore_title)))
         }
         val headline = summary.title
         val description = com.tjg.twidget.brief.BriefHomeCardCopy.description(activity, heroType, streak)

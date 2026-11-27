@@ -50,7 +50,7 @@ class BriefWidgetArtworkRendererTest {
     @Test
     fun supportingArtworkFollowsTheDynamicCardType() {
         assertEquals(
-            R.drawable.ic_import_analytics,
+            R.drawable.ic_brief_momentum,
             BriefWidgetArtworkRenderer.supportingIcon(BriefCardType.GROWTH),
         )
         assertEquals(

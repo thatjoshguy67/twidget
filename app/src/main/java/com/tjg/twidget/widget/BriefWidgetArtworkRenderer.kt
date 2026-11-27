@@ -68,19 +68,24 @@ internal object BriefWidgetArtworkRenderer {
 
     @DrawableRes
     fun supportingIcon(type: BriefCardType): Int = when (type) {
-        BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT,
-        BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN, BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP -> OneUiIconR.drawable.ic_oui_equalizer_2
-        BriefCardType.SUMMARY -> R.drawable.ic_twidget_notification
-        BriefCardType.GROWTH, BriefCardType.FOLLOWER_CONTEXT -> R.drawable.ic_import_analytics
-        BriefCardType.SLOWDOWN -> OneUiIconR.drawable.ic_oui_time_outline
-        BriefCardType.INACTIVITY -> OneUiIconR.drawable.ic_oui_compose_edit
+        BriefCardType.TOPIC_SPOTLIGHT -> OneUiIconR.drawable.ic_oui_tag
+        BriefCardType.CONTENT_EXPERIMENT -> OneUiIconR.drawable.ic_oui_labs_outline
+        BriefCardType.CONVERSATION_PULSE -> OneUiIconR.drawable.ic_oui_message_chat
+        BriefCardType.CONTENT_PATTERN -> OneUiIconR.drawable.ic_oui_list_grid
+        BriefCardType.WEEKLY_RECAP -> OneUiIconR.drawable.ic_oui_calendar_week
+        BriefCardType.SUMMARY -> OneUiIconR.drawable.ic_oui_list_grid
+        BriefCardType.GROWTH, BriefCardType.AUDIENCE_MOMENTUM -> R.drawable.ic_brief_momentum
+        BriefCardType.FOLLOWER_CONTEXT -> OneUiIconR.drawable.ic_oui_community
+        BriefCardType.SLOWDOWN, BriefCardType.INACTIVITY -> OneUiIconR.drawable.ic_oui_refresh
         BriefCardType.MILESTONE -> R.drawable.ic_milestone_goals
-        BriefCardType.POST, BriefCardType.WORST_POST, BriefCardType.POST_CONTEXT -> OneUiIconR.drawable.ic_oui_equalizer_2
+        BriefCardType.POST -> OneUiIconR.drawable.ic_oui_star_outline
+        BriefCardType.WORST_POST -> OneUiIconR.drawable.ic_oui_compose_edit
+        BriefCardType.POST_CONTEXT -> R.drawable.ic_import_analytics
         BriefCardType.TOP_FOLLOWER -> OneUiIconR.drawable.ic_oui_community
         BriefCardType.STREAK -> R.drawable.ic_streak_fire
         BriefCardType.SCHEDULE_GUIDE -> OneUiIconR.drawable.ic_oui_calendar_task
         BriefCardType.POST_FOLLOW_THROUGH -> OneUiIconR.drawable.ic_oui_repeat
-        BriefCardType.POSTING_GUIDE -> OneUiIconR.drawable.ic_oui_star_outline
+        BriefCardType.POSTING_GUIDE -> OneUiIconR.drawable.ic_oui_time_outline
     }
 
     /** Shared with the native dashboard card so its state artwork matches the widget. */
@@ -133,6 +138,9 @@ internal object BriefWidgetArtworkRenderer {
             body = if (summary != null) com.tjg.twidget.brief.BriefHomeCardCopy.description(context, card.type,
                 com.tjg.twidget.data.DailyStreakStore.snapshot(context, account)) else card.body,
         )
+        val artworkCard = displayCard.copy(type = com.tjg.twidget.brief.BriefHomeIconPolicy.artworkType(
+            displayCard.type, snapshot?.followersToday ?: 0L, snapshot?.followersWeek ?: 0L,
+            com.tjg.twidget.data.DailyStreakStore.snapshot(context, account).streak))
         val widgetLayout = layout(width / density, height / density)
         val colors = WidgetColors.resolve(context, style, dark)
         val primary = colors.primary
@@ -157,7 +165,7 @@ internal object BriefWidgetArtworkRenderer {
                 drawStateIcon(
                     context,
                     canvas,
-                    displayCard.type,
+                    artworkCard.type,
                     account,
                     pad,
                     (height - iconSize) / 2f,
@@ -182,7 +190,7 @@ internal object BriefWidgetArtworkRenderer {
             Layout.SQUARE, Layout.MEDIUM_TALL, Layout.WIDE_TALL -> {
                 val metrics = tallCardMetrics(width / density, height / density)
                 drawTallCard(
-                    context, canvas, displayCard, account, width, height, primary, secondary,
+                    context, canvas, artworkCard, account, width, height, primary, secondary,
                     paddingDp = metrics.textInsetDp,
                     iconSizeDp = metrics.iconSizeDp,
                     titleSizeSp = metrics.titleSizeSp,
@@ -351,31 +359,10 @@ internal object BriefWidgetArtworkRenderer {
         tint: Int,
         useProfileImages: Boolean,
     ) {
-        if (type == BriefCardType.SLOWDOWN) {
-            // Separate Figma arc layers preserve transparent space around the glyph.
-            val inset = size * (11.368421f / 48f)
-            drawDialLayer(context, canvas, R.drawable.widget_brief_dial_track, left, top, size,
-                1.38525390625f, 1.380859375f, 45.2392578125f, 40.72216796875f)
-            drawDialLayer(context, canvas, R.drawable.widget_brief_dial_progress, left, top, size,
-                1.385009765625f, 1.380859375f, 36.1416015625f, 40.72998046875f)
-            ContextCompat.getDrawable(context, R.drawable.widget_brief_goal)?.mutate()?.apply {
-                setTint(tint)
-                setBounds((left + inset).toInt(), (top + inset).toInt(), (left + size - inset).toInt(), (top + size - inset).toInt())
-                draw(canvas)
-            }
-            return
-        }
         if (useProfileImages && type == BriefCardType.TOP_FOLLOWER) {
             val avatarUrl = TopFollowersStore.read(context, account).top.firstOrNull()?.avatarUrl.orEmpty()
             ProfileImageLoader.cachedCircularBitmap(context, avatarUrl, size.toInt())?.let { avatar ->
                 canvas.drawBitmap(avatar, left, top, Paint(Paint.ANTI_ALIAS_FLAG))
-                return
-            }
-        }
-        if (useProfileImages && (type == BriefCardType.POST || type == BriefCardType.WORST_POST)) {
-            val avatar = TwidgetStore.currentStats(context, account).profileImage
-            ProfileImageLoader.cachedCircularBitmap(context, avatar, size.toInt())?.let {
-                canvas.drawBitmap(it, left, top, Paint(Paint.ANTI_ALIAS_FLAG))
                 return
             }
         }
@@ -397,31 +384,21 @@ internal object BriefWidgetArtworkRenderer {
         }
     }
 
-    private fun drawDialLayer(context: Context, canvas: Canvas, @DrawableRes drawable: Int,
-        left: Float, top: Float, size: Float, x: Float, y: Float, width: Float, height: Float) {
-        val scale = size / 48f
-        ContextCompat.getDrawable(context, drawable)?.apply {
-            setBounds((left + x * scale).toInt(), (top + y * scale).toInt(),
-                (left + (x + width) * scale).toInt(), (top + (y + height) * scale).toInt())
-            draw(canvas)
-        }
-    }
-
     private fun iconGradient(type: BriefCardType): Pair<Int, Int> = when (type) {
-        BriefCardType.TOPIC_SPOTLIGHT, BriefCardType.CONTENT_EXPERIMENT,
-        BriefCardType.CONVERSATION_PULSE, BriefCardType.CONTENT_PATTERN, BriefCardType.AUDIENCE_MOMENTUM, BriefCardType.WEEKLY_RECAP -> Color.rgb(77, 162, 255) to Color.rgb(139, 92, 246)
-        BriefCardType.GROWTH -> Color.rgb(46, 204, 113) to Color.rgb(42, 139, 242)
-        BriefCardType.SLOWDOWN -> Color.rgb(255, 177, 66) to Color.rgb(235, 84, 96)
-        BriefCardType.INACTIVITY -> Color.rgb(139, 92, 246) to Color.rgb(77, 162, 255)
-        BriefCardType.MILESTONE -> Color.rgb(255, 193, 7) to Color.rgb(255, 111, 97)
-        BriefCardType.POST, BriefCardType.POST_CONTEXT -> Color.rgb(56, 122, 255) to Color.rgb(44, 201, 188)
-        BriefCardType.WORST_POST -> Color.rgb(255, 177, 66) to Color.rgb(139, 92, 246)
-        BriefCardType.TOP_FOLLOWER -> Color.rgb(69, 188, 255) to Color.rgb(75, 207, 122)
-        BriefCardType.STREAK -> Color.rgb(255, 155, 60) to Color.rgb(238, 73, 92)
-        BriefCardType.SCHEDULE_GUIDE -> Color.rgb(46, 204, 113) to Color.rgb(56, 122, 255)
-        BriefCardType.POST_FOLLOW_THROUGH -> Color.rgb(56, 122, 255) to Color.rgb(44, 201, 188)
-        BriefCardType.POSTING_GUIDE -> Color.rgb(139, 92, 246) to Color.rgb(56, 122, 255)
-        BriefCardType.SUMMARY, BriefCardType.FOLLOWER_CONTEXT -> Color.rgb(77, 162, 255) to Color.rgb(139, 92, 246)
+        BriefCardType.INACTIVITY, BriefCardType.SLOWDOWN -> 0xFFF5B968.toInt() to 0xFFE88D63.toInt()
+        BriefCardType.GROWTH, BriefCardType.AUDIENCE_MOMENTUM -> 0xFF36C99A.toInt() to 0xFF289FBD.toInt()
+        BriefCardType.MILESTONE -> 0xFFE8BD58.toInt() to 0xFFD98B45.toInt()
+        BriefCardType.POST -> 0xFFF0B65A.toInt() to 0xFFE18D65.toInt()
+        BriefCardType.WORST_POST, BriefCardType.POST_CONTEXT -> 0xFF45B9C8.toInt() to 0xFF428BCB.toInt()
+        BriefCardType.TOP_FOLLOWER, BriefCardType.FOLLOWER_CONTEXT -> 0xFF40B6CA.toInt() to 0xFF4C94DC.toInt()
+        BriefCardType.STREAK -> 0xFFFF9B3C.toInt() to 0xFFEE495C.toInt()
+        BriefCardType.CONVERSATION_PULSE -> 0xFF36BFB4.toInt() to 0xFF3D94C9.toInt()
+        BriefCardType.CONTENT_EXPERIMENT -> 0xFFAA85DD.toInt() to 0xFF7977CF.toInt()
+        BriefCardType.TOPIC_SPOTLIGHT -> 0xFFB08AD2.toInt() to 0xFF8A75BD.toInt()
+        BriefCardType.CONTENT_PATTERN -> 0xFF759BD9.toInt() to 0xFF777ECB.toInt()
+        BriefCardType.POSTING_GUIDE, BriefCardType.SCHEDULE_GUIDE -> 0xFF4DBCB3.toInt() to 0xFF469BAE.toInt()
+        BriefCardType.POST_FOLLOW_THROUGH -> 0xFF639AD1.toInt() to 0xFF7A82C5.toInt()
+        BriefCardType.SUMMARY, BriefCardType.WEEKLY_RECAP -> 0xFF70ACDA.toInt() to 0xFF6586C1.toInt()
     }
 
     private fun compactBody(body: String): String {

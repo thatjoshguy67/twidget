@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="l10n_debug_inputs">Người theo dõi %1$s · hôm nay %2$s · tuần %3$s\nBài đăng %4$s ·
+        lịch sử %5$s mẫu\nQuét người theo dõi %6$s tài khoản</string>
+    <string name="l10n_debug_nano_state">Trạng thái: %1$s · chế độ: %2$s\nMô hình: %3$s · ngữ cảnh:
+        %4$s token</string>
+    <string name="l10n_debug_attempt">%1$s\nKết quả: %2$s</string>
+    <string name="l10n_debug_rank_detail">Hạng: %1$s · gốc: %2$s\nĐã chọn: %3$s\nID: %4$s\n\n%5$s</string>
+    <string name="l10n_debug_review_policy">%1$s\nChế độ: %2$s\nChính sách đánh giá: %3$s</string>
+    <string name="l10n_debug_ready_cloud">Sẵn sàng · chỉ đám mây</string>
+    <string name="l10n_debug_test_success">Thành công · đám mây: %1$s\nGợi ý: %2$s\nPhương tiện đã
+        kiểm tra: %3$s / %4$s\nToàn văn: %5$s</string>
+    <string name="l10n_debug_failure">Thất bại: %1$s</string>
+    <string name="l10n_debug_no_response">Không có phản hồi khả dụng</string>
+    <string name="l10n_debug_cloud_config">Mô hình: %1$s\nKhóa API: %2$s\nChỉ cấu hình · không phải
+        kiểm tra kết nối</string>
+    <string name="l10n_debug_key_present">Đã có</string>
+    <string name="l10n_debug_key_missing">Thiếu</string>
+    <string name="l10n_debug_source_unavailable">Nguồn không khả dụng. Hãy kiểm tra tài khoản và dữ
+        liệu phân tích đã lưu đệm.</string>
+    <string name="l10n_debug_kind_language">Loại: %1$s · ngôn ngữ: %2$s</string>
+    <string name="l10n_debug_source_complete">Toàn văn nguồn: %1$s · toàn văn trích đoạn đánh giá:
+        %2$s</string>
+    <string name="l10n_debug_history_media">Ví dụ lịch sử: %1$s · phương tiện: %2$s</string>
+    <string name="l10n_debug_quote_observations">Tweet trích dẫn: %1$s · lượt ghi nhận: %2$s</string>
+    <string name="l10n_debug_panels">Bảng điều khiển khả dụng: %1$s</string>
+    <string name="l10n_debug_no_send">Lần kiểm tra này chưa gửi phương tiện nào tới mô hình.</string>
+    <string name="l10n_debug_draft_unavailable">Bản nháp không khả dụng.</string>
+    <string name="l10n_debug_draft_cache">Đánh giá bản nháp sử dụng bộ nhớ đệm riêng được định danh
+        theo phiên bản, dữ liệu dẫn chứng và ngôn ngữ. Lời khuyên được lưu tối đa 7 ngày, nhiều nhất
+        32 bản nháp mỗi tài khoản.</string>
+    <string name="l10n_debug_cache_match">Đánh giá khớp được lưu lúc: %1$s</string>
+    <string name="l10n_debug_cache_none">Không có đánh giá đã lưu nào khớp.</string>
+    <string name="l10n_debug_cache_post_none">Chưa có đánh giá nào được lưu cho tweet này.</string>
+    <string name="l10n_debug_saved_at">Đã lưu lúc: %1$s</string>
+    <string name="l10n_debug_checked_at">Kiểm tra dữ liệu lần cuối: %1$s</string>
+    <string name="l10n_debug_cache_age">Tuổi: %1$s phút · thời hạn: %2$s giờ</string>
+    <string name="l10n_debug_cache_language">Ngôn ngữ đã lưu: %1$s · ứng dụng: %2$s</string>
+    <string name="l10n_debug_language_matches">Khớp ngôn ngữ: %1$s</string>
+    <string name="l10n_debug_fresh_reuse">Còn mới: %1$s · có thể dùng lại: %2$s</string>
+    <string name="l10n_debug_cloud_media">Đám mây: %1$s · phương tiện đã kiểm tra: %2$s</string>
+    <string name="l10n_debug_suggestions_panels">Gợi ý: %1$s · bảng điều khiển: %2$s</string>
+    <string name="l10n_debug_failed_refresh">Làm mới thất bại sẽ giữ lại bản đánh giá thành công gần
+        nhất.</string>
+    <string name="l10n_debug_check_local">Chế độ Chỉ cục bộ chặn đám mây, kể cả khi có khóa</string>
+    <string name="l10n_debug_check_auto">Chế độ Tự động yêu cầu có khóa</string>
+    <string name="l10n_debug_check_cloud">Chế độ Đám mây yêu cầu có khóa</string>
+    <string name="l10n_debug_check_auto_ready">Cấu hình Tự động cho phép đánh giá</string>
+    <string name="l10n_debug_check_cloud_ready">Cấu hình Đám mây cho phép đánh giá</string>
+    <string name="l10n_debug_check_first">Đánh giá ngày đầu hết hạn sau 4 giờ</string>
+    <string name="l10n_debug_check_week">Hoạt động trong tuần dùng chu kỳ làm mới 12 giờ</string>
+    <string name="l10n_debug_check_old">Tweet cũ hơn dùng chu kỳ làm mới 48 giờ</string>
+    <string name="l10n_debug_pass">ĐẠT</string>
+    <string name="l10n_debug_fail">LỖI</string>
+    <string name="l10n_debug_checks_note">Không gọi mô hình, không đổi cài đặt hay đánh giá đã lưu.</string>
+    <string name="l10n_nano_auto">Tự động · Ổn định / Xem trước / Mặc định</string>
+    <string name="l10n_nano_full">Ổn định · Đầy đủ</string>
+    <string name="l10n_nano_fast">Ổn định · Nhanh</string>
+    <string name="l10n_nano_preview_full">Xem trước · Đầy đủ</string>
+    <string name="l10n_nano_preview_fast">Xem trước · Nhanh</string>
+    <string name="l10n_preview_complete">Hoàn tất · tweet</string>
+    <string name="l10n_preview_quote">Hoàn tất · phương tiện và trích dẫn</string>
+    <string name="l10n_preview_draft">Hoàn tất · bản nháp</string>
+    <string name="l10n_preview_loading">Đang tải nguồn</string>
+    <string name="l10n_preview_generating">Đang tạo</string>
+    <string name="l10n_preview_refreshing">Đang làm mới · giữ đánh giá trước</string>
+    <string name="l10n_preview_stale">Bản nháp đã thay đổi</string>
+    <string name="l10n_preview_missing">Nguồn không khả dụng</string>
+    <string name="l10n_preview_error">Lỗi · %1$s</string>
+    <string name="l10n_debug_yes">Có</string>
+    <string name="l10n_debug_no">Không</string>
+</resources>

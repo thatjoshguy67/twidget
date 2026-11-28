@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_preview_posted">Bạn đã đăng bài này %1$s.</string>
+    <string name="review_preview_replied">Bạn đã phản hồi %1$s.</string>
+    <string name="review_preview_just_now">vừa xong</string>
+    <string name="review_preview_invite">Xem hiệu suất của tweet này và điều nên thử tiếp theo.</string>
+    <string name="review_preview_invite_reply">Xem hiệu suất của phản hồi này và điều nên thử tiếp
+        theo.</string>
+    <string name="review_preview_counts">%1$s có %2$s và %3$s tại thời điểm đánh giá.</string>
+    <string name="review_preview_interactions">%1$s có %2$s tương tác công khai khi đánh giá; chưa
+        có dữ liệu lượt xem.</string>
+    <string name="review_preview_both_higher">Bài viết nhận được nhiều lượt xem và tương tác hơn các
+        tweet tương tự của bạn.</string>
+    <string name="review_preview_both_lower">Bài viết nhận được ít lượt xem và tương tác hơn các
+        tweet tương tự của bạn.</string>
+    <string name="review_preview_more_views_fewer_interactions">Bài viết nhận được nhiều lượt xem
+        hơn, nhưng ít tương tác hơn các tweet tương tự của bạn.</string>
+    <string name="review_preview_fewer_views_more_interactions">Bài viết nhận được ít lượt xem hơn,
+        nhưng nhiều tương tác hơn các tweet tương tự của bạn.</string>
+    <string name="review_preview_higher_reach">Bài viết nhận được nhiều lượt xem hơn các tweet tương
+        tự của bạn.</string>
+    <string name="review_preview_lower_reach">Bài viết nhận được ít lượt xem hơn các tweet tương tự
+        của bạn.</string>
+    <string name="review_preview_more_interactions">Bài viết nhận được nhiều tương tác hơn các tweet
+        tương tự của bạn.</string>
+    <string name="review_preview_fewer_interactions">Bài viết nhận được ít tương tác hơn các tweet
+        tương tự của bạn.</string>
+    <string name="review_preview_typical">Lượt xem và tương tác ngang với các tweet tương tự của
+        bạn.</string>
+    <string name="review_preview_typical_interactions">Tương tác ngang với các tweet tương tự của
+        bạn.</string>
+    <plurals name="review_preview_minutes">
+        <item quantity="other">%1$s phút trước</item>
+    </plurals>
+    <plurals name="review_preview_hours">
+        <item quantity="other">%1$s giờ trước</item>
+    </plurals>
+    <plurals name="review_preview_days">
+        <item quantity="other">%1$s ngày trước</item>
+    </plurals>
+    <plurals name="review_preview_weeks">
+        <item quantity="other">%1$s tuần trước</item>
+    </plurals>
+    <plurals name="review_preview_months">
+        <item quantity="other">%1$s tháng trước</item>
+    </plurals>
+    <plurals name="review_preview_years">
+        <item quantity="other">%1$s năm trước</item>
+    </plurals>
+    <string name="review_preview_subject_tweet">Tweet của bạn</string>
+    <string name="review_preview_subject_reply">Phản hồi của bạn</string>
+    <plurals name="review_preview_view_count">
+        <item quantity="other">%1$s lượt xem</item>
+    </plurals>
+    <plurals name="review_preview_interaction_count">
+        <item quantity="other">%1$s tương tác công khai</item>
+    </plurals>
+</resources>

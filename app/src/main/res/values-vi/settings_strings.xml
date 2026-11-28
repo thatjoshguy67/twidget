@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_data_sources">Dữ liệu và nguồn</string>
+    <string name="settings_your_brief">Tóm tắt của bạn</string>
+    <string name="settings_notifications">Thông báo</string>
+    <string name="settings_scheduled_tweets">Tweet đã lên lịch</string>
+    <string name="settings_main_account">Tài khoản chính</string>
+    <string name="settings_other_accounts">Tài khoản khác</string>
+    <string name="settings_alternate_sources">Quản lý nguồn thay thế</string>
+    <string name="settings_self_hosted_bridge">Cầu nối Twidget tự lưu trữ</string>
+    <string name="settings_widget_defaults">Mặc định cho widget</string>
+    <string name="settings_system_default">Mặc định hệ thống</string>
+    <string name="settings_analytics_import">Nhập phân tích X</string>
+    <string name="settings_import_pending">Đang chờ</string>
+    <string name="settings_imported">Đã nhập</string>
+    <string name="settings_connected">Đã kết nối</string>
+    <string name="settings_enable_dummy">Bật hồ sơ giả lập</string>
+    <string name="settings_android_api">Android API %1$d</string>
+    <string name="settings_last_error">Lỗi gần nhất: %1$s</string>
+    <string name="settings_palette_seed">Màu gốc</string>
+    <string name="settings_palette_primary_light">Chính · sáng</string>
+    <string name="settings_palette_primary_dark">Chính · tối</string>
+    <string name="settings_palette_control_light">Điều khiển · sáng</string>
+    <string name="settings_palette_control_dark">Điều khiển · tối</string>
+    <string name="settings_palette_token">%1$s: %2$s</string>
+    <string name="settings_demo_name">Twidget Demo</string>
+    <string name="settings_brief_description">%1$s\n\n%2$s</string>
+    <string name="settings_update_channel">Kênh cập nhật</string>
+    <string name="settings_app_font">Phông chữ ứng dụng</string>
+    <string name="settings_app_font_default">Mặc định (One UI Sans)</string>
+    <string name="settings_font_tip_title">Mẹo đổi phông chữ</string>
+    <string name="settings_font_tip_summary">Dùng SamFonts để đổi phông chữ hệ thống One UI, sau đó
+        chọn Mặc định hệ thống trong Phông chữ ứng dụng.</string>
+    <string name="settings_font_tip_link">Tải SamFonts</string>
+</resources>

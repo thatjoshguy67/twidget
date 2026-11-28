@@ -1,0 +1,33 @@
+<resources>
+    <string name="interactions_title">Tương tác</string>
+    <string name="interaction_stats_title">Thống kê bài đăng</string>
+    <string name="interaction_mix_title">Cơ cấu tương tác</string>
+    <string name="interaction_split_title">Tweet và Phản hồi</string>
+    <string name="interaction_likes">Lượt thích</string>
+    <string name="interaction_reposts">Đăng lại</string>
+    <string name="interaction_replies">Phản hồi</string>
+    <string name="interaction_shares">Chia sẻ</string>
+    <string name="interaction_quotes">Tweet trích dẫn</string>
+    <string name="interaction_bookmarks">Dấu trang</string>
+    <string name="interaction_views">Lượt xem</string>
+    <string name="interaction_original">Tweet</string>
+    <string name="interaction_total">tổng</string>
+    <string name="interaction_range_7">7N</string>
+    <string name="interaction_range_30">30N</string>
+    <string name="interaction_range_90">90N</string>
+    <string name="interaction_last_7">7 ngày qua</string>
+    <string name="interaction_last_30">30 ngày qua</string>
+    <string name="interaction_last_90">90 ngày qua</string>
+    <string name="interaction_missing">—</string>
+    <string name="interaction_empty">Chưa có dữ liệu cho chỉ số này. Hãy nhập X Analytics hoặc làm
+        mới các bài đăng công khai.</string>
+    <string name="interaction_mix_unavailable">Không có cơ cấu tương tác khi dữ liệu chưa đầy đủ</string>
+    <string name="interaction_split_empty">Không ghi nhận bài đăng nào trong khoảng thời gian này</string>
+    <string name="interaction_by_post_date">Hoạt động hằng ngày từ CSV; số liệu công khai theo ngày
+        đăng.</string>
+    <string name="interaction_value_description">%1$s: %2$s</string>
+    <string name="interaction_slice_description">%1$s: %2$s, %3$s</string>
+    <string name="interaction_split_value">%1$s · %2$s</string>
+    <string name="interaction_percent">%1$d%%</string>
+    <string name="interaction_range_description">%1$s, %2$s</string>
+</resources>

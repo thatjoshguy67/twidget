@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="goal_noun_followers">
+        <item quantity="other">người theo dõi</item>
+    </plurals>
+    <plurals name="goal_noun_verified">
+        <item quantity="other">người theo dõi đã xác minh</item>
+    </plurals>
+    <plurals name="goal_noun_impressions">
+        <item quantity="other">lượt hiển thị</item>
+    </plurals>
+    <plurals name="goal_noun_engagement">
+        <item quantity="other">tỷ lệ tương tác</item>
+    </plurals>
+    <plurals name="widget_count_followers">
+        <item quantity="other">Người theo dõi</item>
+    </plurals>
+</resources>

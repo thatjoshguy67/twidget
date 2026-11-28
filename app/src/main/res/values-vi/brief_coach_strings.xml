@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="coach_title">Trợ lý viết tweet</string>
+    <string name="coach_intro">Cải thiện bản nháp hoặc rút kinh nghiệm từ tweet gần đây. Nhờ AI đề
+        xuất chỉnh sửa cụ thể dựa trên bài đăng và lịch sử hoạt động của bạn.</string>
+    <string name="coach_drafts">Nhận xét bản nháp</string>
+    <string name="coach_reviews">Đánh giá tweet</string>
+    <string name="coach_draft_action">Nhận xét bản nháp này</string>
+    <string name="coach_review_action">Đánh giá tweet này</string>
+    <string name="coach_reply_action">Đánh giá phản hồi này</string>
+    <string name="coach_more_drafts">Xem thêm bản nháp</string>
+    <string name="coach_more_posts">Xem thêm tweet và phản hồi</string>
+    <string name="coach_media_draft">Bài đăng có tệp phương tiện nhưng chưa có nội dung mở đầu</string>
+    <string name="coach_reply_choice">Phản hồi · %1$s</string>
+    <string name="coach_post_choice">Tweet · %1$s</string>
+    <string name="coach_draft_report">Trước khi đăng</string>
+    <string name="coach_post_report">Rút kinh nghiệm từ tweet này</string>
+    <string name="coach_reply_report">Rút kinh nghiệm từ phản hồi này</string>
+    <string name="coach_edit_draft">Sửa bản nháp</string>
+    <string name="coach_open_post">Mở tweet</string>
+    <string name="coach_close">Đóng</string>
+    <string name="coach_evidence">Cơ sở đánh giá</string>
+    <string name="coach_possible_factors">Nguyên nhân có thể</string>
+    <string name="coach_try_next">Gợi ý tiếp theo</string>
+    <string name="coach_limits">Giới hạn phân tích</string>
+    <string name="coach_examples">Các tweet đối chiếu của bạn</string>
+    <string name="coach_draft_evidence">Số phần trong chuỗi bài: %1$d. Tệp đính kèm: %2$d. Các nhận
+        xét bên dưới áp dụng cho phần mở đầu.</string>
+    <string name="coach_draft_limit">Đây là các gợi ý viết bài và xu hướng từ lịch sử của bạn, không
+        phải dự đoán lượt xem hay cách X xếp hạng bản nháp này.</string>
+    <string name="coach_history_limit">Lịch sử hiện có quá ít tweet gốc đã đăng đủ lâu để đối chiếu
+        cá nhân. Các nhận xét về cách viết vẫn có giá trị tham khảo.</string>
+    <string name="coach_sample_limit">Hệ thống chỉ trả về một mẫu dữ liệu giới hạn từ lịch sử của
+        bạn nên phần đối chiếu có thể bỏ sót các tweet khác.</string>
+    <string name="coach_duplicate_evidence">Phần mở đầu trùng khớp với một tweet bạn đã đăng gần
+        đây.</string>
+    <string name="coach_duplicate_factor">Người đọc từng thấy tweet trước đó có thể không thấy thông
+        tin mới để tương tác.</string>
+    <string name="coach_duplicate_step">Hãy bổ sung kết quả mới, ví dụ cụ thể hoặc thông tin cập
+        nhật thay vì lặp lại thông báo cũ.</string>
+    <string name="coach_similar_evidence">Cách diễn đạt tương tự đã xuất hiện trong %1$d tweet gốc
+        gần đây của bạn.</string>
+    <string name="coach_similar_step">Mở các tweet đối chiếu để tìm một ví dụ cụ thể hoặc ý mở đầu
+        có thể khai thác sâu hơn. Diễn đạt giống nhau không đồng nghĩa với tiếp cận cùng tệp khán
+        giả.</string>
+    <string name="coach_format_evidence">Trong các tweet gốc có cùng thời gian đăng, %1$d bài kèm
+        phương tiện đạt trung vị %3$s lượt xem; %2$d bài chỉ có văn bản đạt trung vị %4$s lượt xem.</string>
+    <string name="coach_format_factor">Định dạng bài đăng có liên quan đến sự chênh lệch lượt xem
+        trong mẫu nhỏ này. Tuy nhiên, chủ đề, thời điểm đăng và tệp người đọc cũng có thể là nguyên
+        nhân.</string>
+    <string name="coach_format_media_step">Thử thêm hình ảnh hoặc ví dụ minh họa phù hợp cho một chủ
+        đề tương tự, sau đó so sánh kết quả ở cùng mốc thời gian.</string>
+    <string name="coach_format_text_step">Thử viết một bài giải thích ngắn gọn chỉ dùng văn bản cho
+        chủ đề tương tự, sau đó so sánh kết quả ở cùng mốc thời gian.</string>
+    <string name="coach_draft_default_step">Đưa lợi ích hoặc ý chính lên ngay câu mở đầu, thêm một
+        chi tiết cụ thể và xác định rõ kiểu phản hồi bạn muốn nhận từ người đọc.</string>
+    <string name="coach_post_counts">Ghi nhận %1$s lượt xem và %2$s lượt tương tác công khai sau
+        %3$s giờ đăng. Tương tác công khai bao gồm lượt thích, phản hồi, đăng lại và trích dẫn
+        tweet.</string>
+    <string name="coach_post_counts_without_views">Ghi nhận %1$s lượt tương tác công khai sau %2$s
+        giờ đăng. Tương tác công khai bao gồm lượt thích, phản hồi, đăng lại và trích dẫn tweet.
+        Chưa có dữ liệu lượt xem.</string>
+    <string name="coach_unknown_views_limit">Hệ thống không cung cấp số lượt xem nên không thể so
+        sánh mức độ hiển thị và tỷ lệ phản hồi trên mỗi lượt xem.</string>
+    <string name="coach_peer_views">%1$d tweet khác cùng định dạng và tương đương thời gian đăng của
+        bạn đạt trung vị %2$s lượt xem. Các phản hồi chỉ được so sánh với phản hồi khác.</string>
+    <string name="coach_peer_rate">Tweet này đạt %1$s lượt tương tác công khai trên mỗi 100 lượt
+        xem; mức trung vị của %3$d tweet tương đương là %2$s.</string>
+    <string name="coach_post_limit">Lượt xem không đại diện cho số người dùng riêng biệt và không
+        phản ánh lượt hiển thị trên mục Dành cho bạn. Các chỉ số này không cho biết mức độ phù hợp
+        khán giả, thời gian đọc, phản hồi tiêu cực hay thuật toán xếp hạng của X.</string>
+    <string name="coach_exposure_factor">Mức độ hiển thị thấp hơn là khác biệt rõ nhất. Tỷ lệ phản
+        hồi trên mỗi lượt xem vẫn ổn định, nên tổng tương tác thấp chưa chắc do nội dung viết kém.</string>
+    <string name="coach_exposure_step">Giữ lại ý tưởng hữu ích và thử hướng đến nhóm người đọc rõ
+        ràng hơn hoặc đổi cách mở đầu ở tweet tương tự tiếp theo. Đừng vội cho rằng kết quả này là
+        do bị bóp tương tác.</string>
+    <string name="coach_response_factor">Tỷ lệ phản hồi trên mỗi lượt xem thấp hơn các tweet đối
+        chiếu. Bạn nên xem lại mức độ liên quan, sự rõ ràng hoặc lý do khiến người đọc muốn bình
+        luận; sự khác biệt về tệp khán giả cũng có thể là một nguyên nhân.</string>
+    <string name="coach_response_step">Thử thay đổi câu mở đầu hoặc đúc kết một ý chính cụ thể. Ở
+        tweet tương tự tiếp theo, hãy so sánh cả tỷ lệ tương tác trên lượt xem lẫn tổng lượt xem.</string>
+    <string name="coach_reach_factor">Tweet này đạt lượt xem cao hơn các tweet đối chiếu. Tuy nhiên,
+        số liệu chưa đủ để khẳng định câu chữ hay yếu tố phân phối nào đã tạo nên kết quả này.</string>
+    <string name="coach_reach_step">Phát triển ý tưởng này bằng một ví dụ mới và theo dõi xem hiệu
+        quả có lặp lại ở các tweet tương tự tiếp theo hay không.</string>
+    <string name="coach_early_limit">Dữ liệu hiện tại mới ghi nhận dưới 24 giờ nên chưa thể đánh giá
+        hiệu suất kém.</string>
+    <string name="coach_peers_limit">Có ít hơn ba tweet khác cùng định dạng và thời gian đăng để đưa
+        ra so sánh cá nhân đáng tin cậy.</string>
+    <string name="coach_excerpt_limit">Hệ thống chỉ có bản xem trước rút gọn nên đánh giá này không
+        nhận xét toàn bộ câu chữ hay cho rằng nội dung gốc bị thiếu ý.</string>
+    <string name="coach_reply_limit">Không có ngữ cảnh của cuộc trò chuyện gốc tại đây. Tệp người
+        xem và thời điểm của bài gốc có thể đã ảnh hưởng đến kết quả của phản hồi này.</string>
+    <string name="coach_reply_step">Nếu phản hồi này có ý tưởng hay và độc lập, hãy thử viết thành
+        một tweet gốc với đầy đủ ngữ cảnh cho những người không theo dõi cuộc trò chuyện.</string>
+    <string name="coach_review_default_step">Với tweet tương tự tiếp theo, hãy thử thay đổi một yếu
+        tố ở câu mở đầu, ví dụ minh họa hoặc câu hỏi. Theo dõi nhiều bài đăng sẽ cho kết quả chính
+        xác hơn một bài đơn lẻ.</string>
+    <string name="coach_media_only_evidence">Phần mở đầu có đính kèm phương tiện nhưng không có văn
+        bản đi kèm.</string>
+    <string name="coach_media_only_factor">Người chưa quen thuộc với chủ đề này có thể cần một lời
+        giải thích ngắn về nội dung tệp phương tiện hoặc lý do nó đáng chú ý.</string>
+    <string name="coach_media_only_step">Cân nhắc thêm một câu nêu rõ chủ đề và chi tiết đáng chú ý
+        trong hình ảnh hoặc video.</string>
+    <string name="coach_link_evidence">Phần mở đầu có chứa liên kết nhưng thiếu ngữ cảnh giải thích.</string>
+    <string name="coach_link_factor">Người đọc có thể không biết họ sẽ nhận được gì khi nhấp vào
+        liên kết. Đây là vấn đề về sự rõ ràng, không phải bằng chứng cho thấy thuật toán hạn chế
+        liên kết.</string>
+    <string name="coach_link_step">Nêu tóm tắt phát hiện chính hoặc lợi ích trước khi đặt liên kết
+        để tweet tự thân đã mang lại thông tin hữu ích.</string>
+    <string name="coach_opening_evidence">Câu mở đầu viết “%1$s” nhưng chưa nêu rõ chủ thể đang nói
+        tới.</string>
+    <string name="coach_opening_factor">Những người ngoài cuộc trò chuyện hiện tại có thể không hiểu
+        từ “này” ám chỉ điều gì hoặc tại sao họ nên đọc tiếp.</string>
+    <string name="coach_opening_step">Nêu rõ điều gì đã thay đổi và ai là người hưởng lợi ngay câu
+        đầu tiên, sau đó mới chia sẻ góc nhìn cá nhân.</string>
+    <string name="coach_question_evidence">Câu hỏi kết bài là “%1$s?”.</string>
+    <string name="coach_question_factor">Câu hỏi quá rộng buộc người đọc phải tự chọn cả chủ đề lẫn
+        cách trả lời. Một câu hỏi cụ thể hơn sẽ dễ khơi gợi phản hồi hơn.</string>
+    <string name="coach_question_step">Hãy hỏi về một lựa chọn, trải nghiệm hoặc sự đánh đổi gắn
+        trực tiếp với ý chính của bài viết.</string>
+    <string name="coach_paragraph_evidence">Đoạn mở đầu dài %1$s ký tự mà chưa xuống dòng.</string>
+    <string name="coach_paragraph_factor">Đoạn mở đầu quá dày chữ có thể khiến người đọc khó nắm bắt
+        ý chính. Độ dài đơn thuần không đồng nghĩa với việc bị giảm xếp hạng.</string>
+    <string name="coach_paragraph_step">Đưa ý chính lên đầu và chuyển các chi tiết bổ trợ sang đoạn
+        thứ hai.</string>
+    <string name="coach_ai_local_note">Gemini Nano phân tích bài đăng này cùng lịch sử đã chọn ngay
+        trên thiết bị của bạn. Các gợi ý chỉ là giả thuyết từ AI, không phải nguyên nhân chắc chắn.</string>
+    <string name="coach_ai_cloud_note">Tính năng đánh giá qua đám mây sẽ gửi bài đăng, tệp đính kèm,
+        lịch sử công khai hiện có và ngữ cảnh trò chuyện tới nhà cung cấp đám mây bạn đã chọn.</string>
+    <string name="coach_ai_generate">Nhận gợi ý từ AI</string>
+    <string name="coach_ai_generate_cloud">Nhận gợi ý bằng AI đám mây</string>
+    <string name="coach_ai_thinking">Đang phân tích bài đăng và ngữ cảnh…</string>
+    <string name="coach_ai_failed">Không thể hoàn tất phân tích AI. Bạn có thể thử lại hoặc kiểm tra
+        cài đặt AI của Your Brief. Các số liệu thực tế vẫn được hiển thị.</string>
+    <string name="coach_ai_stale">Bản nháp này đã thay đổi. Hãy đóng phần đánh giá này và mở lại để
+        nhận phân tích cho nội dung mới nhất.</string>
+    <string name="coach_ai_local_result">Được tạo bởi Gemini Nano trên thiết bị này. Các giải thích
+        chỉ là giả thuyết để thử nghiệm.</string>
+    <string name="coach_ai_cloud_result">Được tạo bởi Gemini Cloud. Các giải thích chỉ là giả thuyết
+        để thử nghiệm.</string>
+    <string name="coach_ai_quote">Câu chữ của bạn: “%1$s”</string>
+    <string name="coach_ai_rewrite">Gợi ý viết lại</string>
+    <string name="coach_ai_fill_in">Viết lại — điền thêm chi tiết còn thiếu</string>
+    <string name="coach_ai_basis">Dữ liệu sử dụng</string>
+    <string name="coach_ai_wording_basis">Cách dùng từ trong bài đăng này. Riêng yếu tố này chưa đủ
+        để khẳng định tác động đến hiệu suất.</string>
+    <string name="coach_ai_source_counts">%1$s lượt xem · %2$s lượt tương tác công khai · ghi nhận
+        sau %3$s giờ đăng</string>
+    <string name="coach_ai_unknown">Không rõ</string>
+    <string name="coach_ai_question">Ngữ cảnh cần bổ sung</string>
+    <string name="coach_ai_auto_note">Chế độ Tự động ưu tiên dùng Gemini Nano trước. Nếu cần chuyển
+        sang đám mây, nội dung bài đăng, tệp đính kèm và lịch sử công khai đã chọn sẽ được gửi tới
+        nhà cung cấp đám mây của bạn.</string>
+    <string name="coach_ai_media">Ngữ cảnh tệp phương tiện</string>
+    <string name="coach_ai_media_image">Tệp đính kèm %1$d (phần %2$d): hình ảnh đã được đưa vào ngữ
+        cảnh AI.</string>
+    <string name="coach_ai_media_video">Tệp đính kèm %1$d (phần %2$d): đã đưa ảnh xem trước hoặc
+        khung hình video vào phân tích. Chuyển động và âm thanh không được kiểm tra.</string>
+    <string name="coach_ai_media_unseen">Tệp đính kèm %1$d (phần %2$d): không thể kiểm tra trong lần
+        phân tích này.</string>
+    <string name="coach_ai_media_omitted">Đã bỏ qua %1$d tệp đính kèm khác. Phân tích này chỉ hỗ trợ
+        tối đa bốn hình ảnh hoặc ảnh xem trước video.</string>
+    <string name="coach_ai_text_excerpt">AI chỉ nhận được một đoạn trích rút gọn nên không thể đánh
+        giá toàn bộ câu chữ hay viết lại trọn vẹn bài đăng.</string>
+</resources>

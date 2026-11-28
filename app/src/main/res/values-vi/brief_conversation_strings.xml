@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_thread_context">Ngữ cảnh chuỗi bài: %1$d tweet được liên kết.</string>
+    <string name="review_replies_unavailable">Nguồn dữ liệu hiện tại không cung cấp nội dung phản
+        hồi.</string>
+    <string name="review_replies_empty">Không có dữ liệu nội dung phản hồi nào từ người xem nên chưa
+        thể đánh giá mức độ đón nhận.</string>
+    <string name="review_replies_sample">Đã lấy mẫu %1$d phản hồi từ người xem; dữ liệu này không
+        đại diện cho toàn bộ khán giả.</string>
+</resources>

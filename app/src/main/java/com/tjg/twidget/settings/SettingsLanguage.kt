@@ -37,13 +37,13 @@ internal object SettingsLanguage {
 
     /** Android 12 and earlier have no system page for per-app languages. */
     fun showLegacyDialog(activity: Activity): AlertDialog {
-        val tags = arrayOf("", "ca", "de", "en", "es", "fr", "nl")
+        val tags = arrayOf("", "ca", "de", "en", "es", "fr", "nl", "vi")
         val current = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore(',')
         val selected = tags.indexOfFirst { if (it.isEmpty()) current.isEmpty() else current.startsWith(it) }.coerceAtLeast(0)
         val labels = arrayOf(activity.getString(R.string.language_system), activity.getString(R.string.language_catalan),
             activity.getString(R.string.language_german), activity.getString(R.string.language_english),
             activity.getString(R.string.language_spanish), activity.getString(R.string.language_french),
-            activity.getString(R.string.language_dutch))
+            activity.getString(R.string.language_dutch), activity.getString(R.string.language_vietnamese))
         return AlertDialog.Builder(activity)
             .setTitle(R.string.language)
             .setSingleChoiceItems(labels, selected) { dialog, which ->

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="followers_net_today">%1$s ròng hôm nay</string>
+    <string name="followers_net_today_week">Hôm nay: %1$s · 7 ngày qua: %2$s.</string>
+    <string name="followers_lost_axis">Giảm %1$s</string>
+</resources>

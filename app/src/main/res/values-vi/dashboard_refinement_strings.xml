@@ -1,0 +1,23 @@
+<resources>
+    <string name="dashboard_activity_week">Hoạt động tuần này</string>
+    <string name="dashboard_best_streak">Chuỗi ngày dài nhất</string>
+    <string name="dashboard_net_posts">Bài đăng ròng</string>
+    <string name="dashboard_likes">Lượt thích</string>
+    <string name="dashboard_replies">Phản hồi</string>
+    <string name="dashboard_reposts">Đăng lại + trích dẫn</string>
+    <string name="dashboard_median">Mức phổ biến</string>
+    <string name="dashboard_post_rank">Bài %1$d</string>
+    <string name="dashboard_today">Hôm nay</string>
+    <string name="dashboard_net_growth">Tăng trưởng ròng</string>
+    <string name="dashboard_coverage">Dữ liệu hiện có</string>
+    <string name="dashboard_sample">Mẫu đã phân tích</string>
+    <string name="dashboard_period_net">Ròng %1$s · %2$s</string>
+    <string name="dashboard_recent_posts">Mẫu bài đăng gần đây</string>
+    <string name="dashboard_imported">Dữ liệu đã nhập</string>
+    <string name="dashboard_days">Ngày</string>
+    <string name="dashboard_no_comparison">Cần thêm lịch sử dữ liệu</string>
+    <string name="dashboard_streak_start">Bắt đầu hôm nay</string>
+    <string name="dashboard_move_earlier">Lùi về trước</string>
+    <string name="dashboard_move_later">Tiến về sau</string>
+    <string name="dashboard_observed_net_period">Ròng ghi nhận %1$s · %2$s</string>
+</resources>

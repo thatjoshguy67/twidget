@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_timing_upcoming">Lên kế hoạch cho khung giờ %1$s</string>
+    <string name="brief_timing_now">Đã đến khung giờ %1$s của bạn</string>
+    <string name="brief_timing_next">Hãy thử khung giờ %1$s vào ngày mai</string>
+    <string name="brief_timing_evidence">Trong số các tweet gần đây có cùng thời gian đăng, các bài
+        đăng vào khung giờ %1$s có mức lượt xem phổ biến cao hơn. Hãy thử lại khung giờ này như một
+        phép thử, không phải kết quả chắc chắn.</string>
+    <string name="milestone_celebration_message">Đã đạt mục tiêu. Làm tốt lắm!</string>
+</resources>

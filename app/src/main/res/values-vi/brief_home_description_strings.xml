@@ -1,0 +1,22 @@
+<resources>
+    <string name="brief_home_description_restart">Lấy lại nhịp độ đăng bài và bắt đầu một chuỗi ngày
+        mới.</string>
+    <string name="brief_home_description_streak_active">Nhịp độ đăng bài của bạn đang vào guồng. Hãy
+        tiếp tục duy trì phong độ nhé.</string>
+    <string name="brief_home_description_streak_due">Đăng thêm một bài hôm nay để giữ vững chuỗi
+        ngày đăng bài của bạn.</string>
+    <string name="brief_home_description_goal">Mục tiêu tiếp theo đã ở ngay trước mắt. Hãy xem tiến
+        độ và lên kế hoạch cho bước kế tiếp.</string>
+    <string name="brief_home_description_followers">Khám phá những tài khoản nổi bật trong tệp khán
+        giả của bạn.</string>
+    <string name="brief_home_description_audience">Xem tệp khán giả của bạn đang thay đổi ra sao và
+        tìm hướng đi tiếp theo.</string>
+    <string name="brief_home_description_post">Phân tích kỹ hơn một bài đăng gần đây và những điều
+        nên thử tiếp theo.</string>
+    <string name="brief_home_description_timing">Tìm khung giờ hiệu quả cho bài đăng tiếp theo dựa
+        trên hoạt động gần đây của bạn.</string>
+    <string name="brief_home_description_patterns">Khám phá các chủ đề và định dạng đang thu hút
+        khán giả của bạn.</string>
+    <string name="brief_home_description_overview">Cập nhật nhanh hoạt động gần đây và những điểm
+        cần tập trung tiếp theo.</string>
+</resources>

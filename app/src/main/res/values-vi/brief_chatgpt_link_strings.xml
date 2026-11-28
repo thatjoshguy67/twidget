@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_chatgpt_link_intro">Liên kết tài khoản ChatGPT để nhận phân tích sâu hơn, sử dụng hạn mức gói đăng ký của bạn</string>
+    <string name="brief_chatgpt_link_title">Liên kết tài khoản ChatGPT</string>
+    <string name="brief_chatgpt_link_dismiss">Bỏ qua</string>
+    <string name="debug_chatgpt_card_preview">Xem trước thẻ liên kết ChatGPT</string>
+    <string name="debug_chatgpt_card_preview_summary">Chỉ xem trước · Không đăng nhập hay thay đổi lời nhắc một lần của bạn.</string>
+</resources>

@@ -1,0 +1,63 @@
+<resources>
+    <string name="milestone_account_goals">Mục tiêu tài khoản</string>
+    <string name="milestone_setup_hint">Chạm vào đây để thiết lập mục tiêu tài khoản</string>
+    <string name="milestone_setup_title">Thiết lập mục tiêu tài khoản</string>
+    <string name="milestone_setup_edit">Chỉnh sửa mục tiêu tài khoản</string>
+    <string name="milestone_choose_metric">Chọn chỉ số bạn muốn cải thiện. Bạn có thể chọn nhiều mục
+        tiêu.</string>
+    <string name="milestone_enter_goal">Nhập mục tiêu %1$s</string>
+    <string name="milestone_auto_adjust">Tự động điều chỉnh mục tiêu</string>
+    <string name="milestone_auto_adjust_summary">Thúc đẩy bản thân bằng cách tự động cập nhật mục
+        tiêu mới dựa trên hiệu suất tài khoản sau khi hoàn thành</string>
+    <string name="milestone_select_goal">Chọn mục tiêu</string>
+    <string name="milestone_edit_goal_title">Chỉnh sửa mục tiêu %1$s</string>
+    <string name="milestone_select">Chọn</string>
+    <string name="milestone_current_goal">Mục tiêu hiện tại: %1$s</string>
+    <string name="milestone_unavailable">Chưa khả dụng</string>
+    <string name="milestone_unavailable_verified">Hoàn tất lượt quét người theo dõi để dùng mục tiêu
+        này</string>
+    <string name="milestone_unavailable_analytics">Nhập hoặc đồng bộ dữ liệu phân tích để dùng mục
+        tiêu này</string>
+    <string name="milestone_metric_followers">Người theo dõi</string>
+    <string name="milestone_metric_followers_summary">Theo dõi tiến độ hướng tới số lượng người theo
+        dõi mong muốn</string>
+    <string name="milestone_metric_verified">Người theo dõi đã xác minh</string>
+    <string name="milestone_metric_verified_summary">Thu hút sự chú ý của người theo dõi đã xác minh
+        và tăng lượt hiển thị</string>
+    <string name="milestone_metric_engagement">Tỷ lệ tương tác</string>
+    <string name="milestone_metric_engagement_summary">Theo dõi tỷ lệ tương tác và hướng tới mức
+        phần trăm mục tiêu</string>
+    <string name="milestone_metric_impressions">Lượt hiển thị</string>
+    <string name="milestone_metric_impressions_summary">Đặt mục tiêu đạt được nhiều lượt xem nhất có
+        thể</string>
+    <string name="milestone_continue">Tiếp tục</string>
+    <string name="milestone_save_goal">Lưu mục tiêu</string>
+    <string name="milestone_next_goal">Mục tiêu tiếp theo</string>
+    <string name="milestone_save_goals">Lưu các mục tiêu</string>
+    <string name="milestone_target_must_exceed">Hãy chọn mục tiêu cao hơn giá trị hiện tại</string>
+    <string name="milestone_goal_body">Đang nỗ lực hướng tới mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_climbing">Đang tiến gần tới mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_accelerating">Đang tăng tốc tới mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_accelerating_alt">Đang rút ngắn nhanh khoảng cách tới mục tiêu %1$s
+        %2$s</string>
+    <string name="milestone_goal_decelerating">Tiếp tục cố gắng vì mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_decelerating_alt">Mục tiêu %1$s %2$s vẫn nằm trong tầm tay</string>
+    <string name="milestone_goal_halfway">Đã đi được hơn nửa chặng đường tới mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_almost">Chỉ còn chút nữa là chạm tới mục tiêu %1$s %2$s</string>
+    <string name="milestone_goal_reached_body">Bạn đã chạm mốc mục tiêu %1$s %2$s</string>
+    <string name="milestone_title_getting_started">Bắt đầu hành trình</string>
+    <string name="milestone_title_keep_going">Tiếp tục phát huy</string>
+    <string name="milestone_title_on_your_way">Đang đi đúng hướng</string>
+    <string name="milestone_title_growing_quickly">Tăng trưởng nhanh chóng</string>
+    <string name="milestone_title_picking_up_pace">Đang tăng tốc</string>
+    <string name="milestone_title_slipping_off">Đang chững lại</string>
+    <string name="milestone_title_regain_momentum">Lấy lại phong độ</string>
+    <string name="milestone_title_halfway">Đã đi được nửa chặng đường</string>
+    <string name="milestone_title_almost">Sắp chạm đích rồi</string>
+    <string name="milestone_title_reached">Bạn đã làm được!</string>
+    <string name="milestone_widget_label">Cột mốc Twidget</string>
+    <string name="milestone_widget_description">Theo dõi mục tiêu tài khoản kèm thông báo hiệu suất
+        trực tiếp.</string>
+    <string name="milestone_widget_preview_message">Đang tiến gần tới mục tiêu <b>8.000</b> người
+        theo dõi</string>
+</resources>

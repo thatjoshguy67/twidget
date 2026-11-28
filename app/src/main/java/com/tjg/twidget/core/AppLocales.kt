@@ -32,7 +32,7 @@ object AppLocales {
         }
     }
 
-    private val supportedLanguages = setOf("ca", "de", "en", "es", "fr", "nl")
+    private val supportedLanguages = setOf("ca", "de", "en", "es", "fr", "nl", "vi")
 
     internal fun supportedLocale(locale: Locale): Locale =
         if (locale.language in supportedLanguages) locale

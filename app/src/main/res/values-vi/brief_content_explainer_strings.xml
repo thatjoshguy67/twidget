@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_conversations_explainer">Lượt phản hồi và tweet trích dẫn trong mẫu tweet gần đây của bạn, so với lượt xem đã ghi nhận. Số liệu được tính cộng dồn, không phải số người duy nhất.</string>
+    <string name="brief_content_patterns_explainer">So sánh lượt xem trung vị giữa tweet văn bản, hình ảnh và video có cùng độ tuổi tương đương. Chỉ hiển thị khi có đủ dữ liệu để so sánh.</string>
+    <string name="brief_content_momentum_explainer">So sánh mức thay đổi ròng người theo dõi trong tuần ghi nhận gần nhất với tuần trước đó.</string>
+    <string name="brief_content_recap_explainer">Thay đổi người theo dõi đã ghi nhận và một mẫu tweet đăng trong tuần qua. Lượt xem là tổng tích lũy từ trước đến nay.</string>
+    <string name="brief_content_topics_explainer">Xem những hashtag lặp lại nào có lượt xem trung vị cao hơn các tweet khác cùng độ tuổi. Dựa trên mẫu của bạn, không phải dự đoán xu hướng.</string>
+    <string name="brief_content_experiments_explainer">Một định dạng nên thử dựa trên xu hướng nội dung gần đây của bạn. So sánh tweet tiếp theo ở cùng độ tuổi; kết quả không được đảm bảo.</string>
+</resources>

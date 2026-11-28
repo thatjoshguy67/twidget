@@ -1,0 +1,14 @@
+<resources>
+    <string name="dashboard_undo">Hoàn tác</string>
+    <string name="dashboard_card_moved">Đã di chuyển thẻ</string>
+    <string name="dashboard_card_removed">Đã xóa thẻ</string>
+    <string name="dashboard_card_added">Đã thêm thẻ</string>
+    <string name="dashboard_move_to">Di chuyển đến…</string>
+    <string name="dashboard_before_card">Trước %1$s</string>
+    <string name="dashboard_after_card">Sau %1$s</string>
+    <string name="dashboard_drop_here">Di chuyển %1$s vào đây</string>
+    <string name="dashboard_card_resized">Đã đổi kích thước thẻ</string>
+    <string name="dashboard_size_enlarge">Phóng to</string>
+    <string name="dashboard_size_shrink">Thu nhỏ</string>
+    <string name="dashboard_remove_card">Xóa</string>
+</resources>

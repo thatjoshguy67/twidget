@@ -1,0 +1,7 @@
+<resources>
+    <string name="follower_event_context_needed">Tăng trưởng chưa rõ ràng</string>
+    <string name="follower_event_caveat">Mức giảm này trùng với đợt sụt giảm bất thường trên các tài
+        khoản được theo dõi. Nguyên nhân chưa được xác nhận; chỉ riêng biến động người theo dõi
+        không thể kết luận hiệu suất nội dung kém đi.</string>
+    <string name="follower_event_chart_heading">Người theo dõi · giảm diện rộng</string>
+</resources>

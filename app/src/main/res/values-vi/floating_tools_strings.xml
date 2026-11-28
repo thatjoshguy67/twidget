@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="floating_filters">Bộ lọc</string>
+    <string name="floating_filters_active">Bộ lọc · %1$d</string>
+    <string name="floating_sort">Sắp xếp theo</string>
+    <string name="floating_sort_count">Nhiều người theo dõi nhất</string>
+    <string name="floating_sort_name">Tên A–Z</string>
+    <string name="floating_min_followers">Số người theo dõi tối thiểu</string>
+    <string name="floating_all">Tất cả</string>
+    <string name="floating_10k">10K+</string>
+    <string name="floating_100k">100K+</string>
+    <string name="floating_reset">Đặt lại bộ lọc</string>
+    <string name="floating_results">%1$d kết quả</string>
+    <string name="floating_shortcuts">Phím tắt</string>
+    <string name="floating_shortcut_hint">Phím tắt · Ctrl+/</string>
+    <string name="floating_shortcut_navigation">Tab / Shift+Tab: di chuyển vùng chọn\nEnter / Space:
+        kích hoạt\nEsc: đóng bảng đang mở hoặc quay lại</string>
+    <string name="floating_shortcut_search">Tìm kiếm · Ctrl+F</string>
+    <string name="floating_shortcut_filters">Bộ lọc · Ctrl+Shift+F</string>
+    <string name="floating_expand_filters">Mở rộng bộ lọc</string>
+    <string name="floating_collapse_filters">Thu gọn bộ lọc</string>
+    <string name="floating_matching_followers">Khớp %1$d / %2$d người theo dõi đã tải</string>
+</resources>

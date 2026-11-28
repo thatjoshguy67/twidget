@@ -1,0 +1,6 @@
+<resources>
+    <string name="brief_preview_cards">Xem trước thẻ Tóm tắt</string>
+    <string name="brief_preview_parameters">Tinh chỉnh tham số xem trước thẻ</string>
+    <string name="brief_preview_cards_summary">Mọi thiết kế thẻ với dữ liệu mẫu. Thay đổi trạng thái xem trước trong cài đặt Gỡ lỗi.</string>
+    <string name="brief_preview_all_variants">Hiện tất cả biến thể</string>
+</resources>

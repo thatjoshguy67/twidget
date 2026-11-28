@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_pulse_title">Nhịp độ thảo luận của bạn</string>
+    <string name="brief_pulse_body">%1$s tweet được thống kê của bạn đã ghi nhận %2$s lượt xem. Số
+        lượt phản hồi và trích dẫn này là tổng cộng dồn tính đến hiện tại, không phải số người dùng
+        riêng biệt.</string>
+    <string name="brief_pulse_rate">Phản hồi + trích dẫn trên mỗi 1.000 lượt xem</string>
+    <string name="brief_insight_replies">Phản hồi</string>
+    <string name="brief_insight_quotes">Tweet trích dẫn</string>
+    <string name="brief_pattern_title">Xu hướng nội dung của bạn</string>
+    <string name="brief_pattern_body">%1$s của bạn có mức lượt xem phổ biến cao hơn %2$s có cùng
+        thời gian đăng. Đây chỉ là dữ liệu mẫu, không phải bằng chứng cho thấy định dạng tạo ra sự
+        khác biệt này.</string>
+    <string name="brief_pattern_median">%1$s · lượt xem phổ biến</string>
+    <string name="brief_format_text">Tweet chỉ có văn bản</string>
+    <string name="brief_format_image">Tweet kèm hình ảnh</string>
+    <string name="brief_format_video">Tweet kèm video và GIF</string>
+    <string name="brief_insight_compared">Số tweet được so sánh</string>
+    <string name="brief_momentum_title">Đà tăng trưởng khán giả</string>
+    <string name="brief_momentum_body">Mức thay đổi người theo dõi ròng của bạn là %1$s trong tuần
+        ghi nhận gần nhất, so với %2$s của tuần trước đó.</string>
+    <string name="brief_insight_this_week">Tuần gần nhất</string>
+    <string name="brief_insight_previous_week">Tuần trước đó</string>
+    <string name="brief_insight_followers">Người theo dõi hiện tại</string>
+    <string name="brief_recap_title">Tổng kết tuần của bạn</string>
+    <string name="brief_recap_body">Mức thay đổi người theo dõi được ghi nhận và mẫu các tweet đã
+        đăng trong tuần qua. Lượt xem được tính cộng dồn đến hiện tại; các tweet mới đăng sẽ có ít
+        thời gian tích lũy lượt xem hơn.</string>
+    <string name="brief_insight_follower_change">Người theo dõi ròng tuần này</string>
+    <string name="brief_insight_included_posts">Tweet được thống kê</string>
+    <string name="brief_insight_typical_views">Lượt xem phổ biến được ghi nhận</string>
+    <string name="brief_content_conversations">Nhịp độ thảo luận</string>
+    <string name="brief_content_patterns">Xu hướng nội dung</string>
+    <string name="brief_content_momentum">Đà tăng trưởng khán giả</string>
+    <string name="brief_content_recap">Tổng kết tuần</string>
+    <string name="brief_experiment_title">Một thử nghiệm nên áp dụng</string>
+    <string name="brief_experiment_body">Hãy thử đăng thêm một %1$s, sau đó so sánh kết quả ở cùng
+        khoảng thời gian hiển thị. Dữ liệu mẫu gần đây ủng hộ việc thử nghiệm định dạng này, nhưng
+        không đảm bảo chắc chắn kết quả.</string>
+    <string name="brief_topic_title">Chủ đề nổi bật của bạn</string>
+    <string name="brief_topic_body">Các tweet chứa %1$s của bạn có mức lượt xem phổ biến cao hơn các
+        tweet khác có cùng thời gian đăng. Đây chỉ là dữ liệu mẫu dựa trên hashtag, không phải dự
+        đoán xu hướng.</string>
+    <string name="brief_topic_other_views">Tweet khác · lượt xem phổ biến</string>
+    <string name="brief_topic_tagged_posts">Tweet gắn hashtag này</string>
+    <string name="brief_content_topics">Chủ đề nổi bật</string>
+    <string name="brief_content_experiments">Thử nghiệm nội dung</string>
+    <string name="debug_insights_preview">Xem trước thẻ phân tích</string>
+    <string name="debug_insights_preview_summary">Dữ liệu mẫu · Xem trước cả 6 thẻ phân tích mà
+        không cần tạo nội dung AI.</string>
+    <string name="brief_chart_other_tweets">Tweet khác</string>
+    <string name="brief_chart_observed_followers">Người theo dõi ghi nhận · khoảng trống nghĩa là
+        không có dữ liệu</string>
+    <string name="brief_chart_week_legend">Tuần trước màu xám · tuần gần nhất theo màu nhấn của bạn</string>
+    <string name="brief_chart_posting_sample">Tweet được thống kê theo ngày đăng</string>
+    <string name="brief_chart_median_views">Lượt xem phổ biến · tweet cùng thời gian đăng</string>
+    <string name="brief_chart_sample_size">%1$d tweet trong mẫu này</string>
+    <string name="brief_chart_try_format">Thử định dạng này: %1$s</string>
+    <string name="brief_chart_experiment_reason">Định dạng này nổi bật trong dữ liệu mẫu gần đây của
+        bạn. Hãy so sánh tweet tiếp theo ở cùng thời gian đăng trước khi rút ra kết luận.</string>
+    <string name="brief_chart_compose">Soạn tweet</string>
+    <string name="brief_compact_experiment_title">Thử tiếp theo</string>
+    <string name="brief_compact_details">Về %1$s</string>
+    <string name="brief_compact_this_week">%1$s trong 7 ngày</string>
+    <string name="brief_compact_previous_week">%1$s tuần trước</string>
+    <string name="brief_compact_recap_sample">%1$s tweet mẫu · %2$s lượt xem phổ biến</string>
+    <string name="brief_compact_followers">%1$s người theo dõi ròng · 7 ngày</string>
+    <string name="brief_compact_median_views">Lượt xem phổ biến · cùng thời gian đăng</string>
+    <string name="brief_compact_conversation_rate">%1$s phản hồi + trích dẫn / 1.000 lượt xem</string>
+    <string name="brief_compact_sample">%1$d tweet được so sánh</string>
+    <string name="brief_compact_week_legend">Xanh nhạt: tuần trước. Xanh đậm: tuần gần nhất.</string>
+</resources>

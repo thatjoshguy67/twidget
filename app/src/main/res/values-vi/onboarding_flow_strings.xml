@@ -1,0 +1,37 @@
+<resources>
+    <string name="onboarding_confirm_title">Đây có phải bạn?</string>
+    <string name="onboarding_confirm_yes">Đúng</string>
+    <string name="onboarding_confirm_no">Không, đổi tài khoản</string>
+    <string name="onboarding_optional_import">Tùy chọn</string>
+    <string name="onboarding_import_title">Nhập phân tích Twitter/X</string>
+    <string name="onboarding_import_summary">Có cái nhìn đầy đủ hơn về dữ liệu Twitter/X trước đây
+        với một lần nhập.</string>
+    <string name="onboarding_ai_title">Tính năng AI</string>
+    <string name="onboarding_ai_brief">Tóm tắt của bạn</string>
+    <string name="onboarding_ai_brief_summary">Bản tin tóm tắt cá nhân hóa dựa trên phân tích hồ sơ
+        và tự thay đổi trong ngày.</string>
+    <string name="onboarding_ai_review">Đánh giá tweet</string>
+    <string name="onboarding_ai_review_summary">Nhận phân tích thông minh về bài đăng, cách khán giả
+        phản hồi, điểm hiệu quả và chỗ có thể cải thiện.</string>
+    <string name="onboarding_ai_checking">Đang kiểm tra hỗ trợ AI cục bộ…</string>
+    <string name="onboarding_ai_checking_summary">Đang kiểm tra khả năng hỗ trợ Gemini Nano trên
+        thiết bị này. Bạn có thể tiếp tục trong lúc chờ.</string>
+    <string name="onboarding_ai_ready">Thiết bị hỗ trợ AI cục bộ</string>
+    <string name="onboarding_ai_ready_summary">Gemini Nano đã sẵn sàng. Chế độ tự động thử AI cục bộ
+        trước, rồi chuyển sang nhà cung cấp đám mây đã kết nối nếu cần.</string>
+    <string name="onboarding_ai_download">Gemini Nano cần tải xuống</string>
+    <string name="onboarding_ai_download_summary">Thiết bị này hỗ trợ Gemini Nano. Hãy tải mô hình
+        trong cài đặt Tóm tắt của bạn để dùng AI cục bộ, hoặc kết nối nhà cung cấp đám mây.</string>
+    <string name="onboarding_ai_downloading">Đang tải xuống Gemini Nano</string>
+    <string name="onboarding_ai_downloading_summary">AI cục bộ sẽ sẵn sàng khi mô hình tải xong. Bạn
+        cũng có thể kết nối nhà cung cấp đám mây.</string>
+    <string name="onboarding_ai_cloud">Kết nối nhà cung cấp đám mây</string>
+    <string name="onboarding_ai_cloud_summary">Gemini Nano hiện chưa khả dụng trên thiết bị này. Hãy
+        đăng nhập ChatGPT hoặc thêm khóa API để dùng các tính năng AI.</string>
+    <string name="onboarding_ai_unknown">Kiểm tra AI cục bộ chưa hoàn tất</string>
+    <string name="onboarding_ai_unknown_summary">Nhấn để kiểm tra lại. Bạn có thể tiếp tục và thiết
+        lập AI sau trong cài đặt Tóm tắt của bạn.</string>
+    <string name="onboarding_ai_setup_cloud">Thiết lập nhà cung cấp đám mây</string>
+    <string name="onboarding_ai_cloud_connected">Đã kết nối nhà cung cấp đám mây</string>
+    <string name="onboarding_ai_confirm_import">Dùng tài khoản này và nhập dữ liệu phân tích?</string>
+</resources>

@@ -1028,6 +1028,8 @@
     <string name="brief_debug_diagnosis_report">Informe de diagnòstic de generació</string>
     <string name="brief_debug_no_diagnosis">Encara no hi ha cap diagnòstic detallat</string>
     <string name="widget_language_nl">Neerlandès (Nederlands)</string>
+    <string name="widget_language_vi">Vietnamita (Tiếng Việt)</string>
     <string name="language_dutch">Neerlandès (Nederlands)</string>
+    <string name="language_vietnamese">Vietnamita (Tiếng Việt)</string>
     <string name="about_damanmikey_summary">Traducció al neerlandès i compatibilitat de la IA local amb més dispositius mitjançant AICore</string>
 </resources>

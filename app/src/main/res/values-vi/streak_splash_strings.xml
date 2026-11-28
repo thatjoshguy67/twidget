@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="streak_days">
+        <item quantity="other">%1$d ngày</item>
+    </plurals>
+    <string name="streak_safe_until_tomorrow">Chuỗi của bạn an toàn đến ngày mai</string>
+    <string name="streak_post_to_continue">Đăng tweet hôm nay để giữ chuỗi</string>
+    <string name="streak_expiring_soon">Đăng tweet trong 10 phút tới trước khi mất chuỗi</string>
+    <string name="streak_revive">Đăng tweet hôm nay để bắt đầu chuỗi mới</string>
+</resources>

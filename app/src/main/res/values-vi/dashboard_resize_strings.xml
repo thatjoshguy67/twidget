@@ -1,0 +1,6 @@
+<resources>
+    <string name="dashboard_expand_card_left">Mở rộng %1$s sang trái</string>
+    <string name="dashboard_expand_card_right">Mở rộng %1$s sang phải</string>
+    <string name="dashboard_shrink_card_left">Thu nhỏ %1$s từ bên trái</string>
+    <string name="dashboard_shrink_card_right">Thu nhỏ %1$s từ bên phải</string>
+</resources>

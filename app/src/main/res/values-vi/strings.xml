@@ -1,0 +1,1223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Theo dõi người theo dõi X/Twitter với widget làm mờ trên màn
+        hình chính</string>
+    <string name="widget_label">Người theo dõi Twidget</string>
+    <string name="widget_language">Ngôn ngữ</string>
+    <string name="widget_language_default">Mặc định ứng dụng</string>
+    <string name="widget_language_de">Tiếng Đức (Deutsch)</string>
+    <string name="widget_language_en">Tiếng Anh (English)</string>
+    <string name="widget_language_fr">Tiếng Pháp (Français)</string>
+    <string name="widget_language_es">Tiếng Tây Ban Nha (Español)</string>
+    <string name="widget_language_nl">Tiếng Hà Lan (Nederlands)</string>
+    <string name="widget_language_vi">Tiếng Việt</string>
+    <string name="lockscreen_follower_1x1_label">Người theo dõi 1x1</string>
+    <string name="lockscreen_follower_2x1_label">Người theo dõi 2x1</string>
+    <string name="last_synced">Đồng bộ lần cuối: %1$s</string>
+    <string name="not_synced_yet">Chưa đồng bộ</string>
+    <string name="time_unavailable">Không có thời gian</string>
+    <string name="sync">Đồng bộ</string>
+    <string name="add_widget_to_home">Thêm widget vào màn hình chính</string>
+    <string name="settings">Cài đặt</string>
+    <string name="widget_settings">Cài đặt widget</string>
+    <string name="followers">Người theo dõi</string>
+    <string name="following">Đang theo dõi</string>
+    <string name="posts">Bài đăng</string>
+    <string name="likes">Lượt thích</string>
+    <string name="verified">Đã xác minh</string>
+    <string name="not_verified">Chưa xác minh</string>
+    <string name="private_profile">Riêng tư</string>
+    <string name="public_profile">Công khai</string>
+    <string name="unknown_profile_status">Không rõ</string>
+    <string name="metric_impressions_est">Hiển thị ước tính</string>
+    <string name="range_7d">7N</string>
+    <string name="range_1m">1T</string>
+    <string name="range_3m">3T</string>
+    <string name="range_1y">1N</string>
+    <string name="range_all_time">Tất cả</string>
+    <string name="chart_history_title">Lịch sử chỉ số</string>
+    <string name="chart_history_subtitle">Chế độ xem %1$s · đã theo dõi %2$d ngày</string>
+    <string name="chart_range_locked">Bạn cần ít nhất %1$d ngày lịch sử để xem %2$s.</string>
+    <string name="follower_ratio">Tỷ lệ người theo dõi</string>
+    <string name="post_rate">Bài đăng / ngày</string>
+    <string name="likes_per_post">Lượt thích / bài</string>
+    <string name="engagement_rate">Tỷ lệ tương tác</string>
+    <string name="avg_views">Lượt xem TB</string>
+    <string name="total_views">Tổng lượt xem</string>
+    <string name="avg_engagements">Tương tác TB</string>
+    <string name="median_engagements">Tương tác trung vị</string>
+    <string name="x_impressions">Hiển thị X</string>
+    <string name="x_engagements">Tương tác X</string>
+    <string name="x_profile_visits">Lượt xem hồ sơ</string>
+    <string name="x_likes_received">Lượt thích đã nhận</string>
+    <string name="x_analytics_days">%1$d ngày từ CSV X Analytics</string>
+    <string name="import_x_analytics_hint">Nhập tệp CSV X Analytics</string>
+    <string name="analytics_syncing">Đang đồng bộ phân tích bài đăng</string>
+    <string name="avg_per_post">TB %1$s / bài</string>
+    <string name="median_value">Trung vị %1$s</string>
+    <string name="across_posts">Đã phân tích %1$d bài đăng</string>
+    <string name="posts_from_capped_status_sample">%1$d bài đăng từ mẫu giới hạn %2$d trạng thái</string>
+    <string name="analytics_blended_coverage">Kết hợp: %1$d bài trực tiếp + %2$d ngày từ CSV</string>
+    <string name="per_follower_pct">%1$s / người theo dõi</string>
+    <string name="post_analytics">Bài đăng gần đây</string>
+    <string name="best_post">Tweet nổi bật tuần này</string>
+    <string name="only_post">Tweet duy nhất tuần này</string>
+    <string name="worst_post">Tweet ít tương tác nhất tuần này</string>
+    <string name="all_time_banger">Tweet đỉnh nhất mọi thời đại</string>
+    <string name="best_banger_found">Đã tìm thấy tweet đỉnh nhất</string>
+    <string name="finding_banger">Đang tìm tweet đỉnh nhất mọi thời đại</string>
+    <string name="banger_scanning">Đang quét toàn bộ lịch sử tweet…</string>
+    <string name="banger_scanning_progress">Đang quét toàn bộ lịch sử tweet… đã kiểm tra %1$s tweet
+        đủ điều kiện</string>
+    <string name="preview_follower_count">7,671</string>
+    <string name="preview_followers_large">Bảy Nghìn Sáu\nTrăm Bảy Mươi\nMốt Người Theo Dõi</string>
+    <string name="preview_followers_square">Bảy Nghìn,\nSáu Trăm Bảy\nMươi Mốt Người\nTheo Dõi</string>
+    <string name="tweet_metrics">%1$s lượt xem · %2$s phản hồi · %3$s lượt thích</string>
+    <string name="post_metric_views">%1$s lượt xem</string>
+    <string name="post_metric_replies">%1$s phản hồi</string>
+    <string name="post_metric_reposts">%1$s đăng lại</string>
+    <string name="post_metric_likes">%1$s lượt thích</string>
+    <string name="post_media">Phương tiện bài đăng</string>
+    <string name="open_post">Mở bài đăng</string>
+    <string name="customize_cards">Tùy chỉnh thẻ</string>
+    <string name="add_card">Thêm thẻ</string>
+    <string name="done">Xong</string>
+    <string name="edit_home">Sửa bảng điều khiển</string>
+    <string name="edit_dashboard">Sửa bảng điều khiển</string>
+    <string name="reset_layout">Đặt lại bố cục bảng điều khiển</string>
+    <string name="reset_layout_confirm">Khôi phục bố cục thẻ mặc định?</string>
+    <string name="add_cards_title">Thêm thẻ</string>
+    <string name="all_cards_added">Tất cả thẻ đã có trên bảng điều khiển của bạn.</string>
+    <string name="cannot_remove_last_card">Hãy giữ lại ít nhất một thẻ trên bảng điều khiển.</string>
+    <string name="card_editor_title">Thẻ</string>
+    <string name="card_editor_done">Xong</string>
+    <string name="card_editor_reset">Đặt lại</string>
+    <string name="growth_pace">Nhịp tăng trưởng</string>
+    <string name="best_recent_day">Ngày tốt nhất gần đây</string>
+    <string name="milestone_progress">Tiến độ cột mốc</string>
+    <string name="momentum">Đà tăng</string>
+    <string name="audience_balance">Cân bằng khán giả</string>
+    <string name="account_health">Sức khỏe tài khoản</string>
+    <string name="insight_growth">Tăng trưởng</string>
+    <string name="insight_best_day">Ngày tốt nhất</string>
+    <string name="insight_balance">Cân bằng</string>
+    <string name="insight_health">Sức khỏe</string>
+    <string name="steady_growth">Tăng trưởng ổn định</string>
+    <string name="accelerating">Đang tăng tốc</string>
+    <string name="cooling">Đang hạ nhiệt</string>
+    <string name="flat">Đi ngang</string>
+    <string name="to_next_milestone">Còn %1$s tới %2$s</string>
+    <string name="milestone_target">Cột mốc người theo dõi</string>
+    <string name="milestone_target_hint">100 hoặc Một Trăm</string>
+    <string name="milestone_progress_percent">%1$d%%</string>
+    <string name="milestone_invalid_target">Nhập cột mốc người theo dõi hợp lệ, ví dụ 100 hoặc Một
+        Trăm.</string>
+    <string name="milestone_target_below_followers">Cột mốc phải cao hơn số người theo dõi hiện tại
+        (%1$s).</string>
+    <string name="milestone_goal_reached">Đã đạt mục tiêu!</string>
+    <string name="milestone_edit_title">Đặt cột mốc người theo dõi</string>
+    <string name="milestone_edit_message">Nhập mục tiêu người theo dõi bằng số hoặc chữ, ví dụ 100
+        hoặc Một Nghìn.</string>
+    <string name="language">Ngôn ngữ</string>
+    <string name="language_system">Mặc định hệ thống</string>
+    <string name="language_german">Tiếng Đức (Deutsch)</string>
+    <string name="language_english">Tiếng Anh (English)</string>
+    <string name="language_french">Tiếng Pháp (Français)</string>
+    <string name="language_spanish">Tiếng Tây Ban Nha (Español)</string>
+    <string name="language_dutch">Tiếng Hà Lan (Nederlands)</string>
+    <string name="language_vietnamese">Tiếng Việt</string>
+    <string name="milestone_use_auto">Dùng cột mốc tự động</string>
+    <string name="milestone_edit_button">Sửa</string>
+    <string name="milestone_show_percent">Hiện phần trăm tiến độ</string>
+    <string name="milestone_unknown_followers">Không có số người theo dõi</string>
+    <string name="daily_streak">Chuỗi hằng ngày</string>
+    <string name="daily_streak_active_today">Hoạt động hôm nay</string>
+    <string name="daily_streak_keep_going">Đăng tweet trên X để giữ chuỗi</string>
+    <string name="daily_streak_last_active">Hoạt động lần cuối %1$s</string>
+    <string name="daily_streak_detail">Tính các tweet gốc được phát hiện trên X. Phản hồi, đăng lại
+        và lượt thích không được tính.</string>
+    <plurals name="daily_streak_days">
+        <item quantity="other">%1$d ngày</item>
+    </plurals>
+    <string name="daily_streak_none">Chưa có chuỗi</string>
+    <string name="per_range">%1$s / kỳ</string>
+    <string name="per_day">%1$s / ngày</string>
+    <string name="more_followers_than_following">Nhiều hơn %1$s người theo dõi</string>
+    <string name="fewer_followers_than_following">Ít hơn %1$s người theo dõi</string>
+    <string name="verified_public">Công khai đã xác minh</string>
+    <string name="verified_private">Riêng tư đã xác minh</string>
+    <string name="public_unverified">Tài khoản công khai</string>
+    <string name="private_unverified">Tài khoản riêng tư</string>
+    <string name="no_recent_gain">Chưa có mức tăng gần đây</string>
+    <string name="history_notice">Lịch sử được ghi nhận mỗi ngày một lần. Dữ liệu tuần cần ít nhất 7
+        ngày; các mốc dài hơn sẽ đầy dần khi Twidget tiếp tục đồng bộ.</string>
+    <string name="private_account_notice">Tài khoản riêng tư: X chỉ cung cấp dữ liệu công khai hạn
+        chế. Một số thống kê, phân tích bài đăng và lịch sử có thể không đầy đủ hoặc không khả dụng.</string>
+    <string name="estimated_notice_title">Về các ước tính biểu đồ</string>
+    <string name="estimated_notice">Các cột mờ là ước tính. Các cột đậm là dữ liệu đã ghi nhận.</string>
+    <string name="estimated_notice_dismiss">Đã hiểu</string>
+    <string name="media_likes">Lượt thích</string>
+    <string name="open_settings">Mở cài đặt</string>
+    <string name="refresh_stats">Làm mới thống kê</string>
+    <string name="profile_username">Tên người dùng hồ sơ</string>
+    <string name="data_source">Nguồn dữ liệu</string>
+    <string name="analytics">Phân tích</string>
+    <string name="refresh">Làm mới</string>
+    <string name="active_source">Nguồn đang dùng</string>
+    <string name="source_default">Cầu nối Twidget</string>
+    <string name="source_default_summary">Máy chủ Twidget dùng chung</string>
+    <string name="source_fxtwitter_summary">API FxTwitter công khai miễn phí</string>
+    <string name="share_history">Đóng góp vào lịch sử dùng chung</string>
+    <string name="share_history_summary">Chia sẻ thống kê tài khoản công khai với người dùng Twidget
+        khác để dữ liệu tốt hơn cho mọi người. Quá trình quét Người theo dõi hàng đầu chạy trên cầu
+        nối và danh sách người theo dõi công khai mới nhất hoàn tất có thể được người dùng tham gia
+        khác dùng lại. Hồ sơ công khai mặc định của bạn cũng được báo cáo cho thống kê sử dụng. Tắt
+        tùy chọn này sẽ xóa báo cáo đó khi trực tuyến.</string>
+    <string name="share_history_onboarding_summary">Tùy chọn: chia sẻ thống kê tài khoản công khai
+        với người dùng Twidget khác để dữ liệu tốt hơn cho mọi người. Quá trình quét Người theo dõi
+        hàng đầu chạy trên cầu nối và danh sách người theo dõi công khai mới nhất hoàn tất có thể
+        được người dùng tham gia khác dùng lại. Hồ sơ công khai mặc định của bạn cũng được báo cáo
+        cho thống kê sử dụng. Tắt tùy chọn này sẽ xóa báo cáo đó khi trực tuyến.</string>
+    <string name="source_self_hosted">Cầu nối tự lưu trữ</string>
+    <string name="source_self_hosted_summary">Dùng cầu nối của riêng bạn</string>
+    <string name="source_x_api_summary">Yêu cầu quyền truy cập X API trả phí của riêng bạn</string>
+    <string name="advanced_options">Tùy chọn nâng cao</string>
+    <string name="advanced_options_summary">Cấu hình nguồn tự lưu trữ và X API</string>
+    <string name="x_api_explainer">X API chính thức không miễn phí cho quyền truy cập v2 thông
+        thường. Hãy dùng thông tin xác thực nhà phát triển từ một dự án có quyền truy cập X API trả
+        phí hoặc trả theo lượt dùng đang hoạt động, và Twidget sẽ gọi X trực tiếp từ thiết bị của
+        bạn.</string>
+    <string name="x_api_explainer_short">X API chính thức khá đắt đỏ và không khả thi cho một dự án
+        nhỏ như thế này. Vì vậy chúng tôi không cung cấp sẵn. Bạn có thể tự thêm thông tin xác thực
+        của mình nếu muốn.</string>
+    <string name="fxtwitter_explainer">FxTwitter là API công khai miễn phí không cần thông tin xác
+        thực. Twidget gọi trực tiếp từ thiết bị của bạn. Khi bật lịch sử dùng chung, cầu nối Twidget
+        sẽ đóng vai trò dự phòng.</string>
+    <string name="bridge_explainer">Cầu nối Twidget dùng chung vận hành kho lịch sử cộng đồng và làm
+        dự phòng cho FxTwitter khi dịch vụ đó không khả dụng. Nó chỉ được liên hệ khi bật lịch sử
+        dùng chung hoặc khi chọn nguồn cầu nối.</string>
+    <string name="self_hosted_explainer">Chạy cầu nối tự lưu trữ của riêng bạn và trỏ Twidget tới
+        đó. Khi để trống URL, cầu nối Twidget dùng chung sẽ được sử dụng thay thế. Mã thông báo tùy
+        chọn được gửi dưới dạng Bearer token tới các máy chủ có bảo vệ.</string>
+    <string name="source_info">Về nguồn này</string>
+    <string name="bridge_status">Trạng thái cầu nối</string>
+    <string name="self_hosted_status">Trạng thái tự lưu trữ</string>
+    <string name="self_hosted_url_hint">Trống — dùng cầu nối Twidget dùng chung</string>
+    <string name="x_api_status">Trạng thái X API</string>
+    <string name="fxtwitter_status">Trạng thái FxTwitter</string>
+    <string name="status_active">Đang hoạt động</string>
+    <string name="status_fallback">Dự phòng</string>
+    <string name="status_inactive">Không hoạt động</string>
+    <string name="status_checking">Đang kiểm tra…</string>
+    <string name="status_connected">Đã kết nối</string>
+    <string name="status_connected_detail">Đã kết nối (%1$s)</string>
+    <string name="status_not_configured">Chưa cấu hình</string>
+    <string name="status_failed">Thất bại: %1$s</string>
+    <string name="status_unexpected_response">Phản hồi không mong đợi</string>
+    <string name="status_x_client_forbidden">Quyền truy cập X API chưa được kích hoạt cho dự án này.
+        Gói miễn phí không còn bao gồm điểm cuối v2 này.</string>
+    <string name="self_hosted_rettiwt">URL cầu nối</string>
+    <string name="x_api_token">Bearer token (tùy chọn)</string>
+    <string name="x_api_token_short">Mã X API</string>
+    <string name="configure">Cấu hình</string>
+    <string name="login_to_x">Đăng nhập vào X</string>
+    <string name="rettiwt_api_key">Mã API cầu nối</string>
+    <string name="rettiwt_api_key_hint">Tùy chọn cho cầu nối tự lưu trữ có bảo vệ</string>
+    <string name="refresh_on_launch">Làm mới khi mở ứng dụng</string>
+    <string name="refresh_interval">Chu kỳ làm mới</string>
+    <string name="refresh_interval_value">%1$d phút</string>
+    <string name="routine_action_refresh">Làm mới thống kê và widget</string>
+    <string name="routine_action_refresh_description">Làm mới mọi tài khoản đang theo dõi và cập
+        nhật widget Twidget</string>
+    <string name="enable_notifications">Bật thông báo</string>
+    <string name="self_hosted_rettiwt_section">Cầu nối tự lưu trữ</string>
+    <string name="connected_x_channel">Kênh X đã kết nối</string>
+    <string name="widget_tap_action">Thao tác khi chạm widget</string>
+    <string name="account">Tài khoản</string>
+    <string name="accounts">Tài khoản</string>
+    <string name="add_account">Thêm tài khoản</string>
+    <string name="default_account">Tài khoản mặc định</string>
+    <string name="widget_account">Tài khoản widget</string>
+    <string name="tracked_accounts">Tài khoản đang theo dõi</string>
+    <string name="account_added">Đã thêm tài khoản</string>
+    <string name="set_as_default">Đặt làm mặc định</string>
+    <string name="import_x_analytics">Nhập phân tích X</string>
+    <string name="import_data_from_x">Nhập dữ liệu từ X</string>
+    <string name="import_get_stats_title">Lấy thống kê từ X Analytics</string>
+    <string name="import_get_stats_summary">Lấy tối đa 1 năm dữ liệu phân tích từ analytics.x.com</string>
+    <string name="import_premium_title">Chỉ dành cho người đăng ký X Premium/Premium+</string>
+    <string name="import_premium_summary">Việc lấy thống kê từ X Analytics yêu cầu gói đăng ký trả
+        phí trên X.</string>
+    <string name="import_accuracy_title">Kiểm tra độ chính xác</string>
+    <string name="import_accuracy_summary">Chúng tôi sẽ đối chiếu tệp xuất với lịch sử người theo
+        dõi đã lưu, cho phép sai lệch nhỏ giữa các thời điểm cập nhật.</string>
+    <string name="import_for_account">Nhập dữ liệu cho @%1$s?</string>
+    <string name="import_range">Phạm vi</string>
+    <string name="import_detected_followers">Số người theo dõi phát hiện được</string>
+    <string name="import_followers_not_detected">Không phát hiện trong CSV</string>
+    <string name="import_followers_not_cached">Chưa lưu đệm</string>
+    <string name="import_metrics_detected">Phân tích tài khoản</string>
+    <string name="import_metrics_detected_count">Phát hiện %1$d chỉ số hằng ngày</string>
+    <string name="importing">Đang nhập</string>
+    <string name="imported">Đã nhập</string>
+    <string name="analytics_for_account">Phân tích · @%1$s</string>
+    <string name="analytics_overview">Tổng quan</string>
+    <string name="analytics_trend">Xu hướng</string>
+    <string name="analytics_all_metrics">Tất cả chỉ số đã nhập</string>
+    <string name="notices_title">Thông báo phát hành</string>
+    <string name="notices_load_failed">Không thể làm mới ghi chú phát hành.</string>
+    <string name="notices_showing_cache">Đang hiển thị các thông báo đã tải thành công gần nhất.</string>
+    <string name="notices_beta">Beta</string>
+    <string name="notices_upcoming">Sắp ra mắt</string>
+    <string name="notices_upcoming_summary">Bản xem trước của phiên bản tiếp theo. Chi tiết có thể
+        thay đổi.</string>
+    <string name="notices_no_details">Không có thêm chi tiết phát hành nào được công bố.</string>
+    <string name="notices_view_on_github">Xem bản phát hành đầy đủ trên GitHub</string>
+    <string name="notices_view_changelog">Xem nhật ký thay đổi</string>
+    <string name="notices_changelog_title">Nhật ký thay đổi</string>
+    <string name="notices_check_for_update">Kiểm tra cập nhật</string>
+    <string name="notices_open_changelog">Mở nhật ký thay đổi cho %1$s</string>
+    <string name="notices_back">Quay lại</string>
+    <string name="notices_empty_title">Chưa có ghi chú phát hành</string>
+    <string name="notices_empty_summary">Kéo xuống để làm mới. Các bản phát hành GitHub đã công bố
+        sẽ tự động xuất hiện tại đây.</string>
+    <string name="notices_retry">Thử lại</string>
+    <string name="not_imported">Chưa nhập</string>
+    <string name="import_failure_default">Chúng tôi không thể xác minh tệp xuất này.</string>
+    <string name="import_failure_range">Số người theo dõi trong tệp xuất và dữ liệu đã lưu chênh
+        lệch quá nhiều.</string>
+    <string name="import_stored_followers">Số người theo dõi đã lưu</string>
+    <string name="import_csv_followers">Số người theo dõi trong tệp xuất</string>
+    <string name="import_calculated_followers">Số lượng tính từ tệp xuất</string>
+    <string name="import_failure_difference">Chênh lệch: %1$s người theo dõi</string>
+    <string name="import_failure_comparison_day">Số liệu đối chiếu cho %1$s</string>
+    <string name="import_failure_impossible">Các thay đổi người theo dõi trong tệp xuất này sẽ tạo
+        ra số lượng âm.</string>
+    <string name="import_failure_refresh_help">X Analytics và số liệu đã lưu có thể cập nhật vào các
+        thời điểm khác nhau. Hãy làm mới tài khoản này, rồi tải xuống tệp xuất mới bao gồm ngày hôm
+        nay. Nếu vẫn lỗi, hãy đợi một lúc rồi thử lại.</string>
+    <string name="import_failure_old_export">Tệp xuất này không bao gồm ngày hôm nay.</string>
+    <string name="import_failure_invalid_rows">Tệp xuất bị thiếu dữ liệu hằng ngày hoặc có dữ liệu
+        không hợp lệ.</string>
+    <string name="import_failure_connection">Không thể kiểm tra số người theo dõi với máy chủ.</string>
+    <string name="import_failure_connection_help">Hãy kiểm tra kết nối và thử lại sau ít phút.</string>
+    <string name="import_failure_history_help">Hãy tiếp tục đồng bộ tài khoản này để tích lũy lịch
+        sử hằng ngày, sau đó thử lại với tệp xuất mới bao gồm những ngày đó.</string>
+    <string name="import_failure_private_help">Dùng lịch sử cục bộ không qua cầu nối để nhập phân
+        tích cho tài khoản riêng tư.</string>
+    <string name="import_failure_file_help">Chọn tệp CSV Tổng quan tài khoản (Account overview) cho
+        tài khoản này từ X Analytics. Hãy bao gồm ngày hôm nay trong khoảng thời gian.</string>
+    <string name="import_try_another_file">Chọn tệp CSV</string>
+    <string name="import_no_browser">Không có trình duyệt web khả dụng.</string>
+    <string name="import_action">Nhập</string>
+    <string name="analytics_import_sync_first">Hãy đồng bộ tài khoản này trước để Twidget neo bản
+        nhập vào số người theo dõi hiện tại.</string>
+    <string name="analytics_import_cannot_open">Twidget không thể mở tệp đó.</string>
+    <string name="analytics_import_unknown_error">Lỗi nhập dữ liệu không xác định.</string>
+    <string name="analytics_import_failed">Nhập thất bại: %1$s</string>
+    <string name="analytics_import_confirm_bridge">Kiểm tra và đóng góp %2$d ngày lịch sử người theo
+        dõi cho @%1$s?\n\nKhoảng thời gian: %3$s đến %4$s\nSố liệu cục bộ hiện tại: %5$s người theo
+        dõi\n\nCầu nối sẽ lấy dữ liệu @%1$s độc lập, dựng lại CSV từ lượt theo dõi và bỏ theo dõi
+        hằng ngày, rồi đối chiếu với các ảnh chụp đã lưu đáng tin cậy. Quá trình nhập sẽ bị từ chối
+        nếu số liệu mới nhất hoặc xu hướng chênh lệch quá ngưỡng nhỏ cho phép.</string>
+    <string name="analytics_import_confirm_local">Nhập %2$d ngày lịch sử người theo dõi cục bộ cho
+        @%1$s?\n\nKhoảng thời gian: %3$s đến %4$s\nSố liệu cục bộ hiện tại: %5$s người theo
+        dõi\n\nTwidget sẽ dựng lại CSV từ lượt theo dõi và bỏ theo dõi hằng ngày, rồi đối chiếu từng
+        ngày trùng khớp với các ảnh chụp cục bộ đáng tin cậy. Quá trình nhập sẽ bị từ chối nếu số
+        liệu mới nhất hoặc xu hướng chênh lệch quá ngưỡng nhỏ cho phép. Sẽ không có gì được tải lên.</string>
+    <string name="analytics_import_checking_bridge">Đang kiểm tra tệp CSV với lịch sử cầu nối…</string>
+    <string name="analytics_import_busy">Twidget đang bận. Hãy thử nhập lại sau ít phút.</string>
+    <string name="analytics_import_trend_mismatch">Các thay đổi người theo dõi không khớp với lịch
+        sử đã lưu.</string>
+    <string name="analytics_import_not_enough_history">Chưa có đủ lịch sử đáng tin cậy để xác minh
+        an toàn tệp CSV này.</string>
+    <string name="analytics_import_private">Tài khoản riêng tư không thể đóng góp vào lịch sử dùng
+        chung.</string>
+    <string name="analytics_import_complete_bridge">Đã thêm %1$d ngày bị thiếu đã xác minh sau khi
+        kiểm tra %2$d ảnh chụp đáng tin cậy.</string>
+    <string name="analytics_import_complete">Đã nhập %1$d ngày lịch sử người theo dõi cục bộ.</string>
+    <string name="delete">Xóa</string>
+    <string name="cannot_delete_last_account">Bạn cần có ít nhất một tài khoản.</string>
+    <string name="tap_refresh">Làm mới thống kê</string>
+    <string name="tap_profile">Mở hồ sơ trong ứng dụng X</string>
+    <string name="tap_twidget">Mở Twidget</string>
+    <string name="widget_preview_section">Xem trước</string>
+    <string name="widget_appearance_section">Giao diện</string>
+    <string name="widget_opacity">Độ mờ đục</string>
+    <string name="widget_tint">Màu sắc</string>
+    <string name="widget_tint_light">Sáng</string>
+    <string name="widget_tint_dark">Tối</string>
+    <string name="widget_tint_system">Theo hệ thống</string>
+    <string name="widget_logo_style">Kiểu logo</string>
+    <string name="widget_show_delta">Hiện biến động người theo dõi</string>
+    <string name="widget_font">Phông chữ</string>
+    <string name="widget_font_system">Mặc định hệ thống</string>
+    <string name="clear_cache">Xóa dữ liệu bộ nhớ đệm</string>
+    <string name="about_twidget">Giới thiệu Twidget</string>
+    <string name="save">Lưu</string>
+    <string name="cancel">Hủy</string>
+    <string name="add_widget_title">Thêm widget</string>
+    <string name="add_widget">Thêm widget</string>
+    <string name="add_widget_requested">Chọn một vị trí trên màn hình chính để đặt widget.</string>
+    <string name="add_widget_not_supported">Trình khởi chạy này không hỗ trợ thêm widget từ trong
+        ứng dụng.</string>
+    <string name="about">Giới thiệu</string>
+    <string name="about_summary">Widget Twitter. Đúng nghĩa đen tên gọi luôn. Khéo nhỉ?</string>
+    <string name="about_developer_section">Phát triển bởi</string>
+    <string name="about_credits_section">Cảm ơn</string>
+    <string name="about_projects_section">Dự án mã nguồn mở</string>
+    <string name="about_tjg_summary">Tác giả của Twidget. Đã tiêu tốn quá nhiều Red Bull trong quá
+        trình thực hiện.</string>
+    <string name="about_kingowen_summary">Người đóng góp, truyền động lực và lên ý tưởng.</string>
+    <string name="about_aaron_summary">Bản địa hóa sang tiếng Đức</string>
+    <string name="about_fxtwitter_summary">Nguồn dữ liệu mặc định. Dữ liệu hồ sơ công khai, trạng
+        thái, phương tiện và phân tích bài đăng gần đây</string>
+    <string name="about_oneui_summary">Nhánh Tribalfs - SESL 9.0</string>
+    <string name="about_legal_section">Thông tin pháp lý</string>
+    <string name="about_privacy_policy_title">Chính sách quyền riêng tư</string>
+    <string name="about_privacy_policy_summary">Cách Twidget xử lý, bảo vệ và xóa thông tin</string>
+    <string name="about_open_source_licenses_title">Giấy phép mã nguồn mở</string>
+    <string name="about_open_source_licenses_summary">Apache License 2.0 • MIT License • BSD
+        3-Clause License • SIL Open Font License 1.1</string>
+    <string name="about_legal_notice_title">Thông báo pháp lý</string>
+    <string name="about_legal_disclaimer_summary">Twidget là một dự án độc lập, không chính thức.
+        Ứng dụng không liên kết, không được tài trợ hay chứng thực bởi Samsung Electronics, X Corp.,
+        Google LLC hoặc bất kỳ bên thứ ba nào khác được nhắc đến trong ứng dụng. Samsung, One UI, X,
+        Twitter, Google, Android cùng các tên và logo liên quan là nhãn hiệu của chủ sở hữu tương
+        ứng.</string>
+    <string name="about_repo_link">Kho mã nguồn ứng dụng</string>
+    <string name="about_version">Phiên bản %1$s</string>
+    <string name="app_info">Thông tin ứng dụng</string>
+    <string name="update">Cập nhật</string>
+    <string name="update_suggestion_title">Có bản cập nhật mới</string>
+    <string name="update_suggestion_close">Bỏ qua gợi ý cập nhật</string>
+    <string name="update_suggestion_summary">Đã có Twidget phiên bản %1$s</string>
+    <string name="update_to_version">Cập nhật lên phiên bản %1$s</string>
+    <string name="checking_for_updates">Đang kiểm tra cập nhật</string>
+    <string name="update_channel_stable">Bản ổn định</string>
+    <string name="update_channel_beta">Bản Beta</string>
+    <string name="update_channel_debug">Bản gỡ lỗi</string>
+    <string name="update_download_failed">Không thể tải xuống bản cập nhật.</string>
+    <string name="update_download_started">Đang tải xuống bản cập nhật. Kiểm tra thông báo để xem
+        tiến độ tải.</string>
+    <string name="update_download_started_without_notification">Đang tải xuống bản cập nhật. Hãy giữ
+        màn hình này mở để cài đặt khi tải xong.</string>
+    <string name="update_download_in_progress">Một bản cập nhật đang được tải xuống.</string>
+    <string name="update_download_notification_title">Cập nhật Twidget</string>
+    <string name="update_downloading">Đang tải bản cập nhật</string>
+    <string name="update_download_progress">Đang tải bản cập nhật: %1$d%%</string>
+    <string name="update_download_complete">Tải xong · 100%</string>
+    <string name="update_download_paused">Đã tạm dừng tải</string>
+    <string name="update_download_paused_progress">Đã tạm dừng tải · %1$d%%</string>
+    <string name="update_pause">Tạm dừng</string>
+    <string name="update_resume">Tiếp tục</string>
+    <string name="update_stop">Dừng</string>
+    <string name="update_download_notification_channel_name">Tiến độ tải cập nhật</string>
+    <string name="update_download_notification_channel_description">Trạng thái trực tiếp và nút điều
+        khiển khi đang tải bản cập nhật Twidget</string>
+    <string name="twidget_update_debug">Gỡ lỗi cập nhật Twidget</string>
+    <string name="debug_version_spoofing">Giả lập phiên bản</string>
+    <string name="debug_update_tools">Công cụ cập nhật</string>
+    <string name="debug_spoof_app_version_enabled">Dùng phiên bản giả lập</string>
+    <string name="debug_spoof_app_version_enabled_summary">Nhấn để nhập phiên bản cần dùng</string>
+    <string name="debug_spoof_app_version">Giả lập phiên bản đã cài</string>
+    <string name="debug_spoof_app_version_summary">Chỉ dùng phiên bản này khi kiểm tra cập nhật
+        GitHub; để trống để dùng phiên bản thật</string>
+    <string name="debug_spoof_app_version_invalid">Nhập phiên bản dạng như 1.2.3 hoặc 1.2.3-beta.1.</string>
+    <string name="debug_spoof_app_version_checking">Đang kiểm tra cập nhật GitHub ngay bây giờ.</string>
+    <string name="debug_test_update_download_notification">Thử thông báo tải cập nhật</string>
+    <string name="debug_test_update_download_notification_summary">Chạy mô phỏng tải xuống với tiến
+        độ, nút tạm dừng và dừng</string>
+    <string name="update_install_permission">Hãy cho phép Twidget cài đặt bản cập nhật, sau đó quay
+        lại để tiếp tục.</string>
+    <string name="update_invalid_apk">Bản cập nhật đã tải xuống không phải gói Twidget hợp lệ.</string>
+    <string name="update_notification_title">Có bản cập nhật Twidget mới</string>
+    <string name="update_notification_body">Phiên bản %1$s đã sẵn sàng để cài đặt.</string>
+    <string name="update_notification_channel_name">Cập nhật ứng dụng</string>
+    <string name="update_notification_channel_description">Thông báo khi có phiên bản Twidget mới</string>
+    <string name="update_remind_later">Nhắc tôi sau</string>
+    <string name="update_install_now">Cài đặt ngay</string>
+    <string name="sync_failed">Đồng bộ thất bại; đang hiển thị thống kê đã lưu đệm.</string>
+    <string name="onboarding_overview_title">Chào mừng đến với Twidget</string>
+    <string name="onboarding_welcome_terms">Khi sử dụng Twidget, bạn chấp nhận Chính sách quyền
+        riêng tư của Twidget cũng như điều khoản và điều kiện của từng nền tảng.</string>
+    <string name="onboarding_privacy_link">Chính sách quyền riêng tư Twidget</string>
+    <string name="onboarding_done_title">Mọi thứ đã sẵn sàng!</string>
+    <string name="onboarding_done_summary">Thống kê được ghi nhận hằng ngày, nên hãy chờ khoảng một
+        tuần để dữ liệu hiển thị đầy đủ.</string>
+    <string name="get_started">Bắt đầu</string>
+    <string name="add_to_home_screen">Thêm vào màn hình chính</string>
+    <string name="skip">Bỏ qua</string>
+    <string name="onboarding_overview_summary">Twidget giúp đồng bộ số người theo dõi, biến động gần
+        đây và các widget màn hình chính One UI từ một hồ sơ.</string>
+    <string name="onboarding_permissions_title">Quyền truy cập</string>
+    <string name="onboarding_required_permissions">Quyền tùy chọn</string>
+    <string name="onboarding_permission_notifications_title">Thông báo</string>
+    <string name="onboarding_permission_notifications_summary">Hiển thị tiến độ quét và thông báo
+        cập nhật ứng dụng.</string>
+    <string name="onboarding_permission_allowed">Đã cấp phép</string>
+    <string name="onboarding_permission_required">Nhấn để cấp phép</string>
+    <string name="onboarding_allow_permissions">Cấp quyền</string>
+    <string name="onboarding_permission_settings_failed">Không thể mở cài đặt hệ thống cho quyền
+        này.</string>
+    <string name="onboarding_profile_title">Nhập tên người dùng của bạn</string>
+    <string name="onboarding_profile_summary">Đừng lo, bạn có thể thêm nhiều tài khoản hơn sau</string>
+    <string name="onboarding_run_locally">Chạy cục bộ</string>
+    <string name="connect">Kết nối</string>
+    <string name="onboarding_tip_stats_title">Thống kê người theo dõi trực tiếp</string>
+    <string name="onboarding_tip_stats_summary">Đồng bộ người theo dõi, đang theo dõi, bài đăng và
+        lượt thích cho bất kỳ hồ sơ X công khai nào.</string>
+    <string name="onboarding_tip_widgets_title">Widget màn hình chính và màn hình khóa</string>
+    <string name="onboarding_tip_widgets_summary">Widget One UI dễ nhìn với tùy chọn làm mờ, tông
+        màu và phông chữ.</string>
+    <string name="onboarding_tip_accounts_title">Nhiều tài khoản</string>
+    <string name="onboarding_tip_accounts_summary">Theo dõi nhiều hồ sơ và vuốt để chuyển đổi giữa
+        chúng trong ứng dụng.</string>
+    <string name="onboarding_widgets_summary">Bạn đã sẵn sàng. Hãy thêm widget ngay bây giờ hoặc vào
+        thẳng ứng dụng.</string>
+    <string name="onboarding_widgets_home_title">Màn hình chính</string>
+    <string name="onboarding_widgets_home_summary">Nhấn Thêm widget bên dưới và chọn một vị trí trên
+        màn hình chính.</string>
+    <string name="onboarding_widgets_lock_title">Màn hình khóa</string>
+    <string name="onboarding_widgets_lock_summary">Chạm giữ màn hình khóa, rồi nhấn Widget để thêm
+        Twidget vào đó nữa.</string>
+    <string name="x_api_key">Khóa X API</string>
+    <string name="x_api_secret">Mã bí mật X API</string>
+    <string name="onboarding_username_label">Tên người dùng X</string>
+    <string name="onboarding_username_error">Nhập tên người dùng X hợp lệ.</string>
+    <string name="onboarding_account_not_found">Không tìm thấy tài khoản X đó. Hãy kiểm tra tên
+        người dùng và thử lại.</string>
+    <string name="onboarding_account_check_failed">Không thể kiểm tra tài khoản đó ngay lúc này. Hãy
+        kiểm tra kết nối và thử lại.</string>
+    <string name="onboarding_checking_account">Đang kiểm tra tài khoản…</string>
+    <string name="continue_button">Tiếp tục</string>
+    <string name="starting_twidget">Đang khởi động…</string>
+    <string name="set">Đặt</string>
+    <string name="debug_menu">Gỡ lỗi</string>
+    <string name="debug_menu_unlocked">Đã mở khóa menu gỡ lỗi</string>
+    <string name="debug_menu_already_unlocked">Menu gỡ lỗi đã được mở khóa rồi</string>
+    <string name="debug_menu_countdown">Nhấn thêm %1$d lần nữa để mở khóa menu gỡ lỗi</string>
+    <string name="hide_debug_menu">Ẩn menu gỡ lỗi</string>
+    <string name="debug_palette_category">Bảng màu ứng dụng</string>
+    <string name="debug_palette_mode">Nguồn bảng màu</string>
+    <string name="debug_palette_system">Bảng màu hệ thống</string>
+    <string name="debug_palette_system_summary">Theo bảng màu hình nền do One UI cung cấp</string>
+    <string name="debug_palette_twidget_blue">Xanh Twidget</string>
+    <string name="debug_palette_twidget_blue_summary">Ghi đè bảng màu hệ thống bằng màu xanh gốc của
+        Twidget</string>
+    <string name="debug_palette_custom">Màu nhấn tùy chỉnh</string>
+    <string name="debug_palette_custom_summary">Tạo các vai trò sáng và tối của One UI từ màu bạn
+        chọn</string>
+    <string name="debug_palette_custom_accent">Màu nhấn</string>
+    <string name="debug_palette_view">Xem bảng màu đã phân giải</string>
+    <string name="debug_palette_generated">Các vai trò đã tạo</string>
+    <string name="debug_palette_resolved">Tài nguyên đã phân giải</string>
+    <string name="debug_palette_requires_android_14">Bảng màu tùy chỉnh yêu cầu Android 14 trở lên</string>
+    <string name="debug_palette_overlay_registered">Bảng màu tùy chỉnh đang bật</string>
+    <string name="debug_palette_overlay_not_registered">Hệ thống quản lý</string>
+    <string name="debug_palette_overlay_unsupported">Lớp phủ không được hỗ trợ</string>
+    <string name="debug_palette_apply_failed">Không thể áp dụng bảng màu: %1$s</string>
+    <string name="debug_palette_unknown_error">Lỗi lớp phủ không xác định</string>
+    <string name="rerun_onboarding">Chạy lại hướng dẫn ban đầu</string>
+    <string name="rerun_onboarding_summary">Bắt đầu lại quy trình khởi chạy lần đầu</string>
+    <string name="dummy_profile">Hồ sơ giả lập</string>
+    <string name="add_dummy_profile">Thêm hồ sơ giả lập</string>
+    <string name="add_dummy_profile_summary">Thêm \@%1$s với số liệu giả để thử nghiệm widget</string>
+    <string name="dummy_follower_count">Số người theo dõi</string>
+    <string name="remove_dummy_profile">Xóa hồ sơ giả lập</string>
+    <string name="dummy_profile_added">Đã thêm hồ sơ giả lập</string>
+    <string name="dummy_profile_removed">Đã xóa hồ sơ giả lập</string>
+    <string name="trigger_fake_update">Kích hoạt cập nhật giả</string>
+    <string name="trigger_fake_update_summary">Giả lập đang có bản cập nhật mới để kiểm tra trạng
+        thái giao diện</string>
+    <string name="bridge_log">Nhật ký cầu nối</string>
+    <string name="bridge_log_summary">Dữ liệu gửi tới và nhận về từ cầu nối</string>
+    <string name="bridge_log_empty">Chưa ghi nhận lưu lượng cầu nối nào</string>
+    <string name="bridge_log_request">Nội dung yêu cầu:</string>
+    <string name="bridge_log_response">Phản hồi:</string>
+    <string name="clear_log">Xóa nhật ký</string>
+    <string name="copy">Sao chép</string>
+    <string name="copied">Đã sao chép</string>
+    <string name="brief_debug_title">Gỡ lỗi Tóm tắt của bạn</string>
+    <string name="brief_debug_summary">Xem trước các trạng thái và kiểm tra dữ kiện, xếp hạng cùng
+        nhật ký sự kiện của bộ máy Tóm tắt</string>
+    <string name="brief_debug_preview_category">Xem trước trạng thái</string>
+    <string name="brief_debug_scenario">Trạng thái Tóm tắt</string>
+    <string name="brief_debug_open_preview">Mở xem trước Tóm tắt</string>
+    <string name="brief_debug_open_preview_summary">Kết xuất %1$s lấy tài khoản hiện tại làm cơ sở</string>
+    <string name="brief_debug_open_onboarding">Mở trải nghiệm khởi chạy đầu tiên</string>
+    <string name="brief_debug_open_onboarding_summary">Xem trước màn hình chào mừng và luồng tạo nền
+        của nó</string>
+    <string name="brief_debug_inputs_category">Đầu vào bộ máy</string>
+    <string name="brief_debug_ranking_category">Xếp hạng ứng viên</string>
+    <string name="brief_debug_actions_category">Thao tác bộ máy</string>
+    <string name="brief_debug_refresh">Làm mới và tạo lại Tóm tắt</string>
+    <string name="brief_debug_refresh_summary">Mở Tóm tắt, đánh giá lại toàn bộ nội dung và chạy lại
+        nhà cung cấp AI đã cấu hình</string>
+    <string name="brief_debug_force_rebuild">Buộc dựng lại bộ máy</string>
+    <string name="brief_debug_force_rebuild_summary">Bỏ qua bản Tóm tắt hằng ngày đã lưu và đánh giá
+        lại mọi ứng viên</string>
+    <string name="brief_debug_rebuilt">Đã dựng lại Tóm tắt</string>
+    <string name="brief_debug_full_report">Báo cáo đầy đủ bộ máy</string>
+    <string name="brief_debug_full_report_summary">Kiểm tra hoặc sao chép dữ liệu đầu vào, điểm số,
+        thứ tự và kết quả chọn lọc</string>
+    <string name="brief_debug_log_category">Nhật ký bộ máy gần đây</string>
+    <string name="brief_debug_log_title">Nhật ký bộ máy</string>
+    <string name="brief_debug_log_empty">Chưa ghi nhận lần đánh giá nào của bộ máy</string>
+    <plurals name="brief_debug_log_summary">
+        <item quantity="other">%1$d mục · Mới nhất: %2$s · %3$s</item>
+    </plurals>
+    <string name="brief_debug_nano_category">Chẩn đoán Gemini Nano</string>
+    <string name="brief_debug_nano_model_mode">Cấu hình mô hình Nano</string>
+    <string name="brief_debug_nano_checking">Đang kiểm tra Gemini Nano…</string>
+    <string name="brief_debug_nano_checking_summary">Đang truy vấn ML Kit GenAI và Android AICore</string>
+    <string name="brief_debug_nano_in_use">Gemini Nano đang được sử dụng</string>
+    <string name="brief_debug_nano_not_in_use">Gemini Nano không được sử dụng</string>
+    <string name="brief_debug_nano_last_attempt">Lần thử AI gần nhất</string>
+    <string name="brief_debug_nano_no_attempt">Chưa ghi nhận lần thử nhà cung cấp nào</string>
+    <string name="brief_debug_nano_refresh">Làm mới trạng thái Nano</string>
+    <string name="brief_debug_nano_refresh_summary">Truy vấn lại trạng thái tính năng và mô hình
+        trên thiết bị</string>
+    <string name="brief_debug_nano_test">Chạy kiểm tra nhà cung cấp</string>
+    <string name="brief_debug_nano_test_summary">Dựng lại Tóm tắt và chạy lựa chọn cục bộ/đám mây đã
+        cấu hình ngay</string>
+    <string name="brief_debug_diagnose_generation">Chạy chẩn đoán tạo nội dung đầy đủ</string>
+    <string name="brief_debug_diagnose_generation_summary">Lưu các phản hồi mô hình thất bại, dữ
+        kiện và chi tiết xác thực cho lần chạy gỡ lỗi này</string>
+    <string name="brief_debug_diagnosis_report">Báo cáo chẩn đoán tạo nội dung</string>
+    <string name="brief_debug_no_diagnosis">Chưa ghi nhận chẩn đoán chi tiết nào</string>
+    <string name="brief_debug_scenario_real">Dữ liệu tài khoản thật</string>
+    <string name="brief_debug_scenario_post">Đang thu hút chú ý</string>
+    <string name="brief_debug_scenario_worst_post">Tweet ít tương tác nhất</string>
+    <string name="brief_debug_scenario_growth">Tăng trưởng bứt phá</string>
+    <string name="brief_debug_scenario_slowdown">Tăng trưởng chậm lại</string>
+    <string name="brief_debug_scenario_milestone">Đã đạt cột mốc</string>
+    <string name="brief_debug_scenario_top_follower">Người theo dõi hàng đầu mới</string>
+    <string name="brief_debug_scenario_inactivity">Bắt đầu chuỗi đăng bài</string>
+    <string name="brief_debug_scenario_streak">Chuỗi đăng bài</string>
+    <string name="brief_debug_scenario_posting_guide">Gợi ý bài đăng tiếp theo</string>
+    <string name="brief_debug_scenario_steady">Mọi thứ ổn định</string>
+    <string name="brief_debug_card_post_title">Hiệu suất của tweet này</string>
+    <string name="brief_debug_card_post_body">Bài này tiếp cận được nhiều người hơn hẳn tweet thông
+        thường của bạn trong tuần này.</string>
+    <string name="brief_debug_card_worst_post_title">So sánh tweet này</string>
+    <string name="brief_debug_card_worst_post_body">Bài này tiếp cận được ít người hơn tweet thông
+        thường của bạn trong tuần này.</string>
+    <string name="brief_debug_card_growth_title">Khán giả của bạn đang tăng mạnh</string>
+    <string name="brief_debug_card_growth_body">Bạn tăng 84 người theo dõi hôm nay và 679 trong tuần
+        qua.</string>
+    <string name="brief_debug_card_slowdown_title">Đà tăng trưởng đã chậm lại</string>
+    <string name="brief_debug_card_slowdown_body">Nhịp độ gần đây đang chậm hơn vài ngày trước đó.
+        Một bài đăng mới có thể giúp khởi động lại đà tăng.</string>
+    <string name="brief_debug_card_milestone_title">Đã đạt cột mốc!</string>
+    <string name="brief_debug_card_milestone_body">Bạn đã cán mốc %1$s người theo dõi. Thật đáng ăn
+        mừng.</string>
+    <string name="brief_debug_card_top_follower_title">Người theo dõi hàng đầu mới</string>
+    <string name="brief_debug_card_top_follower_body">\@JohnCena hiện là người theo dõi nổi tiếng
+        thứ 2 của bạn.</string>
+    <string name="brief_debug_card_inactivity_title">Bắt đầu chuỗi đăng bài</string>
+    <string name="brief_debug_card_inactivity_body">Twidget chưa phát hiện tweet gốc nào trong hơn
+        ba ngày. Hãy đăng tweet hôm nay để bắt đầu.</string>
+    <string name="brief_debug_card_streak_title">Chuỗi đăng bài 14 ngày</string>
+    <string name="brief_debug_card_streak_body">Hãy đăng tweet hôm nay để duy trì nhịp độ 14 ngày
+        của bạn.</string>
+    <string name="brief_debug_card_posting_guide_title">Thử đăng tweet tiếp theo vào buổi tối</string>
+    <string name="brief_debug_card_posting_guide_body">Các tweet buổi tối gần đây đạt hiệu quả tốt
+        hơn các khung giờ khác. Hãy thử lại khung giờ đó.</string>
+    <string name="brief_debug_card_steady_title">Mọi thứ vẫn ổn định</string>
+    <string name="brief_debug_card_steady_body">Hãy tiếp tục đăng bài đều đặn và Twidget sẽ theo dõi
+        thay đổi đáng chú ý tiếp theo.</string>
+    <string name="brief_debug_synthetic_provider_message">Trạng thái gỡ lỗi mô phỏng · không gửi yêu
+        cầu AI</string>
+    <string name="brief_debug_report_title">Báo cáo bộ máy Tóm tắt Twidget</string>
+    <string name="brief_debug_report_account">Tài khoản: @%1$s</string>
+    <string name="brief_debug_report_generated">Đã tạo: %1$s</string>
+    <string name="brief_debug_report_input_facts">DỮ KIỆN ĐẦU VÀO</string>
+    <string name="brief_debug_report_ranked_candidates">ỨNG VIÊN ĐÃ XẾP HẠNG</string>
+    <string name="brief_debug_report_selected">ĐÃ CHỌN</string>
+    <string name="brief_debug_report_omitted">ĐÃ BỎ QUA</string>
+    <string name="brief_debug_report_none">không có</string>
+    <string name="brief_debug_report_followers">followers=%1$s</string>
+    <string name="brief_debug_report_following">following=%1$s</string>
+    <string name="brief_debug_report_posts">posts=%1$s</string>
+    <string name="brief_debug_report_followers_today">followersToday=%1$s</string>
+    <string name="brief_debug_report_followers_week">followersWeek=%1$s</string>
+    <string name="brief_debug_report_history_samples">historySamples=%1$d</string>
+    <string name="brief_debug_report_analytics_cached_at">analyticsCachedAt=%1$s</string>
+    <string name="brief_debug_report_standout_post_views">standoutPostViews=%1$s</string>
+    <string name="brief_debug_report_quiet_post_views">quietPostViews=%1$s</string>
+    <string name="brief_debug_report_posting_streak">postingStreak=%1$d</string>
+    <string name="brief_debug_report_original_activity_complete">originalActivityComplete=%1$s</string>
+    <string name="brief_debug_report_upcoming_tweets">upcomingTweets=%1$d</string>
+    <string name="brief_debug_report_follower_scan_completed_at">followerScanCompletedAt=%1$s</string>
+    <string name="brief_debug_report_followers_scanned">followersScanned=%1$d</string>
+    <string name="brief_debug_report_candidate">%1$d. rank=%2$d base=%3$d type=%4$s %5$s id=%6$s</string>
+    <string name="brief_debug_report_candidate_title"> %1$s</string>
+    <string name="brief_debug_report_candidate_body"> %1$s</string>
+    <string name="schedule_edit">Sửa</string>
+    <string name="schedule_add">Thêm</string>
+    <string name="post_scheduling">Lên lịch đăng bài</string>
+    <string name="post_scheduling_summary">Chọn lời nhắc cục bộ hoặc kết nối Buffer</string>
+    <string name="top_followers">Người theo dõi hàng đầu</string>
+    <string name="top_followers_question">Ai là</string>
+    <string name="top_followers_hero">Người theo dõi hàng đầu?</string>
+    <string name="top_followers_find_with_bridge">Tìm người theo dõi hàng đầu</string>
+    <string name="top_followers_bridge_scan_requested">Bảng xếp hạng đầu tiên đang được chuẩn bị.
+        Twidget sẽ tự động làm mới hằng ngày khi bật lịch sử dùng chung.</string>
+    <string name="top_followers_results_title">Người theo dõi hàng đầu của bạn</string>
+    <string name="top_follower_accessibility">Hạng %1$d, %2$s, tại %3$s, %4$s người theo dõi. Mở hồ
+        sơ X.</string>
+    <string name="top_follower_row">%1$d. @%2$s · %3$s người theo dõi</string>
+    <string name="top_followers_ready">Sẵn sàng tìm những người theo dõi lớn nhất của bạn</string>
+    <string name="top_followers_setup">Bật lịch sử dùng chung trong Dữ liệu và nguồn để tìm người
+        theo dõi hàng đầu.</string>
+    <string name="top_followers_tap">Nhấn để tìm người theo dõi hàng đầu</string>
+    <string name="scan">Quét</string>
+    <string name="twitterapis_title">TwitterAPIs · Hồ sơ và bài đăng</string>
+    <string name="twitterapis_api_key">Khóa API TwitterAPIs</string>
+    <string name="twitterapis_explainer">Thêm khóa riêng của bạn cho thống kê hồ sơ tùy chọn và phân
+        tích bài đăng 7 ngày giới hạn được lưu đệm trong 6 giờ. Khóa được mã hóa trên thiết bị này
+        và chỉ gửi tới TwitterAPIs. Người theo dõi hàng đầu sử dụng cầu nối lịch sử dùng chung. Việc
+        mở Cài đặt không thực hiện cuộc gọi trả phí.</string>
+    <string name="twitterapis_personal_key_active">Khóa cá nhân đang hoạt động · %1$s</string>
+    <string name="twitterapis_no_key_available">Thêm khóa riêng để xem thống kê hồ sơ và phân tích
+        bài đăng</string>
+    <string name="twitterapis_status">Trạng thái TwitterAPIs</string>
+    <string name="scan_again">Quét lại</string>
+    <string name="compact_followers">%1$s người theo dõi</string>
+    <string name="post_card_waiting">Chưa có kết quả cho @%1$s</string>
+    <string name="top_followers_notifications">Cập nhật người theo dõi hàng đầu</string>
+    <string name="top_followers_notifications_description">Thông báo khi có người theo dõi thứ hạng
+        cao mới xuất hiện</string>
+    <string name="top_followers_new_high_ranking_title">Người theo dõi hàng đầu mới cho @%1$s</string>
+    <string name="top_followers_new_high_ranking_detail">@%1$s đã theo dõi bạn và hiện xếp hạng
+        #%2$d trong nhóm người theo dõi hàng đầu</string>
+    <string name="top_followers_last_scan">Quét lần cuối %1$s · %2$d người theo dõi qua %3$d trang</string>
+    <string name="top_followers_view_all">Xem thêm</string>
+    <string name="top_followers_browse_title">Tất cả người theo dõi</string>
+    <string name="top_followers_browse_empty">Chưa lưu người theo dõi nào. Hãy chạy quét trước.</string>
+    <string name="top_followers_filter_all">Tất cả</string>
+    <string name="top_followers_filter_alpha">A–Z</string>
+    <string name="top_followers_filter_recent">Gần đây</string>
+    <string name="top_followers_filter_verified">Đã xác minh</string>
+    <string name="top_followers_filter_mutual">Theo dõi chéo</string>
+    <string name="top_followers_filter_mutual_unavailable">Bộ lọc theo dõi chéo không khả dụng với
+        nguồn dữ liệu này</string>
+    <string name="top_followers_browse_count">%1$d người theo dõi</string>
+    <string name="status_configured">Đã cấu hình</string>
+    <string name="brief_title">Tóm tắt của bạn</string>
+    <string name="brief_settings_section">Tóm tắt của bạn</string>
+    <string name="brief_onboarding_title">Khám phá bản tóm tắt, %1$s</string>
+    <string name="brief_onboarding_body">Nhận bản tin tóm tắt cá nhân hóa về hồ sơ của bạn, dựa trên
+        hoạt động tweet, mục tiêu và lịch đăng bài.</string>
+    <string name="brief_onboarding_continue">Tiếp tục</string>
+    <string name="brief_settings_title">Cài đặt Tóm tắt của bạn</string>
+    <string name="brief_settings_on">Bật</string>
+    <string name="brief_settings_off">Tắt</string>
+    <string name="brief_settings_preview_description">Xem trước bản Tóm tắt cá nhân hóa</string>
+    <string name="brief_settings_intro">Nhận bản tóm tắt cá nhân hóa dựa trên phân tích hồ sơ của
+        bạn. Nội dung tự động cập nhật trong ngày, hiển thị trên bảng điều khiển và dạng widget trên
+        màn hình chính.</string>
+    <string name="brief_refresh_on_home">Làm mới trên bảng điều khiển</string>
+    <string name="brief_refresh_on_home_summary">Cập nhật Tóm tắt khi bạn mở ứng dụng, giảm thời
+        gian chờ tạo nội dung.</string>
+    <string name="brief_settings_ai_intro">Tóm tắt kết hợp thống kê tài khoản với nhà cung cấp AI
+        bạn chọn. Dùng Gemini Nano trên thiết bị được hỗ trợ, Gemini với khóa API AI Studio, hoặc
+        ChatGPT với tài khoản hay khóa API OpenAI.</string>
+    <string name="brief_manage_content">Quản lý nội dung hiển thị</string>
+    <string name="brief_content_top_tweet">Tweet nổi bật tuần này</string>
+    <string name="brief_content_worst_tweet">Tweet kém nhất tuần này</string>
+    <string name="brief_content_followers">Người theo dõi</string>
+    <string name="brief_content_top_followers">Người theo dõi hàng đầu</string>
+    <string name="brief_content_tweet_activity">Nhịp độ đăng bài</string>
+    <string name="brief_content_scheduled_tweets">Tweet đã lên lịch</string>
+    <string name="brief_content_schedule_health">Gợi ý lịch đăng</string>
+    <string name="brief_content_post_follow_through">Hiệu suất tweet đã lên lịch</string>
+    <string name="brief_content_posting_guidance">Gợi ý tweet tiếp theo</string>
+    <string name="brief_content_account_goals">Mục tiêu tài khoản</string>
+    <string name="brief_tweet_activity_explainer">Nhịp độ đăng bài dùng các tweet gốc của bạn để cho
+        biết khi nào bạn đang xây dựng chuỗi ổn định hoặc lúc nào nên đăng lại. Phản hồi không được
+        tính.</string>
+    <string name="brief_schedule_health_explainer">Gợi ý lịch đăng nêu bật một bước hữu ích khi có
+        tweet trong hàng đợi cần chú ý, bản nháp đã sẵn sàng lên lịch hoặc lịch trống hơn ba ngày.
+        Gợi ý lịch tự động không gửi nội dung tweet chưa đăng lên nhà cung cấp AI. Góp ý bản nháp
+        theo yêu cầu tuân theo cài đặt AI cục bộ hoặc đám mây của bạn.</string>
+    <string name="brief_draft_without_text">Bản nháp có phương tiện</string>
+    <plurals name="brief_draft_thread_count">
+        <item quantity="other">chuỗi %d tweet</item>
+    </plurals>
+    <string name="brief_post_follow_through_explainer">Hiệu suất tweet đã lên lịch liên kết một
+        tweet đã lên lịch với kết quả thực tế. Khi hiệu suất cao hơn hoặc thấp hơn rõ rệt so với
+        thông thường, Tóm tắt sẽ gợi ý điều nên áp dụng cho bài tiếp theo.</string>
+    <string name="brief_posting_guidance_explainer">Gợi ý tweet tiếp theo nêu bật các xu hướng đo
+        được trong bài đăng gần đây. Đánh giá bản nháp và tweet có công tắc Đánh giá tweet riêng ở
+        đầu mục Quản lý nội dung.</string>
+    <string name="brief_categories_empty_body">Chọn các cập nhật bạn muốn xem trong cài đặt Tóm tắt.</string>
+    <string name="brief_ai_studio_key">Khóa API AI Studio</string>
+    <string name="brief_api_key_required_title">Cần thiết lập AI</string>
+    <string name="brief_api_key_required_body">AI trên thiết bị không khả dụng. Hãy cấu hình nhà
+        cung cấp đám mây để dùng Tóm tắt của bạn.</string>
+    <string name="brief_api_key_settings_body">Tạo hoặc quản lý khóa API trong Google AI Studio, rồi
+        dán vào bên dưới.</string>
+    <string name="brief_api_key_get_link">Lấy khóa API từ Google AI Studio</string>
+    <string name="brief_api_key_hint">Khóa API</string>
+    <string name="brief_api_key_save">Lưu khóa</string>
+    <string name="brief_api_key_required_error">Nhập khóa API để tiếp tục.</string>
+    <string name="brief_api_key_open_failed">Không thể mở Google AI Studio.</string>
+    <string name="brief_provider_required_title">Tóm tắt của bạn cần nhà cung cấp AI</string>
+    <string name="brief_provider_required_body">AI trên thiết bị không khả dụng và chưa có nhà cung
+        cấp đám mây nào được kết nối. Hãy thiết lập nhà cung cấp đám mây để tiếp tục.</string>
+    <string name="brief_provider_required_action">Thiết lập nhà cung cấp đám mây</string>
+    <string name="brief_provider_auto_short">Tự động</string>
+    <string name="brief_settings_debug">Gỡ lỗi</string>
+    <string name="brief_ai_disclaimer">Thông tin AI</string>
+    <string name="brief_ai_disclaimer_body">Nội dung do AI tạo có thể chưa đầy đủ hoặc thiếu chính
+        xác. Twidget giới hạn nội dung dựa trên dữ kiện tính từ tài khoản của bạn, nhưng bạn vẫn nên
+        kiểm chứng các thông tin quan trọng.\n\n%1$s</string>
+    <string name="brief_enabled">Bật tóm tắt hằng ngày</string>
+    <string name="brief_enabled_summary">Tạo bản hướng dẫn riêng tư hằng ngày, bao gồm xếp hạng
+        người theo dõi qua cầu nối khi bật lịch sử dùng chung</string>
+    <string name="brief_provider">Nhà cung cấp AI</string>
+    <string name="brief_provider_auto">Tự động (cục bộ, rồi đám mây)</string>
+    <string name="brief_provider_local">Cục bộ</string>
+    <string name="brief_provider_cloud">Đám mây</string>
+    <string name="brief_provider_auto_summary">Ưu tiên AI trên thiết bị; chuyển sang nhà cung cấp
+        đám mây đã cấu hình nếu cần</string>
+    <string name="brief_provider_local_summary">Dùng Gemini Nano cho Tóm tắt. Chuyển sang Tự động
+        hoặc Đám mây để dùng đánh giá tweet.</string>
+    <string name="brief_provider_cloud_summary">Dùng nhà cung cấp đám mây bạn đã chọn</string>
+    <string name="brief_cloud_key">Nhà cung cấp đám mây</string>
+    <string name="brief_cloud_privacy_summary">Tạo bằng đám mây sẽ gửi dữ liệu Tóm tắt tới nhà cung
+        cấp đã chọn. Chọn Cục bộ để giữ việc tạo Tóm tắt trên thiết bị này. Đánh giá tweet yêu cầu
+        nhà cung cấp đám mây.</string>
+    <string name="brief_cloud_key_summary">Đăng nhập hoặc thêm khóa API cho nhà cung cấp đám mây.
+        Thông tin xác thực được mã hóa trên thiết bị này.</string>
+    <string name="brief_cloud_key_configured">Đã cấu hình và mã hóa</string>
+    <string name="brief_open">Mở Tóm tắt của bạn</string>
+    <string name="brief_followers">Người theo dõi</string>
+    <string name="brief_top_followers">Người theo dõi hàng đầu</string>
+    <string name="brief_top_followers_empty">Chưa có bảng xếp hạng người theo dõi. Hãy bật lịch sử
+        dùng chung trong Dữ liệu và nguồn, rồi dùng Tìm người theo dõi hàng đầu trên bảng điều
+        khiển.</string>
+    <string name="brief_post_love">Bài đăng gần nhất nhận được rất nhiều sự yêu thích!</string>
+    <string name="brief_weekly_growth">Bạn có thêm %1$s người theo dõi mới trong tuần qua.</string>
+    <string name="brief_weekly_decline">Bạn giảm %1$s người theo dõi trong tuần qua.</string>
+    <string name="brief_weekly_steady">Số người theo dõi của bạn giữ ổn định trong tuần qua.</string>
+    <string name="brief_new_top_follower">Bạn có người theo dõi hàng đầu mới!</string>
+    <string name="brief_top_followers_now">Những người theo dõi hàng đầu hiện tại của bạn.</string>
+    <string name="brief_prepare_local">Chuẩn bị AI cục bộ</string>
+    <string name="brief_widget_label">Tóm tắt của bạn</string>
+    <string name="brief_widget_description">Thông điệp thay đổi theo hoạt động tài khoản mới nhất
+        của bạn</string>
+    <string name="brief_widget_empty_title">Tóm tắt đang được chuẩn bị</string>
+    <string name="brief_loading_status_analyzing">Đang phân tích các bài đăng gần đây&#8230;</string>
+    <string name="brief_loading_status_insights">Đang tìm các nhận định hữu ích nhất&#8230;</string>
+    <string name="brief_loading_status_preparing">Đang chuẩn bị Tóm tắt cá nhân&#8230;</string>
+    <string name="brief_widget_empty_body">Mở Tóm tắt của bạn để thiết lập.</string>
+    <string name="brief_preview_title">Đang thu hút chú ý</string>
+    <string name="brief_preview_body">Bài đăng mới nhất đang tiếp cận nhiều người hơn. Bạn đang giữ
+        phong độ tốt.</string>
+    <string name="brief_metric_engagements">Lượt tương tác</string>
+    <string name="brief_metric_impressions">Lượt hiển thị</string>
+    <string name="brief_metric_quote_tweets">Tweet trích dẫn</string>
+    <string name="brief_metric_retweets">Retweet</string>
+    <string name="brief_action_review_schedule">Xem lại lịch</string>
+    <string name="brief_action_draft_tweet">Soạn bản nháp</string>
+    <string name="brief_action_open_tweet">Mở tweet</string>
+    <string name="brief_goal_progress_heading">Bạn đã đạt %1$d%% mục tiêu</string>
+    <string name="brief_goal_heading">Mục tiêu %1$s</string>
+    <string name="brief_goal_close_heading">Bạn sắp đạt mục tiêu %1$s</string>
+    <string name="brief_goal_reached_heading">Đã đạt mục tiêu %1$s</string>
+    <string name="brief_goal_noun_verified_follower">người theo dõi đã xác minh</string>
+    <string name="brief_streak_heading">Chuỗi đăng bài của bạn</string>
+    <string name="back">Quay lại</string>
+    <string name="info">Thông tin</string>
+
+    <!-- Brief template copy written into cards and summaries by BriefEngine. -->
+    <plurals name="brief_follower_count">
+        <item quantity="other">%1$s người theo dõi</item>
+    </plurals>
+    <string name="brief_provider_note_template">Đang chờ mô hình tạo nội dung</string>
+    <string name="brief_provider_note_nano">Được viết riêng tư bằng Gemini Nano trên thiết bị này</string>
+    <string name="brief_provider_note_cloud">Được tạo bằng nhà cung cấp đám mây của bạn</string>
+    <string name="brief_provider_note_nano_then_cloud">AI trên thiết bị không hoàn tất được Tóm tắt
+        này; đã dùng nhà cung cấp đám mây</string>
+    <string name="brief_provider_note_nano_downloadable">Gemini Nano được hỗ trợ và sẵn sàng tải
+        xuống</string>
+    <string name="brief_provider_note_nano_downloading">Gemini Nano vẫn đang tải xuống</string>
+    <string name="brief_provider_note_nano_failed">Gemini Nano khả dụng nhưng không hoàn tất được
+        Tóm tắt này</string>
+    <string name="brief_provider_note_nano_unavailable">Gemini Nano không khả dụng trên thiết bị này</string>
+    <string name="brief_provider_note_cloud_needs_key">Thiết lập nhà cung cấp đám mây trong Cài đặt
+        để bật tạo nội dung đám mây</string>
+    <string name="brief_provider_note_auto_downloadable">Gemini Nano đã sẵn sàng tải xuống; đang chờ
+        tạo nội dung</string>
+    <string name="brief_provider_note_auto_none">Chưa có nhà cung cấp AI nào sẵn sàng</string>
+    <string name="brief_provider_note_unreachable">Nhà cung cấp AI không thể hoàn tất Tóm tắt này</string>
+    <string name="brief_summary_title_moving_closer">Đang tiến gần hơn</string>
+    <string name="brief_summary_title_momentum">Đà tăng đang hình thành</string>
+    <string name="brief_summary_title_reset">Khoảng lặng để làm mới</string>
+    <string name="brief_summary_title_next_move">Bước đi tiếp theo</string>
+    <string name="brief_summary_title_week">Toàn cảnh tuần qua</string>
+    <string name="brief_summary_title_default">Tóm tắt Twidget của bạn</string>
+    <string name="brief_summary_goal_closer">Tiến triển đó đưa mục tiêu của bạn đến gần hơn.</string>
+    <string name="brief_summary_goal_in_view">Mục tiêu của bạn vẫn nằm trong tầm tay.</string>
+    <string name="brief_summary_post_both">Một tweet gần đây nổi bật rõ rệt, trong khi một tweet
+        khác mang lại bài học kinh nghiệm.</string>
+    <string name="brief_summary_post_standout">Một tweet gần đây nổi bật hơn hẳn hiệu suất thông
+        thường của bạn.</string>
+    <string name="brief_summary_post_lesson">Một tweet gần đây mang lại điều đáng rút kinh nghiệm.</string>
+    <plurals name="brief_summary_upcoming">
+        <item quantity="other">Có %1$d tweet đã lên lịch sẵn sàng phía trước.</item>
+    </plurals>
+    <string name="brief_summary_top_followers">Có thay đổi đáng chú ý trong nhóm người theo dõi hàng
+        đầu của bạn.</string>
+    <string name="brief_summary_streak_restart">Có lẽ đã đến lúc khởi động lại nhịp độ đăng bài.</string>
+    <string name="brief_summary_streak_active">Nhịp độ đăng bài của bạn đang duy trì tốt.</string>
+    <string name="brief_summary_schedule_step">Lịch đăng của bạn đang có bước tiếp theo hữu ích chờ
+        sẵn.</string>
+    <string name="brief_summary_follow_through">Một tweet mới lên lịch gần đây gợi ý bài học cho bài
+        đăng tiếp theo.</string>
+    <string name="brief_summary_posting_guide">Các tweet gần đây gợi ý một bước tiếp theo thiết
+        thực.</string>
+    <string name="brief_summary_body_trend">Xem lượng khán giả của bạn thay đổi ra sao trong tuần
+        qua.</string>
+    <string name="brief_summary_body_watching">Twidget đang theo dõi cập nhật tài khoản đáng chú ý
+        tiếp theo.</string>
+    <string name="brief_short_post_both">Tweet gần đây có một điểm sáng và một bài học.</string>
+    <string name="brief_short_post_standout">Một tweet gần đây rất nổi bật.</string>
+    <string name="brief_short_post_lesson">Một tweet gần đây mang lại bài học.</string>
+    <plurals name="brief_short_upcoming">
+        <item quantity="other">Có %1$d tweet được hẹn lịch tiếp theo.</item>
+    </plurals>
+    <string name="brief_short_top_followers">Người theo dõi hàng đầu đã thay đổi.</string>
+    <string name="brief_short_schedule_step">Lịch đăng có bước tiếp theo hữu ích.</string>
+    <string name="brief_short_follow_through">Tweet mới nhất gợi ý bài học hữu ích.</string>
+    <string name="brief_short_posting_guide">Tweet gần đây gợi ý bước tiếp theo.</string>
+    <string name="brief_short_watching">Đang theo dõi cập nhật đáng chú ý tiếp theo.</string>
+    <string name="brief_followers_gained_today_week">Bạn tăng %1$s hôm nay và %2$s tuần này.</string>
+    <string name="brief_followers_gained_today">Bạn tăng %1$s hôm nay.</string>
+    <string name="brief_followers_down_today_up_week">Bạn giảm %1$s hôm nay, nhưng vẫn tăng %2$s
+        tuần này.</string>
+    <string name="brief_followers_grew_week">Khán giả của bạn tăng thêm %1$s tuần này.</string>
+    <string name="brief_followers_down_today">Bạn giảm %1$s hôm nay.</string>
+    <string name="brief_followers_down_week">Khán giả của bạn giảm %1$s tuần này.</string>
+    <string name="brief_card_steady_title">Mọi thứ vẫn ổn định</string>
+    <string name="brief_card_steady_body">Bạn đang có %1$s. Hãy tiếp tục đăng bài đều đặn và Twidget
+        sẽ theo dõi thay đổi đáng chú ý tiếp theo.</string>
+    <string name="brief_card_growth_title_attention">Bạn đang thu hút chú ý</string>
+    <string name="brief_card_growth_title_taking_off">Khán giả đang tăng vọt</string>
+    <string name="brief_card_growth_body_today_week">Bạn tăng %1$s hôm nay và %2$s trong tuần qua.</string>
+    <string name="brief_card_growth_body_week">Bạn tăng %1$s trong tuần qua.</string>
+    <string name="brief_card_post_views_likes">Tweet này đạt %1$s lượt xem và %2$s lượt thích.</string>
+    <string name="brief_card_post_views">Tweet này đạt %1$s lượt xem.</string>
+    <string name="brief_card_post_likes">Tweet này đạt %1$s lượt thích.</string>
+    <string name="brief_card_slowdown_title">Đà tăng trưởng đã chậm lại</string>
+    <string name="brief_card_slowdown_body">Nhịp độ gần đây đang chậm hơn %1$s so với vài ngày
+        trước. Một bài đăng mới có thể giúp khởi động lại đà tăng.</string>
+    <string name="brief_card_streak_start_title">Bắt đầu chuỗi đăng bài</string>
+    <string name="brief_card_streak_start_ready">Đã có tweet sẵn sàng đăng ngay. Hãy đăng để bắt đầu
+        nhịp độ hằng ngày mới.</string>
+    <string name="brief_card_streak_start_queued">Bạn có một tweet trong hàng đợi hôm nay. Hãy đăng
+        để bắt đầu nhịp độ hằng ngày mới.</string>
+    <string name="brief_card_streak_start_idle">Twidget chưa phát hiện tweet gốc nào trong hơn ba
+        ngày. Hãy đăng tweet hôm nay để bắt đầu.</string>
+    <plurals name="brief_card_streak_title">
+        <item quantity="other">Chuỗi đăng bài %1$d ngày</item>
+    </plurals>
+    <string name="brief_card_streak_kept_today">Hôm nay bạn đã giữ được chuỗi rồi. Làm tốt lắm.</string>
+    <plurals name="brief_card_streak_buffer">
+        <item quantity="other">Một tweet đã được lên lịch đăng hôm nay để duy trì nhịp độ %1$d ngày
+            của bạn.</item>
+    </plurals>
+    <plurals name="brief_card_streak_ready">
+        <item quantity="other">Tweet tiếp theo đã sẵn sàng. Hãy đăng để duy trì nhịp độ %1$d ngày
+            của bạn.</item>
+    </plurals>
+    <plurals name="brief_card_streak_queued">
+        <item quantity="other">Bạn có một tweet trong hàng đợi hôm nay. Hãy đăng để duy trì nhịp độ
+            %1$d ngày của bạn.</item>
+    </plurals>
+    <plurals name="brief_card_streak_tweet_today">
+        <item quantity="other">Hãy đăng tweet hôm nay để duy trì nhịp độ %1$d ngày của bạn.</item>
+    </plurals>
+    <string name="brief_card_top_follower_new">Người theo dõi hàng đầu mới</string>
+    <string name="brief_card_top_follower_moved">Một người theo dõi thăng hạng</string>
+    <string name="brief_card_top_follower_title">Người theo dõi hàng đầu</string>
+    <string name="brief_card_top_follower_body">%1$s có %2$s.</string>
+    <string name="brief_card_top_follower_movement">Họ đã tăng từ hạng #%1$d lên #1.</string>
+    <string name="brief_goal_remaining_body">Bạn còn cách mục tiêu %2$s %3$s là %1$s.</string>
+    <plurals name="brief_goal_unit_verified_followers">
+        <item quantity="other">%1$s người theo dõi đã xác minh</item>
+    </plurals>
+    <plurals name="brief_goal_unit_impressions">
+        <item quantity="other">%1$s lượt hiển thị</item>
+    </plurals>
+    <plurals name="brief_goal_unit_points">
+        <item quantity="other">%1$s điểm phần trăm</item>
+    </plurals>
+    <string name="brief_guide_follow_up_title">Tiếp nối khi còn nóng</string>
+    <string name="brief_guide_follow_up_body">Một tweet gần đây vượt mức trung vị của các tweet khác
+        cùng độ tuổi. Hãy cân nhắc đăng cập nhật hữu ích hoặc trả lời một phản hồi.</string>
+    <string name="brief_guide_window_title">Thử đăng tweet tiếp theo vào %1$s</string>
+    <string name="brief_guide_window_body">Trong các tweet gần đây cùng độ tuổi, tweet đăng vào %1$s
+        có lượt xem trung vị cao hơn. Hãy thử lại khung giờ này như một phép thử.</string>
+    <string name="brief_window_morning">buổi sáng</string>
+    <string name="brief_window_afternoon">buổi chiều</string>
+    <string name="brief_window_evening">buổi tối</string>
+    <string name="brief_window_late_night">đêm muộn</string>
+    <string name="brief_guide_format_media_title">Thử nội dung hình ảnh tiếp theo</string>
+    <string name="brief_guide_format_text_title">Để câu chữ dẫn dắt</string>
+    <string name="brief_guide_format_media_body">Trong các tweet gần đây cùng độ tuổi, bài đăng có
+        phương tiện đạt lượt xem trung vị cao hơn. Hãy thử thêm một hình ảnh/video; điều này không
+        chứng minh phương tiện là nguyên nhân tạo ra khác biệt.</string>
+    <string name="brief_guide_format_text_body">Trong các tweet gần đây cùng độ tuổi, bài đăng chỉ
+        có chữ đạt lượt xem trung vị cao hơn. Hãy thử nghiệm một ý tưởng tập trung khác.</string>
+    <string name="tweet_performance_strong_title">Hiệu suất của tweet này</string>
+    <string name="tweet_performance_quiet_title">So sánh tweet này</string>
+    <string name="tweet_performance_strong_engagements">Bài viết tạo ra nhiều lượt tương tác hơn các
+        tweet gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_strong_views">Bài viết ghi nhận nhiều lượt xem hơn hẳn các tweet
+        gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_strong_likes">Bài viết thu hút nhiều lượt thích hơn các tweet
+        gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_strong_quotes">Bài viết nhận được nhiều tweet trích dẫn hơn các
+        tweet gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_strong_retweets">Bài viết nhận được nhiều retweet hơn các tweet
+        gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_strong_replies">Bài viết nhận được nhiều phản hồi hơn các tweet
+        gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_engagements">Bài viết tạo ra ít lượt tương tác hơn các
+        tweet gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_views">Bài viết ghi nhận ít lượt xem hơn các tweet gần đây
+        khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_likes">Bài viết thu hút ít lượt thích hơn các tweet gần
+        đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_quotes">Bài viết nhận được ít tweet trích dẫn hơn các
+        tweet gần đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_retweets">Bài viết nhận được ít retweet hơn các tweet gần
+        đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_quiet_replies">Bài viết nhận được ít phản hồi hơn các tweet gần
+        đây khác cùng độ tuổi.</string>
+    <string name="tweet_performance_insufficient_data">Chưa có đủ dữ liệu tương đương trong ảnh chụp
+        này để so sánh công bằng.</string>
+    <string name="tweet_performance_strong_unexplained">Chỉ riêng các số liệu này không chứng minh
+        tại sao tweet lại có hiệu suất như vậy.</string>
+    <string name="tweet_performance_quiet_unexplained">Chỉ riêng các số liệu này không chứng minh
+        tại sao tweet lại có hiệu suất như vậy.</string>
+    <string name="milestone_noun_follower">người theo dõi</string>
+    <string name="milestone_noun_verified_follower">người theo dõi đã xác minh</string>
+    <string name="milestone_noun_engagement_rate">tỷ lệ tương tác</string>
+    <string name="milestone_noun_impression">lượt hiển thị</string>
+    <string name="top_followers_enable_shared_history">Bật lịch sử dùng chung</string>
+    <string name="widget_style">Kiểu widget</string>
+    <string name="widget_style_one_ui">One UI</string>
+    <string name="widget_style_material">Material 3 Expressive</string>
+    <string name="brief_api_key_dialog_body">Tạo và sao chép khóa API trong Google AI Studio, rồi
+        dán vào đây. Khóa này kích hoạt Báo cáo Tweet đám mây và tóm tắt đám mây khi được chọn cho
+        Tóm tắt của bạn. Đọc <annotation link="privacy">Chính sách quyền riêng tư</annotation> để
+        biết cách dữ liệu này được sử dụng và bảo mật.</string>
+    <string name="brief_api_key_studio_link">Nhấn vào đây để mở Google AI Studio</string>
+    <string name="brief_api_key_privacy_open_failed">Không thể mở chính sách quyền riêng tư.</string>
+    <string name="widget_contained_footer">Tên người dùng đóng khung</string>
+    <string name="widget_contained_footer_summary">Đặt tên người dùng vào khung nền riêng để dễ đọc
+        hơn.</string>
+    <plurals name="dashboard_streak_days">
+        <item quantity="other">ngày</item>
+    </plurals>
+    <string name="streak_card_steady">Chuỗi ổn định</string>
+    <string name="streak_card_record">Kỷ lục chuỗi mới</string>
+    <string name="streak_card_save">Giữ chuỗi của bạn</string>
+    <string name="streak_card_restart">Bắt đầu lại chuỗi</string>
+    <string name="settings_app_logo_style">Kiểu logo Twitter/X</string>
+    <string name="card_catalogue_hint">Nhấn vào bản xem trước thẻ để thêm vào bảng điều khiển.</string>
+    <string name="card_group_metrics">Tài khoản và khán giả</string>
+    <string name="card_group_growth">Tăng trưởng và hoạt động</string>
+    <string name="card_group_posts">Phân tích tweet</string>
+    <string name="card_group_x">Phân tích X</string>
+    <string name="card_group_community">Tóm tắt và cộng đồng</string>
+    <string name="card_catalogue_all_added">Đã thêm hết</string>
+    <string name="card_catalogue_half_width">Nửa chiều rộng</string>
+    <string name="card_catalogue_full_width">Toàn chiều rộng</string>
+    <string name="card_catalogue_add_named">Thêm %1$s</string>
+    <string name="card_catalogue_added">Đã thêm %1$s vào bảng điều khiển</string>
+    <plurals name="card_catalogue_available">
+        <item quantity="other">Có %d thẻ khả dụng</item>
+    </plurals>
+    <string name="debug_haptics_title">Phản hồi xúc giác</string>
+    <string name="debug_haptics_actions">Hiệu ứng ứng dụng</string>
+    <string name="debug_haptics_unsupported">Không được hỗ trợ trên thiết bị này</string>
+    <string name="debug_haptics_hold">Giữ tăng dần → bật chế độ sửa</string>
+    <string name="debug_haptics_enter">Vào chế độ sửa</string>
+    <string name="debug_haptics_exit">Thoát chế độ sửa</string>
+    <string name="debug_haptics_long_press">Nhấn giữ</string>
+    <string name="debug_haptics_drag_pickup">Nhấc khi kéo</string>
+    <string name="debug_haptics_drag_hold">Rung nhẹ khi đang kéo</string>
+    <string name="debug_haptics_selection">Rung khi chọn / sắp xếp lại</string>
+    <string name="debug_haptics_confirm">Xác nhận</string>
+    <string name="debug_haptics_reject">Từ chối</string>
+    <string name="debug_haptics_refresh">Kéo để làm mới</string>
+    <string name="debug_haptics_primitives">Hiệu ứng cơ bản riêng lẻ</string>
+    <string name="debug_haptics_low_tick">Rung nhẹ (Low tick)</string>
+    <string name="debug_haptics_tick">Nhịp rung (Tick)</string>
+    <string name="debug_haptics_click">Nhấp (Click)</string>
+    <string name="debug_haptics_slow_rise">Tăng chậm</string>
+    <string name="debug_haptics_quick_rise">Tăng nhanh</string>
+    <string name="debug_haptics_quick_fall">Giảm nhanh</string>
+    <string name="debug_haptics_thud">Rung trầm (Thud)</string>
+    <string name="debug_haptics_spin">Xoay (Spin)</string>
+    <string name="debug_haptics_stop">Dừng phát</string>
+    <string name="debug_haptics_force_waveforms">Buộc dùng dạng sóng</string>
+    <string name="debug_haptics_force_waveforms_summary">Dùng mô phỏng dạng sóng cho các hiệu ứng cơ
+        bản trong toàn ứng dụng. Phản hồi thao tác hệ thống vẫn giữ nguyên.</string>
+    <string name="about_evowizz_summary">Rất am hiểu kỹ thuật; đã bản địa hóa sang tiếng Pháp</string>
+    <string name="settings_widgets">Widget</string>
+    <string name="widget_lock_screen">Widget màn hình khóa</string>
+    <string name="widget_one_ui_only">Chỉ hỗ trợ trên thiết bị Samsung</string>
+    <string name="notices_latest_version">Phiên bản mới nhất</string>
+    <string name="notices_older_releases">Các bản phát hành cũ hơn</string>
+    <string name="change_account_handle">Đổi tên người dùng</string>
+    <string name="change_account_handle_message">Nhập tên người dùng X mới cho chính tài khoản này.
+        Lịch sử, widget, mục tiêu và dữ liệu cục bộ sẽ được chuyển theo. Với tài khoản đã lưu trước
+        khi có tính năng theo dõi danh tính, hãy đảm bảo đây vẫn là cùng một người.</string>
+    <string name="invalid_account_handle">Nhập tên người dùng X gồm 1–15 chữ cái, chữ số hoặc dấu
+        gạch dưới.</string>
+    <string name="account_handle_changed">Đã cập nhật tên người dùng tài khoản. Dữ liệu của bạn vẫn
+        được giữ nguyên.</string>
+    <string name="brief_context_relative_title">Điểm nổi bật của tài khoản</string>
+    <string name="brief_context_followers_week">Người theo dõi tuần qua</string>
+    <string name="brief_context_followers_recorded">Biến động người theo dõi đã ghi nhận</string>
+    <string name="brief_context_followers_body">Từ %1$s đến %2$s, thay đổi ròng người theo dõi là
+        %3$s (%4$s → %5$s).</string>
+    <string name="brief_context_posts_title">Các bài đăng gần đây của bạn</string>
+    <string name="brief_context_posts_body">Các bài đăng gốc gần đây được tính: %1$s. Tổng cộng
+        chúng đã ghi nhận %2$s lượt xem và %3$s lượt tương tác đến nay. Các số liệu này tính toàn bộ
+        vòng đời của từng bài đến hiện tại, không chỉ riêng lượt xem hay tương tác trong tuần này.</string>
+    <string name="brief_context_posts_sampled">Ảnh chụp này chứa một mẫu các bài đăng gần đây.</string>
+    <string name="brief_context_posts_summary">Bản ảnh chụp bài đăng gần đây được hiển thị bên dưới.</string>
+    <string name="brief_stat_net_change">Thay đổi ròng người theo dõi</string>
+    <string name="brief_stat_posts">Bài đăng gốc gần đây</string>
+    <string name="brief_generation_failed_title">Không thể tạo Tóm tắt của bạn</string>
+    <string name="brief_generation_failed_body">Mô hình không trả về phản hồi hoàn chỉnh. Hãy thử
+        lại để tạo phần mô tả của bạn.</string>
+    <string name="brief_generation_retry">Thử lại</string>
+    <string name="brief_refreshing">Đang làm mới Tóm tắt của bạn</string>
+    <string name="brief_saved_summary_info">Đang hiển thị bản Tóm tắt thành công gần nhất từ %1$s
+        trong khi chuẩn bị bản mới.</string>
+
+    <!-- Brief and tweet-review debug tools. -->
+    <string name="debug_brief_home">Gỡ lỗi Tóm tắt của bạn</string>
+    <string name="debug_brief_ai">Gỡ lỗi AI</string>
+    <string name="debug_brief_ranking">Xếp hạng ứng viên</string>
+    <string name="debug_ui_state">Trạng thái giao diện</string>
+    <string name="debug_component_library">Hiện thư viện thành phần</string>
+    <string name="debug_show_onboarding">Hiện hướng dẫn ban đầu</string>
+    <string name="debug_home_generation">Phát hiệu ứng tạo ở trang chính</string>
+    <string name="debug_home_generation_summary">Hiện hiệu ứng đang tạo trên thẻ Tóm tắt ở trang
+        chính</string>
+    <string name="debug_show_review_preview">Hiện xem trước đánh giá tweet</string>
+    <string name="debug_preview_state">Trạng thái xem trước</string>
+    <string name="debug_launch_preview">Mở bản xem trước</string>
+    <string name="debug_ai_diagnostics">Chẩn đoán AI</string>
+    <string name="debug_view_ai">Xem tùy chọn gỡ lỗi AI</string>
+    <string name="debug_engine">Gỡ lỗi bộ máy Tóm tắt</string>
+    <string name="debug_view_ranking">Xem xếp hạng ứng viên</string>
+    <string name="debug_view_engine_log">Xem nhật ký bộ máy</string>
+    <string name="debug_rebuild">Buộc dựng lại bộ máy</string>
+    <string name="debug_regenerate_brief">Làm mới và tạo lại Tóm tắt của bạn</string>
+    <string name="debug_nano_config">Cấu hình mô hình Nano</string>
+    <string name="debug_cloud_config">Cấu hình mô hình đám mây</string>
+    <string name="debug_refresh_nano">Làm mới trạng thái Nano</string>
+    <string name="debug_refresh_cloud">Làm mới trạng thái đám mây</string>
+    <string name="debug_nano_state">Trạng thái Nano</string>
+    <string name="debug_last_attempt">Lần thử tạo gần nhất</string>
+    <string name="debug_copy_results">Sao chép kết quả vào khay nhớ tạm</string>
+    <string name="debug_tweet_reviews">Gỡ lỗi đánh giá tweet</string>
+    <string name="debug_review_ui">Trạng thái giao diện đánh giá</string>
+    <string name="debug_review_engine">Gỡ lỗi bộ máy đánh giá</string>
+    <string name="debug_review_ai">Chẩn đoán AI đánh giá</string>
+    <string name="debug_review_log">Nhật ký thử đánh giá</string>
+    <string name="debug_review_preview">Xem trước đánh giá tweet</string>
+    <string name="debug_review_state">Trạng thái xem trước đánh giá</string>
+    <string name="debug_synthetic_note">Bản xem trước mẫu · không gọi mô hình hay đổi đánh giá đã
+        lưu</string>
+    <string name="debug_open_review_library">Mở danh sách tweet</string>
+    <string name="debug_review_subject">Tweet cần kiểm tra</string>
+    <string name="debug_no_review_subjects">Không có tweet lưu đệm hoặc báo cáo đã lưu nào cho tài
+        khoản này</string>
+    <string name="debug_review_evidence">Kiểm tra dữ kiện và ngữ cảnh</string>
+    <string name="debug_review_evidence_summary">Xem văn bản nguồn, tham chiếu phương tiện, ngữ cảnh
+        trích dẫn, lịch sử và dữ kiện thực tế cung cấp cho mô hình</string>
+    <string name="debug_review_cache">Kiểm tra bộ nhớ đệm đánh giá</string>
+    <string name="debug_review_checks">Chạy kiểm tra chính sách và bộ nhớ đệm</string>
+    <string name="debug_review_checks_summary">Kiểm tra yêu cầu đám mây và chu kỳ làm mới theo độ
+        tuổi mà không tạo gợi ý</string>
+    <string name="debug_regenerate_review">Làm mới và tạo lại đánh giá đã chọn</string>
+    <string name="debug_regenerate_review_summary">Làm mới chỉ số của tweet và tạo đánh giá mới.
+        Dùng đám mây ở chế độ Tự động hoặc Đám mây và cần có khóa.</string>
+    <string name="debug_review_route">Nhà cung cấp và cấu hình đánh giá</string>
+    <string name="debug_test_review_provider">Kiểm tra nhà cung cấp đánh giá</string>
+    <string name="debug_test_review_provider_summary">Gửi tweet đã chọn, ngữ cảnh và phương tiện lên
+        đám mây. Báo cáo kết quả xác thực và mức độ bao phủ phương tiện mà không ghi đè báo cáo đã
+        lưu.</string>
+    <string name="debug_review_test_result">Kết quả kiểm tra nhà cung cấp gần nhất</string>
+    <string name="debug_review_log_empty">Chưa ghi nhận lần thử đánh giá nào</string>
+    <string name="debug_test_failed">Kiểm tra gỡ lỗi không thể hoàn tất</string>
+    <string name="debug_sample_account">Tài khoản mẫu</string>
+    <string name="debug_sample_explanation">Tweet mẫu của bạn nhận được 1.164 lượt xem và 23 tương
+        tác công khai. Câu mở đầu để chủ thể ở dạng ngầm hiểu; điều đó có thể khiến người đọc ngoài
+        cuộc trò chuyện khó nắm bắt hơn. Đây là lý giải khả dĩ, không phải nguyên nhân đã đo được.</string>
+    <string name="debug_sample_suggestion">Hãy nêu rõ sản phẩm bạn vừa ra mắt trước khi xin góp ý.</string>
+    <string name="debug_sample_reason">Các bài đăng đối chiếu của bạn đều giới thiệu công cụ ngay ở
+        dòng đầu tiên. Hãy thử cách tiếp cận tương tự tại đây và so sánh phản hồi ở cùng độ tuổi.</string>
+    <string name="debug_sample_draft_explanation">Bản nháp mẫu của bạn xin góp ý nhưng chưa nêu tên
+        thứ bạn đã xây dựng. Các bài đối chiếu của bạn cung cấp ngữ cảnh đó ngay từ đầu. Hãy thử câu
+        mở đầu rõ ràng hơn; đây là góp ý cho bản nháp, không phải dự đoán hiệu suất.</string>
+    <string name="debug_sample_quote_explanation">Tweet mẫu của bạn nhận được 1.164 lượt xem và 23
+        tương tác công khai. Tweet được trích dẫn đã giải thích về công cụ rồi. Một câu hỏi cụ thể
+        hơn có thể giúp người đọc dễ phản hồi hơn; đó là một thử nghiệm khả dĩ, không phải nguyên
+        nhân đã đo được.</string>
+    <string name="review_next_steps_intro">Đây là điều bạn nên làm cho lần tới</string>
+
+    <!-- Typed, source-attributed figures in AI review commentary. -->
+    <plurals name="review_fact_likes">
+        <item quantity="other">%1$s lượt thích</item>
+    </plurals>
+    <plurals name="review_fact_replies">
+        <item quantity="other">%1$s phản hồi</item>
+    </plurals>
+    <plurals name="review_fact_retweets">
+        <item quantity="other">%1$s đăng lại</item>
+    </plurals>
+    <plurals name="review_fact_quotes">
+        <item quantity="other">%1$s trích dẫn</item>
+    </plurals>
+    <plurals name="review_fact_hours">
+        <item quantity="other">%1$s giờ</item>
+    </plurals>
+    <string name="review_fact_rate">tỷ lệ tương tác %1$s</string>
+    <string name="review_fact_age">%1$s sau khi đăng</string>
+    <string name="review_fact_history">%1$s trên tweet của bạn từ %2$s</string>
+    <string name="review_fact_median">%1$s là trung vị qua %2$s tweet tương tự</string>
+    <string name="widget_language_ca">Tiếng Catalan (Català)</string>
+    <string name="language_catalan">Tiếng Catalan (Català)</string>
+    <string name="chart_unfollows">Bỏ theo dõi: %1$s</string>
+    <string name="analytics_posts_replies_coverage">Trên %1$d bài đăng và phản hồi mẫu</string>
+    <string name="settings_cloud_ai_provider">Nhà cung cấp AI đám mây</string>
+    <string name="brief_manage_cloud_providers">Quản lý nhà cung cấp đám mây</string>
+    <string name="settings_app_icon">Biểu tượng ứng dụng</string>
+    <string name="app_icon_default">Mặc định</string>
+    <string name="app_icon_light">Sáng</string>
+    <string name="app_icon_dark">Tối</string>
+    <string name="app_icon_selected">Đã chọn biểu tượng ứng dụng %1$s</string>
+    <string name="settings_outline_effects">Hiệu ứng đường viền</string>
+    <string name="settings_outline_effects_summary">Dùng hiệu ứng đường viền kiểu One UI 9.5 cho các
+        thành phần ứng dụng như thẻ, thanh điều hướng, nút bấm…</string>
+    <string name="streak_day_active">Đã đăng</string>
+    <string name="streak_day_inactive">Chưa đăng</string>
+    <string name="streak_day_unknown">Không có hoạt động</string>
+    <string name="analytics_historical_sample">Trên %1$d bài đăng và phản hồi đã lưu</string>
+    <string name="analytics_historical_originals">Trên %1$d bài đăng gốc đã lưu</string>
+    <string name="about_damanmikey_summary">Bản địa hóa sang tiếng Hà Lan và giúp AI cục bộ chạy
+        trên nhiều thiết bị hơn qua AICore</string>
+</resources>

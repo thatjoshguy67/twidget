@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_goal_card_progress">%1$s / %2$s · %3$d%%</string>
+    <string name="brief_goal_card_unknown">Mục tiêu: %1$s · chưa có giá trị hiện tại</string>
+    <string name="brief_goal_current_value">Giá trị hiện tại</string>
+    <string name="brief_goal_target_value">Mục tiêu của bạn</string>
+    <string name="brief_goal_progress_value">Tiến độ</string>
+</resources>

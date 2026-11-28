@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_followers_browser_title">Người theo dõi hàng đầu</string>
+    <string name="top_followers_browser_search">Tìm người theo dõi</string>
+    <string name="top_followers_browser_refresh">Làm mới toàn bộ danh sách</string>
+    <string name="top_followers_browser_refreshed">Đã đồng bộ %1$d người theo dõi</string>
+    <string name="top_followers_browser_refresh_failed">Không thể làm mới toàn bộ danh sách người
+        theo dõi. Hãy thử lại.</string>
+    <string name="top_followers_browser_empty">Chưa có bảng xếp hạng người theo dõi nào.</string>
+    <string name="top_followers_browser_no_results">Không có người theo dõi nào khớp với tìm kiếm
+        của bạn.</string>
+    <string name="top_followers_browser_search_hint">Tìm kiếm</string>
+</resources>

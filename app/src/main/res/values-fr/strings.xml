@@ -9,6 +9,7 @@
     <string name="widget_language_fr">Français</string>
     <string name="widget_language_es">Espagnol (Español)</string>
     <string name="widget_language_nl">Néerlandais (Nederlands)</string>
+    <string name="widget_language_vi">Vietnamien (Tiếng Việt)</string>
     <string name="lockscreen_follower_1x1_label">Abonnés 1x1</string>
     <string name="lockscreen_follower_2x1_label">Abonnés 2x1</string>
     <string name="last_synced">Dernière synchronisation : %1$s</string>
@@ -119,6 +120,7 @@
     <string name="language_french">Français</string>
     <string name="language_spanish">Espagnol (Español)</string>
     <string name="language_dutch">Néerlandais (Nederlands)</string>
+    <string name="language_vietnamese">Vietnamien (Tiếng Việt)</string>
     <string name="milestone_use_auto">Utiliser le palier automatique</string>
     <string name="milestone_edit_button">Modifier</string>
     <string name="milestone_show_percent">Afficher le pourcentage de progression</string>

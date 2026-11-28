@@ -1,0 +1,13 @@
+<resources>
+    <string name="brief_setup_provider_title">Chọn nhà cung cấp AI</string>
+    <string name="brief_setup_chatgpt">Gói đăng ký ChatGPT</string>
+    <string name="brief_setup_chatgpt_summary">Khuyên dùng. Dùng gói ChatGPT của bạn cho Tóm tắt và
+        Báo cáo Tweet. Áp dụng giới hạn sử dụng của gói.</string>
+    <string name="brief_setup_openai">Khóa API OpenAI</string>
+    <string name="brief_setup_openai_summary">Dùng khóa API OpenAI. Chi phí sử dụng API được tính
+        riêng với ChatGPT.</string>
+    <string name="brief_setup_gemini">Khóa API Gemini</string>
+    <string name="brief_setup_gemini_summary">Dùng khóa API Google AI Studio cho Gemini.</string>
+    <string name="brief_setup_chatgpt_continue">Tiếp tục với ChatGPT</string>
+    <string name="brief_setup_enter_key">Nhập khóa API</string>
+</resources>

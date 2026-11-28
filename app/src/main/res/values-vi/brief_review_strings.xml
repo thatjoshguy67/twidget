@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="brief_content_tweet_reviews">Đánh giá tweet</string>
+    <string name="review_title">Đánh giá tweet</string>
+    <string name="review_draft_title">Bản nháp đánh giá</string>
+    <string name="review_content_explainer">Tính năng đánh giá tweet sử dụng nhà cung cấp đám mây ở
+        chế độ Tự động hoặc Đám mây. Mở một thẻ để xem hiệu suất đo lường, lý giải tiềm năng và gợi
+        ý.</string>
+    <string name="review_view">Xem đánh giá</string>
+    <string name="review_generating">Đang tạo bản đánh giá</string>
+    <string name="review_intro_post">Đánh giá hiệu suất, ngữ cảnh và các bước tiếp theo khả thi cho
+        tweet này.</string>
+    <string name="review_load_failed">Tweet này không còn khả dụng để đánh giá. Hãy quay lại Bản tóm
+        tắt của bạn và chọn một thẻ hiện có.</string>
+    <string name="review_retry">Thử lại</string>
+    <string name="review_open_composer">Mở trong trình soạn thảo</string>
+    <string name="review_performance">Hiệu suất tại thời điểm đánh giá</string>
+    <string name="review_breakdown">Tương tác công khai</string>
+    <string name="review_history_comparison">So sánh với các tweet tương tự của bạn</string>
+    <string name="review_subject_views">Lượt xem của tweet này</string>
+    <string name="review_peer_median">Lượt xem phổ biến của các tweet tương tự</string>
+    <string name="review_trend_title">Tương tác ghi nhận tại thời điểm đánh giá</string>
+    <string name="review_trend_note">Tổng tương tác công khai cộng dồn tại các thời điểm ghi nhận.
+        Các khoảng trống là chưa có dữ liệu; đây không phải mức tăng hằng ngày hay lịch sử đầy đủ
+        trong 7 ngày.</string>
+    <string name="review_trend_evidence">%1$d lần ghi nhận thực tế trong 7 ngày qua, tăng từ %2$s
+        lên %3$s tương tác công khai cộng dồn.</string>
+    <string name="review_stat_info_title">Về các chỉ số đo lường này</string>
+    <string name="review_stat_info_body">Lượt xem là số lượt hiển thị được nhà cung cấp ghi nhận,
+        không phải số người dùng riêng biệt. Tương tác công khai bao gồm lượt thích, phản hồi, đăng
+        lại và tweet trích dẫn; không tính các lượt nhấp chưa báo cáo, dấu trang và hành động riêng
+        tư. Tổng số liệu được đo tại lần cập nhật phân tích gần nhất, không phải dự báo phạm vi tiếp
+        cận hay mức tăng trong tuần qua. Phép so sánh sử dụng các tweet cùng loại và cùng định dạng
+        phương tiện của chính bạn ở khoảng thời gian hiển thị tương đương. Các số liệu này không thể
+        giải thích thuật toán xếp hạng của X hay chứng minh nguyên nhân dẫn đến kết quả.</string>
+    <string name="review_add_key">Thiết lập nhà cung cấp đám mây</string>
+    <string name="review_counts_evidence">%1$s lượt xem và %2$s tương tác công khai tại thời điểm
+        ghi nhận phân tích.</string>
+    <string name="review_breakdown_evidence">%1$s lượt thích · %2$s phản hồi · %3$s đăng lại · %4$s
+        tweet trích dẫn</string>
+    <string name="review_generation_note">Các lý giải từ AI chỉ là giả thuyết để kiểm chứng. Số liệu
+        thống kê bên dưới mới là dữ liệu thực tế được ghi nhận.</string>
+    <string name="review_observed_at">Ghi nhận lúc %1$s</string>
+    <string name="review_reply">Phản hồi</string>
+    <string name="review_replies">Các phản hồi</string>
+    <string name="review_error_cloud_key">Hãy kết nối nhà cung cấp đám mây để tạo bản đánh giá này.
+        Bản tóm tắt chính của bạn vẫn có thể chạy cục bộ.</string>
+    <string name="review_error_cloud">Không thể hoàn tất bản đánh giá. Vui lòng thử lại.</string>
+    <string name="review_more">Thêm tweet khác</string>
+    <string name="review_more_saved">Thêm đánh giá đã lưu</string>
+    <string name="review_saved_at">Đã đánh giá vào %1$s</string>
+    <string name="review_list_title">Tweet</string>
+    <string name="review_list_empty">Hiện không còn tweet nào khả dụng để đánh giá.</string>
+    <string name="review_copy_attachment">tệp đính kèm %1$d</string>
+    <string name="review_copy_wording">câu chữ được trích dẫn</string>
+    <string name="review_copy_history">một tweet tương tự</string>
+    <string name="review_copy_measurements">các chỉ số đã ghi nhận</string>
+    <string name="review_update_key">Quản lý nhà cung cấp đám mây</string>
+    <string name="review_library_intro">Xem qua các tweet gần đây khác của bạn và hiệu suất của
+        chúng.</string>
+    <string name="review_library_title">Đánh giá các tweet gần đây</string>
+    <string name="review_library_body">Xem qua các tweet gần đây của bạn và mức độ hiệu quả của
+        chúng.</string>
+    <string name="review_error_local">Bản tóm tắt của bạn đang đặt ở chế độ Chỉ cục bộ. Tính năng
+        đánh giá tweet cần AI đám mây. Hãy chuyển sang chế độ Tự động hoặc Đám mây để tạo đánh giá
+        này.</string>
+    <string name="review_change_mode">Đổi chế độ AI</string>
+    <string name="review_mode_explainer">Chế độ Tự động giữ AI trên thiết bị cho Bản tóm tắt của bạn
+        và dùng nhà cung cấp đám mây cho các bản đánh giá. Chế độ Đám mây dùng nhà cung cấp đám mây
+        cho cả hai.</string>
+    <string name="review_refresh">Làm mới đánh giá</string>
+    <string name="review_previous_kept">Bản đánh giá trước đó của bạn vẫn hiển thị bên dưới.</string>
+    <string name="review_error_authentication">Nhà cung cấp đám mây đã từ chối thông tin xác thực
+        hoặc quyền truy cập. Hãy kiểm tra kết nối tài khoản hoặc khóa API rồi thử lại.</string>
+    <string name="review_error_quota">Đã đạt giới hạn sử dụng hoặc tốc độ của nhà cung cấp đám mây.
+        Hãy kiểm tra gói cước hoặc hạn mức, hoặc thử lại sau.</string>
+    <string name="review_error_network">Không thể kết nối với nhà cung cấp đám mây. Hãy kiểm tra kết
+        nối internet và thử lại.</string>
+    <string name="review_error_timeout">Quá trình tạo đánh giá mất quá nhiều thời gian. Vui lòng thử
+        lại.</string>
+    <string name="review_error_service">Nhà cung cấp đám mây tạm thời không khả dụng. Vui lòng thử
+        lại sau.</string>
+    <string name="review_error_invalid_response">Gemini trả về bản đánh giá không thể sử dụng. Vui
+        lòng thử lại.</string>
+    <string name="review_error_analytics">Không thể cập nhật dữ liệu phân tích của tweet này. Hãy
+        kiểm tra kết nối và nguồn dữ liệu rồi thử lại.</string>
+    <string name="review_error_post_unavailable">Nguồn dữ liệu không trả về tweet này trong bản phân
+        tích mới nhất. Bản đánh giá mới cần số liệu cập nhật. Hãy thử lại sau lần cập nhật phân tích
+        tiếp theo.</string>
+    <string name="review_error_invalid_request">Gemini đã từ chối yêu cầu đánh giá. Vui lòng thử
+        lại. Nếu lỗi vẫn tiếp diễn, hãy kiểm tra bản cập nhật ứng dụng.</string>
+    <string name="review_error_blocked">Gemini đã chặn bản đánh giá này theo chính sách nội dung.
+        Bạn có thể thử lại hoặc đánh giá một tweet khác.</string>
+    <string name="review_error_output_limit">Gemini đã dừng trước khi hoàn tất bản đánh giá do phản
+        hồi quá dài. Vui lòng thử lại.</string>
+    <string name="review_quoted_tweet">Tweet trích dẫn</string>
+    <string name="review_quoted_media">Tweet trích dẫn · %1$s</string>
+    <string name="review_open_quoted_tweet">Mở tweet trích dẫn</string>
+    <string name="coach_archived_counts">Tweet đã lưu của bạn ghi nhận %1$s lượt xem và %2$s tương
+        tác công khai.</string>
+    <string name="coach_archived_counts_without_views">Tweet đã lưu của bạn ghi nhận %1$s tương tác
+        công khai.</string>
+    <string name="coach_archived_limit">Đây là tổng số liệu cộng dồn đã lưu. Không có dữ liệu về
+        thời điểm ghi nhận nên không thể hiển thị mức tăng trưởng gần đây hoặc so sánh công bằng với
+        các tweet tuần này.</string>
+    <string name="review_views_rank">%1$d/%2$d</string>
+    <string name="review_views_rank_context">So sánh với tối đa mười tweet đủ điều kiện gần nhất
+        của bạn trong 30 ngày qua. Tweet gốc và phản hồi được xếp hạng riêng. Các tweet có tổng
+        lượt xem bằng nhau sẽ đồng hạng.</string>
+    <string name="review_performance_ranking">Xếp hạng hiệu suất</string>
+    <string name="review_rank_only_post">Đây là tweet đủ điều kiện duy nhất trong 30 ngày qua
+        hiện có.</string>
+    <string name="review_rank_comparison">Xếp hạng theo lượt xem đã ghi nhận so với %1$d tweet
+        gần đây khác trong 30 ngày qua. Các tweet bằng nhau sẽ đồng hạng.</string>
+    <string name="review_preview_rank">Xếp hạng %1$d/%2$d theo lượt xem.</string>
+    <string name="review_type_post">Bài đăng</string>
+    <string name="review_type_thread">Chuỗi bài</string>
+    <string name="review_show_all_replies">Hiển thị tất cả phản hồi</string>
+    <string name="review_hide_other_replies">Ẩn các phản hồi khác</string>
+</resources>

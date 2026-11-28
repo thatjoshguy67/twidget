@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="l10n_error_unknown">Đã xảy ra lỗi. Vui lòng thử lại.</string>
+    <string name="l10n_error_empty_thread">Cần có ít nhất một bài viết trong chuỗi bài.</string>
+    <string name="l10n_error_empty_item">Mỗi bài viết trong chuỗi phải có nội dung văn bản hoặc
+        phương tiện.</string>
+    <string name="l10n_error_text_limit">Văn bản không được vượt quá %1$s ký tự.</string>
+    <string name="l10n_error_media_limit">Mỗi bài viết chỉ được đính kèm tối đa %1$s tệp phương
+        tiện.</string>
+    <string name="l10n_error_future_time">Thời gian lên lịch phải ở trong tương lai.</string>
+    <string name="l10n_error_schedule_failed">Lên lịch thất bại. Vui lòng thử lại.</string>
+    <string name="l10n_error_reminder_failed">Không thể đặt lời nhắc. Hãy kiểm tra quyền báo thức.</string>
+    <string name="l10n_error_read_media">Không thể đọc tệp phương tiện đã chọn.</string>
+    <string name="l10n_error_media_large">Tệp phương tiện quá lớn.</string>
+    <string name="l10n_error_save_media">Không thể lưu tệp phương tiện. Hãy kiểm tra quyền truy cập
+        bộ nhớ và thử lại.</string>
+    <string name="l10n_error_download_media">Không thể tải xuống tệp phương tiện. Hãy kiểm tra kết
+        nối mạng.</string>
+    <string name="l10n_error_csv_anchor">Tài khoản đã chọn chưa có số lượng người theo dõi khả dụng.</string>
+    <string name="l10n_error_csv_empty">Tệp không chứa dòng dữ liệu phân tích nào.</string>
+    <string name="l10n_error_csv_column">Thiếu cột %1$s.</string>
+    <string name="l10n_error_csv_row">Hàng %1$s bị thiếu dữ liệu hoặc có giá trị không hợp lệ ở cột
+        %2$s.</string>
+    <string name="l10n_error_csv_year">Tệp xuất chứa dữ liệu của nhiều hơn một năm.</string>
+    <string name="l10n_error_csv_duplicate">Tệp xuất chứa các ngày bị trùng lặp.</string>
+    <string name="l10n_error_csv_invalid">Không thể đọc tệp phân tích. Hãy kiểm tra lại các cột và
+        giá trị trong tệp.</string>
+    <string name="l10n_error_account_changed">Tài khoản đã lưu vừa thay đổi. Vui lòng thử lại.</string>
+    <string name="l10n_error_account_identity">Tên người dùng mới này thuộc về một tài khoản X khác.</string>
+    <string name="l10n_error_account_stale">Dữ liệu hồ sơ vừa tra cứu cũ hơn dữ liệu đã lưu của bạn.
+        Vui lòng thử lại.</string>
+    <string name="l10n_error_account_exists">Tên người dùng này đã có dữ liệu được lưu. Các tài
+        khoản hiện có của bạn vẫn được giữ nguyên.</string>
+    <string name="l10n_error_account_invalid">Hãy nhập tên người dùng X hợp lệ.</string>
+    <string name="l10n_error_account_save">Không thể lưu dữ liệu tài khoản. Hãy khởi động lại ứng
+        dụng để khôi phục an toàn.</string>
+    <string name="l10n_widget_followers_of">người theo dõi</string>
+    <string name="l10n_import_localized_range">%1$s đến %2$s</string>
+    <string name="l10n_error_csv_inconsistent">Hàng %1$s ghi nhận %2$s lượt tương tác, ít hơn %3$s
+        hành động tương tác hiển thị của chính hàng đó.</string>
+    <string name="l10n_error_csv_gap">Tệp xuất bị thiếu dữ liệu trong khoảng từ %1$s đến %2$s.</string>
+    <string name="l10n_error_csv_size">Tệp phân tích quá lớn. Giới hạn tối đa là %1$s ký tự.</string>
+    <string name="l10n_error_csv_quotes">Tệp chứa giá trị nằm trong dấu ngoặc kép chưa được đóng.</string>
+</resources>

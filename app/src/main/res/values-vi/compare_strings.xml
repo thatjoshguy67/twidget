@@ -1,0 +1,26 @@
+<resources>
+    <string name="compare_title">So sánh</string>
+    <string name="compare_done">Xong</string>
+    <string name="compare_vs">vs</string>
+    <string name="compare_choose">Chọn tài khoản</string>
+    <string name="compare_type_handle">Nhập tên người dùng công khai</string>
+    <string name="compare_handle_hint">Tên người dùng</string>
+    <string name="compare_cancel">Hủy</string>
+    <string name="compare_use_account">Dùng tài khoản</string>
+    <string name="compare_invalid_handle">Nhập tên người dùng X hợp lệ.</string>
+    <string name="compare_loading">Đang tải…</string>
+    <string name="compare_load_error">Không thể tải tài khoản này.</string>
+    <string name="compare_analytics_error">Không có số liệu bài đăng.</string>
+    <string name="compare_retry">Thử lại</string>
+    <string name="compare_followers">Người theo dõi</string>
+    <string name="compare_engagement">Tương tác</string>
+    <string name="compare_likes">Lượt thích</string>
+    <string name="compare_reposts">Đăng lại</string>
+    <string name="compare_views">Lượt xem</string>
+    <string name="compare_weekly_delta">%1$s tuần này</string>
+    <string name="compare_pick_description">Chọn tài khoản: %1$s</string>
+    <string name="compare_metric_description">%1$s, %2$s: %3$s</string>
+    <string name="compare_footnote">7 ngày gần nhất của các bài đăng gốc đã ghi nhận; tổng số là số
+        liệu tích lũy đến hiện tại và có thể là mẫu.</string>
+    <string name="compare_missing">—</string>
+</resources>
